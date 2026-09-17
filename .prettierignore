@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.next/
+coverage/
+.dart_tool/
+build/
+**/.expo/
+**/android/
+**/ios/
+**/expo-env.d.ts

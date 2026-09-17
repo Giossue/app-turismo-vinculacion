@@ -1,0 +1,20 @@
+{
+  "name": "turismo-vinculacion-app",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.24.0",
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=11.0.0"
+  },
+  "scripts": {
+    "dev:api": "pnpm --filter @turismo/api dev",
+    "dev:web": "pnpm --filter @turismo/web dev",
+    "build": "pnpm -r --if-present run build",
+    "format": "pnpm -r --if-present run format",
+    "lint": "pnpm -r --if-present run lint",
+    "test": "pnpm -r --if-present run test",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "verify": "pnpm format && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+  }
+}

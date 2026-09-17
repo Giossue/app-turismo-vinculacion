@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Aprobaciones explícitas de scripts de dependencias para desarrollo local.
+# Se bloquea Scarf porque no es necesario para compilar ni ejecutar la plataforma.
+allowBuilds:
+  '@scarf/scarf': false
+  esbuild: true
+  unrs-resolver: true
