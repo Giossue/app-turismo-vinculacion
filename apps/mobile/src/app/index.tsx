@@ -46,6 +46,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const colors = useTurismoPalette();
   const sheetRef = useRef<ExpoBottomSheet>(null);
+  const viewportTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [text, setText] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [profileVisible, setProfileVisible] = useState(false);
@@ -74,6 +75,20 @@ export default function HomeScreen() {
     if (selectedCenter) sheetRef.current?.present();
     else sheetRef.current?.dismiss();
   }, [selectedCenter]);
+
+  useEffect(() => {
+    return () => {
+      if (viewportTimer.current) clearTimeout(viewportTimer.current);
+    };
+  }, []);
+
+  const handleViewportChange = (bounds: CenterFilters["bounds"]) => {
+    if (!bounds) return;
+    if (viewportTimer.current) clearTimeout(viewportTimer.current);
+    viewportTimer.current = setTimeout(() => {
+      setFilters((current) => ({ ...current, bounds }));
+    }, 350);
+  };
 
   const openDetail = (center: PublicCenter) =>
     router.push({
@@ -104,9 +119,7 @@ export default function HomeScreen() {
       <CenterMap
         centers={centers}
         onCenterPress={(center) => setSelectedCenterCode(center.code)}
-        onViewportChange={(bounds) =>
-          setFilters((current) => ({ ...current, bounds }))
-        }
+        onViewportChange={handleViewportChange}
       />
       <SafeAreaView
         edges={["top"]}

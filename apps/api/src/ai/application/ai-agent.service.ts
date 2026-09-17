@@ -42,6 +42,7 @@ export type AgentChatInput = z.infer<typeof agentChatSchema>;
 @Injectable()
 export class AiAgentService {
   constructor(
+    @Inject(ConfigService)
     private readonly config: ConfigService,
     @Inject(PUBLIC_CENTER_REPOSITORY)
     private readonly centers: PublicCenterRepository,

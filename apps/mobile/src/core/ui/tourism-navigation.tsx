@@ -248,6 +248,7 @@ function PopoverAction({
 
 const styles = StyleSheet.create({
   tabBar: {
+    alignSelf: "stretch",
     alignItems: "center",
     borderRadius: turismoRadii.lg,
     borderWidth: 1,
@@ -256,6 +257,7 @@ const styles = StyleSheet.create({
     minHeight: 72,
     paddingHorizontal: turismoSpacing.xs,
     paddingVertical: turismoSpacing.xs,
+    width: "100%",
   },
   tab: { alignItems: "center", flex: 1, gap: 2, minHeight: 58 },
   tabIcon: {
