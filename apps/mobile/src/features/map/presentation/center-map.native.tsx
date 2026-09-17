@@ -79,13 +79,22 @@ export function CenterMap({
               <View
                 style={[
                   styles.marker,
-                  { backgroundColor: colors.primary, borderColor: colors.surface },
+                  {
+                    backgroundColor: colors.primary,
+                    borderColor: colors.surface,
+                  },
                 ]}
               >
                 {group.centers.length === 1 ? (
-                  <TurismoIcon color={colors.onPrimary} name="mapPin" size={18} />
+                  <TurismoIcon
+                    color={colors.onPrimary}
+                    name="mapPin"
+                    size={18}
+                  />
                 ) : (
-                  <Text style={[styles.markerText, { color: colors.onPrimary }]}>
+                  <Text
+                    style={[styles.markerText, { color: colors.onPrimary }]}
+                  >
                     {group.centers.length}
                   </Text>
                 )}

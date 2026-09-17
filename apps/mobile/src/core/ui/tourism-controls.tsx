@@ -189,7 +189,9 @@ export function TourismActionButton({
         style,
       ]}
     >
-      {icon ? <TurismoIcon color={foregroundColor} name={icon} size={18} /> : null}
+      {icon ? (
+        <TurismoIcon color={foregroundColor} name={icon} size={18} />
+      ) : null}
       <Text style={[styles.actionButtonText, { color: foregroundColor }]}>
         {label}
       </Text>
@@ -222,11 +224,7 @@ export function TourismBadge({
   const colors = useTurismoPalette();
   return (
     <View
-      style={[
-        styles.badge,
-        { backgroundColor: colors.primarySoft },
-        style,
-      ]}
+      style={[styles.badge, { backgroundColor: colors.primarySoft }, style]}
     >
       <Text style={[styles.badgeText, { color: colors.primaryStrong }]}>
         {children}

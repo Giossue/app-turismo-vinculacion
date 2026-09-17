@@ -39,6 +39,7 @@ export const turismoIconMap = {
   check: Check,
   chevronDown: ChevronDown,
   chevronUp: ChevronUp,
+  circleHelp: CircleHelp,
   help: CircleHelp,
   compass: Compass,
   locate: LocateFixed,

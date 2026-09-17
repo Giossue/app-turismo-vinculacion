@@ -15,6 +15,13 @@ pregunta -> policy/rate limit -> herramientas del backend
          -> verificación y citas -> usuario
 ```
 
+La primera integración expone `POST /api/v1/ai/chat` como texto en streaming. El backend
+usa AI SDK Core (`streamText`) y selecciona OpenAI o Anthropic con `AI_PROVIDER` y
+`AI_MODEL`; las claves `OPENAI_API_KEY` y `ANTHROPIC_API_KEY` nunca llegan a la aplicación
+móvil. La única herramienta habilitada en esta primera unidad es
+`searchPublishedCenters`, que delega en el repositorio público y por tanto solo devuelve
+fichas aprobadas.
+
 ## Herramientas permitidas
 
 - Buscar centros/POI/establecimientos publicados.

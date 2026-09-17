@@ -28,6 +28,9 @@ desde el emulador Android hacia la API que corre en tu máquina. En un dispositi
 físico se debe sustituir por la IP privada de la máquina de desarrollo, sin añadir
 secretos al archivo.
 
+El móvil no necesita claves de IA: la pantalla `Agente` envía la consulta a
+`/api/v1/ai/chat` y las claves de OpenAI/Anthropic permanecen en el backend.
+
 El primer `android` genera el development build e instala la aplicación. Después se
 puede levantar Metro con:
 

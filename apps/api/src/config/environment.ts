@@ -10,6 +10,10 @@ const environmentSchema = z.object({
     .url()
     .default("postgresql://postgres@127.0.0.1:55433/turismo_vinculacion_app"),
   WEB_ORIGIN: z.string().url().default("http://localhost:3001"),
+  AI_PROVIDER: z.enum(["openai", "anthropic"]).default("openai"),
+  AI_MODEL: z.string().trim().min(1).default("gpt-5-mini"),
+  OPENAI_API_KEY: z.string().trim().min(1).optional(),
+  ANTHROPIC_API_KEY: z.string().trim().min(1).optional(),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

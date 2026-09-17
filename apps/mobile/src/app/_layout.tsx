@@ -29,6 +29,9 @@ export default function RootLayout() {
           name="centers/[code]"
           options={{ title: "Ficha turística" }}
         />
+        <Stack.Screen name="agent" options={{ headerShown: false }} />
+        <Stack.Screen name="itinerary" options={{ headerShown: false }} />
+        <Stack.Screen name="route" options={{ headerShown: false }} />
       </Stack>
     </AppProviders>
   );

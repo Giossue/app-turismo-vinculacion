@@ -33,4 +33,6 @@ iconografía.
 
 ## Estado
 
-En implementación.
+Implementado. Verificación automatizada completa; queda como paso manual ejecutar un
+Development Build Android/iOS con un proveedor de IA configurado y validar el mapa en
+dispositivo físico.

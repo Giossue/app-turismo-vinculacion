@@ -50,6 +50,10 @@ corepack pnpm --filter @turismo/mobile android
 La API queda en `http://127.0.0.1:3000/api/v1`, OpenAPI en
 `http://127.0.0.1:3000/api/docs` y la web en `http://127.0.0.1:3001`.
 
+El agente turístico se habilita solo en la API. Copia las variables de `.env.example` y
+elige `AI_PROVIDER=openai` o `AI_PROVIDER=anthropic`, junto con el `AI_MODEL` y la clave
+del proveedor correspondiente. Nunca coloques esas claves en `apps/mobile/.env`.
+
 El cliente móvil usa MapLibre y por ello requiere un development build de Expo, no
 Expo Go. La configuración de API para emulador y el proceso completo están en
 `apps/mobile/README.md`.

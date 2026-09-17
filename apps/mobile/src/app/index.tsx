@@ -1,4 +1,7 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import ExpoBottomSheet, {
+  BottomSheetView,
+} from "@expo/ui/community/bottom-sheet";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -11,11 +14,26 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   TourismActionButton,
+  TourismBadge,
   TourismChoiceChip,
   TourismIconAction,
   TourismSearchField,
+  TourismSectionTitle,
   TourismSurface,
+  useTurismoPalette,
 } from "@/core/ui/tourism-controls";
+import {
+  TourismProfileButton,
+  TourismProfilePopover,
+  TourismTabBar,
+} from "@/core/ui/tourism-navigation";
+import { TurismoIcon } from "@/core/ui/turismo-icons";
+import {
+  turismoIconSizes,
+  turismoRadii,
+  turismoSpacing,
+  turismoTypography,
+} from "@/core/ui/tokens";
 import { useDiscoveryCatalog } from "@/features/centers/application/use-discovery-catalog";
 import { usePublishedCenters } from "@/features/centers/application/use-published-centers";
 import type {
@@ -26,11 +44,14 @@ import { CenterMap } from "@/features/map/presentation/center-map";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const colors = useTurismoPalette();
+  const sheetRef = useRef<ExpoBottomSheet>(null);
   const [text, setText] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedCenterCode, setSelectedCenterCode] = useState<
-    string | null | undefined
-  >(undefined);
+  const [profileVisible, setProfileVisible] = useState(false);
+  const [selectedCenterCode, setSelectedCenterCode] = useState<string | null>(
+    null,
+  );
   const [filters, setFilters] = useState<Omit<CenterFilters, "text">>({});
   const deferredText = useDeferredValue(text.trim());
   const query = useMemo(
@@ -45,11 +66,25 @@ export default function HomeScreen() {
   } = usePublishedCenters(query);
   const { data: catalog } = useDiscoveryCatalog();
 
+  const selectedCenter = selectedCenterCode
+    ? (centers.find((center) => center.code === selectedCenterCode) ?? null)
+    : null;
+
+  useEffect(() => {
+    if (selectedCenter) sheetRef.current?.present();
+    else sheetRef.current?.dismiss();
+  }, [selectedCenter]);
+
   const openDetail = (center: PublicCenter) =>
     router.push({
       pathname: "/centers/[code]" as never,
       params: { code: center.code },
     });
+
+  const navigateTab = (tab: "explore" | "agent" | "itinerary") => {
+    if (tab === "explore") return;
+    router.push(`/${tab}` as never);
+  };
 
   if (isPending) return <LoadingState />;
   if (error) return <ErrorState onRetry={() => void refetch()} />;
@@ -62,13 +97,9 @@ export default function HomeScreen() {
     (item) =>
       !filters.provinceCode || item.provinceCode === filters.provinceCode,
   );
-  const selectedCenter =
-    selectedCenterCode === undefined
-      ? (centers[0] ?? null)
-      : (centers.find((center) => center.code === selectedCenterCode) ?? null);
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: colors.mapBackground }]}>
       <Stack.Screen options={{ headerShown: false }} />
       <CenterMap
         centers={centers}
@@ -78,24 +109,26 @@ export default function HomeScreen() {
         }
       />
       <SafeAreaView
-        edges={["top", "bottom"]}
+        edges={["top"]}
         pointerEvents="box-none"
         style={styles.overlay}
       >
         <View style={styles.topControls}>
-          <View style={styles.searchBar}>
+          <View style={styles.searchRow}>
             <TourismSearchField
               accessibilityLabel="Buscar atractivos"
               onChangeText={setText}
+              onClear={() => setText("")}
               placeholder="Buscar aquí"
               value={text}
             />
             <TourismIconAction
               accessibilityLabel="Mostrar filtros"
-              icon="filter-variant"
+              icon="sliders"
               onPress={() => setShowFilters((value) => !value)}
               selected={showFilters}
             />
+            <TourismProfileButton onPress={() => setProfileVisible(true)} />
           </View>
           <FilterChips
             label="Categorías de atractivos"
@@ -113,7 +146,7 @@ export default function HomeScreen() {
           {showFilters ? (
             <TourismSurface style={styles.filtersPanel}>
               <View style={styles.filtersPanelHeader}>
-                <Text style={styles.filtersPanelTitle}>Filtrar lugares</Text>
+                <TourismSectionTitle>Filtrar lugares</TourismSectionTitle>
                 <TourismIconAction
                   accessibilityLabel="Cerrar filtros"
                   icon="close"
@@ -168,31 +201,55 @@ export default function HomeScreen() {
             </TourismSurface>
           ) : null}
         </View>
-        <View pointerEvents="box-none" style={styles.bottomArea}>
-          <View pointerEvents="auto" style={styles.locationNotice}>
-            <Text style={styles.locationNoticeText}>
-              Explora sin activar tu ubicación
-            </Text>
-          </View>
-          {selectedCenter ? (
+      </SafeAreaView>
+      <View pointerEvents="box-none" style={styles.bottomOverlay}>
+        <View
+          pointerEvents="auto"
+          style={[styles.locationNotice, { backgroundColor: colors.surface }]}
+        >
+          <TurismoIcon
+            color={colors.primaryStrong}
+            name="locate"
+            size={turismoIconSizes.sm}
+          />
+          <Text
+            style={[styles.locationNoticeText, { color: colors.textMuted }]}
+          >
+            Explora sin activar tu ubicación
+          </Text>
+        </View>
+        <SafeAreaView edges={["bottom"]} pointerEvents="auto">
+          <TourismTabBar active="explore" onChange={navigateTab} />
+        </SafeAreaView>
+      </View>
+      <ExpoBottomSheet
+        backgroundStyle={{ backgroundColor: colors.surface }}
+        enablePanDownToClose
+        index={-1}
+        onClose={() => setSelectedCenterCode(null)}
+        ref={sheetRef}
+        snapPoints={["38%", "84%"]}
+      >
+        {selectedCenter ? (
+          <BottomSheetView style={styles.sheetView}>
             <PlaceSheet
               center={selectedCenter}
               onClose={() => setSelectedCenterCode(null)}
               onOpenDetail={() => openDetail(selectedCenter)}
+              onOpenRoute={() => router.push("/route" as never)}
             />
-          ) : (
-            <View pointerEvents="auto">
-              <TourismSurface style={styles.exploreSheet}>
-                <View style={styles.dragHandle} />
-                <Text style={styles.exploreTitle}>Explora Guaranda</Text>
-                <Text style={styles.exploreText}>
-                  Toca un marcador para conocer un atractivo turístico.
-                </Text>
-              </TourismSurface>
-            </View>
-          )}
-        </View>
-      </SafeAreaView>
+          </BottomSheetView>
+        ) : null}
+      </ExpoBottomSheet>
+      <TourismProfilePopover
+        onClose={() => setProfileVisible(false)}
+        onItinerary={() => {
+          setProfileVisible(false);
+          router.push("/itinerary" as never);
+        }}
+        onSaved={() => setProfileVisible(false)}
+        visible={profileVisible}
+      />
     </View>
   );
 }
@@ -212,35 +269,24 @@ function FilterChips({
   return (
     <ScrollView
       accessibilityLabel={label}
+      contentContainerStyle={styles.chips}
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={styles.chipScroller}
-      contentContainerStyle={styles.chips}
     >
-      <FilterChip
+      <TourismChoiceChip
         label="Todo"
-        selected={!selected}
         onPress={() => onChange(undefined)}
+        selected={!selected}
       />
       {options.map((option) => (
-        <FilterChip
+        <TourismChoiceChip
           key={option.code}
           label={option.name}
-          selected={selected === option.code}
           onPress={() => onChange(option.code)}
+          selected={selected === option.code}
         />
       ))}
     </ScrollView>
-  );
-}
-
-function FilterChip({
-  label,
-  selected,
-  onPress,
-}: Readonly<{ label: string; selected: boolean; onPress: () => void }>) {
-  return (
-    <TourismChoiceChip label={label} onPress={onPress} selected={selected} />
   );
 }
 
@@ -248,178 +294,157 @@ function PlaceSheet({
   center,
   onClose,
   onOpenDetail,
+  onOpenRoute,
 }: Readonly<{
   center: PublicCenter;
   onClose: () => void;
   onOpenDetail: () => void;
+  onOpenRoute: () => void;
 }>) {
+  const colors = useTurismoPalette();
   return (
-    <View pointerEvents="auto">
-      <TourismSurface style={styles.placeSheet}>
-        <View style={styles.dragHandle} />
-        <View style={styles.placeHeader}>
-          <View style={styles.placeTitleBlock}>
-            <Text style={styles.placeCategory}>{center.category}</Text>
-            <Text numberOfLines={2} style={styles.placeTitle}>
-              {center.name}
-            </Text>
-            <Text numberOfLines={2} style={styles.placeDescription}>
-              {center.description ?? "Información turística verificada."}
-            </Text>
-          </View>
-          <TourismIconAction
-            accessibilityLabel="Cerrar ficha rápida"
-            icon="close"
-            onPress={onClose}
-          />
+    <View style={styles.placeSheet}>
+      <View style={styles.placeHeader}>
+        <View style={styles.placeTitleBlock}>
+          <Text style={[styles.placeCategory, { color: colors.primaryStrong }]}>
+            {center.category}
+          </Text>
+          <Text
+            numberOfLines={2}
+            style={[styles.placeTitle, { color: colors.text }]}
+          >
+            {center.name}
+          </Text>
+          <Text
+            numberOfLines={3}
+            style={[styles.placeDescription, { color: colors.textMuted }]}
+          >
+            {center.description ?? "Información turística verificada."}
+          </Text>
         </View>
-        <View style={styles.placeTags}>
-          <Text style={styles.placeTag}>{center.subtype}</Text>
-          {center.hierarchy ? (
-            <Text style={styles.placeTag}>Jerarquía {center.hierarchy}</Text>
-          ) : null}
-        </View>
-        <View style={styles.actions}>
-          <TourismActionButton label="Ver ficha" onPress={onOpenDetail} />
-          <TourismActionButton
-            disabled
-            label="Cómo llegar · Próximamente"
-            mode="outlined"
-            style={styles.routeAction}
-          />
-        </View>
-      </TourismSurface>
+        <TourismIconAction
+          accessibilityLabel="Cerrar ficha rápida"
+          icon="close"
+          onPress={onClose}
+        />
+      </View>
+      <View style={styles.placeTags}>
+        <TourismBadge>{center.subtype}</TourismBadge>
+        {center.hierarchy ? (
+          <TourismBadge>Jerarquía {center.hierarchy}</TourismBadge>
+        ) : null}
+      </View>
+      <View style={styles.actions}>
+        <TourismActionButton
+          icon="mapPinned"
+          label="Ver ficha"
+          onPress={onOpenDetail}
+          style={styles.flexAction}
+        />
+        <TourismActionButton
+          icon="route"
+          label="Cómo llegar"
+          mode="outlined"
+          onPress={onOpenRoute}
+          style={styles.flexAction}
+        />
+      </View>
     </View>
   );
 }
 
 function LoadingState() {
+  const colors = useTurismoPalette();
   return (
-    <View accessibilityLabel="Cargando mapa turístico" style={styles.loading}>
-      <ActivityIndicator color="#0ea5a6" size="large" />
-      <Text style={styles.loadingText}>Preparando el mapa turístico…</Text>
+    <View style={[styles.loading, { backgroundColor: colors.background }]}>
+      <ActivityIndicator color={colors.primary} size="large" />
+      <Text style={[styles.loadingText, { color: colors.textMuted }]}>
+        Preparando el mapa turístico…
+      </Text>
     </View>
   );
 }
 
 function ErrorState({ onRetry }: Readonly<{ onRetry: () => void }>) {
+  const colors = useTurismoPalette();
   return (
-    <View style={styles.loading}>
-      <Text style={styles.errorTitle}>
+    <View style={[styles.loading, { backgroundColor: colors.background }]}>
+      <TurismoIcon color={colors.danger} name="wifiOff" size={32} />
+      <Text style={[styles.errorTitle, { color: colors.text }]}>
         No pudimos cargar el mapa turístico.
       </Text>
-      <TourismActionButton label="Reintentar" onPress={onRetry} />
+      <TourismActionButton
+        icon="refresh"
+        label="Reintentar"
+        onPress={onRetry}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: "#0f172a", flex: 1 },
+  screen: { flex: 1 },
   overlay: {
     bottom: 0,
-    justifyContent: "space-between",
     left: 0,
     position: "absolute",
     right: 0,
     top: 0,
   },
-  topControls: { gap: 10, paddingHorizontal: 16 },
-  searchBar: {
+  topControls: { gap: turismoSpacing.sm, paddingHorizontal: turismoSpacing.md },
+  searchRow: {
     alignItems: "center",
     flexDirection: "row",
+    gap: turismoSpacing.xs,
   },
-  chipScroller: { flexGrow: 0 },
-  chips: { gap: 8, paddingRight: 16 },
-  filtersPanel: {
-    backgroundColor: "#182331",
-    borderColor: "#475569",
-    borderRadius: 18,
-    borderWidth: 1,
-    gap: 13,
-    padding: 14,
-  },
+  chips: { gap: turismoSpacing.xs, paddingRight: turismoSpacing.md },
+  filtersPanel: { gap: turismoSpacing.sm, padding: turismoSpacing.md },
   filtersPanelHeader: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  filtersPanelTitle: { color: "#f8fafc", fontSize: 16, fontWeight: "800" },
-  bottomArea: { alignItems: "center", gap: 10, paddingHorizontal: 12 },
+  bottomOverlay: {
+    alignItems: "center",
+    bottom: 0,
+    gap: turismoSpacing.sm,
+    left: 0,
+    paddingHorizontal: turismoSpacing.md,
+    position: "absolute",
+    right: 0,
+  },
   locationNotice: {
-    backgroundColor: "#182331e6",
-    borderRadius: 999,
-    paddingHorizontal: 13,
-    paddingVertical: 8,
-  },
-  locationNoticeText: { color: "#cbd5e1", fontSize: 12, fontWeight: "700" },
-  exploreSheet: {
-    alignSelf: "stretch",
-    backgroundColor: "#111827",
-    borderColor: "#334155",
-    borderRadius: 25,
+    alignItems: "center",
+    borderRadius: turismoRadii.pill,
+    borderColor: "#FFFFFF22",
     borderWidth: 1,
-    gap: 7,
-    padding: 18,
+    flexDirection: "row",
+    gap: turismoSpacing.xs,
+    paddingHorizontal: turismoSpacing.md,
+    paddingVertical: turismoSpacing.xs,
   },
-  dragHandle: {
-    alignSelf: "center",
-    backgroundColor: "#64748b",
-    borderRadius: 999,
-    height: 4,
-    marginBottom: 7,
-    width: 42,
-  },
-  exploreTitle: { color: "#f8fafc", fontSize: 22, fontWeight: "800" },
-  exploreText: { color: "#cbd5e1", fontSize: 14, lineHeight: 20 },
-  placeSheet: {
-    alignSelf: "stretch",
-    backgroundColor: "#111827",
-    borderColor: "#334155",
-    borderRadius: 25,
-    borderWidth: 1,
-    gap: 13,
-    padding: 18,
-  },
+  locationNoticeText: { ...turismoTypography.caption },
+  sheetView: { padding: turismoSpacing.lg },
+  placeSheet: { gap: turismoSpacing.md, paddingBottom: turismoSpacing.xl },
   placeHeader: {
     flexDirection: "row",
-    gap: 12,
+    gap: turismoSpacing.sm,
     justifyContent: "space-between",
   },
-  placeTitleBlock: { flex: 1, gap: 5 },
-  placeCategory: { color: "#5eead4", fontSize: 13, fontWeight: "800" },
-  placeTitle: {
-    color: "#f8fafc",
-    fontSize: 24,
-    fontWeight: "800",
-    lineHeight: 29,
-  },
-  placeDescription: { color: "#cbd5e1", fontSize: 14, lineHeight: 20 },
-  placeTags: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
-  placeTag: {
-    backgroundColor: "#273449",
-    borderRadius: 999,
-    color: "#dbeafe",
-    fontSize: 12,
-    fontWeight: "700",
-    overflow: "hidden",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  actions: { flexDirection: "row", gap: 9 },
-  routeAction: { flex: 1 },
+  placeTitleBlock: { flex: 1, gap: turismoSpacing.xs },
+  placeCategory: { ...turismoTypography.label, textTransform: "uppercase" },
+  placeTitle: { ...turismoTypography.title },
+  placeDescription: { ...turismoTypography.body },
+  placeTags: { flexDirection: "row", flexWrap: "wrap", gap: turismoSpacing.xs },
+  actions: { flexDirection: "row", gap: turismoSpacing.xs },
+  flexAction: { flex: 1, paddingHorizontal: turismoSpacing.sm },
   loading: {
     alignItems: "center",
-    backgroundColor: "#0f172a",
     flex: 1,
-    gap: 14,
+    gap: turismoSpacing.md,
     justifyContent: "center",
-    padding: 24,
+    padding: turismoSpacing.xl,
   },
-  loadingText: { color: "#cbd5e1", fontSize: 15 },
-  errorTitle: {
-    color: "#f8fafc",
-    fontSize: 20,
-    fontWeight: "800",
-    textAlign: "center",
-  },
+  loadingText: { ...turismoTypography.body, textAlign: "center" },
+  errorTitle: { ...turismoTypography.heading, textAlign: "center" },
 });

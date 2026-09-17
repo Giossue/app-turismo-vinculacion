@@ -21,6 +21,12 @@ src/
 Cada feature separa `domain`, `application`, `data` y `presentation` cuando la complejidad
 lo amerita. Evitar capas ceremoniales para componentes triviales.
 
+La navegación turística está organizada alrededor del mapa: `Explorar` muestra MapLibre y
+una ficha rápida nativa; `Agente` y `Itinerario` son vistas secundarias con la misma barra
+inferior; `Cómo llegar` representa la ruta activa sin solicitar GPS en la vista previa.
+Los datos de ejemplo se identifican visualmente como demostración y se sustituyen por
+consultas de la API cuando esos módulos se conecten.
+
 ## Estado
 
 - TanStack Query: estado remoto, cancelación y caché explícita.

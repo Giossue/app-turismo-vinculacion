@@ -34,5 +34,6 @@ import { CentersPublicController } from "./presentation/centers-public.controlle
       inject: [PUBLIC_CENTER_REPOSITORY],
     },
   ],
+  exports: [PUBLIC_CENTER_REPOSITORY],
 })
 export class CentersModule {}

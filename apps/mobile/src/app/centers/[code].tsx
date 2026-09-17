@@ -1,164 +1,322 @@
+import { useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import {
+  TourismActionButton,
+  TourismBadge,
+  TourismSurface,
+  useTurismoPalette,
+} from "@/core/ui/tourism-controls";
+import {
+  TourismHeader,
+  TourismProfilePopover,
+} from "@/core/ui/tourism-navigation";
+import { TurismoIcon } from "@/core/ui/turismo-icons";
+import {
+  turismoIconSizes,
+  turismoSpacing,
+  turismoTypography,
+} from "@/core/ui/tokens";
 import { usePublishedCenter } from "@/features/centers/application/use-published-center";
 
 export default function CenterDetailScreen() {
+  const router = useRouter();
+  const colors = useTurismoPalette();
   const { code } = useLocalSearchParams<{ code: string }>();
+  const [profileVisible, setProfileVisible] = useState(false);
+  const [saved, setSaved] = useState(false);
   const {
     data: center,
     error,
     isPending,
     refetch,
   } = usePublishedCenter(code ?? "");
+
   if (isPending)
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator color="#047857" size="large" />
+      <View style={[styles.loading, { backgroundColor: colors.background }]}>
+        <ActivityIndicator color={colors.primary} size="large" />
+        <Text style={[styles.loadingText, { color: colors.textMuted }]}>
+          Abriendo ficha turística…
+        </Text>
       </View>
     );
   if (!center || error)
     return (
-      <View style={styles.loading}>
-        <Text style={styles.errorTitle}>No pudimos abrir la ficha.</Text>
-        <Pressable
-          accessibilityRole="button"
+      <View style={[styles.loading, { backgroundColor: colors.background }]}>
+        <TurismoIcon
+          color={colors.danger}
+          name="wifiOff"
+          size={turismoIconSizes.xl}
+        />
+        <Text style={[styles.errorTitle, { color: colors.text }]}>
+          No pudimos abrir la ficha.
+        </Text>
+        <TourismActionButton
+          icon="refresh"
+          label="Reintentar"
           onPress={() => void refetch()}
-          style={styles.retryButton}
-        >
-          <Text style={styles.retryText}>Reintentar</Text>
-        </Pressable>
+        />
       </View>
     );
 
   return (
-    <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
-      <Stack.Screen options={{ title: center.name }} />
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>
-            {center.category} · {center.type}
+    <SafeAreaView
+      edges={["top", "bottom"]}
+      style={[styles.safeArea, { backgroundColor: colors.background }]}
+    >
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={styles.headerWrap}>
+        <TourismHeader
+          onBack={() => router.back()}
+          onProfile={() => setProfileVisible(true)}
+          subtitle={center.category}
+          title="Ficha turística"
+        />
+      </View>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.hero, { backgroundColor: colors.primarySoft }]}>
+          <View style={styles.heroIconRow}>
+            <View
+              style={[styles.heroIcon, { backgroundColor: colors.surface }]}
+            >
+              <TurismoIcon
+                color={colors.primaryStrong}
+                name="mapPinned"
+                size={turismoIconSizes.xl}
+              />
+            </View>
+            <TourismBadge>Publicada</TourismBadge>
+          </View>
+          <Text style={[styles.title, { color: colors.text }]}>
+            {center.name}
           </Text>
-          <Text style={styles.title}>{center.name}</Text>
-          <Text style={styles.description}>
+          <Text style={[styles.description, { color: colors.textMuted }]}>
             {center.description ??
               "La descripción de este atractivo está en actualización."}
           </Text>
+          <View style={styles.heroMeta}>
+            <TurismoIcon
+              color={colors.primaryStrong}
+              name="mapPin"
+              size={turismoIconSizes.sm}
+            />
+            <Text
+              style={[styles.heroMetaText, { color: colors.primaryStrong }]}
+            >
+              {center.touristZone}
+            </Text>
+          </View>
         </View>
-        <Section title="Ubicación">
-          <Text style={styles.body}>{center.touristZone}</Text>
+        <View style={styles.actions}>
+          <TourismActionButton
+            icon="route"
+            label="Cómo llegar"
+            onPress={() => router.push("/route" as never)}
+            style={styles.flexAction}
+          />
+          <TourismActionButton
+            icon="bookmark"
+            label={saved ? "Guardado" : "Guardar"}
+            mode="outlined"
+            onPress={() => setSaved((value) => !value)}
+            style={styles.flexAction}
+          />
+        </View>
+        <Section title="Información" icon="circleHelp">
+          <InfoRow
+            label="Categoría"
+            value={`${center.category} · ${center.type}`}
+          />
+          <InfoRow label="Código turístico" value={center.code} />
           {center.address ? (
-            <Text style={styles.body}>{center.address}</Text>
+            <InfoRow label="Dirección" value={center.address} />
           ) : null}
           {center.altitudeMeters ? (
-            <Text style={styles.body}>{center.altitudeMeters} msnm</Text>
+            <InfoRow label="Altitud" value={`${center.altitudeMeters} msnm`} />
           ) : null}
         </Section>
         {center.admission ? (
-          <Section title="Ingreso y horario">
-            <Text style={styles.body}>
-              {center.admission.type} · {center.admission.attention}
-            </Text>
+          <Section title="Ingreso y horario" icon="calendar">
+            <InfoRow
+              label="Acceso"
+              value={`${center.admission.type} · ${center.admission.attention}`}
+            />
             {center.admission.opensAt || center.admission.closesAt ? (
-              <Text style={styles.body}>
-                {center.admission.opensAt ?? "--:--"} –{" "}
-                {center.admission.closesAt ?? "--:--"}
-              </Text>
+              <InfoRow
+                label="Horario"
+                value={`${center.admission.opensAt ?? "--:--"} – ${center.admission.closesAt ?? "--:--"}`}
+              />
             ) : null}
           </Section>
         ) : null}
         <Tags title="Actividades" values={center.activities} />
         <Tags title="Accesibilidad confirmada" values={center.accessibility} />
         <Tags title="Facilidades" values={center.facilities} />
+        <Pressable
+          accessibilityRole="button"
+          onPress={() =>
+            void Share.share({
+              message: `${center.name} · ${center.touristZone}`,
+            })
+          }
+          style={styles.footerLink}
+        >
+          <TurismoIcon
+            color={colors.primaryStrong}
+            name="share"
+            size={turismoIconSizes.sm}
+          />
+          <Text
+            style={[styles.footerLinkText, { color: colors.primaryStrong }]}
+          >
+            Compartir esta ficha
+          </Text>
+        </Pressable>
       </ScrollView>
+      <TourismProfilePopover
+        onClose={() => setProfileVisible(false)}
+        onItinerary={() => {
+          setProfileVisible(false);
+          router.push("/itinerary" as never);
+        }}
+        onSaved={() => setProfileVisible(false)}
+        visible={profileVisible}
+      />
     </SafeAreaView>
   );
 }
 
 function Section({
-  title,
   children,
-}: Readonly<{ title: string; children: React.ReactNode }>) {
+  icon,
+  title,
+}: Readonly<{
+  children: ReactNode;
+  icon: "calendar" | "circleHelp";
+  title: string;
+}>) {
+  const colors = useTurismoPalette();
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+    <TourismSurface style={styles.section}>
+      <View style={styles.sectionHeading}>
+        <TurismoIcon
+          color={colors.primaryStrong}
+          name={icon}
+          size={turismoIconSizes.md}
+        />
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          {title}
+        </Text>
+      </View>
       <View style={styles.sectionContent}>{children}</View>
+    </TourismSurface>
+  );
+}
+function InfoRow({ label, value }: Readonly<{ label: string; value: string }>) {
+  const colors = useTurismoPalette();
+  return (
+    <View style={styles.infoRow}>
+      <Text style={[styles.infoLabel, { color: colors.textFaint }]}>
+        {label}
+      </Text>
+      <Text style={[styles.infoValue, { color: colors.text }]}>{value}</Text>
     </View>
   );
 }
-
 function Tags({
   title,
   values,
 }: Readonly<{ title: string; values: readonly string[] }>) {
+  const colors = useTurismoPalette();
   if (!values.length) return null;
   return (
-    <Section title={title}>
+    <TourismSurface style={styles.section}>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
       <View style={styles.tags}>
         {values.map((value) => (
-          <View key={value} style={styles.tag}>
-            <Text style={styles.tagText}>{value}</Text>
-          </View>
+          <TourismBadge key={value}>{value}</TourismBadge>
         ))}
       </View>
-    </Section>
+    </TourismSurface>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { backgroundColor: "#f8fafc", flex: 1 },
-  content: { gap: 18, padding: 20, paddingBottom: 40 },
-  hero: { gap: 9, paddingTop: 8 },
-  eyebrow: { color: "#047857", fontSize: 13, fontWeight: "800" },
-  title: {
-    color: "#0f172a",
-    fontSize: 29,
-    fontWeight: "800",
-    letterSpacing: -0.6,
-    lineHeight: 36,
+  safeArea: { flex: 1 },
+  headerWrap: { paddingHorizontal: turismoSpacing.md },
+  content: {
+    gap: turismoSpacing.lg,
+    padding: turismoSpacing.md,
+    paddingBottom: turismoSpacing.xxl,
   },
-  description: { color: "#475569", fontSize: 16, lineHeight: 24 },
-  section: {
-    backgroundColor: "#fff",
-    borderColor: "#e2e8f0",
+  hero: {
+    borderRadius: 26,
+    gap: turismoSpacing.sm,
+    padding: turismoSpacing.lg,
+  },
+  heroIconRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  heroIcon: {
+    alignItems: "center",
     borderRadius: 18,
-    borderWidth: 1,
-    gap: 10,
-    padding: 17,
+    height: 52,
+    justifyContent: "center",
+    width: 52,
   },
-  sectionTitle: { color: "#0f172a", fontSize: 18, fontWeight: "800" },
-  sectionContent: { gap: 5 },
-  body: { color: "#475569", fontSize: 15, lineHeight: 22 },
-  tags: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  tag: {
-    backgroundColor: "#d1fae5",
-    borderRadius: 999,
-    paddingHorizontal: 11,
-    paddingVertical: 6,
+  title: { ...turismoTypography.display },
+  description: { ...turismoTypography.body },
+  heroMeta: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: turismoSpacing.xs,
   },
-  tagText: { color: "#065f46", fontSize: 13, fontWeight: "700" },
+  heroMetaText: { ...turismoTypography.label },
+  actions: { flexDirection: "row", gap: turismoSpacing.sm },
+  flexAction: { flex: 1, paddingHorizontal: turismoSpacing.sm },
+  section: { gap: turismoSpacing.md, padding: turismoSpacing.md },
+  sectionHeading: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: turismoSpacing.sm,
+  },
+  sectionTitle: { ...turismoTypography.heading },
+  sectionContent: { gap: turismoSpacing.sm },
+  infoRow: { gap: turismoSpacing.xxs },
+  infoLabel: { ...turismoTypography.caption },
+  infoValue: { ...turismoTypography.body },
+  tags: { flexDirection: "row", flexWrap: "wrap", gap: turismoSpacing.xs },
+  footerLink: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: turismoSpacing.xs,
+    justifyContent: "center",
+    padding: turismoSpacing.sm,
+  },
+  footerLinkText: { ...turismoTypography.label },
   loading: {
     alignItems: "center",
-    backgroundColor: "#f8fafc",
     flex: 1,
-    gap: 14,
+    gap: turismoSpacing.md,
     justifyContent: "center",
-    padding: 24,
+    padding: turismoSpacing.xl,
   },
-  errorTitle: { color: "#0f172a", fontSize: 20, fontWeight: "800" },
-  retryButton: {
-    backgroundColor: "#047857",
-    borderRadius: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 13,
-  },
-  retryText: { color: "#fff", fontWeight: "800" },
+  loadingText: { ...turismoTypography.body },
+  errorTitle: { ...turismoTypography.heading, textAlign: "center" },
 });
