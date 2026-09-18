@@ -1,7 +1,6 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   TourismActionButton,
@@ -9,36 +8,43 @@ import {
   TourismSurface,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
-import {
-  TourismHeader,
-  TourismProfilePopover,
-  TourismTabBar,
-} from "@/core/ui/tourism-navigation";
+import { TourismMenuDrawer } from "@/core/ui/tourism-navigation";
+import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
+  turismoMetrics,
+  turismoRadii,
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
 import { demoItinerary } from "@/features/itinerary/domain/itinerary";
+import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 
 export default function ItineraryScreen() {
   const router = useRouter();
   const colors = useTurismoPalette();
-  const [profileVisible, setProfileVisible] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  const handleBeforeBack = useCallback(() => {
+    if (!menuVisible) return false;
+    setMenuVisible(false);
+    return true;
+  }, [menuVisible]);
+
+  useScreenBackHandler(handleBeforeBack);
 
   return (
-    <SafeAreaView
-      edges={["top", "bottom"]}
-      style={[styles.safeArea, { backgroundColor: colors.background }]}
+    <TourismScreenFrame
+      activeTab="itinerary"
+      onMenu={() => setMenuVisible(true)}
+      onTabChange={(tab) => {
+        if (tab === "explore") router.replace("/");
+        if (tab === "agent") router.replace("/agent" as never);
+      }}
+      subtitle="PLANIFICADOR"
+      title="Tu itinerario"
     >
-      <View style={styles.headerWrap}>
-        <TourismHeader
-          onProfile={() => setProfileVisible(true)}
-          subtitle="PLANIFICADOR"
-          title="Tu itinerario"
-        />
-      </View>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -128,29 +134,24 @@ export default function ItineraryScreen() {
           onPress={() => router.push("/route" as never)}
         />
       </ScrollView>
-      <TourismTabBar
-        active="itinerary"
-        onChange={(tab) => {
-          if (tab === "explore") router.replace("/");
-          if (tab === "agent") router.replace("/agent" as never);
+      <TourismMenuDrawer
+        onClose={() => setMenuVisible(false)}
+        onItinerary={() => setMenuVisible(false)}
+        onSettings={() => {
+          setMenuVisible(false);
+          router.push("/settings" as never);
         }}
+        onSaved={() => setMenuVisible(false)}
+        visible={menuVisible}
       />
-      <TourismProfilePopover
-        onClose={() => setProfileVisible(false)}
-        onItinerary={() => setProfileVisible(false)}
-        onSaved={() => setProfileVisible(false)}
-        visible={profileVisible}
-      />
-    </SafeAreaView>
+    </TourismScreenFrame>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  headerWrap: { paddingHorizontal: turismoSpacing.md },
   content: {
     gap: turismoSpacing.lg,
-    padding: turismoSpacing.md,
+    paddingVertical: turismoSpacing.md,
     paddingBottom: turismoSpacing.xl,
   },
   heroCopy: { gap: turismoSpacing.xs },
@@ -162,13 +163,17 @@ const styles = StyleSheet.create({
   timelineRail: { alignItems: "center", width: 28 },
   timelineDot: {
     alignItems: "center",
-    borderRadius: 999,
-    height: 26,
+    borderRadius: turismoRadii.pill,
+    height: turismoMetrics.controlSm,
     justifyContent: "center",
-    width: 26,
+    width: turismoMetrics.controlSm,
   },
   timelineNumber: { ...turismoTypography.caption },
-  timelineLine: { flex: 1, marginVertical: 2, width: 2 },
+  timelineLine: {
+    flex: 1,
+    marginVertical: turismoSpacing.xxs,
+    width: 2,
+  },
   stopCopy: { flex: 1, gap: turismoSpacing.xxs },
   stopMeta: {
     alignItems: "center",

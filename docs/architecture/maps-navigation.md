@@ -7,9 +7,13 @@
 - Renderizado nativo de mapas base, capas y marcadores en Android/iOS.
 - Estilos de mapa y tiles configurados por entorno; el estilo de demostración nunca se usa
   en producción.
-- En el desarrollo local actual se usa la base raster pública **ArcGIS World Street Map**
-  con su atribución visible. No incorpora credenciales ni sustituye la selección de estilo
-  y política de disponibilidad para producción.
+- En desarrollo local, si `EXPO_PUBLIC_ARCGIS_API_KEY` está configurada, se usan los estilos
+  vectoriales autenticados `arcgis/streets` (Explorar) y `arcgis/navigation` (navegación),
+  con variantes nocturnas y etiquetas en español. La app descarga el JSON del estilo y
+  elimina la referencia TileJSON duplicada de las fuentes de ArcGIS, conservando la
+  plantilla explícita `/tile/{z}/{y}/{x}.pbf` que MapLibre Native requiere. Sin la clave
+  se mantiene una base raster pública de fallback para no bloquear el bootstrap; esa
+  variante no es para producción.
 - No calcula rutas ni provee navegación por sí mismo.
 
 ### Proveedor de rutas
@@ -43,7 +47,8 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 
 - Los estilos y tiles públicos declaran atribución y límites por entorno.
 - Operaciones privilegiadas, rutas y consumo controlado pasan por backend.
-- Nunca incluir credenciales administrativas o privadas de mapas/rutas en móvil/web.
+- La clave de basemap que llegue al móvil debe ser pública, restringida al servicio de mapas
+  y separada de las credenciales privadas de rutas/geocodificación, que permanecen en backend.
 - Registrar consumo, expiración y rotación.
 
 ## Navegación
@@ -56,7 +61,25 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 
 ## Rendimiento del mapa
 
-- Endpoint por viewport/zoom con límites y clustering.
+- Endpoint por viewport/zoom con límites y clustering cuando el catálogo pueda
+  paginarse y cachearse sin reemplazar los símbolos durante un gesto.
 - Respuestas compactas para marcadores; ficha completa bajo demanda.
 - Cancelar consultas obsoletas al mover el mapa.
 - Cachear catálogos/mapas públicos con política de invalidación por publicación.
+- No reemplazar el `GeoJSONSource` en cada cambio de cámara: el catálogo ya
+  cargado se mantiene durante pan/zoom. La consulta por viewport se habilitará
+  con paginación, cache y cancelación de consultas obsoletas.
+- En móvil, los centros públicos se renderizan como un `GeoJSONSource` nativo con
+  `SymbolLayer`; MapLibre mantiene el conjunto de features y el clustering fuera del
+  árbol React mientras el usuario hace zoom o panea. Los pines individuales usan un
+  recurso de icono estático, sin una vista React ni un círculo de fondo. Los clusters sí
+  usan una capa separada con conteo y se expanden mediante `getClusterExpansionZoom`.
+- La selección es estado de la pantalla: el toque primero centra la cámara en el atractivo
+  con el zoom de detalle predeterminado y luego presenta la ficha; una capa de símbolo
+  separada pinta el pin seleccionado con el color de énfasis.
+- La ubicación del turista se obtiene bajo demanda con permiso `while in use`; el botón
+  de ubicación centra la cámara con zoom 15 y dibuja un punto azul en una fuente GeoJSON
+  separada. No se inicia seguimiento en segundo plano desde Explorar.
+- La disponibilidad del permiso y del proveedor se vuelve a comprobar mientras Explorar
+  está visible y al regresar de Ajustes; al desactivarse se limpia la posición local para
+  no presentar una ubicación obsoleta.

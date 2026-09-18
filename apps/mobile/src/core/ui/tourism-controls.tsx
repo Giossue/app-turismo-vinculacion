@@ -1,44 +1,79 @@
-import { type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import {
+  Keyboard,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
-  useColorScheme,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
+import {
+  Button as PaperButton,
+  Chip as PaperChip,
+  IconButton as PaperIconButton,
+  Surface as PaperSurface,
+} from "react-native-paper";
 
 import { TurismoIcon, type TurismoIconName } from "./turismo-icons";
 import {
   getTurismoColors,
   turismoColors,
   turismoIconSizes,
+  turismoMetrics,
   turismoRadii,
   turismoSpacing,
   turismoTypography,
 } from "./tokens";
+import { useTurismoTheme } from "./theme-context";
 
 export function useTurismoPalette() {
-  return getTurismoColors(useColorScheme() === "dark" ? "dark" : "light");
+  return getTurismoColors(useTurismoTheme().scheme);
 }
 
 export function TourismSearchField({
   accessibilityLabel,
   onChangeText,
   onClear,
+  onFocus,
+  onBlur,
+  onSubmitEditing,
   placeholder,
+  trailing,
   value,
 }: Readonly<{
   accessibilityLabel: string;
   onChangeText: (value: string) => void;
   onClear?: () => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  onSubmitEditing?: () => void;
   placeholder: string;
+  trailing?: ReactNode;
   value: string;
 }>) {
   const colors = useTurismoPalette();
+  const inputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    const blurInput = () => inputRef.current?.blur();
+    const didHideSubscription = Keyboard.addListener(
+      "keyboardDidHide",
+      blurInput,
+    );
+    const willHideSubscription = Keyboard.addListener(
+      "keyboardWillHide",
+      blurInput,
+    );
+
+    return () => {
+      didHideSubscription.remove();
+      willHideSubscription.remove();
+    };
+  }, []);
+
   return (
     <View
       style={[
@@ -54,9 +89,15 @@ export function TourismSearchField({
       <TextInput
         accessibilityLabel={accessibilityLabel}
         autoCapitalize="none"
+        blurOnSubmit
+        onBlur={onBlur}
         onChangeText={onChangeText}
+        onFocus={onFocus}
         placeholder={placeholder}
         placeholderTextColor={colors.textFaint}
+        ref={inputRef}
+        returnKeyType="search"
+        onSubmitEditing={onSubmitEditing}
         style={[styles.searchInput, { color: colors.text }]}
         value={value}
       />
@@ -71,6 +112,7 @@ export function TourismSearchField({
           <TurismoIcon color={colors.textMuted} name="close" size={18} />
         </Pressable>
       ) : null}
+      {trailing}
     </View>
   );
 }
@@ -92,28 +134,24 @@ export function TourismIconAction({
 }>) {
   const colors = useTurismoPalette();
   return (
-    <Pressable
+    <PaperIconButton
       accessibilityLabel={accessibilityLabel}
-      accessibilityRole="button"
-      accessibilityState={{ disabled, selected }}
+      containerColor={selected ? colors.primary : colors.surface}
       disabled={disabled}
+      icon={({ color, size }) => (
+        <TurismoIcon color={color} name={icon} size={size} />
+      )}
+      iconColor={selected ? colors.onPrimary : colors.text}
+      mode={selected ? "contained" : "outlined"}
       onPress={onPress}
-      style={({ pressed }) => [
+      selected={selected}
+      size={turismoIconSizes.md}
+      style={[
         styles.iconAction,
-        {
-          backgroundColor: selected ? colors.primary : colors.surface,
-          borderColor: selected ? colors.primary : colors.border,
-          opacity: disabled ? 0.45 : pressed ? 0.72 : 1,
-        },
+        { borderColor: selected ? colors.primary : colors.border },
         style,
       ]}
-    >
-      <TurismoIcon
-        color={selected ? colors.onPrimary : colors.text}
-        name={icon}
-        size={turismoIconSizes.md}
-      />
-    </Pressable>
+    />
   );
 }
 
@@ -124,32 +162,35 @@ export function TourismChoiceChip({
 }: Readonly<{ label: string; onPress: () => void; selected: boolean }>) {
   const colors = useTurismoPalette();
   return (
-    <Pressable
+    <PaperChip
       accessibilityRole="button"
       accessibilityState={{ selected }}
+      compact
+      hitSlop={turismoMetrics.chipHitSlop}
+      mode={selected ? "flat" : "outlined"}
       onPress={onPress}
-      style={({ pressed }) => [
+      selected={selected}
+      showSelectedCheck={false}
+      showSelectedOverlay={false}
+      style={[
         styles.chip,
         {
           backgroundColor: selected ? colors.primary : colors.surface,
           borderColor: selected ? colors.primary : colors.border,
-          opacity: pressed ? 0.72 : 1,
         },
       ]}
+      textStyle={[
+        styles.chipText,
+        { color: selected ? colors.onPrimary : colors.textMuted },
+      ]}
     >
-      <Text
-        style={[
-          styles.chipText,
-          { color: selected ? colors.onPrimary : colors.textMuted },
-        ]}
-      >
-        {label}
-      </Text>
-    </Pressable>
+      {label}
+    </PaperChip>
   );
 }
 
 export function TourismActionButton({
+  compact = false,
   disabled = false,
   icon,
   label,
@@ -157,6 +198,7 @@ export function TourismActionButton({
   onPress,
   style,
 }: Readonly<{
+  compact?: boolean;
   disabled?: boolean;
   icon?: TurismoIconName;
   label: string;
@@ -167,35 +209,50 @@ export function TourismActionButton({
   const colors = useTurismoPalette();
   const backgroundColor =
     mode === "contained"
-      ? colors.accent
+      ? colors.primary
       : mode === "outlined"
         ? colors.surface
         : "transparent";
   const foregroundColor =
     mode === "contained" ? colors.onPrimary : colors.primaryStrong;
   return (
-    <Pressable
+    <PaperButton
       accessibilityRole="button"
       accessibilityState={{ disabled }}
+      compact={compact}
+      buttonColor={backgroundColor}
+      contentStyle={[
+        styles.actionButtonContent,
+        compact && styles.actionButtonContentCompact,
+      ]}
       disabled={disabled}
+      hitSlop={compact ? turismoMetrics.chipHitSlop : undefined}
+      icon={
+        icon
+          ? ({ color, size }) => (
+              <TurismoIcon color={color} name={icon} size={size} />
+            )
+          : undefined
+      }
+      labelStyle={[
+        styles.actionButtonText,
+        compact && styles.actionButtonTextCompact,
+        { color: foregroundColor },
+      ]}
+      mode={mode === "ghost" ? "text" : mode}
       onPress={onPress}
-      style={({ pressed }) => [
+      textColor={foregroundColor}
+      uppercase={false}
+      style={[
         styles.actionButton,
         {
-          backgroundColor,
           borderColor: mode === "outlined" ? colors.border : "transparent",
-          opacity: disabled ? 0.45 : pressed ? 0.72 : 1,
         },
         style,
       ]}
     >
-      {icon ? (
-        <TurismoIcon color={foregroundColor} name={icon} size={18} />
-      ) : null}
-      <Text style={[styles.actionButtonText, { color: foregroundColor }]}>
-        {label}
-      </Text>
-    </Pressable>
+      {label}
+    </PaperButton>
   );
 }
 
@@ -205,7 +262,8 @@ export function TourismSurface({
 }: Readonly<{ children: ReactNode; style?: StyleProp<ViewStyle> }>) {
   const colors = useTurismoPalette();
   return (
-    <View
+    <PaperSurface
+      mode="flat"
       style={[
         styles.surface,
         { backgroundColor: colors.surface, borderColor: colors.border },
@@ -213,7 +271,7 @@ export function TourismSurface({
       ]}
     >
       {children}
-    </View>
+    </PaperSurface>
   );
 }
 
@@ -249,51 +307,58 @@ const styles = StyleSheet.create({
   searchbar: {
     alignItems: "center",
     borderRadius: turismoRadii.pill,
-    borderWidth: 1,
+    borderWidth: turismoMetrics.borderWidth,
     flex: 1,
     flexDirection: "row",
     gap: turismoSpacing.sm,
-    minHeight: 54,
+    minHeight: turismoMetrics.controlMd,
+    overflow: "hidden",
     paddingHorizontal: turismoSpacing.md,
   },
   searchInput: {
     ...turismoTypography.body,
     flex: 1,
-    minHeight: 52,
+    minHeight: turismoMetrics.touchTarget,
     paddingVertical: 0,
   },
   searchClear: { padding: turismoSpacing.xxs },
   iconAction: {
     alignItems: "center",
     borderRadius: turismoRadii.pill,
-    borderWidth: 1,
-    height: 48,
+    borderWidth: turismoMetrics.borderWidth,
+    height: turismoMetrics.controlMd,
     justifyContent: "center",
-    minWidth: 48,
-    padding: turismoSpacing.xs,
+    margin: 0,
+    width: turismoMetrics.controlMd,
   },
   chip: {
     borderRadius: turismoRadii.pill,
-    borderWidth: 1,
-    minHeight: 38,
-    paddingHorizontal: turismoSpacing.md,
-    paddingVertical: turismoSpacing.xs,
+    borderWidth: turismoMetrics.borderWidth,
+    justifyContent: "center",
+    minHeight: turismoMetrics.chipHeight,
   },
   chipText: { ...turismoTypography.label },
   actionButton: {
-    alignItems: "center",
     borderRadius: turismoRadii.pill,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: turismoSpacing.xs,
-    justifyContent: "center",
-    minHeight: 48,
+    borderWidth: turismoMetrics.borderWidth,
+    margin: 0,
+  },
+  actionButtonContent: {
+    minHeight: turismoMetrics.controlMd,
     paddingHorizontal: turismoSpacing.lg,
   },
+  actionButtonContentCompact: {
+    minHeight: turismoMetrics.chipHeight,
+    paddingHorizontal: turismoSpacing.sm,
+  },
   actionButtonText: { ...turismoTypography.label },
+  actionButtonTextCompact: {
+    ...turismoTypography.label,
+    marginVertical: turismoSpacing.xs - turismoSpacing.xxs,
+  },
   surface: {
     borderRadius: turismoRadii.lg,
-    borderWidth: 1,
+    borderWidth: turismoMetrics.borderWidth,
     padding: turismoSpacing.lg,
   },
   badge: {

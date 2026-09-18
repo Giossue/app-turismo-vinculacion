@@ -1,3 +1,11 @@
+/**
+ * Design tokens for the mobile client.
+ *
+ * Screens should consume semantic roles from this module rather than declaring
+ * literal colors or dimensions locally. React Native dimensions are density
+ * independent points, so these values intentionally describe layout intent.
+ */
+
 export const turismoSpacing = {
   xxs: 4,
   xs: 8,
@@ -9,19 +17,42 @@ export const turismoSpacing = {
 } as const;
 
 export const turismoRadii = {
+  xs: 8,
   sm: 12,
-  md: 18,
-  lg: 26,
+  md: 16,
+  lg: 24,
   pill: 999,
 } as const;
 
+export const turismoMetrics = {
+  touchTarget: 44,
+  controlSm: 40,
+  chipHeight: 36,
+  chipHitSlop: 4,
+  controlMd: 48,
+  controlLg: 52,
+  avatarSm: 32,
+  avatarMd: 40,
+  iconButtonLg: 56,
+  tabBar: 64,
+  popoverTop: 72,
+  contentMaxWidth: 720,
+  sheetMaxWidth: 560,
+  drawerMaxWidth: 360,
+  borderWidth: 1,
+  borderWidthStrong: 2,
+} as const;
+
 export const turismoTypography = {
-  display: { fontSize: 32, lineHeight: 38, fontWeight: "800" as const },
-  title: { fontSize: 25, lineHeight: 31, fontWeight: "800" as const },
-  heading: { fontSize: 19, lineHeight: 25, fontWeight: "800" as const },
-  body: { fontSize: 15, lineHeight: 22, fontWeight: "400" as const },
-  label: { fontSize: 13, lineHeight: 18, fontWeight: "700" as const },
-  caption: { fontSize: 12, lineHeight: 16, fontWeight: "600" as const },
+  // Compact mobile hierarchy: reserve display for the single hero moment,
+  // then keep page and section titles visually distinct without dominating
+  // a phone viewport.
+  display: { fontSize: 28, lineHeight: 36, fontWeight: "700" as const },
+  title: { fontSize: 22, lineHeight: 28, fontWeight: "700" as const },
+  heading: { fontSize: 18, lineHeight: 24, fontWeight: "700" as const },
+  body: { fontSize: 16, lineHeight: 24, fontWeight: "400" as const },
+  label: { fontSize: 14, lineHeight: 20, fontWeight: "600" as const },
+  caption: { fontSize: 12, lineHeight: 16, fontWeight: "500" as const },
 } as const;
 
 export const turismoIconSizes = {
@@ -31,42 +62,52 @@ export const turismoIconSizes = {
   xl: 30,
 } as const;
 
+export const turismoMotion = {
+  drawerAnimationSpeed: 1,
+} as const;
+
 export const turismoColors = {
   light: {
-    background: "#F4F7F6",
+    background: "#F7FAF8",
     surface: "#FFFFFF",
-    surfaceMuted: "#E9F0EF",
-    surfaceStrong: "#D9E5E3",
-    text: "#102324",
-    textMuted: "#5E7372",
-    textFaint: "#7B8D8C",
-    border: "#D5E1DF",
-    primary: "#0A8F83",
-    primaryStrong: "#076D64",
-    primarySoft: "#D5F4EE",
-    accent: "#18B7C4",
-    warm: "#F28B55",
-    danger: "#C94B57",
-    mapBackground: "#E8EFEE",
+    surfaceMuted: "#EAF3ED",
+    surfaceStrong: "#DCEBE1",
+    text: "#14221A",
+    textMuted: "#52655A",
+    textFaint: "#708177",
+    border: "#D4E2D8",
+    primary: "#176B4D",
+    primaryStrong: "#0F5138",
+    primarySoft: "#DCEFE3",
+    accent: "#238B61",
+    warm: "#C8753F",
+    danger: "#B84148",
+    info: "#2C7BE5",
+    infoSoft: "rgba(44, 123, 229, 0.24)",
+    mapBackground: "#E2ECE6",
+    scrim: "rgba(20, 34, 26, 0.42)",
     onPrimary: "#FFFFFF",
   },
   dark: {
-    background: "#081819",
-    surface: "#102324",
-    surfaceMuted: "#173132",
-    surfaceStrong: "#214344",
-    text: "#F1F8F6",
-    textMuted: "#B0C3C0",
-    textFaint: "#829C99",
-    border: "#2C4A4A",
-    primary: "#22C7B7",
-    primaryStrong: "#63E3D4",
-    primarySoft: "#164A47",
-    accent: "#6BE2EA",
-    warm: "#FF9A64",
-    danger: "#FF7981",
-    mapBackground: "#0D2022",
-    onPrimary: "#062321",
+    background: "#0B1611",
+    surface: "#13231A",
+    surfaceMuted: "#1B3325",
+    surfaceStrong: "#284B38",
+    text: "#F2F9F3",
+    textMuted: "#B4C9B9",
+    textFaint: "#8EA999",
+    border: "#345844",
+    primary: "#55C58D",
+    primaryStrong: "#8BE2B3",
+    primarySoft: "#1A4931",
+    accent: "#64D39A",
+    warm: "#FFAD7B",
+    danger: "#FF7D85",
+    info: "#8CB8FF",
+    infoSoft: "rgba(140, 184, 255, 0.24)",
+    mapBackground: "#10251A",
+    scrim: "rgba(0, 0, 0, 0.58)",
+    onPrimary: "#092015",
   },
 } as const;
 

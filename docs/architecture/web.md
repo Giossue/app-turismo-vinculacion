@@ -1,4 +1,8 @@
-# Arquitectura web
+# Arquitectura web futura
+
+La web no forma parte del cliente móvil en este monorepo y se trasladará a un repositorio
+independiente. El código web que permanece aquí es una vista pública mínima de consulta y
+usa CSS convencional; no depende de Tailwind ni de un kit visual web.
 
 ## Áreas
 
@@ -8,9 +12,10 @@
 
 ## Stack
 
-Next.js App Router, TypeScript estricto, HeroUI React, Tailwind, TanStack Query, React
-Hook Form y Zod. Server Components para contenido público/SEO; Client Components solo
-cuando existe interacción real.
+Next.js App Router y TypeScript estricto para la vista de consulta actual. La futura
+aplicación web decidirá su kit visual, estilos, TanStack Query, formularios y validación
+cuando se cree el repositorio independiente. Server Components para contenido público/SEO;
+Client Components solo cuando existe interacción real.
 
 ## Estado
 

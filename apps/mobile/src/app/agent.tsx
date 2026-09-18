@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -10,7 +10,6 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   TourismActionButton,
@@ -18,14 +17,12 @@ import {
   TourismSurface,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
-import {
-  TourismProfilePopover,
-  TourismTabBar,
-  TourismHeader,
-} from "@/core/ui/tourism-navigation";
+import { TourismMenuDrawer } from "@/core/ui/tourism-navigation";
+import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
+  turismoMetrics,
   turismoRadii,
   turismoSpacing,
   turismoTypography,
@@ -35,15 +32,24 @@ import {
   agentDemoMessages,
   type AgentDemoMessage,
 } from "@/features/agent/domain/agent-demo";
+import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 
 export default function AgentScreen() {
   const router = useRouter();
   const colors = useTurismoPalette();
-  const [profileVisible, setProfileVisible] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] =
     useState<readonly AgentDemoMessage[]>(agentDemoMessages);
   const [sending, setSending] = useState(false);
+
+  const handleBeforeBack = useCallback(() => {
+    if (!menuVisible) return false;
+    setMenuVisible(false);
+    return true;
+  }, [menuVisible]);
+
+  useScreenBackHandler(handleBeforeBack);
 
   const sendMessage = async () => {
     const message = draft.trim();
@@ -81,21 +87,20 @@ export default function AgentScreen() {
   };
 
   return (
-    <SafeAreaView
-      edges={["top", "bottom"]}
-      style={[styles.safeArea, { backgroundColor: colors.background }]}
+    <TourismScreenFrame
+      activeTab="agent"
+      onMenu={() => setMenuVisible(true)}
+      onTabChange={(tab) => {
+        if (tab === "explore") router.replace("/");
+        if (tab === "itinerary") router.replace("/itinerary" as never);
+      }}
+      subtitle="ANDES NOCTURNOS"
+      title="Agente turístico"
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.flex}
       >
-        <View style={styles.headerWrap}>
-          <TourismHeader
-            onProfile={() => setProfileVisible(true)}
-            subtitle="ANDES NOCTURNOS"
-            title="Agente turístico"
-          />
-        </View>
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
@@ -162,7 +167,7 @@ export default function AgentScreen() {
                           backgroundColor: colors.surface,
                           borderColor: colors.border,
                           borderBottomLeftRadius: turismoRadii.sm,
-                          borderWidth: 1,
+                          borderWidth: turismoMetrics.borderWidth,
                         },
                   ]}
                 >
@@ -181,6 +186,7 @@ export default function AgentScreen() {
                   </Text>
                   {message.cards?.map((card) => (
                     <Pressable
+                      accessibilityLabel={`Abrir ficha de ${card.name}`}
                       accessibilityRole="button"
                       key={card.code}
                       onPress={() =>
@@ -276,34 +282,29 @@ export default function AgentScreen() {
             </View>
           </TourismSurface>
         </ScrollView>
-        <TourismTabBar
-          active="agent"
-          onChange={(tab) => {
-            if (tab === "explore") router.replace("/");
-            if (tab === "itinerary") router.replace("/itinerary" as never);
-          }}
-        />
       </KeyboardAvoidingView>
-      <TourismProfilePopover
-        onClose={() => setProfileVisible(false)}
+      <TourismMenuDrawer
+        onClose={() => setMenuVisible(false)}
         onItinerary={() => {
-          setProfileVisible(false);
-          router.push("/itinerary" as never);
+          setMenuVisible(false);
+          router.replace("/itinerary" as never);
         }}
-        onSaved={() => setProfileVisible(false)}
-        visible={profileVisible}
+        onSettings={() => {
+          setMenuVisible(false);
+          router.push("/settings" as never);
+        }}
+        onSaved={() => setMenuVisible(false)}
+        visible={menuVisible}
       />
-    </SafeAreaView>
+    </TourismScreenFrame>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
   flex: { flex: 1 },
-  headerWrap: { paddingHorizontal: turismoSpacing.md },
   content: {
     gap: turismoSpacing.lg,
-    padding: turismoSpacing.md,
+    paddingVertical: turismoSpacing.md,
     paddingBottom: turismoSpacing.xl,
   },
   introCard: {
@@ -315,9 +316,9 @@ const styles = StyleSheet.create({
   introIcon: {
     alignItems: "center",
     borderRadius: turismoRadii.md,
-    height: 46,
+    height: turismoMetrics.controlMd,
     justifyContent: "center",
-    width: 46,
+    width: turismoMetrics.controlMd,
   },
   introCopy: { flex: 1, gap: turismoSpacing.xxs },
   introTitle: { ...turismoTypography.heading },
@@ -332,9 +333,9 @@ const styles = StyleSheet.create({
   agentAvatar: {
     alignItems: "center",
     borderRadius: turismoRadii.pill,
-    height: 30,
+    height: turismoMetrics.avatarSm,
     justifyContent: "center",
-    width: 30,
+    width: turismoMetrics.avatarSm,
   },
   messageBubble: {
     borderRadius: turismoRadii.md,
@@ -364,7 +365,11 @@ const styles = StyleSheet.create({
   },
   sourcesText: { ...turismoTypography.caption, flex: 1 },
   composerCard: { gap: turismoSpacing.sm, padding: turismoSpacing.md },
-  composerInput: { ...turismoTypography.body, minHeight: 54, padding: 0 },
+  composerInput: {
+    ...turismoTypography.body,
+    minHeight: turismoMetrics.controlLg,
+    padding: 0,
+  },
   composerFooter: {
     alignItems: "center",
     flexDirection: "row",

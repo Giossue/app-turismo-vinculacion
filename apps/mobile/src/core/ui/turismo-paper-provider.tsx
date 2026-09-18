@@ -1,13 +1,13 @@
 import { type ReactNode } from "react";
-import { useColorScheme } from "react-native";
 import { PaperProvider } from "react-native-paper";
 
 import { turismoDarkTheme, turismoLightTheme } from "./theme";
+import { useTurismoTheme } from "./theme-context";
 
 export function TurismoPaperProvider({
   children,
 }: Readonly<{ children: ReactNode }>) {
-  const scheme = useColorScheme();
+  const { scheme } = useTurismoTheme();
   return (
     <PaperProvider
       theme={scheme === "dark" ? turismoDarkTheme : turismoLightTheme}

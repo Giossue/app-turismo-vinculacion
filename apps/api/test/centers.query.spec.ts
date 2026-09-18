@@ -31,4 +31,8 @@ describe("listCentersQuerySchema", () => {
       "viewport requiere",
     );
   });
+
+  it("requires at least two characters for a text search", () => {
+    expect(() => listCentersQuerySchema.parse({ q: "a" })).toThrow();
+  });
 });

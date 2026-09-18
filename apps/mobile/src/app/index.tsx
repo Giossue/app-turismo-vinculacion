@@ -1,12 +1,19 @@
 import ExpoBottomSheet, {
-  BottomSheetView,
+  BottomSheetScrollView,
 } from "@expo/ui/community/bottom-sheet";
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
@@ -15,21 +22,19 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   TourismActionButton,
   TourismBadge,
-  TourismChoiceChip,
   TourismIconAction,
   TourismSearchField,
-  TourismSectionTitle,
-  TourismSurface,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
 import {
-  TourismProfileButton,
-  TourismProfilePopover,
+  TourismMenuButton,
+  TourismMenuDrawer,
   TourismTabBar,
 } from "@/core/ui/tourism-navigation";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
+  turismoMetrics,
   turismoRadii,
   turismoSpacing,
   turismoTypography,
@@ -37,32 +42,54 @@ import {
 import { useDiscoveryCatalog } from "@/features/centers/application/use-discovery-catalog";
 import { usePublishedCenters } from "@/features/centers/application/use-published-centers";
 import type {
-  CenterFilters,
   PublicCenter,
+  PublicCenterDetail,
 } from "@/features/centers/domain/public-center";
+import {
+  AdvancedDiscoveryFilters,
+  FilterChips,
+  type DiscoveryFilterValues,
+} from "@/features/centers/presentation/discovery-filters";
+import { SearchResultsSheet } from "@/features/centers/presentation/search-results-sheet";
+import { usePublishedCenter } from "@/features/centers/application/use-published-center";
 import { CenterMap } from "@/features/map/presentation/center-map";
+import { useUserLocation } from "@/core/location/use-user-location";
+import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 
 export default function HomeScreen() {
   const router = useRouter();
   const colors = useTurismoPalette();
+  const { height, width } = useWindowDimensions();
+  const isLandscape = width > height;
   const sheetRef = useRef<ExpoBottomSheet>(null);
-  const viewportTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [text, setText] = useState("");
+  const [submittedText, setSubmittedText] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [profileVisible, setProfileVisible] = useState(false);
+  const [nearbyOnly, setNearbyOnly] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
   const [selectedCenterCode, setSelectedCenterCode] = useState<string | null>(
     null,
   );
-  const [filters, setFilters] = useState<Omit<CenterFilters, "text">>({});
-  const deferredText = useDeferredValue(text.trim());
+  const [focusLocationKey, setFocusLocationKey] = useState(0);
+  const {
+    coordinate: userLocation,
+    requestLocation,
+    status: locationStatus,
+    message: locationMessage,
+  } = useUserLocation();
+  const [filters, setFilters] = useState<DiscoveryFilterValues>({});
+  const submittedQuery = submittedText.trim();
   const query = useMemo(
-    () => ({ ...filters, text: deferredText || undefined }),
-    [deferredText, filters],
+    () => ({ ...filters, text: submittedQuery || undefined }),
+    [filters, submittedQuery],
   );
   const {
     data: centers = [],
     error,
+    isFetching,
     isPending,
+    isPlaceholderData,
     refetch,
   } = usePublishedCenters(query);
   const { data: catalog } = useDiscoveryCatalog();
@@ -70,168 +97,242 @@ export default function HomeScreen() {
   const selectedCenter = selectedCenterCode
     ? (centers.find((center) => center.code === selectedCenterCode) ?? null)
     : null;
+  const isSearchMode =
+    searchFocused || Boolean(text.trim()) || Boolean(submittedQuery);
 
-  useEffect(() => {
-    if (selectedCenter) sheetRef.current?.present();
-    else sheetRef.current?.dismiss();
-  }, [selectedCenter]);
-
-  useEffect(() => {
-    return () => {
-      if (viewportTimer.current) clearTimeout(viewportTimer.current);
-    };
+  const clearSearch = useCallback(() => {
+    setText("");
+    setSubmittedText("");
+    setSearchFocused(false);
+    setShowFilters(false);
+    setNearbyOnly(false);
+    setSelectedCenterCode(null);
+    sheetRef.current?.dismiss();
   }, []);
+  const {
+    data: selectedCenterDetail,
+    error: selectedCenterDetailError,
+    isPending: isSelectedCenterDetailPending,
+    refetch: refetchSelectedCenterDetail,
+  } = usePublishedCenter(selectedCenterCode ?? "");
 
-  const handleViewportChange = (bounds: CenterFilters["bounds"]) => {
-    if (!bounds) return;
-    if (viewportTimer.current) clearTimeout(viewportTimer.current);
-    viewportTimer.current = setTimeout(() => {
-      setFilters((current) => ({ ...current, bounds }));
-    }, 350);
-  };
+  const handleBeforeBack = useCallback(() => {
+    if (menuVisible) {
+      setMenuVisible(false);
+      return true;
+    }
+    if (showFilters) {
+      setShowFilters(false);
+      return true;
+    }
+    if (selectedCenterCode) {
+      sheetRef.current?.dismiss();
+      if (submittedQuery) clearSearch();
+      else setSelectedCenterCode(null);
+      return true;
+    }
+    if (submittedQuery || text.trim()) {
+      clearSearch();
+      return true;
+    }
+    return false;
+  }, [
+    clearSearch,
+    menuVisible,
+    selectedCenterCode,
+    submittedQuery,
+    showFilters,
+    text,
+  ]);
 
-  const openDetail = (center: PublicCenter) =>
-    router.push({
-      pathname: "/centers/[code]" as never,
-      params: { code: center.code },
-    });
+  useScreenBackHandler(handleBeforeBack);
+
+  useEffect(() => {
+    if (!submittedQuery) return;
+    sheetRef.current?.present();
+    const collapseTimer = setTimeout(() => sheetRef.current?.collapse(), 50);
+    return () => clearTimeout(collapseTimer);
+  }, [submittedQuery]);
+
+  useEffect(() => {
+    if (submittedQuery) return;
+    if (!selectedCenter) {
+      sheetRef.current?.dismiss();
+      return;
+    }
+    sheetRef.current?.present();
+    const collapseTimer = setTimeout(() => sheetRef.current?.collapse(), 50);
+    return () => clearTimeout(collapseTimer);
+  }, [selectedCenter, submittedQuery]);
+
+  const handleViewportChange = useCallback(() => {
+    // El catálogo ya cargado no se reemplaza durante pan/zoom. Así MapLibre
+    // conserva los símbolos y el usuario no ve parpadeos ni pines que se
+    // pierden mientras termina una consulta por viewport. La consulta acotada
+    // se habilitará cuando exista paginación/cache de viewport en la API.
+  }, []);
 
   const navigateTab = (tab: "explore" | "agent" | "itinerary") => {
     if (tab === "explore") return;
-    router.push(`/${tab}` as never);
+    router.replace(`/${tab}` as never);
   };
 
-  if (isPending) return <LoadingState />;
-  if (error) return <ErrorState onRetry={() => void refetch()} />;
+  const openRoute = () => {
+    // La ficha es un overlay transitorio del mapa: debe desaparecer antes de
+    // cambiar de pantalla para no quedar montada sobre la ruta.
+    sheetRef.current?.dismiss();
+    setSelectedCenterCode(null);
+    router.push("/route" as never);
+  };
 
-  const types = (catalog?.types ?? []).filter(
-    (item) =>
-      !filters.categoryCode || item.categoryCode === filters.categoryCode,
-  );
-  const cantons = (catalog?.cantons ?? []).filter(
-    (item) =>
-      !filters.provinceCode || item.provinceCode === filters.provinceCode,
-  );
+  const handleLocateUser = useCallback(async () => {
+    const coordinate = await requestLocation();
+    if (coordinate) setFocusLocationKey((value) => value + 1);
+  }, [requestLocation]);
+
+  const handleSubmitSearch = useCallback(() => {
+    const nextQuery = text.trim();
+    if (nextQuery.length < 2) return;
+    setSubmittedText(nextQuery);
+    setSearchFocused(false);
+    setNearbyOnly(false);
+    setSelectedCenterCode(null);
+    setShowFilters(false);
+  }, [text]);
+
+  const handleNearbyToggle = useCallback(() => {
+    if (!userLocation) return;
+    setNearbyOnly((value) => !value);
+  }, [userLocation]);
+
+  const locationButtonLabel =
+    locationStatus === "ready"
+      ? "Centrar mapa en mi ubicación"
+      : "Usar mi ubicación";
+  const locationNoticeText =
+    locationMessage ??
+    (locationStatus === "requesting"
+      ? "Buscando tu ubicación…"
+      : "Activa el GPS para encontrar tu posición.");
+  const retryCenters = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+
+  if (isPending) {
+    return error ? <ErrorState onRetry={retryCenters} /> : <LoadingState />;
+  }
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.mapBackground }]}>
       <Stack.Screen options={{ headerShown: false }} />
       <CenterMap
+        basemapMode="streets"
         centers={centers}
         onCenterPress={(center) => setSelectedCenterCode(center.code)}
         onViewportChange={handleViewportChange}
+        selectedCenterCode={selectedCenterCode}
+        focusLocationKey={focusLocationKey}
+        userLocation={userLocation}
       />
       <SafeAreaView
         edges={["top"]}
         pointerEvents="box-none"
         style={styles.overlay}
       >
-        <View style={styles.topControls}>
+        <View
+          style={[
+            styles.topControls,
+            isLandscape && styles.topControlsLandscape,
+          ]}
+        >
           <View style={styles.searchRow}>
+            <TourismMenuButton compact onPress={() => setMenuVisible(true)} />
             <TourismSearchField
               accessibilityLabel="Buscar atractivos"
+              onBlur={() => setSearchFocused(false)}
               onChangeText={setText}
-              onClear={() => setText("")}
+              onClear={clearSearch}
+              onFocus={() => setSearchFocused(true)}
+              onSubmitEditing={handleSubmitSearch}
               placeholder="Buscar aquí"
               value={text}
             />
-            <TourismIconAction
-              accessibilityLabel="Mostrar filtros"
-              icon="sliders"
-              onPress={() => setShowFilters((value) => !value)}
-              selected={showFilters}
-            />
-            <TourismProfileButton onPress={() => setProfileVisible(true)} />
           </View>
-          <FilterChips
-            label="Categorías de atractivos"
-            options={catalog?.categories ?? []}
-            selected={filters.categoryCode}
-            onChange={(categoryCode) =>
-              setFilters((current) => ({
-                ...current,
-                categoryCode,
-                typeCode: undefined,
-                subtypeCode: undefined,
-              }))
-            }
-          />
-          {showFilters ? (
-            <TourismSurface style={styles.filtersPanel}>
-              <View style={styles.filtersPanelHeader}>
-                <TourismSectionTitle>Filtrar lugares</TourismSectionTitle>
-                <TourismIconAction
-                  accessibilityLabel="Cerrar filtros"
-                  icon="close"
-                  onPress={() => setShowFilters(false)}
-                />
-              </View>
+          {!isSearchMode ? (
+            <>
               <FilterChips
-                label="Tipo"
-                options={types}
-                selected={filters.typeCode}
-                onChange={(typeCode) =>
+                label="Categorías de atractivos"
+                options={catalog?.categories ?? []}
+                selected={filters.categoryCode}
+                onChange={(categoryCode) =>
                   setFilters((current) => ({
                     ...current,
-                    typeCode,
+                    categoryCode,
+                    typeCode: undefined,
                     subtypeCode: undefined,
                   }))
                 }
+                onFilterAction={() => setShowFilters((value) => !value)}
+                filterActionSelected={showFilters}
+                showFilterAction
               />
-              <FilterChips
-                label="Provincia"
-                options={catalog?.provinces ?? []}
-                selected={filters.provinceCode}
-                onChange={(provinceCode) =>
-                  setFilters((current) => ({
-                    ...current,
-                    provinceCode,
-                    cantonCode: undefined,
-                    parishCode: undefined,
-                  }))
-                }
-              />
-              <FilterChips
-                label="Cantón"
-                options={cantons}
-                selected={filters.cantonCode}
-                onChange={(cantonCode) =>
-                  setFilters((current) => ({
-                    ...current,
-                    cantonCode,
-                    parishCode: undefined,
-                  }))
-                }
-              />
-              <FilterChips
-                label="Jerarquía"
-                options={catalog?.hierarchies ?? []}
-                selected={filters.hierarchyCode}
-                onChange={(hierarchyCode) =>
-                  setFilters((current) => ({ ...current, hierarchyCode }))
-                }
-              />
-            </TourismSurface>
+              {showFilters ? (
+                <AdvancedDiscoveryFilters
+                  catalog={catalog}
+                  filters={filters}
+                  onChange={setFilters}
+                  onClose={() => setShowFilters(false)}
+                />
+              ) : null}
+            </>
           ) : null}
         </View>
       </SafeAreaView>
+      <View
+        pointerEvents="box-none"
+        style={[
+          styles.mapActionLayer,
+          isLandscape && styles.mapActionLayerLandscape,
+        ]}
+      >
+        <TourismIconAction
+          accessibilityLabel={locationButtonLabel}
+          disabled={locationStatus === "requesting"}
+          icon="locate"
+          onPress={() => void handleLocateUser()}
+          selected={locationStatus === "ready"}
+          style={styles.locationAction}
+        />
+      </View>
       <View pointerEvents="box-none" style={styles.bottomOverlay}>
-        <View
-          pointerEvents="auto"
-          style={[styles.locationNotice, { backgroundColor: colors.surface }]}
-        >
-          <TurismoIcon
-            color={colors.primaryStrong}
-            name="locate"
-            size={turismoIconSizes.sm}
-          />
-          <Text
-            style={[styles.locationNoticeText, { color: colors.textMuted }]}
+        {locationStatus !== "ready" ? (
+          <View
+            pointerEvents="auto"
+            style={[
+              styles.locationNotice,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
           >
-            Explora sin activar tu ubicación
-          </Text>
-        </View>
-        <SafeAreaView edges={["bottom"]} pointerEvents="auto">
+            <TurismoIcon
+              color={colors.primaryStrong}
+              name="locate"
+              size={turismoIconSizes.sm}
+            />
+            <Text
+              style={[styles.locationNoticeText, { color: colors.textMuted }]}
+            >
+              {locationNoticeText}
+            </Text>
+          </View>
+        ) : null}
+        <SafeAreaView
+          edges={["bottom"]}
+          pointerEvents="auto"
+          style={[
+            styles.bottomNavSafeArea,
+            { backgroundColor: colors.surface },
+          ]}
+        >
           <TourismTabBar active="explore" onChange={navigateTab} />
         </SafeAreaView>
       </View>
@@ -239,80 +340,98 @@ export default function HomeScreen() {
         backgroundStyle={{ backgroundColor: colors.surface }}
         enablePanDownToClose
         index={-1}
-        onClose={() => setSelectedCenterCode(null)}
+        onClose={() => {
+          if (selectedCenterCode) setSelectedCenterCode(null);
+          else clearSearch();
+        }}
         ref={sheetRef}
         snapPoints={["38%", "84%"]}
       >
         {selectedCenter ? (
-          <BottomSheetView style={styles.sheetView}>
+          <BottomSheetScrollView
+            key={selectedCenter.code}
+            contentContainerStyle={[
+              styles.sheetView,
+              isLandscape && styles.sheetViewLandscape,
+            ]}
+            showsVerticalScrollIndicator={false}
+          >
             <PlaceSheet
               center={selectedCenter}
-              onClose={() => setSelectedCenterCode(null)}
-              onOpenDetail={() => openDetail(selectedCenter)}
-              onOpenRoute={() => router.push("/route" as never)}
+              detail={selectedCenterDetail}
+              detailError={selectedCenterDetailError}
+              detailPending={isSelectedCenterDetailPending}
+              onClose={() => {
+                if (submittedQuery) setSelectedCenterCode(null);
+                else clearSearch();
+              }}
+              onOpenRoute={openRoute}
+              onRetryDetail={() => void refetchSelectedCenterDetail()}
             />
-          </BottomSheetView>
+          </BottomSheetScrollView>
+        ) : submittedQuery ? (
+          <BottomSheetScrollView
+            contentContainerStyle={[
+              styles.sheetView,
+              isLandscape && styles.sheetViewLandscape,
+            ]}
+            key={`search-${submittedQuery}`}
+            showsVerticalScrollIndicator={false}
+          >
+            <SearchResultsSheet
+              catalog={catalog}
+              centers={centers}
+              error={error ?? null}
+              filters={filters}
+              isFetching={isFetching}
+              isPlaceholderData={isPlaceholderData}
+              nearbyOnly={nearbyOnly}
+              onChangeFilters={setFilters}
+              onClear={clearSearch}
+              onNearbyToggle={handleNearbyToggle}
+              onRetry={() => void refetch()}
+              onSelectCenter={(center) => setSelectedCenterCode(center.code)}
+              onToggleFilters={() => setShowFilters((value) => !value)}
+              query={submittedQuery}
+              showFilters={showFilters}
+              userLocation={userLocation}
+            />
+          </BottomSheetScrollView>
         ) : null}
       </ExpoBottomSheet>
-      <TourismProfilePopover
-        onClose={() => setProfileVisible(false)}
+      <TourismMenuDrawer
+        onClose={() => setMenuVisible(false)}
         onItinerary={() => {
-          setProfileVisible(false);
-          router.push("/itinerary" as never);
+          setMenuVisible(false);
+          router.replace("/itinerary" as never);
         }}
-        onSaved={() => setProfileVisible(false)}
-        visible={profileVisible}
+        onSettings={() => {
+          setMenuVisible(false);
+          router.push("/settings" as never);
+        }}
+        onSaved={() => setMenuVisible(false)}
+        visible={menuVisible}
       />
     </View>
   );
 }
 
-function FilterChips({
-  label,
-  options,
-  selected,
-  onChange,
-}: Readonly<{
-  label: string;
-  options: readonly { code: string; name: string }[];
-  selected?: string;
-  onChange: (value: string | undefined) => void;
-}>) {
-  if (!options.length) return null;
-  return (
-    <ScrollView
-      accessibilityLabel={label}
-      contentContainerStyle={styles.chips}
-      horizontal
-      showsHorizontalScrollIndicator={false}
-    >
-      <TourismChoiceChip
-        label="Todo"
-        onPress={() => onChange(undefined)}
-        selected={!selected}
-      />
-      {options.map((option) => (
-        <TourismChoiceChip
-          key={option.code}
-          label={option.name}
-          onPress={() => onChange(option.code)}
-          selected={selected === option.code}
-        />
-      ))}
-    </ScrollView>
-  );
-}
-
 function PlaceSheet({
   center,
+  detail,
+  detailError,
+  detailPending,
   onClose,
-  onOpenDetail,
   onOpenRoute,
+  onRetryDetail,
 }: Readonly<{
   center: PublicCenter;
+  detail?: PublicCenterDetail;
+  detailError: Error | null;
+  detailPending: boolean;
   onClose: () => void;
-  onOpenDetail: () => void;
   onOpenRoute: () => void;
+  onRetryDetail: () => void;
 }>) {
   const colors = useTurismoPalette();
   return (
@@ -349,21 +468,220 @@ function PlaceSheet({
       </View>
       <View style={styles.actions}>
         <TourismActionButton
-          icon="mapPinned"
-          label="Ver ficha"
-          onPress={onOpenDetail}
-          style={styles.flexAction}
-        />
-        <TourismActionButton
           icon="route"
           label="Cómo llegar"
-          mode="outlined"
           onPress={onOpenRoute}
-          style={styles.flexAction}
+          style={styles.routeAction}
         />
       </View>
+      {detailPending ? (
+        <View style={styles.detailState}>
+          <ActivityIndicator color={colors.primary} />
+          <Text style={[styles.detailStateText, { color: colors.textMuted }]}>
+            Cargando la ficha completa…
+          </Text>
+        </View>
+      ) : detailError || !detail ? (
+        <View style={styles.detailState}>
+          <TurismoIcon
+            color={colors.danger}
+            name="wifiOff"
+            size={turismoIconSizes.md}
+          />
+          <Text style={[styles.detailStateText, { color: colors.textMuted }]}>
+            No pudimos cargar todos los datos de la ficha.
+          </Text>
+          <TourismActionButton
+            icon="refresh"
+            label="Reintentar"
+            mode="outlined"
+            onPress={onRetryDetail}
+          />
+        </View>
+      ) : (
+        <PlaceDetail detail={detail} />
+      )}
     </View>
   );
+}
+
+function PlaceDetail({ detail }: Readonly<{ detail: PublicCenterDetail }>) {
+  const colors = useTurismoPalette();
+  return (
+    <>
+      {detail.description ? (
+        <PlaceSection icon="circleHelp" title="Descripción">
+          <Text style={[styles.detailInfoValue, { color: colors.text }]}>
+            {detail.description}
+          </Text>
+        </PlaceSection>
+      ) : null}
+      <PlaceSection icon="mapPinned" title="Información del lugar">
+        <PlaceInfoRow label="Zona turística" value={detail.touristZone} />
+        <PlaceInfoRow label="Categoría" value={detail.category} />
+        <PlaceInfoRow label="Tipo" value={detail.type} />
+        <PlaceInfoRow label="Subtipo" value={detail.subtype} />
+        {detail.address ? (
+          <PlaceInfoRow label="Dirección" value={detail.address} />
+        ) : null}
+        {detail.altitudeMeters !== null ? (
+          <PlaceInfoRow
+            label="Altitud"
+            value={`${detail.altitudeMeters} msnm`}
+          />
+        ) : null}
+        <PlaceInfoRow label="Código turístico" value={detail.code} />
+      </PlaceSection>
+      <PlaceSection icon="calendar" title="Ingreso y horario">
+        {detail.admission ? (
+          <>
+            <PlaceInfoRow
+              label="Acceso"
+              value={`${detail.admission.type} · ${detail.admission.attention}`}
+            />
+            {detail.admission.opensAt || detail.admission.closesAt ? (
+              <PlaceInfoRow
+                label="Horario"
+                value={`${detail.admission.opensAt ?? "--:--"} – ${detail.admission.closesAt ?? "--:--"}`}
+              />
+            ) : null}
+            {detail.admission.priceFrom !== null ||
+            detail.admission.priceTo !== null ? (
+              <PlaceInfoRow
+                label="Precio"
+                value={formatPrice(
+                  detail.admission.priceFrom,
+                  detail.admission.priceTo,
+                )}
+              />
+            ) : null}
+          </>
+        ) : (
+          <PlaceEmptyState text="No hay información de ingreso registrada." />
+        )}
+      </PlaceSection>
+      <PlaceTagsSection
+        icon="compass"
+        title="Actividades"
+        values={detail.activities}
+      />
+      <PlaceTagsSection
+        icon="locate"
+        title="Accesibilidad"
+        values={detail.accessibility}
+      />
+      <PlaceTagsSection
+        icon="map"
+        title="Facilidades"
+        values={detail.facilities}
+      />
+    </>
+  );
+}
+
+function PlaceSection({
+  children,
+  icon,
+  title,
+}: Readonly<{
+  children: ReactNode;
+  icon: "calendar" | "circleHelp" | "mapPinned";
+  title: string;
+}>) {
+  const colors = useTurismoPalette();
+  return (
+    <View
+      style={[
+        styles.detailSection,
+        { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+      ]}
+    >
+      <View style={styles.detailSectionHeader}>
+        <TurismoIcon
+          color={colors.primaryStrong}
+          name={icon}
+          size={turismoIconSizes.md}
+        />
+        <Text style={[styles.detailSectionTitle, { color: colors.text }]}>
+          {title}
+        </Text>
+      </View>
+      <View style={styles.detailSectionContent}>{children}</View>
+    </View>
+  );
+}
+
+function PlaceTagsSection({
+  icon,
+  title,
+  values,
+}: Readonly<{
+  icon: "compass" | "locate" | "map";
+  title: string;
+  values: readonly string[];
+}>) {
+  const colors = useTurismoPalette();
+  return (
+    <View
+      style={[
+        styles.detailSection,
+        { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+      ]}
+    >
+      <View style={styles.detailSectionHeader}>
+        <TurismoIcon
+          color={colors.primaryStrong}
+          name={icon}
+          size={turismoIconSizes.md}
+        />
+        <Text style={[styles.detailSectionTitle, { color: colors.text }]}>
+          {title}
+        </Text>
+      </View>
+      {values.length ? (
+        <View style={styles.detailTags}>
+          {values.map((value) => (
+            <TourismBadge key={value}>{value}</TourismBadge>
+          ))}
+        </View>
+      ) : (
+        <PlaceEmptyState text={`No hay ${title.toLowerCase()} registradas.`} />
+      )}
+    </View>
+  );
+}
+
+function PlaceInfoRow({
+  label,
+  value,
+}: Readonly<{ label: string; value: string }>) {
+  const colors = useTurismoPalette();
+  return (
+    <View style={styles.detailInfoRow}>
+      <Text style={[styles.detailInfoLabel, { color: colors.textFaint }]}>
+        {label}
+      </Text>
+      <Text style={[styles.detailInfoValue, { color: colors.text }]}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function PlaceEmptyState({ text }: Readonly<{ text: string }>) {
+  const colors = useTurismoPalette();
+  return (
+    <Text style={[styles.detailEmptyText, { color: colors.textMuted }]}>
+      {text}
+    </Text>
+  );
+}
+
+function formatPrice(from: number | null, to: number | null): string {
+  if (from !== null && to !== null && from !== to)
+    return `$${from.toFixed(2)} – $${to.toFixed(2)}`;
+  const value = from ?? to;
+  return value === null ? "No especificado" : `$${value.toFixed(2)}`;
 }
 
 function LoadingState() {
@@ -405,39 +723,65 @@ const styles = StyleSheet.create({
     top: 0,
   },
   topControls: { gap: turismoSpacing.sm, paddingHorizontal: turismoSpacing.md },
+  topControlsLandscape: {
+    alignSelf: "center",
+    maxWidth: turismoMetrics.contentMaxWidth,
+    width: "100%",
+  },
   searchRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: turismoSpacing.xs,
   },
-  chips: { gap: turismoSpacing.xs, paddingRight: turismoSpacing.md },
-  filtersPanel: { gap: turismoSpacing.sm, padding: turismoSpacing.md },
-  filtersPanelHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
   bottomOverlay: {
-    alignItems: "center",
     bottom: 0,
     gap: turismoSpacing.sm,
     left: 0,
-    paddingHorizontal: turismoSpacing.md,
     position: "absolute",
     right: 0,
   },
+  mapActionLayer: {
+    alignItems: "flex-end",
+    bottom: turismoMetrics.tabBar + turismoSpacing.xl,
+    justifyContent: "flex-end",
+    left: 0,
+    paddingBottom: turismoSpacing.md,
+    paddingHorizontal: turismoSpacing.md,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  mapActionLayerLandscape: {
+    bottom: turismoMetrics.tabBar + turismoSpacing.md,
+  },
+  locationAction: {
+    height: turismoMetrics.controlLg,
+    width: turismoMetrics.controlLg,
+  },
+  bottomNavSafeArea: {
+    alignSelf: "stretch",
+    width: "100%",
+  },
   locationNotice: {
     alignItems: "center",
+    alignSelf: "center",
     borderRadius: turismoRadii.pill,
-    borderColor: "#FFFFFF22",
-    borderWidth: 1,
+    marginHorizontal: turismoSpacing.md,
+    minWidth: 0,
+    borderWidth: turismoMetrics.borderWidth,
     flexDirection: "row",
     gap: turismoSpacing.xs,
+    maxWidth: "92%",
     paddingHorizontal: turismoSpacing.md,
     paddingVertical: turismoSpacing.xs,
   },
-  locationNoticeText: { ...turismoTypography.caption },
-  sheetView: { padding: turismoSpacing.lg },
+  locationNoticeText: { ...turismoTypography.caption, flexShrink: 1 },
+  sheetView: {
+    alignSelf: "center",
+    padding: turismoSpacing.lg,
+    width: "100%",
+  },
+  sheetViewLandscape: { maxWidth: turismoMetrics.sheetMaxWidth },
   placeSheet: { gap: turismoSpacing.md, paddingBottom: turismoSpacing.xl },
   placeHeader: {
     flexDirection: "row",
@@ -450,7 +794,35 @@ const styles = StyleSheet.create({
   placeDescription: { ...turismoTypography.body },
   placeTags: { flexDirection: "row", flexWrap: "wrap", gap: turismoSpacing.xs },
   actions: { flexDirection: "row", gap: turismoSpacing.xs },
-  flexAction: { flex: 1, paddingHorizontal: turismoSpacing.sm },
+  routeAction: { flex: 1 },
+  detailState: {
+    alignItems: "center",
+    gap: turismoSpacing.sm,
+    paddingVertical: turismoSpacing.lg,
+  },
+  detailStateText: { ...turismoTypography.body, textAlign: "center" },
+  detailSection: {
+    borderRadius: turismoRadii.md,
+    borderWidth: turismoMetrics.borderWidth,
+    gap: turismoSpacing.sm,
+    padding: turismoSpacing.md,
+  },
+  detailSectionHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: turismoSpacing.sm,
+  },
+  detailSectionTitle: { ...turismoTypography.heading },
+  detailSectionContent: { gap: turismoSpacing.sm },
+  detailInfoRow: { gap: turismoSpacing.xxs },
+  detailInfoLabel: { ...turismoTypography.caption },
+  detailInfoValue: { ...turismoTypography.body },
+  detailTags: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: turismoSpacing.xs,
+  },
+  detailEmptyText: { ...turismoTypography.body },
   loading: {
     alignItems: "center",
     flex: 1,

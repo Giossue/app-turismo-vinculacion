@@ -14,18 +14,16 @@
 - MapLibre React Native como renderer nativo; requiere Expo Development Build, no Expo Go.
 - TanStack Query para estado remoto y cancelación de consultas.
 - Zustand para estado local efímero; React Hook Form y Zod para formularios.
-- NativeWind para tokens y estilos de componentes reutilizables.
+- React Native Paper como kit externo de componentes; los tokens y componentes `Tourism*`
+  mantienen la identidad visual, mientras `StyleSheet` resuelve el layout nativo.
 - expo-secure-store para credenciales mínimas; caché/drafts solo cuando se especifique.
 - expo-notifications y Sentry cuando la feature los requiera.
 
-## Web
+## Web futura
 
-- Next.js con App Router y TypeScript estricto.
-- HeroUI React; no HeroUI Native.
-- Tailwind CSS y tokens semánticos compartidos por la web.
-- TanStack Query para estado remoto.
-- React Hook Form y Zod para formularios.
-- Playwright para flujos críticos.
+- La web pública y administrativa se desarrollará en un repositorio separado.
+- Este monorepo no mantiene un kit visual ni una cadena de estilos utilitarios para la web.
+- Las decisiones de UI, estilos y dependencias de ese repositorio se tomarán cuando se cree.
 
 ## Backend
 

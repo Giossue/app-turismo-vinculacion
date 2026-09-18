@@ -47,4 +47,23 @@ describe("getPublishedCenters", () => {
       getPublishedCenters({}, fetcher, "http://api.test/api/v1"),
     ).rejects.toThrow("formato esperado");
   });
+
+  it("sends the submitted query through the public search endpoint", async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [] }),
+    });
+
+    await expect(
+      getPublishedCenters(
+        { text: "mirador" },
+        fetcher,
+        "http://api.test/api/v1",
+      ),
+    ).resolves.toHaveLength(0);
+    expect(fetcher).toHaveBeenCalledWith(
+      "http://api.test/api/v1/centers?q=mirador",
+      { headers: { Accept: "application/json" } },
+    );
+  });
 });

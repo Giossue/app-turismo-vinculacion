@@ -2,9 +2,9 @@
 
 ## Resultado
 
-Una persona visitante puede ver una lista y ficha simplificada de atractivos que ya han
-sido publicados. Esto permite demostrar el primer tramo del producto sin exponer fichas
-técnicas en borrador ni requerir una cuenta.
+Una persona visitante puede buscar y ver atractivos publicados en el mapa y abrir una ficha
+arrastrable. La ficha muestra un resumen al abrirse y el detalle público completo al
+expandirse, sin exponer fichas técnicas en borrador ni requerir una cuenta.
 
 ## Actores y permisos
 
@@ -16,8 +16,15 @@ técnicas en borrador ni requerir una cuenta.
 
 1. La web pide la lista pública a `GET /api/v1/centers`.
 2. La API filtra por estado de publicación y actividad.
-3. La persona abre una ficha usando el código público del atractivo.
-4. La API devuelve el detalle simplificado o un 404 no revelador.
+3. La aplicación móvil muestra los resultados como marcadores MapLibre.
+4. La persona selecciona un marcador; el mapa centra el atractivo y aplica un zoom de
+   detalle predeterminado. El pin seleccionado cambia a un color de énfasis persistente.
+5. Después de enfocar el punto, la aplicación solicita el detalle mediante el código
+   público del atractivo.
+6. La API devuelve el detalle público o un 404 no revelador; la ficha se presenta en un
+   bottom sheet con resumen y estado expandido.
+7. Una consulta enviada desde el buscador filtra los centros publicados por nombre,
+   descripción y clasificación, sin consultar lugares externos.
 
 ## Estados y excepciones
 
@@ -29,7 +36,8 @@ técnicas en borrador ni requerir una cuenta.
 
 ## Datos
 
-- Lecturas: `centros_turisticos`, estado, clasificación y jerarquía.
+- Lecturas: `centros_turisticos`, estado, clasificación, jerarquía y relaciones públicas
+  de ubicación, ingreso, actividades, accesibilidad y facilidades.
 - Escrituras: ninguna.
 - Ubicación: se filtra por viewport enviado por el cliente; no se solicita ni persiste la
   ubicación del dispositivo.
@@ -42,5 +50,5 @@ técnicas en borrador ni requerir una cuenta.
 
 ## Fuera de alcance
 
-- Marcadores MapLibre, rutas, GPS, filtros completos, imágenes, favoritos y opiniones.
+- Rutas, GPS, imágenes, favoritos y opiniones.
 - Captura, aprobación y publicación de nuevas fichas.

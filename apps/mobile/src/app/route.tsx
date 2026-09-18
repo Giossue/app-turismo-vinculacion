@@ -1,7 +1,6 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   TourismActionButton,
@@ -9,16 +8,17 @@ import {
   TourismSurface,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
-import {
-  TourismHeader,
-  TourismProfilePopover,
-} from "@/core/ui/tourism-navigation";
+import { TourismMenuDrawer } from "@/core/ui/tourism-navigation";
+import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
+  turismoMetrics,
+  turismoRadii,
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
+import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 
 const routeSteps = [
   {
@@ -41,21 +41,23 @@ const routeSteps = [
 export default function RouteScreen() {
   const router = useRouter();
   const colors = useTurismoPalette();
-  const [profileVisible, setProfileVisible] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  const handleBeforeBack = useCallback(() => {
+    if (!menuVisible) return false;
+    setMenuVisible(false);
+    return true;
+  }, [menuVisible]);
+
+  useScreenBackHandler(handleBeforeBack);
 
   return (
-    <SafeAreaView
-      edges={["top", "bottom"]}
-      style={[styles.safeArea, { backgroundColor: colors.background }]}
+    <TourismScreenFrame
+      onBack={() => router.back()}
+      onMenu={() => setMenuVisible(true)}
+      subtitle="NAVEGACIÓN"
+      title="Cómo llegar"
     >
-      <View style={styles.headerWrap}>
-        <TourismHeader
-          onBack={() => router.back()}
-          onProfile={() => setProfileVisible(true)}
-          subtitle="NAVEGACIÓN"
-          title="Cómo llegar"
-        />
-      </View>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -140,16 +142,20 @@ export default function RouteScreen() {
           mode="outlined"
         />
       </ScrollView>
-      <TourismProfilePopover
-        onClose={() => setProfileVisible(false)}
+      <TourismMenuDrawer
+        onClose={() => setMenuVisible(false)}
         onItinerary={() => {
-          setProfileVisible(false);
-          router.push("/itinerary" as never);
+          setMenuVisible(false);
+          router.replace("/itinerary" as never);
         }}
-        onSaved={() => setProfileVisible(false)}
-        visible={profileVisible}
+        onSettings={() => {
+          setMenuVisible(false);
+          router.push("/settings" as never);
+        }}
+        onSaved={() => setMenuVisible(false)}
+        visible={menuVisible}
       />
-    </SafeAreaView>
+    </TourismScreenFrame>
   );
 }
 
@@ -171,11 +177,9 @@ function Metric({ label, value }: Readonly<{ label: string; value: string }>) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  headerWrap: { paddingHorizontal: turismoSpacing.md },
   content: {
     gap: turismoSpacing.lg,
-    padding: turismoSpacing.md,
+    paddingVertical: turismoSpacing.md,
     paddingBottom: turismoSpacing.xl,
   },
   routeSummary: {
@@ -186,20 +190,21 @@ const styles = StyleSheet.create({
   },
   routeIcon: {
     alignItems: "center",
-    borderRadius: 18,
-    height: 48,
+    borderRadius: turismoRadii.md,
+    height: turismoMetrics.controlMd,
     justifyContent: "center",
-    width: 48,
+    width: turismoMetrics.controlMd,
   },
   routeCopy: { flex: 1, gap: turismoSpacing.xxs },
   routeTitle: { ...turismoTypography.heading },
   routeMeta: { ...turismoTypography.caption },
-  metrics: { flexDirection: "row", gap: turismoSpacing.xs },
+  metrics: { flexDirection: "row", flexWrap: "wrap", gap: turismoSpacing.xs },
   metric: {
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: turismoRadii.md,
+    borderWidth: turismoMetrics.borderWidth,
     flex: 1,
-    gap: 2,
+    gap: turismoSpacing.xxs,
+    minWidth: 96,
     padding: turismoSpacing.sm,
   },
   metricValue: { ...turismoTypography.heading },
@@ -214,17 +219,17 @@ const styles = StyleSheet.create({
   },
   stepIcon: {
     alignItems: "center",
-    borderRadius: 999,
-    height: 34,
+    borderRadius: turismoRadii.pill,
+    height: turismoMetrics.controlSm,
     justifyContent: "center",
-    width: 34,
+    width: turismoMetrics.controlSm,
   },
   stepCopy: { flex: 1, gap: turismoSpacing.xxs },
   stepInstruction: { ...turismoTypography.body },
   stepDistance: { ...turismoTypography.caption },
   stepLine: {
     bottom: -turismoSpacing.sm,
-    left: 16,
+    left: turismoMetrics.controlSm / 2,
     position: "absolute",
     top: 34,
     width: 1,

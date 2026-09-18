@@ -46,7 +46,7 @@ export class PostgresPublicCenterRepository implements PublicCenterRepository {
     const where = this.publishedCentersWhereClause();
     const [rows, counts] = await Promise.all([
       this.dataSource.query<CenterRow[]>(
-        `SELECT ${this.publicFields()} ${from} ${where} ORDER BY similarity(c.nombre, COALESCE($1::text, '')) DESC, c.nombre ASC, c.codigo_atractivo ASC LIMIT $13`,
+        `SELECT ${this.publicFields()} ${from} ${where} ORDER BY ${this.searchRelevanceExpression()} DESC, c.nombre ASC, c.codigo_atractivo ASC LIMIT $13`,
         [...values, query.limit],
       ),
       this.dataSource.query<readonly { total: string }[]>(
@@ -133,12 +133,26 @@ export class PostgresPublicCenterRepository implements PublicCenterRepository {
 
   private publishedCentersWhereClause(): string {
     return `WHERE c.activo AND er.codigo = 'PUBLICADO'
-      AND ($1::text IS NULL OR c.nombre % $1 OR c.nombre ILIKE '%' || $1 || '%')
+      AND ($1::text IS NULL OR c.nombre % $1 OR c.nombre ILIKE '%' || $1 || '%'
+        OR COALESCE(c.descripcion, '') ILIKE '%' || $1 || '%'
+        OR ca.nombre ILIKE '%' || $1 || '%'
+        OR ta.nombre ILIKE '%' || $1 || '%'
+        OR sa.nombre ILIKE '%' || $1 || '%')
       AND ($2::double precision IS NULL OR (c.ubicacion && ST_MakeEnvelope($2, $3, $4, $5, 4326)::geography AND ST_Intersects(c.ubicacion, ST_MakeEnvelope($2, $3, $4, $5, 4326)::geography)))
       AND ($6::text IS NULL OR ca.codigo = $6) AND ($7::text IS NULL OR ta.codigo = $7)
       AND ($8::text IS NULL OR sa.codigo = $8) AND ($9::text IS NULL OR p.codigo_dpa = $9)
       AND ($10::text IS NULL OR ct.codigo_cton = $10) AND ($11::text IS NULL OR pa.codigo_pqa = $11)
       AND ($12::text IS NULL OR rj.codigo = $12)`;
+  }
+
+  private searchRelevanceExpression(): string {
+    return `GREATEST(
+      COALESCE(similarity(c.nombre, COALESCE($1::text, '')), 0),
+      COALESCE(similarity(c.descripcion, COALESCE($1::text, '')), 0),
+      COALESCE(similarity(ca.nombre, COALESCE($1::text, '')), 0),
+      COALESCE(similarity(ta.nombre, COALESCE($1::text, '')), 0),
+      COALESCE(similarity(sa.nombre, COALESCE($1::text, '')), 0)
+    )`;
   }
 }
 

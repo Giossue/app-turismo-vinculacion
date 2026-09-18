@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -9,7 +9,6 @@ import {
   View,
 } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   TourismActionButton,
@@ -17,24 +16,33 @@ import {
   TourismSurface,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
-import {
-  TourismHeader,
-  TourismProfilePopover,
-} from "@/core/ui/tourism-navigation";
+import { TourismMenuDrawer } from "@/core/ui/tourism-navigation";
+import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
+  turismoMetrics,
+  turismoRadii,
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
 import { usePublishedCenter } from "@/features/centers/application/use-published-center";
+import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 
 export default function CenterDetailScreen() {
   const router = useRouter();
   const colors = useTurismoPalette();
   const { code } = useLocalSearchParams<{ code: string }>();
-  const [profileVisible, setProfileVisible] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const handleBeforeBack = useCallback(() => {
+    if (!menuVisible) return false;
+    setMenuVisible(false);
+    return true;
+  }, [menuVisible]);
+
+  useScreenBackHandler(handleBeforeBack);
   const {
     data: center,
     error,
@@ -71,19 +79,13 @@ export default function CenterDetailScreen() {
     );
 
   return (
-    <SafeAreaView
-      edges={["top", "bottom"]}
-      style={[styles.safeArea, { backgroundColor: colors.background }]}
+    <TourismScreenFrame
+      onBack={() => router.back()}
+      onMenu={() => setMenuVisible(true)}
+      subtitle={center.category}
+      title="Ficha turística"
     >
       <Stack.Screen options={{ headerShown: false }} />
-      <View style={styles.headerWrap}>
-        <TourismHeader
-          onBack={() => router.back()}
-          onProfile={() => setProfileVisible(true)}
-          subtitle={center.category}
-          title="Ficha turística"
-        />
-      </View>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -167,6 +169,7 @@ export default function CenterDetailScreen() {
         <Tags title="Accesibilidad confirmada" values={center.accessibility} />
         <Tags title="Facilidades" values={center.facilities} />
         <Pressable
+          accessibilityLabel={`Compartir ficha de ${center.name}`}
           accessibilityRole="button"
           onPress={() =>
             void Share.share({
@@ -187,16 +190,20 @@ export default function CenterDetailScreen() {
           </Text>
         </Pressable>
       </ScrollView>
-      <TourismProfilePopover
-        onClose={() => setProfileVisible(false)}
+      <TourismMenuDrawer
+        onClose={() => setMenuVisible(false)}
         onItinerary={() => {
-          setProfileVisible(false);
-          router.push("/itinerary" as never);
+          setMenuVisible(false);
+          router.replace("/itinerary" as never);
         }}
-        onSaved={() => setProfileVisible(false)}
-        visible={profileVisible}
+        onSettings={() => {
+          setMenuVisible(false);
+          router.push("/settings" as never);
+        }}
+        onSaved={() => setMenuVisible(false)}
+        visible={menuVisible}
       />
-    </SafeAreaView>
+    </TourismScreenFrame>
   );
 }
 
@@ -256,15 +263,13 @@ function Tags({
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  headerWrap: { paddingHorizontal: turismoSpacing.md },
   content: {
     gap: turismoSpacing.lg,
-    padding: turismoSpacing.md,
+    paddingVertical: turismoSpacing.md,
     paddingBottom: turismoSpacing.xxl,
   },
   hero: {
-    borderRadius: 26,
+    borderRadius: turismoRadii.lg,
     gap: turismoSpacing.sm,
     padding: turismoSpacing.lg,
   },
@@ -275,10 +280,10 @@ const styles = StyleSheet.create({
   },
   heroIcon: {
     alignItems: "center",
-    borderRadius: 18,
-    height: 52,
+    borderRadius: turismoRadii.md,
+    height: turismoMetrics.controlLg,
     justifyContent: "center",
-    width: 52,
+    width: turismoMetrics.controlLg,
   },
   title: { ...turismoTypography.display },
   description: { ...turismoTypography.body },

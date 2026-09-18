@@ -1,5 +1,12 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useTurismoPalette } from "@/core/ui/tourism-controls";
+import {
+  turismoMetrics,
+  turismoRadii,
+  turismoSpacing,
+  turismoTypography,
+} from "@/core/ui/tokens";
 import type { PublicCenter } from "../domain/public-center";
 
 type CenterCardProps = Readonly<{
@@ -8,62 +15,87 @@ type CenterCardProps = Readonly<{
 }>;
 
 export function CenterCard({ center, onPress }: CenterCardProps) {
+  const colors = useTurismoPalette();
   return (
     <Pressable
       accessibilityLabel={`Ver ${center.name}`}
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.card,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+        },
+        pressed && styles.pressed,
+      ]}
     >
-      <Text style={styles.category}>{center.category}</Text>
-      <Text style={styles.name}>{center.name}</Text>
-      <Text numberOfLines={3} style={styles.description}>
+      <Text style={[styles.category, { color: colors.primaryStrong }]}>
+        {center.category}
+      </Text>
+      <Text style={[styles.name, { color: colors.text }]}>{center.name}</Text>
+      <Text
+        numberOfLines={3}
+        style={[styles.description, { color: colors.textMuted }]}
+      >
         {center.description ?? "Información en actualización."}
       </Text>
       <View style={styles.tags}>
-        <View style={styles.tag}>
-          <Text style={styles.tagText}>{center.subtype}</Text>
+        <View style={[styles.tag, { backgroundColor: colors.surfaceMuted }]}>
+          <Text style={[styles.tagText, { color: colors.textMuted }]}>
+            {center.subtype}
+          </Text>
         </View>
         {center.hierarchy ? (
-          <View style={styles.hierarchyTag}>
-            <Text style={styles.hierarchyText}>
+          <View
+            style={[
+              styles.hierarchyTag,
+              { backgroundColor: colors.primarySoft },
+            ]}
+          >
+            <Text
+              style={[styles.hierarchyText, { color: colors.primaryStrong }]}
+            >
               Jerarquía {center.hierarchy}
             </Text>
           </View>
         ) : null}
       </View>
-      <Text style={styles.action}>Ver ficha turística →</Text>
+      <Text style={[styles.action, { color: colors.primaryStrong }]}>
+        Ver ficha turística →
+      </Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
-    borderColor: "#e2e8f0",
-    borderRadius: 18,
-    borderWidth: 1,
-    gap: 7,
-    padding: 17,
+    borderRadius: turismoRadii.md,
+    borderWidth: turismoMetrics.borderWidth,
+    gap: turismoSpacing.sm,
+    padding: turismoSpacing.lg,
   },
-  category: { color: "#047857", fontSize: 13, fontWeight: "800" },
-  name: { color: "#0f172a", fontSize: 19, fontWeight: "800", lineHeight: 24 },
-  description: { color: "#475569", fontSize: 14, lineHeight: 20 },
-  tags: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 3 },
+  category: { ...turismoTypography.label, fontWeight: "800" as const },
+  name: { ...turismoTypography.heading },
+  description: { ...turismoTypography.body },
+  tags: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: turismoSpacing.xs,
+    marginTop: turismoSpacing.xxs,
+  },
   tag: {
-    backgroundColor: "#f1f5f9",
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    borderRadius: turismoRadii.pill,
+    paddingHorizontal: turismoSpacing.sm,
+    paddingVertical: turismoSpacing.xxs,
   },
-  tagText: { color: "#334155", fontSize: 12, fontWeight: "700" },
+  tagText: { ...turismoTypography.caption },
   hierarchyTag: {
-    backgroundColor: "#d1fae5",
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    borderRadius: turismoRadii.pill,
+    paddingHorizontal: turismoSpacing.sm,
+    paddingVertical: turismoSpacing.xxs,
   },
-  hierarchyText: { color: "#065f46", fontSize: 12, fontWeight: "800" },
-  action: { color: "#047857", fontSize: 14, fontWeight: "800", marginTop: 5 },
+  hierarchyText: { ...turismoTypography.caption, fontWeight: "800" as const },
+  action: { ...turismoTypography.label, marginTop: turismoSpacing.xxs },
   pressed: { opacity: 0.8 },
 });

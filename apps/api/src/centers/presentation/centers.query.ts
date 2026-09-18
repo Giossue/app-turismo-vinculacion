@@ -4,7 +4,7 @@ const coordinate = z.coerce.number().finite();
 
 export const listCentersQuerySchema = z
   .object({
-    q: z.string().trim().min(1).max(100).optional(),
+    q: z.string().trim().min(2).max(100).optional(),
     west: coordinate.optional(),
     south: coordinate.optional(),
     east: coordinate.optional(),
