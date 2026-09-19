@@ -13,8 +13,8 @@
 | Transporte | cooperativas, recorridos, paradas, horarios y precios referenciales | núcleo gradual |
 | Favoritos | centros/POI guardados y sincronización | núcleo |
 | Opiniones | calificación, comentario, reporte y moderación | núcleo |
-| Captura | borradores de guías, GPS, ficha, archivos y envío | núcleo |
-| Publicación | comparación, observación, aprobación, rechazo y auditoría | núcleo |
+| Captura | borradores administrativos, ficha núcleo y envío | núcleo |
+| Publicación | comparación, observación, aprobación, rechazo, publicación y auditoría por administrador | núcleo |
 | Importaciones | Excel/CSV, validación, duplicados y reporte por fila | núcleo administrativo |
 | IA | chat fundamentado, recomendaciones y fuentes | fase 2 |
 | Itinerarios | jornadas, visitas, tiempos, rutas y replanificación | fase 2 |

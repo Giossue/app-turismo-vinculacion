@@ -148,6 +148,10 @@ export default function RouteScreen() {
           setMenuVisible(false);
           router.replace("/itinerary" as never);
         }}
+        onOfflineMaps={() => {
+          setMenuVisible(false);
+          router.push("/offline" as never);
+        }}
         onSettings={() => {
           setMenuVisible(false);
           router.push("/settings" as never);

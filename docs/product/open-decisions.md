@@ -1,7 +1,18 @@
 # Decisiones abiertas
 
-Estas preguntas no están resueltas por la base de datos ni por `answers.md`. No asumir una
-opción durante implementación sin decisión de producto.
+Estas preguntas no están resueltas por la base de datos ni por `answers.md`. Las decisiones
+cerradas de la fase actual se registran al final; las demás siguen requiriendo decisión de
+producto.
+
+## Decisiones cerradas en la fase de rendimiento/offline
+
+- Alcance offline: paquetes descargables por ciudad con mapa, catálogo de fichas y rutas
+  institucionales registradas.
+- Rutas offline: solo versiones PUBLICADAS de rutas registradas; no se recalculan sin red.
+- Geometría de ciudad: límites oficiales importados y versionados; no se dibujan ni editan en
+  la app móvil.
+- Geometría de ruta: ArcGIS puede generar una propuesta y el flujo administrativo puede
+  revisarla/editarla antes de publicar una versión PostGIS.
 
 ## Mapas y movilidad
 

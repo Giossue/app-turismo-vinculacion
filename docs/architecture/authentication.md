@@ -8,7 +8,7 @@ revocación y roles. No se delega autenticación al proveedor de mapas/rutas ni 
 ## Credenciales
 
 - Contraseñas con Argon2id y parámetros calibrados.
-- Access JWT breve, firmado y con `sub`, versión de sesión y audiencia.
+- Access JWT breve, firmado y con `sub`, identificador de sesión (`sid`), roles y audiencia.
 - Refresh token opaco, aleatorio, rotado y almacenado como hash.
 - Detección de reutilización revoca la familia de sesión.
 - Tokens de verificación/recuperación de un solo uso, con hash y expiración.
@@ -19,9 +19,25 @@ revocación y roles. No se delega autenticación al proveedor de mapas/rutas ni 
 - Web: refresh token en cookie `HttpOnly`, `Secure`, `SameSite`; no en localStorage.
 - Cerrar sesión revoca el refresh token y limpia cachés privadas.
 
+En la web, el access token se reconstruye al cargar la aplicación mediante
+`POST /auth/refresh`; no se persiste en `localStorage`. La cookie de renovación tiene
+caducidad explícita y cada renovación inserta primero la nueva sesión dentro de la misma
+transacción que revoca y enlaza la anterior, para respetar la FK de sesiones y mantener
+la sesión después de recargar. El cliente coordina la renovación para que Strict Mode y
+recargas simultáneas no roten dos veces el mismo refresh token: reutiliza una promesa en
+la pestaña y, cuando el navegador lo soporta, toma un Web Lock exclusivo entre pestañas.
+La API tolera durante diez segundos la repetición de un token recién reemplazado para
+absorber una carrera legítima de recarga sin revocar la familia; una reutilización fuera
+de esa ventana mantiene la revocación por seguridad.
+
 ## Autorización
 
-Roles iniciales: `TURISTA`, `GESTOR`, `REVISOR`, `ADMINISTRADOR`.
+Roles iniciales: `TURISTA` y `ADMINISTRADOR`.
+
+El administrador es responsable de crear, editar, revisar, publicar y desactivar fichas
+turísticas. El turista consulta contenido publicado y usa las funciones propias de la
+aplicación; no accede al panel institucional. No se separa la captura en un rol de guía
+en esta fase.
 
 Cada caso de uso valida:
 
@@ -38,3 +54,7 @@ debe admitir más personas e instituciones en el futuro.
 
 Rate limit en login, registro, recuperación, opiniones e IA. No revelar si un correo
 existe. Registrar fallos relevantes sin contraseñas, tokens ni cabeceras completas.
+
+El API aplica un límite HTTP global inicial mediante Fastify. Antes de operar varias
+instancias, el almacenamiento del rate limit debe cambiarse a Redis para conservar el
+límite de forma distribuida.

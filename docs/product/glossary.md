@@ -8,7 +8,7 @@
 | Catastro | Registro de establecimientos turísticos habilitados o inventariados. |
 | DPA | División Político-Administrativa: provincia, cantón y parroquia. |
 | Ficha | Conjunto normalizado de datos técnicos del centro turístico. |
-| Guía/gestor | Usuario autorizado para levantar y proponer información. |
+| Administrador | Usuario institucional autorizado para levantar, revisar y publicar información. |
 | Revisión | Propuesta pendiente de aprobación que todavía no altera la versión pública. |
 | Ruta registrada | Recorrido, paradas y horarios declarados por una entidad de transporte. |
 | Ruta calculada | Trayecto generado por el motor de navegación para un origen y destino. |

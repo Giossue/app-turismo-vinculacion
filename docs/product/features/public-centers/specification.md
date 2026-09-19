@@ -9,7 +9,7 @@ expandirse, sin exponer fichas técnicas en borrador ni requerir una cuenta.
 ## Actores y permisos
 
 - Visitante, con o sin cuenta: puede consultar solo centros activos con estado `PUBLICADO`.
-- Guía, revisor y administrador: no reciben datos adicionales mediante estos endpoints
+- Administrador: no recibe datos adicionales mediante estos endpoints
   públicos; sus flujos autenticados se implementarán por separado.
 
 ## Flujo principal

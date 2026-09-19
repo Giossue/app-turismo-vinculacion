@@ -10,6 +10,7 @@
   "scripts": {
     "dev:api": "pnpm --filter @turismo/api dev",
     "dev:web": "pnpm --filter @turismo/web dev",
+    "dev:local": "bash scripts/dev-local.sh",
     "build": "pnpm -r --if-present run build",
     "format": "pnpm -r --if-present run format",
     "lint": "pnpm -r --if-present run lint",

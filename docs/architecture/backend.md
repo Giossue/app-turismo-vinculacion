@@ -50,8 +50,26 @@ estado y estrategia de fallo definitivo.
 Cache-aside en Redis solo para datos públicos costosos. Invalidar por evento de
 publicación. La ausencia de Redis degrada rendimiento, no integridad.
 
+## Paquetes offline
+
+El módulo `offline` expone únicamente lectura pública de ciudades y manifiestos publicados:
+`GET /api/v1/offline/cities` y `GET /api/v1/offline/cities/:slug/manifest`. El manifiesto se
+construye desde PostgreSQL/PostGIS y solo incluye centros publicados y versiones de rutas
+marcadas `PUBLICADA`. La generación, revisión y publicación del paquete requiere el flujo
+administrativo autenticado; el móvil no escribe en estas tablas.
+
 ## Módulos iniciales
 
-`auth`, `users`, `roles`, `territory`, `tourism-catalog`, `centers`, `pois`,
+`auth`, `users`, `roles`, `territory`, `tourism-catalog`, `centers`, `admin`, `pois`,
 `establishments`, `publication`, `files`, `transport`, `reviews`, `favorites`,
 `audit`, `health`.
+
+El módulo `admin` es la frontera de captura y publicación: solo acepta el rol
+`ADMINISTRADOR`, conserva borradores versionados, valida catálogos técnicos y coordina las
+transacciones de revisión, publicación y auditoría. El panel web nunca consulta PostgreSQL
+directamente.
+
+El módulo `files` valida multimedia multipart (límite, MIME y firma), genera claves opacas,
+escribe en almacenamiento local de desarrollo o S3/MinIO, y conserva en PostgreSQL solo
+metadatos, checksum, estado y auditoría. La lectura pública exige simultáneamente archivo
+`PUBLICADO` y centro publicado/activo.

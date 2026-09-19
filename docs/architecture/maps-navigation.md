@@ -66,6 +66,12 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 - Respuestas compactas para marcadores; ficha completa bajo demanda.
 - Cancelar consultas obsoletas al mover el mapa.
 - Cachear catálogos/mapas públicos con política de invalidación por publicación.
+- El cliente persiste la caché de consultas públicas durante 24 horas y evita repetir la
+  petición al volver a una pestaña mientras el dato siga fresco; una revalidación puede
+  ocurrir al recuperar conectividad o mediante una acción explícita.
+- El estilo ArcGIS se cachea en memoria por combinación de tema y modo (`streets` o
+  `navigation`), se deduplican solicitudes concurrentes y se muestran eventos de carga de
+  MapLibre para evitar el destello negro durante el cambio de estilo.
 - No reemplazar el `GeoJSONSource` en cada cambio de cámara: el catálogo ya
   cargado se mantiene durante pan/zoom. La consulta por viewport se habilitará
   con paginación, cache y cancelación de consultas obsoletas.
@@ -83,3 +89,16 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 - La disponibilidad del permiso y del proveedor se vuelve a comprobar mientras Explorar
   está visible y al regresar de Ajustes; al desactivarse se limpia la posición local para
   no presentar una ubicación obsoleta.
+
+## Paquetes offline por ciudad
+
+La API pública expone `GET /api/v1/offline/cities` y
+`GET /api/v1/offline/cities/:slug/manifest`. El manifiesto incluye atractivos publicados,
+límites oficiales cuando están importados y rutas de transporte con una versión PUBLICADA.
+La app descarga los tiles con `OfflineManager` y guarda el manifiesto en Expo SQLite. No se
+intenta recalcular una ruta sin red: la fase offline usa rutas institucionales registradas.
+
+La migración `20260917_offline_routes_and_city_packages.sql` crea los límites oficiales,
+versiones editables/publicables de rutas y metadatos de paquetes. La edición y aprobación de
+una geometría queda en el flujo administrativo autenticado; el móvil solo consume la
+versión PUBLICADA.

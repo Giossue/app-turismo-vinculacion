@@ -21,8 +21,10 @@ turístico y no implica reservas.
 
 ### Ficha y revisión
 
-Un guía prepara cambios. Una revisión conserva los datos propuestos sin modificar la
-versión pública. La aprobación aplica los cambios en una transacción y genera auditoría.
+Un administrador prepara cambios en `borradores_centros_turisticos`. Una revisión conserva
+un snapshot de los datos propuestos sin modificar la versión pública. La aprobación cambia
+el estado de la propuesta y la publicación aplica el snapshot normalizado en una transacción
+junto con el código, valoración y auditoría.
 
 ### Transporte
 

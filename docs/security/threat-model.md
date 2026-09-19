@@ -14,7 +14,7 @@
 - Móvil/web ↔ API.
 - API/worker ↔ PostgreSQL, Redis y MinIO.
 - API ↔ proveedores externos.
-- Guía ↔ revisión/publicación.
+- Administrador ↔ revisión/publicación.
 - Contenido externo ↔ contexto de IA.
 - CI/despliegue ↔ producción.
 

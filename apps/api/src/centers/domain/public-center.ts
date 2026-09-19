@@ -40,6 +40,12 @@ export type PublicCenterDetail = PublicCenter &
     activities: readonly string[];
     accessibility: readonly string[];
     facilities: readonly string[];
+    photos: readonly Readonly<{
+      id: number;
+      url: string;
+      mimeType: string;
+      description: string | null;
+    }>[];
   }>;
 
 export type DiscoveryCatalog = Readonly<{

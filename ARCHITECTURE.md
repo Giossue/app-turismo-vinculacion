@@ -23,7 +23,7 @@ apps/api (NestJS/Fastify) ◄──────── apps/web (Next.js)
 ## Componentes
 
 - `apps/mobile`: Android/iOS con React Native/Expo, mapa MapLibre, descubrimiento, IA y captura de campo.
-- `apps/web`: web pública indexable y panel de guías, revisores y administradores.
+- `apps/web`: web pública indexable y panel institucional de administradores.
 - `apps/api`: identidad, permisos, dominio, API REST, orquestación e integraciones.
 - `apps/worker`: importaciones, multimedia, IA diferida y notificaciones.
 - `packages/contracts`: esquemas y cliente TypeScript derivados de OpenAPI.

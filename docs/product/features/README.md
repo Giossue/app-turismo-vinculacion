@@ -20,10 +20,15 @@ Crear una carpeta por feature antes de implementarla con `specification.md`,
 13. Asistente IA con fuentes.
 14. Multimedia y audioguías.
 15. Eventos, clima, alertas y notificaciones.
-16. Captura de fichas por guías.
+16. Captura de fichas por administradores.
 17. Revisión y publicación.
 18. Catálogos e importaciones.
 19. Valoración, reportes y auditoría.
 
 No implementar un módulo solo por aparecer aquí: definir alcance, dependencias y criterios
 de aceptación primero.
+
+La captura administrativa inicial está especificada en
+`admin-center-capture/` y cubre el núcleo de ficha, borradores, revisión, publicación y
+auditoría, además de multimedia básica (fotos, video y audio). Las demás secciones se
+añadirán como cortes verticales posteriores.

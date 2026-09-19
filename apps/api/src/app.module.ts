@@ -6,6 +6,10 @@ import { CentersModule } from "./centers/centers.module";
 import { validateEnvironment } from "./config/environment";
 import { HealthModule } from "./health/health.module";
 import { AiModule } from "./ai/ai.module";
+import { OfflineModule } from "./offline/offline.module";
+import { AuthModule } from "./auth/auth.module";
+import { AdminModule } from "./admin/admin.module";
+import { FilesModule } from "./files/files.module";
 
 @Module({
   imports: [
@@ -22,6 +26,10 @@ import { AiModule } from "./ai/ai.module";
     HealthModule,
     CentersModule,
     AiModule,
+    OfflineModule,
+    AuthModule,
+    AdminModule,
+    FilesModule,
   ],
 })
 export class AppModule {}

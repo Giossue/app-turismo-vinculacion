@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Inject,
   Post,
   Res,
 } from "@nestjs/common";
@@ -16,7 +17,7 @@ import {
 @ApiTags("ai-agent")
 @Controller("ai")
 export class AiAgentController {
-  constructor(private readonly agent: AiAgentService) {}
+  constructor(@Inject(AiAgentService) private readonly agent: AiAgentService) {}
 
   @Post("chat")
   @ApiOkResponse({

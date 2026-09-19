@@ -10,7 +10,12 @@ import {
   type StyleSpecification,
 } from "@maplibre/maplibre-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type NativeSyntheticEvent, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  type NativeSyntheticEvent,
+  StyleSheet,
+  View,
+} from "react-native";
 
 import { getTurismoColors } from "@/core/ui/tokens";
 import { useTurismoTheme } from "@/core/ui/theme-context";
@@ -49,6 +54,16 @@ const tourismPinSelectedLight = require("../../../../assets/images/tourism-pin-s
 const tourismPinSelectedDark = require("../../../../assets/images/tourism-pin-selected-dark.png");
 
 const selectedCenterZoom = 16;
+const selectedCenterCameraDuration = 320;
+const cameraTargetTolerance = 0.001;
+const cameraZoomTolerance = 0.15;
+const arcgisStyleCache = new Map<string, StyleSpecification>();
+const arcgisStylePromiseCache = new Map<string, Promise<StyleSpecification>>();
+
+type PendingCenterSelection = Readonly<{
+  center: PublicCenter;
+  target: [number, number];
+}>;
 
 export function CenterMap({
   basemapMode = "streets",
@@ -61,6 +76,9 @@ export function CenterMap({
 }: CenterMapProps) {
   const cameraRef = useRef<CameraRef>(null);
   const sourceRef = useRef<GeoJSONSourceRef>(null);
+  const pendingCenterSelectionRef = useRef<PendingCenterSelection | null>(
+    null,
+  );
   const focusedLocationKeyRef = useRef<number | undefined>(undefined);
   const { scheme } = useTurismoTheme();
   const colors = getTurismoColors(scheme);
@@ -111,39 +129,44 @@ export function CenterMap({
     [scheme],
   );
   const styleRequestKey = `${scheme}:${basemapMode}`;
+  const apiKey = process.env.EXPO_PUBLIC_ARCGIS_API_KEY?.trim();
   const [arcgisMapStyleState, setArcgisMapStyleState] = useState<{
     requestKey: string;
     style: StyleSpecification;
-  } | null>(null);
+  } | null>(() => {
+    const cached = arcgisStyleCache.get(styleRequestKey);
+    return cached ? { requestKey: styleRequestKey, style: cached } : null;
+  });
+  const [mapLoadState, setMapLoadState] = useState<
+    "loading" | "ready" | "error"
+  >(() =>
+    !apiKey || arcgisStyleCache.has(styleRequestKey) ? "ready" : "loading",
+  );
 
   useEffect(() => {
-    const apiKey = process.env.EXPO_PUBLIC_ARCGIS_API_KEY?.trim();
     if (!apiKey) return;
 
     let cancelled = false;
 
-    fetch(arcgisStyleUrl(apiKey, scheme, basemapMode))
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`ArcGIS basemap responded with ${response.status}`);
-        }
-        return normalizeArcgisStyle(await response.json());
-      })
+    getArcgisStyle(apiKey, scheme, basemapMode, styleRequestKey)
       .then((style) => {
-        if (!cancelled)
+        if (!cancelled) {
           setArcgisMapStyleState({ requestKey: styleRequestKey, style });
+          setMapLoadState("ready");
+        }
       })
       .catch(() => {
         // El fallback raster mantiene la exploración disponible si la clave
         // expiró, no tiene el privilegio de basemaps o hay una caída de red.
         // El estilo anterior, si existe, se conserva mientras cambia el tema;
         // el fallback se usará hasta que llegue la respuesta nueva.
+        if (!cancelled) setMapLoadState("ready");
       });
 
     return () => {
       cancelled = true;
     };
-  }, [basemapMode, scheme, styleRequestKey]);
+  }, [apiKey, basemapMode, scheme, styleRequestKey]);
 
   const mapStyle =
     arcgisMapStyleState?.requestKey === styleRequestKey
@@ -176,14 +199,20 @@ export function CenterMap({
       const center = centersByCode.get(centerCode);
       if (!center) return;
 
-      // Primero enfocamos el mapa; después actualizamos el estado de selección
-      // para que la ficha aparezca sobre el punto que acaba de recibir el foco.
+      const target: [number, number] = [
+        center.longitude,
+        center.latitude,
+      ];
+      // La selección se confirma cuando MapLibre termina el enfoque. Así el
+      // cambio de pin y la apertura del bottom sheet no compiten con la
+      // animación de la cámara en el mismo frame.
+      pendingCenterSelectionRef.current = { center, target };
       cameraRef.current?.easeTo({
-        center: [center.longitude, center.latitude],
-        duration: 450,
+        center: target,
+        duration: selectedCenterCameraDuration,
+        easing: "ease",
         zoom: selectedCenterZoom,
       });
-      onCenterPress(center);
     },
     [centersByCode, onCenterPress],
   );
@@ -204,11 +233,36 @@ export function CenterMap({
       <MapLibreMap
         accessibilityLabel="Mapa con atractivos turísticos publicados"
         mapStyle={mapStyle}
+        onDidFailLoadingMap={() => setMapLoadState("error")}
+        onDidFinishLoadingMap={() => setMapLoadState("ready")}
+        onDidFinishLoadingStyle={() => setMapLoadState("ready")}
         onRegionDidChange={(event) => {
-          const [west, south, east, north] = event.nativeEvent.bounds;
-          if (event.nativeEvent.userInteraction)
+          const { bounds, center, userInteraction, zoom } = event.nativeEvent;
+          const pendingSelection = pendingCenterSelectionRef.current;
+
+          if (pendingSelection && !userInteraction) {
+            const [targetLongitude, targetLatitude] = pendingSelection.target;
+            const [longitude, latitude] = center;
+            const reachedTarget =
+              Math.abs(longitude - targetLongitude) <= cameraTargetTolerance &&
+              Math.abs(latitude - targetLatitude) <= cameraTargetTolerance &&
+              Math.abs(zoom - selectedCenterZoom) <= cameraZoomTolerance;
+
+            if (reachedTarget) {
+              pendingCenterSelectionRef.current = null;
+              onCenterPress(pendingSelection.center);
+            }
+          }
+
+          if (userInteraction) {
+            // Si el turista retoma el gesto durante el enfoque, cancela la
+            // ficha pendiente: la selección ya no representa el centro visible.
+            pendingCenterSelectionRef.current = null;
+            const [west, south, east, north] = bounds;
             onViewportChange({ west, south, east, north });
+          }
         }}
+        onWillStartLoadingMap={() => setMapLoadState("loading")}
         style={styles.map}
       >
         <Camera
@@ -329,12 +383,52 @@ export function CenterMap({
           />
         </GeoJSONSource>
       </MapLibreMap>
+      {mapLoadState === "loading" ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.mapLoadingOverlay,
+            { backgroundColor: colors.mapBackground },
+          ]}
+        >
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      ) : null}
     </View>
   );
 }
 
 const arcgisStylesBaseUrl =
   "https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis";
+
+function getArcgisStyle(
+  apiKey: string,
+  scheme: "light" | "dark",
+  basemapMode: BasemapMode,
+  requestKey: string,
+): Promise<StyleSpecification> {
+  const cached = arcgisStyleCache.get(requestKey);
+  if (cached) return Promise.resolve(cached);
+
+  const pending = arcgisStylePromiseCache.get(requestKey);
+  if (pending) return pending;
+
+  const request = fetch(arcgisStyleUrl(apiKey, scheme, basemapMode))
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`ArcGIS basemap responded with ${response.status}`);
+      }
+      return normalizeArcgisStyle(await response.json());
+    })
+    .then((style) => {
+      arcgisStyleCache.set(requestKey, style);
+      return style;
+    })
+    .finally(() => arcgisStylePromiseCache.delete(requestKey));
+
+  arcgisStylePromiseCache.set(requestKey, request);
+  return request;
+}
 
 function arcgisStyleUrl(
   apiKey: string,
@@ -432,4 +526,14 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   map: { flex: 1 },
+  mapLoadingOverlay: {
+    alignItems: "center",
+    bottom: 0,
+    justifyContent: "center",
+    left: 0,
+    opacity: 0.86,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
 });

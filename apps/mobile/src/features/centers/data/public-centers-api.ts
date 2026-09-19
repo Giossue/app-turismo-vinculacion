@@ -43,6 +43,16 @@ const detailSchema = centerSchema.extend({
   activities: z.array(z.string()),
   accessibility: z.array(z.string()),
   facilities: z.array(z.string()),
+  photos: z
+    .array(
+      z.object({
+        id: z.number().int().positive(),
+        url: z.string().min(1),
+        mimeType: z.string().min(1),
+        description: z.string().nullable(),
+      }),
+    )
+    .default([]),
 });
 const optionSchema = z.object({ code: z.string(), name: z.string() });
 const catalogSchema = z.object({

@@ -28,8 +28,10 @@ La aplicación web y su futuro repositorio quedan fuera de alcance.
   y equivalentes oscuros con contraste accesible.
 - Fuente del sistema y escala tipográfica única, compacta para móvil: display 28/36,
   title 22/28, heading 18/24, body 16/24, label 14/20 y caption 12/16.
-- El acceso transversal se realiza mediante un botón `menu` y `TourismMenuDrawer`; el
-  perfil deja de ser el control de navegación principal.
+- El acceso transversal se realiza mediante un botón `menu` y `TourismMenuDrawer`; en las
+  vistas principales el botón ocupa el cuarto elemento de la barra inferior, mientras que
+  las pantallas sin barra conservan el acceso en su encabezado. El perfil deja de ser el
+  control de navegación principal.
 - Expo permitirá orientación vertical y horizontal mediante layouts con `useWindowDimensions`.
 - No se usan maquetas externas como fuente de diseño.
 

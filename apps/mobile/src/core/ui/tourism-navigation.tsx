@@ -7,7 +7,15 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import ReanimatedDrawerLayout, {
   DrawerPosition,
   DrawerType,
@@ -28,10 +36,80 @@ import {
 
 export type TurismoTab = "explore" | "agent" | "itinerary";
 
+type TourismMenuContextValue = Readonly<{
+  closeMenu: () => void;
+  menuVisible: boolean;
+  openMenu: () => void;
+}>;
+
+const TourismMenuContext = createContext<TourismMenuContextValue | null>(null);
+
+/**
+ * A single drawer owner for the primary tab navigator. Keeping the drawer
+ * outside each tab prevents it from being mounted/unmounted during tab
+ * switches and gives Android back one consistent transient state to close.
+ */
+export function TourismMenuProvider({
+  children,
+  onItinerary,
+  onOfflineMaps,
+  onSaved,
+  onSettings,
+}: Readonly<{
+  children: ReactNode;
+  onItinerary: () => void;
+  onOfflineMaps: () => void;
+  onSaved: () => void;
+  onSettings: () => void;
+}>) {
+  const [menuVisible, setMenuVisible] = useState(false);
+  const openMenu = useCallback(() => setMenuVisible(true), []);
+  const closeMenu = useCallback(() => setMenuVisible(false), []);
+
+  return (
+    <TourismMenuContext.Provider value={{ closeMenu, menuVisible, openMenu }}>
+      {children}
+      <TourismMenuDrawer
+        onClose={closeMenu}
+        onItinerary={() => {
+          closeMenu();
+          onItinerary();
+        }}
+        onOfflineMaps={() => {
+          closeMenu();
+          onOfflineMaps();
+        }}
+        onSaved={() => {
+          closeMenu();
+          onSaved();
+        }}
+        onSettings={() => {
+          closeMenu();
+          onSettings();
+        }}
+        visible={menuVisible}
+      />
+    </TourismMenuContext.Provider>
+  );
+}
+
+export function useTourismMenu(): TourismMenuContextValue {
+  const context = useContext(TourismMenuContext);
+  if (!context) {
+    throw new Error("useTourismMenu debe usarse dentro de TourismMenuProvider");
+  }
+  return context;
+}
+
 export function TourismTabBar({
   active,
   onChange,
-}: Readonly<{ active: TurismoTab; onChange: (tab: TurismoTab) => void }>) {
+  onMenu,
+}: Readonly<{
+  active: TurismoTab;
+  onChange: (tab: TurismoTab) => void;
+  onMenu?: () => void;
+}>) {
   const colors = useTurismoPalette();
   const tabs: readonly {
     key: TurismoTab;
@@ -43,54 +121,81 @@ export function TourismTabBar({
     { key: "itinerary", label: "Itinerario", icon: "calendar" },
   ];
   return (
-    <View
-      style={[
-        styles.tabBar,
-        { backgroundColor: colors.surface, borderColor: colors.border },
-      ]}
+    <SafeAreaView
+      edges={["bottom"]}
+      style={[styles.tabBarSafeArea, { backgroundColor: colors.surface }]}
     >
-      {tabs.map((tab) => {
-        const selected = active === tab.key;
-        return (
+      <View
+        style={[
+          styles.tabBar,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+      >
+        {tabs.map((tab) => {
+          const selected = active === tab.key;
+          return (
+            <Pressable
+              accessibilityLabel={tab.label}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+              key={tab.key}
+              onPress={() => onChange(tab.key)}
+              style={({ pressed }) => [
+                styles.tab,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
+            >
+              <View
+                style={[
+                  styles.tabIcon,
+                  {
+                    backgroundColor: selected
+                      ? colors.primarySoft
+                      : "transparent",
+                  },
+                ]}
+              >
+                <TurismoIcon
+                  color={selected ? colors.primaryStrong : colors.textMuted}
+                  name={tab.icon}
+                  size={turismoIconSizes.md}
+                />
+              </View>
+              <Text
+                style={[
+                  styles.tabLabel,
+                  { color: selected ? colors.primaryStrong : colors.textMuted },
+                ]}
+              >
+                {tab.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+        {onMenu ? (
           <Pressable
-            accessibilityLabel={tab.label}
-            accessibilityRole="tab"
-            accessibilityState={{ selected }}
-            key={tab.key}
-            onPress={() => onChange(tab.key)}
+            accessibilityLabel="Abrir menú"
+            accessibilityRole="button"
+            onPress={onMenu}
             style={({ pressed }) => [
               styles.tab,
               { opacity: pressed ? 0.7 : 1 },
             ]}
           >
-            <View
-              style={[
-                styles.tabIcon,
-                {
-                  backgroundColor: selected
-                    ? colors.primarySoft
-                    : "transparent",
-                },
-              ]}
-            >
+            <View style={styles.tabIcon}>
               <TurismoIcon
-                color={selected ? colors.primaryStrong : colors.textMuted}
-                name={tab.icon}
+                color={colors.textMuted}
+                name="menu"
                 size={turismoIconSizes.md}
               />
             </View>
-            <Text
-              style={[
-                styles.tabLabel,
-                { color: selected ? colors.primaryStrong : colors.textMuted },
-              ]}
-            >
-              {tab.label}
+            <Text style={[styles.tabLabel, { color: colors.textMuted }]}>
+              Menú
             </Text>
           </Pressable>
-        );
-      })}
-    </View>
+        ) : null}
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -166,12 +271,14 @@ export function TourismHeader({
 export function TourismMenuDrawer({
   onClose,
   onItinerary,
+  onOfflineMaps,
   onSettings,
   onSaved,
   visible,
 }: Readonly<{
   onClose: () => void;
   onItinerary: () => void;
+  onOfflineMaps: () => void;
   onSettings: () => void;
   onSaved: () => void;
   visible: boolean;
@@ -259,6 +366,11 @@ export function TourismMenuDrawer({
                     label="Mi itinerario"
                     onPress={() => closeDrawer(onItinerary)}
                   />
+                  <DrawerAction
+                    icon="download"
+                    label="Mapas sin conexión"
+                    onPress={() => closeDrawer(onOfflineMaps)}
+                  />
                   <View
                     style={[
                       styles.drawerDivider,
@@ -287,7 +399,7 @@ function DrawerAction({
   label,
   onPress,
 }: Readonly<{
-  icon: "bookmark" | "calendar" | "settings";
+  icon: "bookmark" | "calendar" | "download" | "settings";
   label: string;
   onPress: () => void;
 }>) {
@@ -311,6 +423,10 @@ function DrawerAction({
 }
 
 const styles = StyleSheet.create({
+  tabBarSafeArea: {
+    alignSelf: "stretch",
+    width: "100%",
+  },
   tabBar: {
     alignSelf: "stretch",
     alignItems: "center",
@@ -325,14 +441,17 @@ const styles = StyleSheet.create({
   },
   tab: {
     alignItems: "center",
+    borderRadius: turismoRadii.pill,
     flex: 1,
     gap: turismoSpacing.xxs,
+    overflow: "hidden",
     minHeight: turismoMetrics.touchTarget,
   },
   tabIcon: {
     alignItems: "center",
     borderRadius: turismoRadii.pill,
     justifyContent: "center",
+    overflow: "hidden",
     minHeight: 28,
     minWidth: 46,
     paddingHorizontal: turismoSpacing.sm,

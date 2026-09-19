@@ -28,20 +28,24 @@ La especificación y resultado están en
 `docs/product/features/public-centers/` y
 `docs/plans/completed/2026-09-16-bootstrap-primer-corte.md`.
 
-La instancia local se ejecuta en Podman porque el PostgreSQL del sistema no tenía la
-extensión PostGIS. Está aislada en `127.0.0.1:55433`, con autenticación de confianza
-solo para desarrollo local. Su definición está en `infra/docker/compose.local.yml`.
+La instancia local usa el PostgreSQL instalado en el sistema, en `127.0.0.1:5432`. Debe
+tener instalada la extensión PostGIS antes de ejecutar el bootstrap. El Compose de
+`infra/docker/compose.local.yml` queda únicamente como alternativa reproducible para
+entornos que no puedan instalar PostGIS localmente.
 
 ```bash
-# Iniciar la base local si todavía no está activa
-podman start turismo-vinculacion-postgres
+# Verificar el servicio local
+systemctl is-active postgresql
+
+# El baseline crea la base y sus extensiones (ejecutar una vez)
+psql "postgresql://postgres@127.0.0.1:5432/postgres" -f turismo_vinculacion_app.sql
 
 # Verificar el workspace
 corepack pnpm verify
 
-# En terminales separadas
+# En terminales separadas: API de este repositorio y panel independiente
 corepack pnpm dev:api
-corepack pnpm dev:web
+(cd ../web-turismo-admin && bun run dev)
 
 # Cliente móvil Android: consultar apps/mobile/README.md
 corepack pnpm --filter @turismo/mobile android

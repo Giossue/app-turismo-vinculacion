@@ -13,6 +13,8 @@ import {
   ActivityIndicator,
   StyleSheet,
   Text,
+  Image,
+  ScrollView,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -26,11 +28,7 @@ import {
   TourismSearchField,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
-import {
-  TourismMenuButton,
-  TourismMenuDrawer,
-  TourismTabBar,
-} from "@/core/ui/tourism-navigation";
+import { useTourismMenu } from "@/core/ui/tourism-navigation";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
@@ -59,6 +57,7 @@ import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler"
 export default function HomeScreen() {
   const router = useRouter();
   const colors = useTurismoPalette();
+  const { closeMenu, menuVisible } = useTourismMenu();
   const { height, width } = useWindowDimensions();
   const isLandscape = width > height;
   const sheetRef = useRef<ExpoBottomSheet>(null);
@@ -67,7 +66,6 @@ export default function HomeScreen() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [nearbyOnly, setNearbyOnly] = useState(false);
-  const [menuVisible, setMenuVisible] = useState(false);
   const [selectedCenterCode, setSelectedCenterCode] = useState<string | null>(
     null,
   );
@@ -88,7 +86,6 @@ export default function HomeScreen() {
     data: centers = [],
     error,
     isFetching,
-    isPending,
     isPlaceholderData,
     refetch,
   } = usePublishedCenters(query);
@@ -118,7 +115,7 @@ export default function HomeScreen() {
 
   const handleBeforeBack = useCallback(() => {
     if (menuVisible) {
-      setMenuVisible(false);
+      closeMenu();
       return true;
     }
     if (showFilters) {
@@ -138,6 +135,7 @@ export default function HomeScreen() {
     return false;
   }, [
     clearSearch,
+    closeMenu,
     menuVisible,
     selectedCenterCode,
     submittedQuery,
@@ -150,8 +148,6 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!submittedQuery) return;
     sheetRef.current?.present();
-    const collapseTimer = setTimeout(() => sheetRef.current?.collapse(), 50);
-    return () => clearTimeout(collapseTimer);
   }, [submittedQuery]);
 
   useEffect(() => {
@@ -161,8 +157,6 @@ export default function HomeScreen() {
       return;
     }
     sheetRef.current?.present();
-    const collapseTimer = setTimeout(() => sheetRef.current?.collapse(), 50);
-    return () => clearTimeout(collapseTimer);
   }, [selectedCenter, submittedQuery]);
 
   const handleViewportChange = useCallback(() => {
@@ -171,11 +165,6 @@ export default function HomeScreen() {
     // pierden mientras termina una consulta por viewport. La consulta acotada
     // se habilitará cuando exista paginación/cache de viewport en la API.
   }, []);
-
-  const navigateTab = (tab: "explore" | "agent" | "itinerary") => {
-    if (tab === "explore") return;
-    router.replace(`/${tab}` as never);
-  };
 
   const openRoute = () => {
     // La ficha es un overlay transitorio del mapa: debe desaparecer antes de
@@ -218,8 +207,8 @@ export default function HomeScreen() {
     void refetch();
   }, [refetch]);
 
-  if (isPending) {
-    return error ? <ErrorState onRetry={retryCenters} /> : <LoadingState />;
+  if (error && centers.length === 0) {
+    return <ErrorState onRetry={retryCenters} />;
   }
 
   return (
@@ -246,7 +235,6 @@ export default function HomeScreen() {
           ]}
         >
           <View style={styles.searchRow}>
-            <TourismMenuButton compact onPress={() => setMenuVisible(true)} />
             <TourismSearchField
               accessibilityLabel="Buscar atractivos"
               onBlur={() => setSearchFocused(false)}
@@ -295,16 +283,6 @@ export default function HomeScreen() {
           isLandscape && styles.mapActionLayerLandscape,
         ]}
       >
-        <TourismIconAction
-          accessibilityLabel={locationButtonLabel}
-          disabled={locationStatus === "requesting"}
-          icon="locate"
-          onPress={() => void handleLocateUser()}
-          selected={locationStatus === "ready"}
-          style={styles.locationAction}
-        />
-      </View>
-      <View pointerEvents="box-none" style={styles.bottomOverlay}>
         {locationStatus !== "ready" ? (
           <View
             pointerEvents="auto"
@@ -313,28 +291,34 @@ export default function HomeScreen() {
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
           >
-            <TurismoIcon
-              color={colors.primaryStrong}
-              name="locate"
-              size={turismoIconSizes.sm}
-            />
+            {locationStatus === "requesting" ? (
+              <ActivityIndicator
+                color={colors.primaryStrong}
+                size="small"
+              />
+            ) : (
+              <TurismoIcon
+                color={colors.primaryStrong}
+                name="locate"
+                size={turismoIconSizes.sm}
+              />
+            )}
             <Text
+              numberOfLines={1}
               style={[styles.locationNoticeText, { color: colors.textMuted }]}
             >
               {locationNoticeText}
             </Text>
           </View>
         ) : null}
-        <SafeAreaView
-          edges={["bottom"]}
-          pointerEvents="auto"
-          style={[
-            styles.bottomNavSafeArea,
-            { backgroundColor: colors.surface },
-          ]}
-        >
-          <TourismTabBar active="explore" onChange={navigateTab} />
-        </SafeAreaView>
+        <TourismIconAction
+          accessibilityLabel={locationButtonLabel}
+          disabled={locationStatus === "requesting"}
+          icon="locate"
+          onPress={() => void handleLocateUser()}
+          selected={locationStatus === "ready"}
+          style={styles.locationAction}
+        />
       </View>
       <ExpoBottomSheet
         backgroundStyle={{ backgroundColor: colors.surface }}
@@ -399,19 +383,6 @@ export default function HomeScreen() {
           </BottomSheetScrollView>
         ) : null}
       </ExpoBottomSheet>
-      <TourismMenuDrawer
-        onClose={() => setMenuVisible(false)}
-        onItinerary={() => {
-          setMenuVisible(false);
-          router.replace("/itinerary" as never);
-        }}
-        onSettings={() => {
-          setMenuVisible(false);
-          router.push("/settings" as never);
-        }}
-        onSaved={() => setMenuVisible(false)}
-        visible={menuVisible}
-      />
     </View>
   );
 }
@@ -509,6 +480,7 @@ function PlaceDetail({ detail }: Readonly<{ detail: PublicCenterDetail }>) {
   const colors = useTurismoPalette();
   return (
     <>
+      <PlacePhotoGallery photos={detail.photos} />
       {detail.description ? (
         <PlaceSection icon="circleHelp" title="Descripción">
           <Text style={[styles.detailInfoValue, { color: colors.text }]}>
@@ -546,7 +518,7 @@ function PlaceDetail({ detail }: Readonly<{ detail: PublicCenterDetail }>) {
               />
             ) : null}
             {detail.admission.priceFrom !== null ||
-            detail.admission.priceTo !== null ? (
+              detail.admission.priceTo !== null ? (
               <PlaceInfoRow
                 label="Precio"
                 value={formatPrice(
@@ -577,6 +549,44 @@ function PlaceDetail({ detail }: Readonly<{ detail: PublicCenterDetail }>) {
       />
     </>
   );
+}
+
+function PlacePhotoGallery({
+  photos,
+}: Readonly<{ photos: PublicCenterDetail["photos"] }>) {
+  const colors = useTurismoPalette();
+  if (!photos.length) return null;
+  return (
+    <PlaceSection icon="mapPinned" title="Galería">
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.detailGallery}
+      >
+        {photos.map((photo) => (
+          <Image
+            key={photo.id}
+            accessibilityLabel={photo.description ?? "Fotografía del atractivo"}
+            source={{ uri: resolveMediaUrl(photo.url) }}
+            style={styles.detailGalleryImage}
+          />
+        ))}
+      </ScrollView>
+      <Text
+        style={[styles.detailInfoValue, { color: colors.textMuted }]}
+      >
+        Imágenes publicadas en esta ficha.
+      </Text>
+    </PlaceSection>
+  );
+}
+
+function resolveMediaUrl(path: string): string {
+  if (/^https?:\/\//.test(path)) return path;
+  const api = (
+    process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:3000/api/v1"
+  ).replace(/\/$/, "");
+  return `${api.replace(/\/api\/v1$/, "")}${path}`;
 }
 
 function PlaceSection({
@@ -684,18 +694,6 @@ function formatPrice(from: number | null, to: number | null): string {
   return value === null ? "No especificado" : `$${value.toFixed(2)}`;
 }
 
-function LoadingState() {
-  const colors = useTurismoPalette();
-  return (
-    <View style={[styles.loading, { backgroundColor: colors.background }]}>
-      <ActivityIndicator color={colors.primary} size="large" />
-      <Text style={[styles.loadingText, { color: colors.textMuted }]}>
-        Preparando el mapa turístico…
-      </Text>
-    </View>
-  );
-}
-
 function ErrorState({ onRetry }: Readonly<{ onRetry: () => void }>) {
   const colors = useTurismoPalette();
   return (
@@ -733,45 +731,31 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: turismoSpacing.xs,
   },
-  bottomOverlay: {
-    bottom: 0,
-    gap: turismoSpacing.sm,
-    left: 0,
-    position: "absolute",
-    right: 0,
-  },
   mapActionLayer: {
-    alignItems: "flex-end",
-    bottom: turismoMetrics.tabBar + turismoSpacing.xl,
+    alignItems: "center",
+    bottom: turismoSpacing.md,
+    flexDirection: "row",
+    gap: turismoSpacing.xs,
     justifyContent: "flex-end",
     left: 0,
-    paddingBottom: turismoSpacing.md,
     paddingHorizontal: turismoSpacing.md,
     position: "absolute",
     right: 0,
-    top: 0,
   },
   mapActionLayerLandscape: {
-    bottom: turismoMetrics.tabBar + turismoSpacing.md,
+    bottom: turismoSpacing.sm,
   },
   locationAction: {
     height: turismoMetrics.controlLg,
     width: turismoMetrics.controlLg,
   },
-  bottomNavSafeArea: {
-    alignSelf: "stretch",
-    width: "100%",
-  },
   locationNotice: {
     alignItems: "center",
-    alignSelf: "center",
     borderRadius: turismoRadii.pill,
-    marginHorizontal: turismoSpacing.md,
-    minWidth: 0,
     borderWidth: turismoMetrics.borderWidth,
     flexDirection: "row",
+    flexShrink: 1,
     gap: turismoSpacing.xs,
-    maxWidth: "92%",
     paddingHorizontal: turismoSpacing.md,
     paddingVertical: turismoSpacing.xs,
   },
@@ -814,6 +798,13 @@ const styles = StyleSheet.create({
   },
   detailSectionTitle: { ...turismoTypography.heading },
   detailSectionContent: { gap: turismoSpacing.sm },
+  detailGallery: { gap: turismoSpacing.sm },
+  detailGalleryImage: {
+    backgroundColor: "#d8e4e6",
+    borderRadius: turismoRadii.md,
+    height: 150,
+    width: 220,
+  },
   detailInfoRow: { gap: turismoSpacing.xxs },
   detailInfoLabel: { ...turismoTypography.caption },
   detailInfoValue: { ...turismoTypography.body },

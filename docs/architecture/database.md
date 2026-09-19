@@ -28,6 +28,8 @@ como snapshot/bootstrap generado o se retirará mediante una decisión explícit
   opcionales históricas con `SET NULL` según diseño.
 - Todas las FKs consultadas se indexan.
 - Publicación, valoración, código y auditoría se actualizan transaccionalmente.
+- `borradores_centros_turisticos` conserva un snapshot JSONB versionado por centro; no
+  reemplaza la fila pública hasta que una revisión aprobada se publica.
 - Coordenadas validadas y sincronizadas con `GEOGRAPHY`.
 
 ## Extensiones pendientes del producto
@@ -36,7 +38,8 @@ Crear mediante migraciones cuando su feature se especifique:
 
 - instituciones y membresías;
 - creador/responsable de ficha;
-- geometría `LINESTRING` de rutas registradas;
+- límites oficiales de ciudades, versiones `LINESTRING` de rutas registradas y metadatos de
+  paquetes offline (migración `20260917_offline_routes_and_city_packages.sql`);
 - itinerarios, jornadas y paradas;
 - preferencias e historial controlado;
 - consentimientos y dispositivos push;
@@ -60,6 +63,7 @@ Crear mediante migraciones cuando su feature se especifique:
 - Ficha pública completa por código.
 - Rutas/paradas asociadas a un centro.
 - Cola de revisiones por estado/fecha.
+- Borradores administrativos y revisiones propuestas por centro.
 - Favoritos y opiniones del usuario.
 - Fuentes publicadas para IA.
 

@@ -2,8 +2,8 @@
 
 ## Alcance
 
-Una aplicación React Native/Expo para turistas y captura de campo de guías. Las capacidades se
-habilitan por rol; no se duplican aplicaciones hasta que producto lo justifique.
+Una aplicación React Native/Expo para turistas. La captura y administración de fichas
+pertenecen al panel web institucional; la app móvil no habilita flujos operativos.
 
 ## Organización por feature
 
@@ -46,10 +46,15 @@ React Native Paper es el único kit externo de componentes del móvil. Los compo
 la web se desarrollará en un repositorio separado.
 
 Las pantallas secundarias usan `TourismScreenFrame` como shell compartido. Este componente
-centraliza safe areas, encabezado, ancho máximo de contenido, márgenes horizontales y, en
-las vistas principales, la barra inferior. Cada pantalla conserva únicamente su contenido
-de feature dentro de ese marco; `Explorar` es la excepción intencional porque el mapa ocupa
-todo el viewport y monta el mismo `TourismTabBar` como overlay.
+centraliza safe areas, encabezado, ancho máximo de contenido y márgenes horizontales. Las
+vistas principales viven en un `Tabs` real de Expo Router con `detachInactiveScreens={false}`:
+la barra inferior visual (`TourismTabBar`) se inyecta como `tabBar` personalizado y el mapa
+queda montado al cambiar a Agente o Itinerario.
+
+El acceso al menú lateral se presenta como el cuarto elemento de `TourismTabBar` en las
+vistas principales (`Explorar`, `Agente` e `Itinerario`). Un `TourismMenuProvider` posee un
+único drawer para esas pestañas; las pantallas secundarias que no montan esa barra conservan
+el mismo botón en el encabezado con un drawer local.
 
 Las decisiones de layout siguen las primitivas oficiales de React Native: dimensiones en
 puntos independientes de densidad, Flexbox y `useWindowDimensions` para adaptación,
@@ -59,7 +64,7 @@ mayores y accesibilidad explícita en controles no textuales. `PixelRatio` se re
 integraciones que necesiten densidad real. El back handler se registra y
 limpia por pantalla, consume primero overlays y no convierte gestos efímeros en historial.
 
-Referencias: [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/), [Expo Location](https://docs.expo.dev/versions/v57.0.0/sdk/location/), [Expo Router](https://docs.expo.dev/router/introduction/), [Style RN 0.86](https://reactnative.dev/docs/0.86/style), [dimensiones](https://reactnative.dev/docs/0.86/height-and-width), [useWindowDimensions](https://reactnative.dev/docs/0.86/usewindowdimensions), [PixelRatio](https://reactnative.dev/docs/0.86/pixelratio), [Text](https://reactnative.dev/docs/0.86/text), [Pressable](https://reactnative.dev/docs/0.86/pressable), [BackHandler](https://reactnative.dev/docs/0.86/backhandler) y [accesibilidad](https://reactnative.dev/docs/0.86/accessibility).
+Referencias: [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/), [Expo Location](https://docs.expo.dev/versions/v57.0.0/sdk/location/), [Expo Router](https://docs.expo.dev/router/introduction/), [Expo SQLite](https://docs.expo.dev/versions/latest/sdk/sqlite/), [MapLibre OfflineManager](https://maplibre.org/maplibre-react-native/docs/modules/offline-manager/), [Style RN 0.86](https://reactnative.dev/docs/0.86/style), [dimensiones](https://reactnative.dev/docs/0.86/height-and-width), [useWindowDimensions](https://reactnative.dev/docs/0.86/usewindowdimensions), [PixelRatio](https://reactnative.dev/docs/0.86/pixelratio), [Text](https://reactnative.dev/docs/0.86/text), [Pressable](https://reactnative.dev/docs/0.86/pressable), [BackHandler](https://reactnative.dev/docs/0.86/backhandler) y [accesibilidad](https://reactnative.dev/docs/0.86/accessibility).
 
 ## Estado
 
@@ -90,8 +95,23 @@ filtros, texto y selección local son estado efímero: no crean entradas en el h
 se deshacen con el botón Atrás. En Android, cada pantalla enfocada usa un único back
 handler que cierra primero sus overlays y después retira exactamente una pantalla; en la
 raíz, el evento sale de la aplicación. Las pestañas (`Explorar`, `Agente` e `Itinerario`)
-se cambian con `replace` para no apilar copias de la misma navegación; las fichas y rutas
-se abren con `push` porque sí representan una pantalla que puede cerrarse.
+se cambian con el router nativo de Tabs, que conserva una instancia por pestaña y no apila
+copias de la misma navegación. Las fichas y rutas se abren con `push` porque sí representan
+una pantalla que puede cerrarse.
+
+## Caché y funcionamiento sin conexión
+
+TanStack Query persiste el catálogo público en AsyncStorage durante un máximo de 24 horas.
+Los centros publicados usan `staleTime` de 10 minutos y no se vuelven a solicitar al montar
+una pestaña ya visitada; al recuperar conectividad se permite la revalidación. Esto es una
+copia de lectura para continuidad de UX, no sustituye PostgreSQL.
+
+Los paquetes de mapa se descargan por ciudad desde `Mapas sin conexión`. MapLibre
+`OfflineManager` persiste tiles del estilo de calles y Expo SQLite conserva el manifiesto,
+fichas y rutas publicadas. Si la API no está disponible, el descubrimiento y la ficha básica
+se hidratan desde ese manifiesto local. Solo las ciudades con un paquete institucional
+PUBLICADO aparecen como descargables; sus límites proceden de una fuente oficial y no se
+editan en el móvil.
 
 ## Ubicación
 
@@ -121,13 +141,11 @@ se abren con `push` porque sí representan una pantalla que puede cerrarse.
 Permiso no solicitado, concedido aproximado, concedido preciso, denegado, denegado
 permanentemente, GPS apagado, señal degradada y ubicación antigua.
 
-## Captura de guías
+## Captura administrativa
 
-- Borrador local recuperable.
-- Guardado incremental en servidor.
-- Cola de subidas con reintento.
-- Compresión de multimedia sin perder original cuando la política lo exija.
-- Conflictos visibles; nunca sobrescribir silenciosamente cambios revisados.
+La captura, edición, carga multimedia y publicación de fichas se implementan en el
+panel web para administradores. La aplicación móvil no contiene pantallas ni permisos
+para esas operaciones.
 
 ## Accesibilidad
 

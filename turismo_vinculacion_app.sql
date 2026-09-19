@@ -1502,7 +1502,7 @@ CREATE INDEX idx_archivos_checksum ON archivos_centro_turistico (checksum_sha256
 
 -- Datos iniciales indispensables
 INSERT INTO roles (nombre_rol) VALUES
-    ('ADMINISTRADOR'), ('REVISOR'), ('GESTOR'), ('TURISTA')
+    ('ADMINISTRADOR'), ('TURISTA')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO estados_resenia (codigo, nombre) VALUES

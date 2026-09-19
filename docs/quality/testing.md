@@ -11,7 +11,7 @@
 ## Flujos críticos
 
 - Registro/login/rotación/revocación.
-- Guía crea borrador, envía, revisor rechaza/corrige/aprueba y publica.
+- Administrador crea borrador, revisa, corrige, aprueba y publica.
 - Turista ve solo contenido publicado.
 - Consulta por viewport y cercanía.
 - Ubicación denegada con origen manual.

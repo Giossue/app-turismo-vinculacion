@@ -1,13 +1,13 @@
 # Integraciones
 
-| Servicio | Propósito | Acceso | Propietario interno |
-| --- | --- | --- | --- |
-| MapLibre + proveedor de rutas | renderizado de mapas, rutas y navegación futura | estilo público limitado; credenciales de rutas solo en backend | maps |
-| Proveedor de IA | texto, visión y voz | API key server-side | ai |
-| MinIO/S3 | objetos multimedia | credenciales server-side/URLs firmadas | files |
-| FCM/APNs | notificaciones móviles | credenciales server-side | notifications |
-| Correo | verificación y recuperación | credenciales server-side | auth |
-| Clima | pronóstico y alertas | API server-side | alerts |
+| Servicio                      | Propósito                                       | Acceso                                                         | Propietario interno |
+| ----------------------------- | ----------------------------------------------- | -------------------------------------------------------------- | ------------------- |
+| MapLibre + proveedor de rutas | renderizado de mapas, rutas y navegación futura | estilo público limitado; credenciales de rutas solo en backend | maps                |
+| Proveedor de IA               | texto, visión y voz                             | API key server-side                                            | ai                  |
+| MinIO/S3                      | objetos multimedia                              | credenciales server-side/URLs firmadas                         | files               |
+| FCM/APNs                      | notificaciones móviles                          | credenciales server-side                                       | notifications       |
+| Correo                        | verificación y recuperación                     | credenciales server-side                                       | auth                |
+| Clima                         | pronóstico y alertas                            | API server-side                                                | alerts              |
 
 ## Reglas
 
@@ -22,8 +22,10 @@
 
 ## Archivos
 
-Subidas grandes mediante URL firmada de corta duración cuando sea seguro. El backend
-autoriza antes de firmar, valida metadata y confirma el objeto antes de publicarlo.
+Los archivos multimedia del panel pasan primero por el backend multipart para validar contenido y
+registrar metadatos. En producción el proveedor recomendado es MinIO/S3 privado; las cargas
+grandes y formatos adicionales podrán usar URL firmada de corta duración cuando exista el
+flujo de confirmación correspondiente. El backend autoriza antes de exponer o publicar.
 
 ## Datos dinámicos
 

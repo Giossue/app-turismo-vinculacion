@@ -5,6 +5,7 @@ node_modules/
 dist/
 .next/
 coverage/
+.data/
 .env
 .env.*
 !.env.example

@@ -1,8 +1,9 @@
 # Arquitectura web futura
 
-La web no forma parte del cliente móvil en este monorepo y se trasladará a un repositorio
-independiente. El código web que permanece aquí es una vista pública mínima de consulta y
-usa CSS convencional; no depende de Tailwind ni de un kit visual web.
+La web no forma parte del cliente móvil en este monorepo. La vista pública y el panel
+operativo viven en el repositorio independiente `web-turismo-admin`; la aplicación móvil
+es el único cliente para turistas. Ambos clientes consumen la misma API NestJS y ningún
+cliente abre conexiones directas a PostgreSQL.
 
 ## Áreas
 
@@ -12,10 +13,10 @@ usa CSS convencional; no depende de Tailwind ni de un kit visual web.
 
 ## Stack
 
-Next.js App Router y TypeScript estricto para la vista de consulta actual. La futura
-aplicación web decidirá su kit visual, estilos, TanStack Query, formularios y validación
-cuando se cree el repositorio independiente. Server Components para contenido público/SEO;
-Client Components solo cuando existe interacción real.
+Next.js App Router, TypeScript estricto y MUI para el repositorio administrativo. Server
+Components para landing y contenido público/SEO; Client Components solo cuando existe
+interacción real. El panel usa superficies planas sin sombras, con bordes sutiles y radios
+contenidos, además de componentes reutilizables con tokens centralizados.
 
 ## Estado
 
@@ -31,8 +32,23 @@ Client Components solo cuando existe interacción real.
 - Tablas con filtros consistentes, paginación y acciones por permisos/estado.
 - Comparación clara entre publicado y propuesto durante revisión.
 - Toda mutación comunica pendiente, éxito y error.
+- El panel usa refresh token HttpOnly y access token solo en memoria; nunca localStorage.
 - Desactivar es reversible y no requiere fricción destructiva excesiva.
 - No mostrar nombres de tablas, IDs, JSON, rutas de objeto o proveedor salvo herramienta técnica autorizada.
+
+La primera superficie operativa implementada en `web-turismo-admin` incluye Resumen,
+Revisión, inventario, captura del núcleo de fichas y Configuración. El editor consulta
+catálogos activos y captura además actividades, accesibilidad y facilidades. El panel consulta
+`/admin/summary`, `/admin/centers`, `/admin/catalogs` y `/admin/centers/:code`; las
+mutaciones de borrador, revisión, aprobación, publicación, desactivación y reactivación
+se realizan exclusivamente mediante la API. Los borradores se mantienen aislados de la
+versión pública hasta publicar y cada mutación genera auditoría. Las importaciones y
+multimedia se incorporarán en fases posteriores.
+La sección Catálogos permite administrar las opciones técnicas mediante la API y muestra
+estados activos/inactivos sin conexión directa a PostgreSQL.
+El editor también carga fotografías como multipart hacia `/admin/centers/:code/media`; la
+API guarda el binario en el proveedor configurado, registra metadatos en PostgreSQL y solo
+expone una imagen cuando la ficha se publica.
 
 ## Web móvil
 

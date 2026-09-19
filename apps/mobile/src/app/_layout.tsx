@@ -1,4 +1,7 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SystemUI from "expo-system-ui";
 import { StatusBar } from "expo-status-bar";
 import { Stack } from "expo-router";
@@ -9,13 +12,37 @@ import { TurismoPaperProvider } from "@/core/ui/turismo-paper-provider";
 import { getTurismoColors } from "@/core/ui/tokens";
 
 function AppProviders({ children }: Readonly<{ children: ReactNode }>) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            gcTime: 24 * 60 * 60 * 1000,
+            refetchOnReconnect: true,
+          },
+        },
+      }),
+  );
+  const [persister] = useState(() =>
+    createAsyncStoragePersister({
+      key: "turismo-vinculacion-query-cache-v1",
+      storage: AsyncStorage,
+      throttleTime: 1000,
+    }),
+  );
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        buster: "mobile-v1",
+        maxAge: 24 * 60 * 60 * 1000,
+        persister,
+      }}
+    >
       <TurismoThemeProvider>
         <TurismoPaperProvider>{children}</TurismoPaperProvider>
       </TurismoThemeProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }
 
@@ -45,11 +72,10 @@ function AppNavigation() {
           headerShadowVisible: false,
         }}
       >
-        <Stack.Screen name="index" />
+        <Stack.Screen name="(tabs)" />
         <Stack.Screen name="centers/[code]" />
-        <Stack.Screen name="agent" />
-        <Stack.Screen name="itinerary" />
         <Stack.Screen name="route" />
+        <Stack.Screen name="offline" />
         <Stack.Screen name="settings" />
       </Stack>
     </>

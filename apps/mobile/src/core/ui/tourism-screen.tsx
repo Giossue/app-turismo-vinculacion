@@ -2,11 +2,7 @@ import type { ReactNode } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StyleSheet, View } from "react-native";
 
-import {
-  TourismHeader,
-  TourismTabBar,
-  type TurismoTab,
-} from "./tourism-navigation";
+import { TourismHeader } from "./tourism-navigation";
 import { useTurismoPalette } from "./tourism-controls";
 import { turismoMetrics, turismoSpacing } from "./tokens";
 
@@ -17,28 +13,25 @@ import { turismoMetrics, turismoSpacing } from "./tokens";
  * feature screen from slowly developing its own visual language.
  */
 export function TourismScreenFrame({
-  activeTab,
   children,
+  includeBottomInset = true,
   onBack,
   onMenu,
-  onTabChange,
   subtitle,
   title,
 }: Readonly<{
-  activeTab?: TurismoTab;
   children: ReactNode;
+  includeBottomInset?: boolean;
   onBack?: () => void;
   onMenu?: () => void;
-  onTabChange?: (tab: TurismoTab) => void;
   subtitle?: string;
   title: string;
 }>) {
   const colors = useTurismoPalette();
-  const showTabBar = activeTab !== undefined && onTabChange !== undefined;
 
   return (
     <SafeAreaView
-      edges={["top", "bottom"]}
+      edges={includeBottomInset ? ["top", "bottom"] : ["top"]}
       style={[styles.safeArea, { backgroundColor: colors.background }]}
     >
       <View style={styles.headerWrap}>
@@ -50,9 +43,6 @@ export function TourismScreenFrame({
         />
       </View>
       <View style={styles.contentFrame}>{children}</View>
-      {showTabBar ? (
-        <TourismTabBar active={activeTab} onChange={onTabChange} />
-      ) : null}
     </SafeAreaView>
   );
 }

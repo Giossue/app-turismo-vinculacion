@@ -1,6 +1,7 @@
 import { useCallback, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   Share,
@@ -27,6 +28,7 @@ import {
   turismoTypography,
 } from "@/core/ui/tokens";
 import { usePublishedCenter } from "@/features/centers/application/use-published-center";
+import type { PublicCenterDetail } from "@/features/centers/domain/public-center";
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 
 export default function CenterDetailScreen() {
@@ -138,6 +140,7 @@ export default function CenterDetailScreen() {
             style={styles.flexAction}
           />
         </View>
+        <PhotoGallery photos={center.photos} />
         <Section title="Información" icon="circleHelp">
           <InfoRow
             label="Categoría"
@@ -195,6 +198,10 @@ export default function CenterDetailScreen() {
         onItinerary={() => {
           setMenuVisible(false);
           router.replace("/itinerary" as never);
+        }}
+        onOfflineMaps={() => {
+          setMenuVisible(false);
+          router.push("/offline" as never);
         }}
         onSettings={() => {
           setMenuVisible(false);
@@ -262,6 +269,42 @@ function Tags({
   );
 }
 
+function PhotoGallery({
+  photos,
+}: Readonly<{
+  photos: PublicCenterDetail["photos"];
+}>) {
+  const colors = useTurismoPalette();
+  if (!photos.length) return null;
+  return (
+    <TourismSurface style={styles.section}>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Galería</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.gallery}
+      >
+        {photos.map((photo) => (
+          <Image
+            key={photo.id}
+            accessibilityLabel={photo.description ?? "Fotografía del atractivo"}
+            source={{ uri: resolveMediaUrl(photo.url) }}
+            style={styles.galleryImage}
+          />
+        ))}
+      </ScrollView>
+    </TourismSurface>
+  );
+}
+
+function resolveMediaUrl(path: string): string {
+  if (/^https?:\/\//.test(path)) return path;
+  const api = (
+    process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:3000/api/v1"
+  ).replace(/\/$/, "");
+  return `${api.replace(/\/api\/v1$/, "")}${path}`;
+}
+
 const styles = StyleSheet.create({
   content: {
     gap: turismoSpacing.lg,
@@ -307,6 +350,13 @@ const styles = StyleSheet.create({
   infoLabel: { ...turismoTypography.caption },
   infoValue: { ...turismoTypography.body },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: turismoSpacing.xs },
+  gallery: { gap: turismoSpacing.sm },
+  galleryImage: {
+    backgroundColor: "#d8e4e6",
+    borderRadius: turismoRadii.md,
+    height: 170,
+    width: 240,
+  },
   footerLink: {
     alignItems: "center",
     flexDirection: "row",

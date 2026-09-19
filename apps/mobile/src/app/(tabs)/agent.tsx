@@ -17,7 +17,7 @@ import {
   TourismSurface,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
-import { TourismMenuDrawer } from "@/core/ui/tourism-navigation";
+import { useTourismMenu } from "@/core/ui/tourism-navigation";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
@@ -37,7 +37,7 @@ import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler"
 export default function AgentScreen() {
   const router = useRouter();
   const colors = useTurismoPalette();
-  const [menuVisible, setMenuVisible] = useState(false);
+  const { closeMenu, menuVisible } = useTourismMenu();
   const [draft, setDraft] = useState("");
   const [messages, setMessages] =
     useState<readonly AgentDemoMessage[]>(agentDemoMessages);
@@ -45,9 +45,9 @@ export default function AgentScreen() {
 
   const handleBeforeBack = useCallback(() => {
     if (!menuVisible) return false;
-    setMenuVisible(false);
+    closeMenu();
     return true;
-  }, [menuVisible]);
+  }, [closeMenu, menuVisible]);
 
   useScreenBackHandler(handleBeforeBack);
 
@@ -88,12 +88,7 @@ export default function AgentScreen() {
 
   return (
     <TourismScreenFrame
-      activeTab="agent"
-      onMenu={() => setMenuVisible(true)}
-      onTabChange={(tab) => {
-        if (tab === "explore") router.replace("/");
-        if (tab === "itinerary") router.replace("/itinerary" as never);
-      }}
+      includeBottomInset={false}
       subtitle="ANDES NOCTURNOS"
       title="Agente turístico"
     >
@@ -283,19 +278,6 @@ export default function AgentScreen() {
           </TourismSurface>
         </ScrollView>
       </KeyboardAvoidingView>
-      <TourismMenuDrawer
-        onClose={() => setMenuVisible(false)}
-        onItinerary={() => {
-          setMenuVisible(false);
-          router.replace("/itinerary" as never);
-        }}
-        onSettings={() => {
-          setMenuVisible(false);
-          router.push("/settings" as never);
-        }}
-        onSaved={() => setMenuVisible(false)}
-        visible={menuVisible}
-      />
     </TourismScreenFrame>
   );
 }

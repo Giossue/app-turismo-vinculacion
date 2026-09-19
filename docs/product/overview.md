@@ -9,15 +9,13 @@ impidan extenderla al resto del país.
 
 El sistema transforma fichas técnicas del sector turístico en experiencias útiles:
 mapa, búsqueda, rutas, navegación, itinerarios y un asistente de IA que cita información
-aprobada. Guías registran contenido y un administrador/revisor decide su publicación.
+aprobada. Los administradores registran y publican el contenido institucional.
 
 ## Usuarios
 
 - Visitante: explora mapa y lugares públicos sin cuenta.
 - Turista: favoritos, opiniones, preferencias, itinerarios e IA personalizada.
-- Guía/gestor: captura fichas, ubicación y multimedia; atiende observaciones.
-- Revisor: evalúa cambios y aprueba o rechaza.
-- Administrador: usuarios, roles, catálogos, publicación, moderación y configuración.
+- Administrador: crea, edita, revisa, publica y mantiene fichas, catálogos, moderación y configuración.
 
 ## Problemas que resuelve
 
@@ -33,9 +31,9 @@ aprobada. Guías registran contenido y un administrador/revisor decide su public
 2. Llegar: elegir origen/modo, calcular una ruta y navegar.
 3. Planificar: guardar destinos y generar un itinerario viable.
 4. Consultar IA: recibir respuestas con fuentes publicadas.
-5. Registrar: un guía guarda borradores y envía una ficha.
-6. Revisar: un revisor compara, observa, aprueba y publica.
-7. Mantener: administrar catálogos, rutas, multimedia, opiniones e importaciones.
+5. Registrar: un administrador guarda borradores y prepara una ficha.
+6. Publicar: un administrador compara, observa, aprueba y publica.
+7. Mantener: el administrador gestiona catálogos, rutas, multimedia, opiniones e importaciones.
 
 ## Comportamiento sin ubicación
 

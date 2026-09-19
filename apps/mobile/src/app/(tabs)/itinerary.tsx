@@ -1,5 +1,5 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useRouter } from "expo-router";
 
 import {
@@ -8,7 +8,7 @@ import {
   TourismSurface,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
-import { TourismMenuDrawer } from "@/core/ui/tourism-navigation";
+import { useTourismMenu } from "@/core/ui/tourism-navigation";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
@@ -24,24 +24,19 @@ import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler"
 export default function ItineraryScreen() {
   const router = useRouter();
   const colors = useTurismoPalette();
-  const [menuVisible, setMenuVisible] = useState(false);
+  const { closeMenu, menuVisible } = useTourismMenu();
 
   const handleBeforeBack = useCallback(() => {
     if (!menuVisible) return false;
-    setMenuVisible(false);
+    closeMenu();
     return true;
-  }, [menuVisible]);
+  }, [closeMenu, menuVisible]);
 
   useScreenBackHandler(handleBeforeBack);
 
   return (
     <TourismScreenFrame
-      activeTab="itinerary"
-      onMenu={() => setMenuVisible(true)}
-      onTabChange={(tab) => {
-        if (tab === "explore") router.replace("/");
-        if (tab === "agent") router.replace("/agent" as never);
-      }}
+      includeBottomInset={false}
       subtitle="PLANIFICADOR"
       title="Tu itinerario"
     >
@@ -134,16 +129,6 @@ export default function ItineraryScreen() {
           onPress={() => router.push("/route" as never)}
         />
       </ScrollView>
-      <TourismMenuDrawer
-        onClose={() => setMenuVisible(false)}
-        onItinerary={() => setMenuVisible(false)}
-        onSettings={() => {
-          setMenuVisible(false);
-          router.push("/settings" as never);
-        }}
-        onSaved={() => setMenuVisible(false)}
-        visible={menuVisible}
-      />
     </TourismScreenFrame>
   );
 }
