@@ -177,3 +177,13 @@ Fuentes oficiales fijadas: [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/
 
 Una tarea termina cuando implementación, migraciones, pruebas, seguridad, accesibilidad,
 observabilidad y documentación cuentan la misma historia.
+
+## Conexión de la base de datos de despliegue
+
+- La base de producción del proyecto es `turismo_vinculacion_app` en
+  `187.127.6.234:8004`.
+- El usuario de aplicación es `turismo_vinculacion_app`; las credenciales viven solo en
+  `~/.pgpass` y nunca se copian al repositorio.
+- Para conectarse usa `psql -h 187.127.6.234 -p 8004 -U turismo_vinculacion_app -d turismo_vinculacion_app`.
+- `admin_root` queda reservado para operaciones administrativas y migraciones que requieran
+  privilegios elevados.
