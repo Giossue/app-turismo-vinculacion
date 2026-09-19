@@ -130,7 +130,7 @@ export function CenterMap({
   // Cambiar esta revisión invalida estilos normalizados durante Fast Refresh
   // sin reiniciar la actividad nativa ni conservar colores de una versión
   // anterior en la caché de memoria.
-  const styleRequestKey = `quiet-v3:${scheme}:${basemapMode}`;
+  const styleRequestKey = `quiet-v5:${scheme}:${basemapMode}`;
   const apiKey = process.env.EXPO_PUBLIC_ARCGIS_API_KEY?.trim();
   const [arcgisMapStyleState, setArcgisMapStyleState] = useState<{
     requestKey: string;
@@ -518,7 +518,44 @@ function quietMapLayers(value: unknown, scheme: "light" | "dark"): unknown {
         ...candidate,
         paint: {
           ...(isRecord(candidate.paint) ? candidate.paint : {}),
-          "background-color": "#ffffff",
+          "background-color": "#f5f7f8",
+        },
+      };
+    }
+
+    if (
+      !dark &&
+      (candidate.type === "fill" || candidate.type === "fill-extrusion")
+    ) {
+      const isWaterLayer = /water|ocean|sea|river|lake/.test(layerName);
+      const isGreenLayer =
+        /park|wood|forest|vegetation|grass|scrub|meadow|wetland|golf/.test(
+          layerName,
+        );
+      const isBuildingLayer = /building|structure|footprint|house/.test(
+        layerName,
+      );
+
+      // Conservamos los colores cartográficos específicos de agua y áreas
+      // verdes. Solo blanqueamos el relleno general amarillento y suavizamos
+      // los edificios para que la trama urbana no domine el mapa.
+      if (isWaterLayer || isGreenLayer) return layer;
+
+      const fillColor = isBuildingLayer ? "#e9edf0" : "#f5f7f8";
+      return {
+        ...candidate,
+        paint: {
+          ...(isRecord(candidate.paint) ? candidate.paint : {}),
+          ...(candidate.type === "fill"
+            ? {
+                "fill-color": fillColor,
+                "fill-opacity": isBuildingLayer ? 0.88 : 0.98,
+                "fill-outline-color": "#f5f7f8",
+              }
+            : {
+                "fill-extrusion-color": fillColor,
+                "fill-extrusion-opacity": isBuildingLayer ? 0.88 : 0.98,
+              }),
         },
       };
     }
@@ -532,7 +569,7 @@ function quietMapLayers(value: unknown, scheme: "light" | "dark"): unknown {
           ...(paint["text-color"]
             ? {
                 "text-color": "#5b6570",
-                "text-halo-color": "#ffffff",
+                "text-halo-color": "#f5f7f8",
                 "text-halo-width": 1,
               }
             : {}),
@@ -613,7 +650,7 @@ function cleanRasterMapStyle(scheme: "light" | "dark") {
       {
         id: "background",
         paint: {
-          "background-color": dark ? colors.mapBackground : "#ffffff",
+          "background-color": dark ? colors.mapBackground : "#f5f7f8",
         },
         type: "background",
       },

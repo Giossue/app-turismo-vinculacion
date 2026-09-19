@@ -14,9 +14,9 @@
   referencia TileJSON duplicada de las fuentes de ArcGIS y atenúa las líneas de calles,
   ocultando sus capas de borde para reducir el ruido visual. Conserva la plantilla
   explícita `/tile/{z}/{y}/{x}.pbf` que MapLibre Native requiere. Sin la clave se usa una
-  base raster pública Canvas Light/Dark Gray con fondo blanco en claro y la referencia
-  de calles y etiquetas desaturada y atenuada; es un fallback de desarrollo y no la
-  variante de producción.
+  base raster pública Canvas Light/Dark Gray con fondo blanco roto en claro y la
+  referencia de calles y etiquetas desaturada y atenuada; es un fallback de desarrollo
+  y no la variante de producción.
 - No calcula rutas ni provee navegación por sí mismo.
 
 ### Proveedor de rutas
