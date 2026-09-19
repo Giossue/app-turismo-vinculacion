@@ -19,5 +19,5 @@ dedos, conservando el paneo con un dedo y el zoom/giro con dos dedos.
 - [x] Implementar el parche nativo de Android.
 - [x] Implementar el detector de tres dedos en iOS.
 - [x] Activar `touchPitch` en el mapa móvil.
-- [ ] Generar y registrar el parche de pnpm.
-- [ ] Ejecutar typecheck, lint y verificación Android proporcional.
+- [x] Generar y registrar el parche de pnpm.
+- [x] Ejecutar typecheck, lint y verificación Android proporcional.
