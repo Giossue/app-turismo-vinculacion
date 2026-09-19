@@ -31,6 +31,11 @@ secretos al archivo.
 El móvil no necesita claves de IA: la pantalla `Agente` envía la consulta a
 `/api/v1/ai/chat` y las claves de OpenAI/Anthropic permanecen en el backend.
 
+La URL del estilo del mapa se configura mediante
+`EXPO_PUBLIC_TILESERVER_STYLE_URL`. Debe definirse en el entorno que construye el
+cliente móvil —`.env` local, EAS/CI o el servicio de build—; cambiar el dominio del
+TileServer en Dokploy no modifica automáticamente un APK ya construido.
+
 El primer `android` genera el development build e instala la aplicación. Después se
 puede levantar Metro con:
 

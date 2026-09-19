@@ -9,9 +9,13 @@ export type OfflineDownloadResult = Readonly<{
   packageVersion: number;
 }>;
 
-const selfHostedMapStyleUrl =
-  process.env.EXPO_PUBLIC_TILESERVER_STYLE_URL?.trim() ||
-  "https://mapas.devs-ueb.tech/styles/basic-preview/style.json";
+function selfHostedMapStyleUrl(): string {
+  const value = process.env.EXPO_PUBLIC_TILESERVER_STYLE_URL?.trim();
+  if (!value) {
+    throw new Error("EXPO_PUBLIC_TILESERVER_STYLE_URL no está configurada");
+  }
+  return value;
+}
 
 export async function downloadOfflineCity(
   city: OfflineCity,
@@ -38,7 +42,7 @@ export async function downloadOfflineCity(
   const pack = await OfflineManager.createPack(
     {
       bounds,
-      mapStyle: selfHostedMapStyleUrl,
+      mapStyle: selfHostedMapStyleUrl(),
       maxZoom: manifest.package.zoomMax,
       metadata: {
         citySlug: city.slug,

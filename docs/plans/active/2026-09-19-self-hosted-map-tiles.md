@@ -3,7 +3,7 @@
 ## Objetivo
 
 Usar los tiles vectoriales OpenMapTiles generados para Ecuador y servidos por
-`https://mapas.devs-ueb.tech`, sin depender de ArcGIS o Stadia para el mapa base móvil.
+el TileServer GL propio, sin depender de ArcGIS o Stadia para el mapa base móvil.
 
 ## Alcance
 

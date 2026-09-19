@@ -8,7 +8,7 @@
 - Estilos de mapa y tiles configurados por entorno; el estilo de demostración nunca se usa
   en producción.
 - El mapa móvil usa el estilo configurado en `EXPO_PUBLIC_TILESERVER_STYLE_URL`, servido
-  por el TileServer GL propio (`https://mapas.devs-ueb.tech`) y respaldado por los tiles
+  por el TileServer GL propio y respaldado por los tiles
   vectoriales OpenMapTiles generados desde OpenStreetMap para Ecuador. La app descarga el
   JSON del estilo, sustituye la referencia TileJSON por la plantilla explícita
   `/data/v3/{z}/{x}/{y}.pbf` que MapLibre Native requiere y aplica una paleta propia para

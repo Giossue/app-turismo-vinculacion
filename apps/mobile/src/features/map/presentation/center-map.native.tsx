@@ -405,11 +405,8 @@ export function CenterMap({
   );
 }
 
-const selfHostedMapsBaseUrl = "https://mapas.devs-ueb.tech";
-const selfHostedTileJsonUrl = `${selfHostedMapsBaseUrl}/data/v3.json`;
 const selfHostedStyleUrlFromEnv =
-  process.env.EXPO_PUBLIC_TILESERVER_STYLE_URL?.trim() ||
-  `${selfHostedMapsBaseUrl}/styles/basic-preview/style.json`;
+  process.env.EXPO_PUBLIC_TILESERVER_STYLE_URL?.trim();
 
 function getSelfHostedStyle(
   scheme: "light" | "dark",
@@ -421,14 +418,21 @@ function getSelfHostedStyle(
   const pending = selfHostedStylePromiseCache.get(requestKey);
   if (pending) return pending;
 
-  const request = fetch(selfHostedStyleUrl())
+  const styleUrl = selfHostedStyleUrl();
+  if (!styleUrl) {
+    return Promise.reject(
+      new Error("EXPO_PUBLIC_TILESERVER_STYLE_URL no está configurada"),
+    );
+  }
+
+  const request = fetch(styleUrl)
     .then(async (response) => {
       if (!response.ok) {
         throw new Error(
           `Self-hosted basemap responded with ${response.status}`,
         );
       }
-      return normalizeSelfHostedStyle(await response.json(), scheme);
+      return normalizeSelfHostedStyle(await response.json(), scheme, styleUrl);
     })
     .then((style) => {
       selfHostedStyleCache.set(requestKey, style);
@@ -440,7 +444,7 @@ function getSelfHostedStyle(
   return request;
 }
 
-function selfHostedStyleUrl() {
+function selfHostedStyleUrl(): string | undefined {
   return selfHostedStyleUrlFromEnv;
 }
 
@@ -460,6 +464,7 @@ export function getFallbackMapStyle(
 function normalizeSelfHostedStyle(
   value: unknown,
   scheme: "light" | "dark",
+  styleUrl: string,
 ): StyleSpecification {
   if (!value || typeof value !== "object") {
     throw new Error("The self-hosted basemap returned an invalid style");
@@ -471,13 +476,23 @@ function normalizeSelfHostedStyle(
     throw new Error("The self-hosted basemap style has no sources");
   }
 
+  const tileJsonUrl = new URL("/data/v3.json", styleUrl).toString();
+  const tileTemplateUrl = new URL(
+    "/data/v3/{z}/{x}/{y}.pbf",
+    styleUrl,
+  ).toString();
+
   const normalizedSources = Object.fromEntries(
     Object.entries(sources).map(([sourceId, source]) => {
       if (!source || typeof source !== "object") return [sourceId, source];
       const normalizedSource = { ...(source as Record<string, unknown>) };
-      if (normalizedSource.url === selfHostedTileJsonUrl) {
+      const sourceUrl =
+        typeof normalizedSource.url === "string"
+          ? new URL(normalizedSource.url, styleUrl).toString()
+          : undefined;
+      if (sourceUrl === tileJsonUrl) {
         normalizedSource.tiles = [
-          `${selfHostedMapsBaseUrl}/data/v3/{z}/{x}/{y}.pbf`,
+          tileTemplateUrl,
         ];
         // Ecuador se generó hasta z14. Al declararlo, MapLibre hace overzoom
         // con la última baldosa disponible en vez de pedir z15+ al servidor.
