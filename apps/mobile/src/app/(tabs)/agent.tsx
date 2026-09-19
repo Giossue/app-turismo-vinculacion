@@ -180,6 +180,7 @@ export default function AgentScreen() {
         <KeyboardAvoidingView
           behavior="position"
           contentContainerStyle={styles.composerAvoidingContent}
+          keyboardVerticalOffset={turismoMetrics.controlMd}
           style={styles.composerAvoiding}
         >
           <TourismSurface style={styles.composerCard}>

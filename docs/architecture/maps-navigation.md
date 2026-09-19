@@ -9,11 +9,14 @@
   en producción.
 - En desarrollo local, si `EXPO_PUBLIC_ARCGIS_API_KEY` está configurada, se usan los estilos
   vectoriales autenticados `arcgis/streets` (Explorar) y `arcgis/navigation` (navegación),
-  con variantes nocturnas y etiquetas en español. La app descarga el JSON del estilo y
-  elimina la referencia TileJSON duplicada de las fuentes de ArcGIS, conservando la
-  plantilla explícita `/tile/{z}/{y}/{x}.pbf` que MapLibre Native requiere. Sin la clave
-  se mantiene una base raster pública de fallback para no bloquear el bootstrap; esa
-  variante no es para producción.
+  con variantes nocturnas, etiquetas en español y `places=none` para que los atractivos
+  propios sean la capa visual principal. La app descarga el JSON del estilo, elimina la
+  referencia TileJSON duplicada de las fuentes de ArcGIS y atenúa las líneas de calles,
+  ocultando sus capas de borde para reducir el ruido visual. Conserva la plantilla
+  explícita `/tile/{z}/{y}/{x}.pbf` que MapLibre Native requiere. Sin la clave se usa una
+  base raster pública Canvas Light/Dark Gray con fondo blanco en claro y la referencia
+  de calles y etiquetas desaturada y atenuada; es un fallback de desarrollo y no la
+  variante de producción.
 - No calcula rutas ni provee navegación por sí mismo.
 
 ### Proveedor de rutas
@@ -86,6 +89,8 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 - La ubicación del turista se obtiene bajo demanda con permiso `while in use`; el botón
   de ubicación centra la cámara con zoom 15 y dibuja un punto azul en una fuente GeoJSON
   separada. No se inicia seguimiento en segundo plano desde Explorar.
+- La brújula nativa de MapLibre aparece al girar el mapa y se ubica encima del botón de
+  ubicación para permitir volver al norte sin añadir estado de rotación duplicado en React.
 - La disponibilidad del permiso y del proveedor se vuelve a comprobar mientras Explorar
   está visible y al regresar de Ajustes; al desactivarse se limpia la posición local para
   no presentar una ubicación obsoleta.

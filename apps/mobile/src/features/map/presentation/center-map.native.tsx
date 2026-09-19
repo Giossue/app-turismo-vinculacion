@@ -17,7 +17,11 @@ import {
   View,
 } from "react-native";
 
-import { getTurismoColors } from "@/core/ui/tokens";
+import {
+  getTurismoColors,
+  turismoMetrics,
+  turismoSpacing,
+} from "@/core/ui/tokens";
 import { useTurismoTheme } from "@/core/ui/theme-context";
 import type { UserLocationCoordinate } from "@/core/location/use-user-location";
 import type { PublicCenter } from "@/features/centers/domain/public-center";
@@ -76,9 +80,7 @@ export function CenterMap({
 }: CenterMapProps) {
   const cameraRef = useRef<CameraRef>(null);
   const sourceRef = useRef<GeoJSONSourceRef>(null);
-  const pendingCenterSelectionRef = useRef<PendingCenterSelection | null>(
-    null,
-  );
+  const pendingCenterSelectionRef = useRef<PendingCenterSelection | null>(null);
   const focusedLocationKeyRef = useRef<number | undefined>(undefined);
   const { scheme } = useTurismoTheme();
   const colors = getTurismoColors(scheme);
@@ -124,11 +126,11 @@ export function CenterMap({
   // se reserva para catálogos grandes, evitando que un zoom corto cambie un
   // pin por un círculo de grupo durante la exploración inicial.
   const shouldCluster = centers.length > 20;
-  const fallbackMapStyle = useMemo(
-    () => developmentRasterMapStyle(scheme),
-    [scheme],
-  );
-  const styleRequestKey = `${scheme}:${basemapMode}`;
+  const fallbackMapStyle = useMemo(() => cleanRasterMapStyle(scheme), [scheme]);
+  // Cambiar esta revisión invalida estilos normalizados durante Fast Refresh
+  // sin reiniciar la actividad nativa ni conservar colores de una versión
+  // anterior en la caché de memoria.
+  const styleRequestKey = `quiet-v3:${scheme}:${basemapMode}`;
   const apiKey = process.env.EXPO_PUBLIC_ARCGIS_API_KEY?.trim();
   const [arcgisMapStyleState, setArcgisMapStyleState] = useState<{
     requestKey: string;
@@ -199,10 +201,7 @@ export function CenterMap({
       const center = centersByCode.get(centerCode);
       if (!center) return;
 
-      const target: [number, number] = [
-        center.longitude,
-        center.latitude,
-      ];
+      const target: [number, number] = [center.longitude, center.latitude];
       // La selección se confirma cuando MapLibre termina el enfoque. Así el
       // cambio de pin y la apertura del bottom sheet no compiten con la
       // animación de la cámara en el mismo frame.
@@ -214,7 +213,7 @@ export function CenterMap({
         zoom: selectedCenterZoom,
       });
     },
-    [centersByCode, onCenterPress],
+    [centersByCode],
   );
 
   useEffect(() => {
@@ -232,6 +231,12 @@ export function CenterMap({
     <View style={styles.container}>
       <MapLibreMap
         accessibilityLabel="Mapa con atractivos turísticos publicados"
+        compass
+        compassPosition={{
+          bottom:
+            turismoSpacing.md + turismoMetrics.controlMd + turismoSpacing.sm,
+          right: turismoSpacing.md,
+        }}
         mapStyle={mapStyle}
         onDidFailLoadingMap={() => setMapLoadState("error")}
         onDidFinishLoadingMap={() => setMapLoadState("ready")}
@@ -418,7 +423,7 @@ function getArcgisStyle(
       if (!response.ok) {
         throw new Error(`ArcGIS basemap responded with ${response.status}`);
       }
-      return normalizeArcgisStyle(await response.json());
+      return normalizeArcgisStyle(await response.json(), scheme);
     })
     .then((style) => {
       arcgisStyleCache.set(requestKey, style);
@@ -446,7 +451,9 @@ function arcgisStyleUrl(
   const query = new URLSearchParams({
     echoToken: "true",
     language: "es",
-    places: "all",
+    // Los atractivos propios de Turismo Vinculación son la capa principal;
+    // ocultar los POI del proveedor deja el mapa más limpio y legible.
+    places: "none",
     token: apiKey,
   });
   return `${arcgisStylesBaseUrl}/${styleName}?${query.toString()}`;
@@ -458,7 +465,10 @@ function arcgisStyleUrl(
  * ArcGIS' service metadata because it does not expose a Mapbox `tiles` field.
  * Keeping the explicit tile template makes the same style portable to native.
  */
-function normalizeArcgisStyle(value: unknown): StyleSpecification {
+function normalizeArcgisStyle(
+  value: unknown,
+  scheme: "light" | "dark",
+): StyleSpecification {
   if (!value || typeof value !== "object") {
     throw new Error("ArcGIS returned an invalid basemap style");
   }
@@ -482,38 +492,147 @@ function normalizeArcgisStyle(value: unknown): StyleSpecification {
 
   return {
     ...style,
+    layers: quietMapLayers(style.layers, scheme),
     sources: normalizedSources,
   } as unknown as StyleSpecification;
 }
 
+function quietMapLayers(value: unknown, scheme: "light" | "dark"): unknown {
+  if (!Array.isArray(value)) return value;
+
+  const dark = scheme === "dark";
+  const roadColor = dark ? "#596675" : "#a8b1ba";
+  const neutralLineColor = dark ? "#43515e" : "#d9dee3";
+
+  return value.map((layer) => {
+    if (!layer || typeof layer !== "object") return layer;
+
+    const candidate = layer as Record<string, unknown>;
+    const layerName = [candidate.id, candidate["source-layer"]]
+      .filter((part): part is string => typeof part === "string")
+      .join(" ")
+      .toLowerCase();
+
+    if (candidate.type === "background" && !dark) {
+      return {
+        ...candidate,
+        paint: {
+          ...(isRecord(candidate.paint) ? candidate.paint : {}),
+          "background-color": "#ffffff",
+        },
+      };
+    }
+
+    if (candidate.type === "symbol" && !dark) {
+      const paint = isRecord(candidate.paint) ? candidate.paint : {};
+      return {
+        ...candidate,
+        paint: {
+          ...paint,
+          ...(paint["text-color"]
+            ? {
+                "text-color": "#5b6570",
+                "text-halo-color": "#ffffff",
+                "text-halo-width": 1,
+              }
+            : {}),
+        },
+      };
+    }
+
+    if (candidate.type !== "line") return layer;
+
+    const isRoadLayer =
+      /road|street|highway|motorway|trunk|arterial|expressway|transportation/.test(
+        layerName,
+      );
+    if (!isRoadLayer) return layer;
+
+    const isRoadBorder = /casing|outline|border|stroke|halo|shadow/.test(
+      layerName,
+    );
+    if (isRoadBorder) {
+      return {
+        ...candidate,
+        layout: {
+          ...(isRecord(candidate.layout) ? candidate.layout : {}),
+          visibility: "none",
+        },
+      };
+    }
+
+    return {
+      ...candidate,
+      paint: {
+        ...(isRecord(candidate.paint) ? candidate.paint : {}),
+        "line-color": isRoadLayer ? roadColor : neutralLineColor,
+        "line-opacity": isRoadLayer ? (dark ? 0.42 : 0.5) : 0.24,
+      },
+    };
+  });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
 // Fallback público sin credenciales para que el desarrollo local continúe
-// funcionando mientras se configura la clave restringida de ArcGIS.
-function developmentRasterMapStyle(scheme: "light" | "dark") {
+// funcionando mientras se configura la clave restringida de ArcGIS. La base
+// Canvas gris se usa como textura muy tenue en claro (sobre fondo blanco) y
+// con más presencia en oscuro; la referencia separada conserva las calles y
+// etiquetas importantes para explorar.
+function cleanRasterMapStyle(scheme: "light" | "dark") {
   const dark = scheme === "dark";
   const colors = getTurismoColors(scheme);
+  const baseTiles = dark
+    ? "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+    : "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}";
+  const referenceTiles = dark
+    ? "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
+    : "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}";
+  const attribution =
+    "Tiles © Esri, HERE, Garmin, © OpenStreetMap contributors, and the GIS user community";
+
   return {
     version: 8,
     sources: {
-      "arcgis-development": {
-        attribution: "Tiles © Esri",
+      "tourism-clean-base": {
+        attribution,
         tileSize: 256,
-        tiles: [
-          dark
-            ? "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-            : "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-        ],
+        tiles: [baseTiles],
+        type: "raster",
+      },
+      "tourism-clean-reference": {
+        attribution,
+        tileSize: 256,
+        tiles: [referenceTiles],
         type: "raster",
       },
     },
     layers: [
       {
         id: "background",
-        paint: { "background-color": colors.mapBackground },
+        paint: {
+          "background-color": dark ? colors.mapBackground : "#ffffff",
+        },
         type: "background",
       },
       {
-        id: "arcgis-development",
-        source: "arcgis-development",
+        id: "tourism-clean-base",
+        source: "tourism-clean-base",
+        paint: {
+          "raster-opacity": dark ? 0.94 : 0.18,
+          "raster-saturation": dark ? -0.25 : -1,
+        },
+        type: "raster",
+      },
+      {
+        id: "tourism-clean-reference",
+        source: "tourism-clean-reference",
+        paint: {
+          "raster-opacity": dark ? 0.54 : 0.45,
+          "raster-saturation": -0.75,
+        },
         type: "raster",
       },
     ],

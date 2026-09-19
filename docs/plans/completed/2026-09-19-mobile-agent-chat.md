@@ -16,8 +16,9 @@ fichas turísticas.
 - Se eliminó la línea de fuentes de la interfaz y se conservó la navegación a fichas.
 - El compositor quedó fijo al pie, con entrada multilinea y acción de enviar por icono.
 - La conversación se desplaza automáticamente al último mensaje cuando cambia su contenido.
-- El compositor usa `KeyboardAvoidingView` con `padding` para desplazarse completamente por
-  encima del teclado en Android edge-to-edge.
+- El compositor usa un `KeyboardAvoidingView` independiente del listado, con posicionamiento
+  y offset para que el cuadro completo quede por encima del teclado en Android edge-to-edge
+  sin desplazar los mensajes.
 - Se mantuvieron el envío, el estado de consulta, el teclado, la accesibilidad y la API
   existentes.
 
