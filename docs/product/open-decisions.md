@@ -16,9 +16,15 @@ producto.
 
 ## Mapas y movilidad
 
-- Modos iniciales de navegación: vehículo, caminata, bicicleta u otros.
-- Si las rutas registradas serán dibujadas manualmente, importadas o calculadas.
-- Quién mantiene transporte: funcionarios, cooperativas o integraciones.
+Decisiones cerradas para la primera versión de rutas online:
+
+- Los modos calculados son vehículo, bicicleta y caminata mediante OSRM propio.
+- El transporte público se representa primero con rutas, paradas y horarios administrados;
+  GTFS/OTP queda para una fase posterior.
+- No se ofrece tráfico en tiempo real ni seguimiento de unidades en esta fase.
+
+- Quién mantiene y publica los datos de transporte: funcionarios, cooperativas o ambos.
+- Si las rutas registradas admitirán edición manual, importación GIS o ambos flujos.
 - Si habrá ubicación de unidades en tiempo real y cuál será su fuente.
 - Alcance de ubicación: solo en uso o también segundo plano durante navegación.
 - Alcance offline: ninguno, favoritos/catálogos o mapas/rutas descargables.

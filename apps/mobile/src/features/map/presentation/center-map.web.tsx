@@ -1,7 +1,8 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { useTurismoPalette } from "@/core/ui/tourism-controls";
+import { useTurismoTheme } from "@/core/ui/theme-context";
 import {
+  getTurismoMapColors,
   turismoMetrics,
   turismoRadii,
   turismoSpacing,
@@ -25,7 +26,8 @@ type CenterMapProps = Readonly<{
 }>;
 
 export function CenterMap({ centers }: CenterMapProps) {
-  const colors = useTurismoPalette();
+  const { scheme } = useTurismoTheme();
+  const colors = getTurismoMapColors(scheme);
   return (
     <View
       accessibilityLabel="Mapa disponible en la aplicación móvil"

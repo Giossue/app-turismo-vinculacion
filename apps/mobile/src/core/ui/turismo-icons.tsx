@@ -1,6 +1,7 @@
 import type { LucideIcon, LucideProps } from "lucide-react-native";
 import {
   ArrowLeft,
+  Bike,
   Bookmark,
   Bot,
   CalendarDays,
@@ -11,6 +12,7 @@ import {
   CircleHelp,
   Compass,
   Download,
+  Footprints,
   LocateFixed,
   Map,
   MapPin,
@@ -37,6 +39,7 @@ import {
 
 export const turismoIconMap = {
   arrowLeft: ArrowLeft,
+  bike: Bike,
   bookmark: Bookmark,
   bot: Bot,
   calendar: CalendarDays,
@@ -48,6 +51,7 @@ export const turismoIconMap = {
   help: CircleHelp,
   compass: Compass,
   download: Download,
+  foot: Footprints,
   locate: LocateFixed,
   map: Map,
   mapPin: MapPin,

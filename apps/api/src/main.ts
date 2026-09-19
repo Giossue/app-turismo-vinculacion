@@ -71,7 +71,7 @@ async function bootstrap(): Promise<void> {
 
   await app.listen({
     port: config.getOrThrow<number>("API_PORT"),
-    host: "127.0.0.1",
+    host: config.getOrThrow<string>("API_HOST"),
   });
 }
 

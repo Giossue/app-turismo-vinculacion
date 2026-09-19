@@ -18,7 +18,7 @@ import {
 } from "react-native";
 
 import {
-  getTurismoColors,
+  getTurismoMapColors,
   turismoMetrics,
   turismoSpacing,
 } from "@/core/ui/tokens";
@@ -86,7 +86,7 @@ export function CenterMap({
   const pendingCenterSelectionRef = useRef<PendingCenterSelection | null>(null);
   const focusedLocationKeyRef = useRef<number | undefined>(undefined);
   const { scheme } = useTurismoTheme();
-  const colors = getTurismoColors(scheme);
+  const colors = getTurismoMapColors(scheme);
   const centersByCode = useMemo(
     () => new Map(centers.map((center) => [center.code, center])),
     [centers],
@@ -268,6 +268,9 @@ export function CenterMap({
         }}
         onWillStartLoadingMap={() => setMapLoadState("loading")}
         style={styles.map}
+        dragPan
+        touchPitch={false}
+        touchRotate
       >
         <Camera
           initialViewState={{ center: [-79.00098, -1.59263], zoom: 14 }}
@@ -392,7 +395,7 @@ export function CenterMap({
           pointerEvents="none"
           style={[
             styles.mapLoadingOverlay,
-            { backgroundColor: colors.mapBackground },
+            { backgroundColor: colors.background },
           ]}
         >
           <ActivityIndicator color={colors.primary} />
@@ -439,6 +442,19 @@ function getSelfHostedStyle(
 
 function selfHostedStyleUrl() {
   return selfHostedStyleUrlFromEnv;
+}
+
+export function loadSelfHostedMapStyle(
+  scheme: "light" | "dark",
+  basemapMode: BasemapMode = "navigation",
+): Promise<StyleSpecification> {
+  return getSelfHostedStyle(scheme, `self-hosted-v1:${scheme}:${basemapMode}`);
+}
+
+export function getFallbackMapStyle(
+  scheme: "light" | "dark",
+): StyleSpecification {
+  return cleanFallbackMapStyle(scheme);
 }
 
 function normalizeSelfHostedStyle(
@@ -724,7 +740,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 // un fondo local neutro; no se consulta otro proveedor de mapas.
 function cleanFallbackMapStyle(scheme: "light" | "dark") {
   const dark = scheme === "dark";
-  const colors = getTurismoColors(scheme);
+  const colors = getTurismoMapColors(scheme);
 
   return {
     version: 8,
@@ -733,7 +749,7 @@ function cleanFallbackMapStyle(scheme: "light" | "dark") {
       {
         id: "background",
         paint: {
-          "background-color": dark ? colors.mapBackground : "#f5f7f8",
+          "background-color": dark ? colors.background : "#f5f7f8",
         },
         type: "background",
       },

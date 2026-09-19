@@ -21,6 +21,11 @@
 - Geocodificación, cálculo de ruta, instrucciones, recálculo y mapas offline si se aprueba.
 - Se consume desde el backend mediante un puerto para preservar la posibilidad de cambiar
   proveedor y proteger credenciales de servicios privilegiados.
+- Las rutas calculadas online se exponen mediante `POST /api/v1/routing/route`, que recibe
+  origen, destino y `mode` (`car`, `bicycle` o `foot`) y devuelve distancia, duración,
+  geometría GeoJSON e indicaciones.
+- En producción, el adaptador usa los servicios privados `osrm-car`, `osrm-bicycle` y
+  `osrm-foot` dentro de `dokploy-network`. El móvil nunca conoce sus nombres ni sus puertos.
 
 ### PostgreSQL/PostGIS
 
@@ -58,6 +63,9 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 ## Navegación
 
 - Comenzar solo con modos confirmados por el servicio y datos ecuatorianos.
+- La primera versión online calcula auto, bicicleta y caminata con OSRM sin tráfico en
+  tiempo real. El modo bus usa rutas institucionales publicadas en PostgreSQL, no un perfil
+  OSRM genérico.
 - Advertir que horarios/precios de transporte registrado son informativos.
 - No prometer rutas accesibles sin datos verificables.
 - Segundo plano únicamente durante una sesión activa.
@@ -92,6 +100,8 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   separada. No se inicia seguimiento en segundo plano desde Explorar.
 - La brújula nativa de MapLibre aparece al girar el mapa y se ubica encima del botón de
   ubicación para permitir volver al norte sin añadir estado de rotación duplicado en React.
+- Explorar mantiene el desplazamiento con un dedo y el giro táctil con dos dedos, pero
+  desactiva la inclinación táctil para que el gesto circular no compita con el pitch.
 - La disponibilidad del permiso y del proveedor se vuelve a comprobar mientras Explorar
   está visible y al regresar de Ajustes; al desactivarse se limpia la posición local para
   no presentar una ubicación obsoleta.

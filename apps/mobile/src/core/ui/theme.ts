@@ -47,6 +47,7 @@ export const turismoLightTheme: MD3Theme = {
     surfaceVariant: turismoColors.light.surfaceMuted,
     outline: turismoColors.light.border,
     outlineVariant: turismoColors.light.border,
+    error: turismoColors.light.danger,
   },
 };
 
@@ -72,5 +73,6 @@ export const turismoDarkTheme: MD3Theme = {
     surfaceVariant: turismoColors.dark.surfaceMuted,
     outline: turismoColors.dark.border,
     outlineVariant: turismoColors.dark.border,
+    error: turismoColors.dark.danger,
   },
 };

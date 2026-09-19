@@ -14,6 +14,7 @@ const environmentSchema = z.object({
     .enum(["development", "test", "production"])
     .default("development"),
   API_PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+  API_HOST: z.string().trim().min(1).default("0.0.0.0"),
   DATABASE_URL: z
     .string()
     .url()
@@ -55,6 +56,18 @@ const environmentSchema = z.object({
   MEDIA_S3_BUCKET: z.string().trim().min(1).default("turismo-media"),
   MEDIA_S3_ACCESS_KEY_ID: optionalSecret,
   MEDIA_S3_SECRET_ACCESS_KEY: optionalSecret,
+  ROUTING_OSRM_CAR_URL: z.string().url().default("http://osrm-car:5000"),
+  ROUTING_OSRM_BICYCLE_URL: z
+    .string()
+    .url()
+    .default("http://osrm-bicycle:5000"),
+  ROUTING_OSRM_FOOT_URL: z.string().url().default("http://osrm-foot:5000"),
+  ROUTING_REQUEST_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .min(1000)
+    .max(30_000)
+    .default(8_000),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

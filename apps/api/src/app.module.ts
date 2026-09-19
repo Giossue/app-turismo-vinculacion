@@ -10,6 +10,7 @@ import { OfflineModule } from "./offline/offline.module";
 import { AuthModule } from "./auth/auth.module";
 import { AdminModule } from "./admin/admin.module";
 import { FilesModule } from "./files/files.module";
+import { RoutingModule } from "./routing/routing.module";
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { FilesModule } from "./files/files.module";
     AuthModule,
     AdminModule,
     FilesModule,
+    RoutingModule,
   ],
 })
 export class AppModule {}

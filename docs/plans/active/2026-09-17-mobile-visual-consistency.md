@@ -24,8 +24,11 @@ La aplicación web y su futuro repositorio quedan fuera de alcance.
 
 - Paper será el único kit externo de componentes; `StyleSheet` seguirá siendo la API nativa
   de layout y los componentes `Tourism*` serán la capa de producto.
-- Verde bosque institucional para acciones y selección; blancos/superficies neutras en claro
-  y equivalentes oscuros con contraste accesible.
+- La paleta móvil comparte los mismos roles y valores de acción, superficie y estados que
+  la web: verde para acciones y selección, superficies neutras y contraste accesible en
+  ambos esquemas.
+- El mapa conserva su estilo base, capas y controles. Los pines son la excepción solicitada:
+  usan los verdes de la web y mantienen recursos separados para claro, oscuro y selección.
 - Fuente del sistema y escala tipográfica única, compacta para móvil: display 28/36,
   title 22/28, heading 18/24, body 16/24, label 14/20 y caption 12/16.
 - El acceso transversal se realiza mediante un botón `menu` y `TourismMenuDrawer`; en las
@@ -46,6 +49,9 @@ La aplicación web y su futuro repositorio quedan fuera de alcance.
 
 ## Estado
 
-Tokens, controles base y shell compartido implementados. La verificación automatizada del
-cliente móvil está completa; queda la validación visual manual en un dispositivo físico
-Android/iOS, en claro/oscuro y con texto ampliado.
+Tokens, controles base y shell compartido implementados. La paleta de interfaz y los pines
+se alinearon con la web, mientras el estilo base, las capas y los controles del mapa quedan
+intactos. En este ajuste pasan typecheck, lint,
+pruebas y formato de los archivos modificados; el chequeo de formato global aún señala un
+archivo preexistente fuera de este cambio. Queda la validación visual manual en un
+dispositivo físico Android/iOS, en claro/oscuro y con texto ampliado.

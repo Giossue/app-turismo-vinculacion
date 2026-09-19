@@ -129,7 +129,16 @@ export default function CenterDetailScreen() {
           <TourismActionButton
             icon="route"
             label="Cómo llegar"
-            onPress={() => router.push("/route" as never)}
+            onPress={() =>
+              router.push({
+                pathname: "/route",
+                params: {
+                  destinationLatitude: String(center.latitude),
+                  destinationLongitude: String(center.longitude),
+                  destinationName: center.name,
+                },
+              } as never)
+            }
             style={styles.flexAction}
           />
           <TourismActionButton
