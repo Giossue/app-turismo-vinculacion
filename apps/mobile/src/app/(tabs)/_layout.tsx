@@ -41,7 +41,7 @@ function PrimaryTabs() {
     <Tabs
       detachInactiveScreens={false}
       screenOptions={{
-        animation: "fade",
+        animation: "none",
         headerShown: false,
       }}
       tabBar={({ navigation, state }) => {

@@ -155,17 +155,116 @@ export function TourismIconAction({
   );
 }
 
+export function TourismCompassAction({
+  accessibilityLabel,
+  bearing,
+  onPress,
+  style,
+}: Readonly<{
+  accessibilityLabel: string;
+  bearing: number;
+  onPress: () => void;
+  style?: StyleProp<ViewStyle>;
+}>) {
+  const colors = useTurismoPalette();
+
+  return (
+    <Pressable
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      hitSlop={4}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.compassAction,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+          opacity: pressed ? 0.72 : 1,
+        },
+        style,
+      ]}
+    >
+      <View
+        pointerEvents="none"
+        style={[
+          styles.compassFace,
+          { transform: [{ rotate: `${-bearing}deg` }] },
+        ]}
+      >
+        <Text
+          style={[
+            styles.compassCardinal,
+            styles.compassNorth,
+            { color: colors.primary },
+          ]}
+        >
+          N
+        </Text>
+        <Text
+          style={[
+            styles.compassCardinal,
+            styles.compassEast,
+            { color: colors.textMuted },
+          ]}
+        >
+          E
+        </Text>
+        <Text
+          style={[
+            styles.compassCardinal,
+            styles.compassSouth,
+            { color: colors.textMuted },
+          ]}
+        >
+          S
+        </Text>
+        <Text
+          style={[
+            styles.compassCardinal,
+            styles.compassWest,
+            { color: colors.textMuted },
+          ]}
+        >
+          O
+        </Text>
+        <View
+          style={[
+            styles.compassNeedleNorth,
+            { borderBottomColor: colors.primary },
+          ]}
+        />
+        <View
+          style={[
+            styles.compassNeedleSouth,
+            { borderTopColor: colors.textFaint },
+          ]}
+        />
+        <View
+          style={[styles.compassCenter, { backgroundColor: colors.text }]}
+        />
+      </View>
+    </Pressable>
+  );
+}
+
 export function TourismChoiceChip({
+  disabled = false,
   label,
   onPress,
   selected,
-}: Readonly<{ label: string; onPress: () => void; selected: boolean }>) {
+}: Readonly<{
+  disabled?: boolean;
+  label: string;
+  onPress: () => void;
+  selected: boolean;
+}>) {
   const colors = useTurismoPalette();
   return (
     <PaperChip
       accessibilityRole="button"
-      accessibilityState={{ selected }}
+      accessibilityState={{ disabled, selected }}
       compact
+      disabled={disabled}
       hitSlop={turismoMetrics.chipHitSlop}
       mode={selected ? "flat" : "outlined"}
       onPress={onPress}
@@ -330,6 +429,63 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     margin: 0,
     width: turismoMetrics.controlMd,
+  },
+  compassAction: {
+    alignItems: "center",
+    borderRadius: turismoRadii.pill,
+    borderWidth: turismoMetrics.borderWidth,
+    height: turismoMetrics.controlLg,
+    justifyContent: "center",
+    margin: 0,
+    width: turismoMetrics.controlLg,
+  },
+  compassFace: {
+    height: 42,
+    position: "relative",
+    width: 42,
+  },
+  compassCardinal: {
+    ...turismoTypography.caption,
+    fontWeight: "700",
+    position: "absolute",
+    textAlign: "center",
+    width: 14,
+  },
+  compassNorth: { left: 14, top: 0 },
+  compassEast: { right: 0, top: 13 },
+  compassSouth: { bottom: 0, left: 14 },
+  compassWest: { left: 0, top: 13 },
+  compassNeedleNorth: {
+    borderBottomWidth: 10,
+    borderLeftColor: "transparent",
+    borderLeftWidth: 4,
+    borderRightColor: "transparent",
+    borderRightWidth: 4,
+    height: 0,
+    left: 17,
+    position: "absolute",
+    top: 12,
+    width: 0,
+  },
+  compassNeedleSouth: {
+    borderLeftColor: "transparent",
+    borderLeftWidth: 4,
+    borderRightColor: "transparent",
+    borderRightWidth: 4,
+    borderTopWidth: 10,
+    bottom: 12,
+    height: 0,
+    left: 17,
+    position: "absolute",
+    width: 0,
+  },
+  compassCenter: {
+    borderRadius: turismoRadii.pill,
+    height: 5,
+    left: 19,
+    position: "absolute",
+    top: 19,
+    width: 5,
   },
   chip: {
     borderRadius: turismoRadii.pill,

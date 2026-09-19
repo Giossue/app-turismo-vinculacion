@@ -24,6 +24,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   TourismActionButton,
   TourismBadge,
+  TourismCompassAction,
   TourismIconAction,
   TourismSearchField,
   useTurismoPalette,
@@ -73,6 +74,8 @@ export default function HomeScreen() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [nearbyOnly, setNearbyOnly] = useState(false);
+  const [mapBearing, setMapBearing] = useState(0);
+  const [resetNorthKey, setResetNorthKey] = useState(0);
   const [selectedCenterCode, setSelectedCenterCode] = useState<string | null>(
     null,
   );
@@ -220,6 +223,10 @@ export default function HomeScreen() {
     setNearbyOnly((value) => !value);
   }, [userLocation]);
 
+  const handleResetNorth = useCallback(() => {
+    setResetNorthKey((value) => value + 1);
+  }, []);
+
   const locationButtonLabel =
     locationStatus === "ready"
       ? "Centrar mapa en mi ubicación"
@@ -244,8 +251,10 @@ export default function HomeScreen() {
         basemapMode="streets"
         centers={visibleCenters}
         onAttributionChange={handleAttributionChange}
+        onBearingChange={setMapBearing}
         onCenterPress={(center) => setSelectedCenterCode(center.code)}
         onViewportChange={handleViewportChange}
+        resetNorthKey={resetNorthKey}
         selectedCenterCode={selectedCenterCode}
         focusLocationKey={focusLocationKey}
         userLocation={userLocation}
@@ -357,14 +366,24 @@ export default function HomeScreen() {
             </Text>
           </View>
         ) : null}
-        <TourismIconAction
-          accessibilityLabel={locationButtonLabel}
-          disabled={locationStatus === "requesting"}
-          icon="locate"
-          onPress={() => void handleLocateUser()}
-          selected={locationStatus === "ready"}
-          style={styles.locationAction}
-        />
+        <View style={styles.mapActionColumn}>
+          {Math.abs(mapBearing) > 1 ? (
+            <TourismCompassAction
+              accessibilityLabel="Orientar mapa al norte"
+              bearing={mapBearing}
+              onPress={handleResetNorth}
+              style={styles.locationAction}
+            />
+          ) : null}
+          <TourismIconAction
+            accessibilityLabel={locationButtonLabel}
+            disabled={locationStatus === "requesting"}
+            icon="locate"
+            onPress={() => void handleLocateUser()}
+            selected={locationStatus === "ready"}
+            style={styles.locationAction}
+          />
+        </View>
       </View>
       <View pointerEvents="box-none" style={styles.attributionLayer}>
         <MapAttributionButton
@@ -806,7 +825,7 @@ const styles = StyleSheet.create({
   },
   refreshNoticeText: { ...turismoTypography.caption },
   mapActionLayer: {
-    alignItems: "center",
+    alignItems: "flex-end",
     bottom: turismoSpacing.md,
     flexDirection: "row",
     gap: turismoSpacing.xs,
@@ -819,6 +838,7 @@ const styles = StyleSheet.create({
   mapActionLayerLandscape: {
     bottom: turismoSpacing.sm,
   },
+  mapActionColumn: { gap: turismoSpacing.xs },
   attributionLayer: {
     bottom: 0,
     elevation: 20,

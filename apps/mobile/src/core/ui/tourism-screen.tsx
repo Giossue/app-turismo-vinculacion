@@ -1,14 +1,10 @@
 import type { ReactNode } from "react";
-import Animated, {
-  FadeInRight,
-  ReduceMotion,
-} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StyleSheet, View } from "react-native";
 
 import { TourismHeader } from "./tourism-navigation";
 import { useTurismoPalette } from "./tourism-controls";
-import { turismoMetrics, turismoMotion, turismoSpacing } from "./tokens";
+import { turismoMetrics, turismoSpacing } from "./tokens";
 
 /**
  * Shared mobile shell for every non-map screen.
@@ -50,14 +46,7 @@ export function TourismScreenFrame({
           />
         </View>
       ) : null}
-      <Animated.View
-        entering={FadeInRight.duration(
-          turismoMotion.contentTransitionDuration,
-        ).reduceMotion(ReduceMotion.System)}
-        style={styles.contentFrame}
-      >
-        {children}
-      </Animated.View>
+      <View style={styles.contentFrame}>{children}</View>
     </SafeAreaView>
   );
 }

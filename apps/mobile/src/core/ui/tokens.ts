@@ -63,9 +63,7 @@ export const turismoIconSizes = {
 } as const;
 
 export const turismoMotion = {
-  contentTransitionDuration: 180,
   drawerAnimationSpeed: 1,
-  screenTransitionDuration: 260,
 } as const;
 
 export const turismoColors = {

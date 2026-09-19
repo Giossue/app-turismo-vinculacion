@@ -65,6 +65,12 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 - La primera versión online calcula auto, bicicleta y caminata con OSRM sin tráfico en
   tiempo real. El modo bus usa rutas institucionales publicadas en PostgreSQL, no un perfil
   OSRM genérico.
+- La navegación activa se inicia explícitamente desde una ruta calculada y sigue la posición
+  solo en primer plano con `Location.watchPositionAsync`; al detenerla o llegar al destino
+  se elimina el watcher y se detiene la voz.
+- Las instrucciones se leen en español con `expo-speech`. Si la posición queda a más de
+  60 m del trazado, la API recalcula usando la ubicación actual como nuevo origen; no se
+  guarda un historial de coordenadas.
 - Advertir que horarios/precios de transporte registrado son informativos.
 - No prometer rutas accesibles sin datos verificables.
 - Segundo plano únicamente durante una sesión activa.
@@ -100,8 +106,9 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 - La ubicación del turista se obtiene bajo demanda con permiso `while in use`; el botón
   de ubicación centra la cámara con zoom 15 y dibuja un punto azul en una fuente GeoJSON
   separada. No se inicia seguimiento en segundo plano desde Explorar.
-- La brújula nativa de MapLibre aparece al girar el mapa y se ubica encima del botón de
-  ubicación para permitir volver al norte sin añadir estado de rotación duplicado en React.
+- La brújula visual es un control reutilizable de la app: aparece al girar el mapa, se ubica
+  encima del botón de ubicación y al pulsarla anima la cámara de vuelta al norte. El rumbo
+  se mantiene como estado efímero de Explorar; no se persiste ni entra en el historial.
 - Explorar mantiene el desplazamiento con un dedo y el giro táctil con dos dedos. El
   wrapper nativo de MapLibre prioriza el giro frente al pinch-zoom y reserva la inclinación
   para un gesto vertical de tres dedos, evitando que los gestos compitan entre sí.

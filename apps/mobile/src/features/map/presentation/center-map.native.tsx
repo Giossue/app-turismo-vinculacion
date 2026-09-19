@@ -18,11 +18,7 @@ import {
   View,
 } from "react-native";
 
-import {
-  getTurismoMapColors,
-  turismoMetrics,
-  turismoSpacing,
-} from "@/core/ui/tokens";
+import { getTurismoMapColors } from "@/core/ui/tokens";
 import { useTurismoTheme } from "@/core/ui/theme-context";
 import type { UserLocationCoordinate } from "@/core/location/use-user-location";
 import type { PublicCenter } from "@/features/centers/domain/public-center";
@@ -39,8 +35,10 @@ type CenterMapProps = Readonly<{
   basemapMode?: BasemapMode;
   focusLocationKey?: number;
   onAttributionChange?: (handler: (() => void) | null) => void;
+  onBearingChange?: (bearing: number) => void;
   onCenterPress: (center: PublicCenter) => void;
   onViewportChange: (bounds: BoundingBox) => void;
+  resetNorthKey?: number;
   selectedCenterCode?: string | null;
   userLocation?: UserLocationCoordinate | null;
 }>;
@@ -79,8 +77,10 @@ export function CenterMap({
   centers,
   focusLocationKey,
   onAttributionChange,
+  onBearingChange,
   onCenterPress,
   onViewportChange,
+  resetNorthKey,
   selectedCenterCode = null,
   userLocation = null,
 }: CenterMapProps) {
@@ -234,6 +234,23 @@ export function CenterMap({
   }, [focusLocationKey, userLocation]);
 
   useEffect(() => {
+    if (!resetNorthKey) return;
+    let cancelled = false;
+    void mapRef.current?.getViewState().then(({ center }) => {
+      if (cancelled) return;
+      cameraRef.current?.easeTo({
+        bearing: 0,
+        center,
+        duration: 240,
+        easing: "ease",
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [resetNorthKey]);
+
+  useEffect(() => {
     onAttributionChange?.(showAttribution);
     return () => onAttributionChange?.(null);
   }, [onAttributionChange, showAttribution]);
@@ -242,12 +259,7 @@ export function CenterMap({
     <View style={styles.container}>
       <MapLibreMap
         accessibilityLabel="Mapa con atractivos turísticos publicados"
-        compass
-        compassPosition={{
-          bottom:
-            turismoSpacing.md + turismoMetrics.controlMd + turismoSpacing.sm,
-          right: turismoSpacing.md,
-        }}
+        compass={false}
         attribution={false}
         androidView="texture"
         logo={false}
@@ -257,6 +269,7 @@ export function CenterMap({
         onDidFinishLoadingStyle={() => setMapLoadState("ready")}
         onRegionDidChange={(event) => {
           const { bounds, center, userInteraction, zoom } = event.nativeEvent;
+          onBearingChange?.(event.nativeEvent.bearing);
           const pendingSelection = pendingCenterSelectionRef.current;
 
           if (pendingSelection && !userInteraction) {

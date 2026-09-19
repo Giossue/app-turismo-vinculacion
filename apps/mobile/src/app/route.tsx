@@ -28,6 +28,10 @@ import {
   turismoTypography,
 } from "@/core/ui/tokens";
 import { useCalculatedRoute } from "@/features/routing/application/use-calculated-route";
+import {
+  useNavigationSession,
+  type NavigationSessionStatus,
+} from "@/features/routing/application/use-navigation-session";
 import type {
   RouteCoordinate,
   RouteMode,
@@ -59,6 +63,9 @@ export default function RouteScreen() {
   const [mode, setMode] = useState<RouteMode>("car");
   const [origin, setOrigin] = useState<RouteCoordinate | null>(null);
   const [routeRequested, setRouteRequested] = useState(false);
+  const [navigationActive, setNavigationActive] = useState(false);
+  const [navigationNotice, setNavigationNotice] = useState<string | null>(null);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
   const {
     message: locationMessage,
     requestLocation,
@@ -79,6 +86,26 @@ export default function RouteScreen() {
   const routeQuery = useCalculatedRoute(request);
   const isCalculating = routeQuery.isPending || routeQuery.isFetching;
 
+  const handleArrive = useCallback(() => {
+    setNavigationActive(false);
+    setNavigationNotice("Has llegado a tu destino.");
+  }, []);
+
+  const handleReroute = useCallback((nextOrigin: RouteCoordinate) => {
+    setNavigationNotice(null);
+    setOrigin(nextOrigin);
+  }, []);
+
+  const navigationSession = useNavigationSession({
+    active: navigationActive,
+    destination,
+    isRecalculating: isCalculating,
+    onArrive: handleArrive,
+    onReroute: handleReroute,
+    route: routeQuery.data ?? null,
+    voiceEnabled,
+  });
+
   const handleBeforeBack = useCallback(() => {
     if (!menuVisible) return false;
     setMenuVisible(false);
@@ -88,7 +115,7 @@ export default function RouteScreen() {
   useScreenBackHandler(handleBeforeBack);
 
   const handleCalculateRoute = useCallback(async () => {
-    if (!destination || isCalculating) return;
+    if (!destination || isCalculating || navigationActive) return;
 
     if (origin) {
       setRouteRequested(true);
@@ -100,7 +127,37 @@ export default function RouteScreen() {
     if (!coordinate) return;
     setOrigin(coordinate);
     setRouteRequested(true);
-  }, [destination, isCalculating, origin, requestLocation, routeQuery]);
+  }, [
+    destination,
+    isCalculating,
+    navigationActive,
+    origin,
+    requestLocation,
+    routeQuery,
+  ]);
+
+  const handleStartNavigation = useCallback(async () => {
+    if (!destination || !routeQuery.data || isCalculating || navigationActive) {
+      return;
+    }
+
+    const coordinate = await requestLocation();
+    if (!coordinate) return;
+    setNavigationNotice(null);
+    setOrigin(coordinate);
+    setNavigationActive(true);
+  }, [
+    destination,
+    isCalculating,
+    navigationActive,
+    requestLocation,
+    routeQuery.data,
+  ]);
+
+  const handleStopNavigation = useCallback(() => {
+    setNavigationActive(false);
+    setNavigationNotice(null);
+  }, []);
 
   const modeLabel =
     modeOptions.find((option) => option.mode === mode)?.label ?? "Auto";
@@ -158,6 +215,7 @@ export default function RouteScreen() {
                   size={turismoIconSizes.md}
                 />
                 <TourismChoiceChip
+                  disabled={navigationActive}
                   label={option.label}
                   onPress={() => setMode(option.mode)}
                   selected={mode === option.mode}
@@ -169,6 +227,7 @@ export default function RouteScreen() {
 
         {destination && origin ? (
           <RouteMap
+            currentLocation={navigationSession.currentLocation}
             destination={destination}
             origin={origin}
             route={routeQuery.data ?? null}
@@ -176,28 +235,103 @@ export default function RouteScreen() {
         ) : null}
 
         <TourismActionButton
-          disabled={!destination || isCalculating}
-          icon={isCalculating ? undefined : "navigation"}
+          disabled={!destination || isCalculating || navigationActive}
+          icon={isCalculating || navigationActive ? undefined : "navigation"}
           label={
-            isCalculating
-              ? "Calculando ruta…"
-              : routeQuery.data
-                ? "Recalcular ruta"
-                : "Calcular ruta"
+            navigationActive
+              ? "Navegación activa"
+              : isCalculating
+                ? "Calculando ruta…"
+                : routeQuery.data
+                  ? "Recalcular ruta"
+                  : "Calcular ruta"
           }
           onPress={() => void handleCalculateRoute()}
         />
+
+        {routeQuery.data && !navigationActive && !isCalculating ? (
+          <TourismActionButton
+            icon="navigation"
+            label="Iniciar navegación"
+            onPress={() => void handleStartNavigation()}
+          />
+        ) : null}
+
+        {navigationActive ? (
+          <TourismSurface style={styles.navigationCard}>
+            <View style={styles.navigationHeader}>
+              <View
+                style={[
+                  styles.navigationIcon,
+                  { backgroundColor: colors.primarySoft },
+                ]}
+              >
+                <TurismoIcon
+                  color={colors.primaryStrong}
+                  name="navigation"
+                  size={turismoIconSizes.md}
+                />
+              </View>
+              <View style={styles.navigationCopy}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  {isCalculating
+                    ? "Recalculando ruta"
+                    : navigationStatusLabel(navigationSession.status)}
+                </Text>
+                <Text
+                  style={[styles.navigationInstruction, { color: colors.text }]}
+                >
+                  {navigationSession.nextInstruction?.instruction ??
+                    navigationSession.message ??
+                    "Siguiendo tu ubicación…"}
+                </Text>
+                {navigationSession.nextInstruction ? (
+                  <Text
+                    style={[styles.stepDistance, { color: colors.textFaint }]}
+                  >
+                    En{" "}
+                    {formatDistance(
+                      navigationSession.nextInstruction.distanceMeters,
+                    )}
+                  </Text>
+                ) : null}
+              </View>
+              {isCalculating || navigationSession.status === "starting" ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : null}
+            </View>
+            <View style={styles.navigationActions}>
+              <TourismActionButton
+                compact
+                label={voiceEnabled ? "Silenciar voz" : "Activar voz"}
+                mode="outlined"
+                onPress={() => setVoiceEnabled((current) => !current)}
+                style={styles.navigationAction}
+              />
+              <TourismActionButton
+                compact
+                icon="close"
+                label="Detener"
+                mode="outlined"
+                onPress={handleStopNavigation}
+                style={styles.navigationAction}
+              />
+            </View>
+          </TourismSurface>
+        ) : null}
 
         {isCalculating ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={colors.primary} />
             <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-              Buscando una ruta sin tráfico en tiempo real…
+              {navigationActive
+                ? "Recalculando tu ruta…"
+                : "Buscando una ruta sin tráfico en tiempo real…"}
             </Text>
           </View>
         ) : null}
 
-        {locationMessage || routeError ? (
+        {navigationNotice || locationMessage || routeError ? (
           <TourismSurface style={styles.noticeCard}>
             <TurismoIcon
               color={colors.danger}
@@ -205,7 +339,7 @@ export default function RouteScreen() {
               size={turismoIconSizes.md}
             />
             <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-              {routeError ?? locationMessage}
+              {navigationNotice ?? routeError ?? locationMessage}
             </Text>
           </TourismSurface>
         ) : null}
@@ -367,6 +501,28 @@ function formatDuration(seconds: number): string {
   return rest ? `${hours} h ${rest} min` : `${hours} h`;
 }
 
+function navigationStatusLabel(status: NavigationSessionStatus): string {
+  switch (status) {
+    case "starting":
+      return "Preparando navegación";
+    case "tracking":
+      return "Navegación activa";
+    case "rerouting":
+      return "Buscando una nueva ruta";
+    case "arrived":
+      return "Llegaste al destino";
+    case "denied":
+      return "Ubicación no disponible";
+    case "disabled":
+      return "GPS desactivado";
+    case "error":
+      return "No se pudo seguir la ruta";
+    case "idle":
+    default:
+      return "Navegación activa";
+  }
+}
+
 const styles = StyleSheet.create({
   content: {
     gap: turismoSpacing.lg,
@@ -400,6 +556,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: turismoSpacing.xxs,
   },
+  navigationCard: { gap: turismoSpacing.md, padding: turismoSpacing.md },
+  navigationHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: turismoSpacing.sm,
+  },
+  navigationIcon: {
+    alignItems: "center",
+    borderRadius: turismoRadii.pill,
+    height: turismoMetrics.controlMd,
+    justifyContent: "center",
+    width: turismoMetrics.controlMd,
+  },
+  navigationCopy: { flex: 1, gap: turismoSpacing.xxs },
+  navigationInstruction: { ...turismoTypography.body },
+  navigationActions: { flexDirection: "row", gap: turismoSpacing.xs },
+  navigationAction: { flex: 1 },
   metrics: { flexDirection: "row", flexWrap: "wrap", gap: turismoSpacing.xs },
   metric: {
     borderRadius: turismoRadii.md,

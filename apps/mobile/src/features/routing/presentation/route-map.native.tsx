@@ -20,14 +20,22 @@ import { MapAttributionButton } from "@/features/map/presentation/map-attributio
 import type { CalculatedRoute, RouteCoordinate } from "../domain/routing";
 
 export type RouteMapProps = Readonly<{
+  currentLocation?: RouteCoordinate | null;
   destination: RouteCoordinate;
   origin: RouteCoordinate | null;
   route: CalculatedRoute | null;
 }>;
 
-type EndpointProperties = Readonly<{ kind: "origin" | "destination" }>;
+type EndpointProperties = Readonly<{
+  kind: "origin" | "destination" | "current";
+}>;
 
-export function RouteMap({ destination, origin, route }: RouteMapProps) {
+export function RouteMap({
+  currentLocation = null,
+  destination,
+  origin,
+  route,
+}: RouteMapProps) {
   const cameraRef = useRef<CameraRef>(null);
   const mapRef = useRef<MapRef>(null);
   const { scheme } = useTurismoTheme();
@@ -58,6 +66,21 @@ export function RouteMap({ destination, origin, route }: RouteMapProps) {
     () => ({
       type: "FeatureCollection",
       features: [
+        ...(currentLocation
+          ? [
+              {
+                type: "Feature" as const,
+                properties: { kind: "current" as const },
+                geometry: {
+                  type: "Point" as const,
+                  coordinates: [
+                    currentLocation.longitude,
+                    currentLocation.latitude,
+                  ] as [number, number],
+                },
+              },
+            ]
+          : []),
         ...(origin
           ? [
               {
@@ -86,7 +109,7 @@ export function RouteMap({ destination, origin, route }: RouteMapProps) {
         },
       ],
     }),
-    [destination, origin],
+    [currentLocation, destination, origin],
   );
   const bounds = useMemo(
     () => getRouteBounds(route, origin, destination),
@@ -173,6 +196,17 @@ export function RouteMap({ destination, origin, route }: RouteMapProps) {
             paint={{
               "circle-color": colors.info,
               "circle-radius": 7,
+              "circle-stroke-color": colors.surface,
+              "circle-stroke-width": 3,
+            }}
+            type="circle"
+          />
+          <Layer
+            filter={["==", ["get", "kind"], "current"]}
+            id="calculated-route-current"
+            paint={{
+              "circle-color": colors.location,
+              "circle-radius": 8,
               "circle-stroke-color": colors.surface,
               "circle-stroke-width": 3,
             }}

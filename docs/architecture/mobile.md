@@ -65,7 +65,7 @@ mayores y accesibilidad explícita en controles no textuales. `PixelRatio` se re
 integraciones que necesiten densidad real. El back handler se registra y
 limpia por pantalla, consume primero overlays y no convierte gestos efímeros en historial.
 
-Referencias: [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/), [Expo Location](https://docs.expo.dev/versions/v57.0.0/sdk/location/), [Expo Router](https://docs.expo.dev/router/introduction/), [Expo SQLite](https://docs.expo.dev/versions/latest/sdk/sqlite/), [MapLibre OfflineManager](https://maplibre.org/maplibre-react-native/docs/modules/offline-manager/), [Style RN 0.86](https://reactnative.dev/docs/0.86/style), [dimensiones](https://reactnative.dev/docs/0.86/height-and-width), [useWindowDimensions](https://reactnative.dev/docs/0.86/usewindowdimensions), [PixelRatio](https://reactnative.dev/docs/0.86/pixelratio), [Text](https://reactnative.dev/docs/0.86/text), [Pressable](https://reactnative.dev/docs/0.86/pressable), [BackHandler](https://reactnative.dev/docs/0.86/backhandler) y [accesibilidad](https://reactnative.dev/docs/0.86/accessibility).
+Referencias: [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/), [Expo Location](https://docs.expo.dev/versions/v57.0.0/sdk/location/), [Expo Speech](https://docs.expo.dev/versions/latest/sdk/speech/), [Expo Router](https://docs.expo.dev/router/introduction/), [Expo SQLite](https://docs.expo.dev/versions/latest/sdk/sqlite/), [MapLibre OfflineManager](https://maplibre.org/maplibre-react-native/docs/modules/offline-manager/), [Style RN 0.86](https://reactnative.dev/docs/0.86/style), [dimensiones](https://reactnative.dev/docs/0.86/height-and-width), [useWindowDimensions](https://reactnative.dev/docs/0.86/usewindowdimensions), [PixelRatio](https://reactnative.dev/docs/0.86/pixelratio), [Text](https://reactnative.dev/docs/0.86/text), [Pressable](https://reactnative.dev/docs/0.86/pressable), [BackHandler](https://reactnative.dev/docs/0.86/backhandler) y [accesibilidad](https://reactnative.dev/docs/0.86/accessibility).
 
 ## Estado
 
@@ -83,8 +83,11 @@ visible se deriva del estado y no de efectos implícitos de navegación. Bottom 
 fichas y menús transitorios deben cerrarse o desmontarse explícitamente antes de navegar a
 otra pantalla, para evitar que una ficha quede montada junto a una ruta activa.
 
-Los overlays que necesiten movimiento usan Reanimated con tokens compartidos de movimiento y
-respetan `ReduceMotion.System`; los drawers aprovechan `ReanimatedDrawerLayout` de Gesture
+Las transiciones nativas de Stack y Tabs están desactivadas para evitar el flash blanco que
+puede aparecer en `react-native-screens` durante cambios entre navegadores anidados. No se
+añaden capas de animación al shell de pantalla. Los overlays que necesiten movimiento usan
+Reanimated con tokens compartidos de movimiento y respetan `ReduceMotion.System`; los drawers aprovechan
+`ReanimatedDrawerLayout` de Gesture
 Handler para mantener panel, scrim y gesto en un único progreso nativo. React Native Paper
 conserva las interacciones y animaciones propias de sus controles. La animación no añade
 entradas al historial ni sustituye el estado visible declarado por la pantalla.

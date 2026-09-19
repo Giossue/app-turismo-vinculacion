@@ -4,6 +4,7 @@ import { useTurismoPalette } from "@/core/ui/tourism-controls";
 import type { CalculatedRoute, RouteCoordinate } from "../domain/routing";
 
 type RouteMapProps = Readonly<{
+  currentLocation?: RouteCoordinate | null;
   destination: RouteCoordinate;
   origin: RouteCoordinate | null;
   route: CalculatedRoute | null;
