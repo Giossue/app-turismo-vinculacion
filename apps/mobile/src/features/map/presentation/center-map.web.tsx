@@ -14,6 +14,7 @@ import type { PublicCenter } from "@/features/centers/domain/public-center";
 type CenterMapProps = Readonly<{
   centers: readonly PublicCenter[];
   focusLocationKey?: number;
+  onAttributionChange?: (handler: (() => void) | null) => void;
   onCenterPress: (center: PublicCenter) => void;
   onViewportChange: (bounds: {
     west: number;

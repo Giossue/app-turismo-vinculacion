@@ -145,16 +145,7 @@ export function TourismTabBar({
                 { opacity: pressed ? 0.7 : 1 },
               ]}
             >
-              <View
-                style={[
-                  styles.tabIcon,
-                  {
-                    backgroundColor: selected
-                      ? colors.primarySoft
-                      : "transparent",
-                  },
-                ]}
-              >
+              <View style={styles.tabIcon}>
                 <TurismoIcon
                   color={selected ? colors.primaryStrong : colors.textMuted}
                   name={tab.icon}

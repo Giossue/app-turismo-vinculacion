@@ -6,6 +6,7 @@ import {
   Images,
   Layer,
   Map as MapLibreMap,
+  type MapRef,
   type PressEventWithFeatures,
   type StyleSpecification,
 } from "@maplibre/maplibre-react-native";
@@ -37,6 +38,7 @@ type CenterMapProps = Readonly<{
   centers: readonly PublicCenter[];
   basemapMode?: BasemapMode;
   focusLocationKey?: number;
+  onAttributionChange?: (handler: (() => void) | null) => void;
   onCenterPress: (center: PublicCenter) => void;
   onViewportChange: (bounds: BoundingBox) => void;
   selectedCenterCode?: string | null;
@@ -76,17 +78,22 @@ export function CenterMap({
   basemapMode = "streets",
   centers,
   focusLocationKey,
+  onAttributionChange,
   onCenterPress,
   onViewportChange,
   selectedCenterCode = null,
   userLocation = null,
 }: CenterMapProps) {
   const cameraRef = useRef<CameraRef>(null);
+  const mapRef = useRef<MapRef>(null);
   const sourceRef = useRef<GeoJSONSourceRef>(null);
   const pendingCenterSelectionRef = useRef<PendingCenterSelection | null>(null);
   const focusedLocationKeyRef = useRef<number | undefined>(undefined);
   const { scheme } = useTurismoTheme();
   const colors = getTurismoMapColors(scheme);
+  const showAttribution = useCallback(() => {
+    void mapRef.current?.showAttribution();
+  }, []);
   const centersByCode = useMemo(
     () => new Map(centers.map((center) => [center.code, center])),
     [centers],
@@ -226,6 +233,11 @@ export function CenterMap({
     });
   }, [focusLocationKey, userLocation]);
 
+  useEffect(() => {
+    onAttributionChange?.(showAttribution);
+    return () => onAttributionChange?.(null);
+  }, [onAttributionChange, showAttribution]);
+
   return (
     <View style={styles.container}>
       <MapLibreMap
@@ -236,6 +248,9 @@ export function CenterMap({
             turismoSpacing.md + turismoMetrics.controlMd + turismoSpacing.sm,
           right: turismoSpacing.md,
         }}
+        attribution={false}
+        androidView="texture"
+        logo={false}
         mapStyle={mapStyle}
         onDidFailLoadingMap={() => setMapLoadState("error")}
         onDidFinishLoadingMap={() => setMapLoadState("ready")}
@@ -269,6 +284,7 @@ export function CenterMap({
         onWillStartLoadingMap={() => setMapLoadState("loading")}
         style={styles.map}
         dragPan
+        ref={mapRef}
         touchPitch
         touchRotate
       >
@@ -373,7 +389,7 @@ export function CenterMap({
           <Layer
             id="tourism-user-location-halo"
             paint={{
-              "circle-color": colors.infoSoft,
+              "circle-color": colors.locationSoft,
               "circle-radius": 17,
             }}
             type="circle"
@@ -381,7 +397,7 @@ export function CenterMap({
           <Layer
             id="tourism-user-location-dot"
             paint={{
-              "circle-color": colors.info,
+              "circle-color": colors.location,
               "circle-radius": 7,
               "circle-stroke-color": colors.surface,
               "circle-stroke-width": 3,

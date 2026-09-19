@@ -4,6 +4,7 @@ import {
   Layer,
   Map as MapLibreMap,
   type CameraRef,
+  type MapRef,
   type StyleSpecification,
 } from "@maplibre/maplibre-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -15,6 +16,7 @@ import {
   getFallbackMapStyle,
   loadSelfHostedMapStyle,
 } from "@/features/map/presentation/center-map.native";
+import { MapAttributionButton } from "@/features/map/presentation/map-attribution-button";
 import type { CalculatedRoute, RouteCoordinate } from "../domain/routing";
 
 export type RouteMapProps = Readonly<{
@@ -27,6 +29,7 @@ type EndpointProperties = Readonly<{ kind: "origin" | "destination" }>;
 
 export function RouteMap({ destination, origin, route }: RouteMapProps) {
   const cameraRef = useRef<CameraRef>(null);
+  const mapRef = useRef<MapRef>(null);
   const { scheme } = useTurismoTheme();
   const colors = getTurismoMapColors(scheme);
   const [style, setStyle] = useState<StyleSpecification | null>(null);
@@ -134,11 +137,15 @@ export function RouteMap({ destination, origin, route }: RouteMapProps) {
     <View style={styles.container}>
       <MapLibreMap
         accessibilityLabel="Mapa de la ruta calculada"
+        attribution={false}
+        androidView="texture"
         compass
+        logo={false}
         mapStyle={style ?? getFallbackMapStyle(scheme)}
         onDidFailLoadingMap={() => setMapLoadState("ready")}
         onDidFinishLoadingMap={() => setMapLoadState("ready")}
         onDidFinishLoadingStyle={() => setMapLoadState("ready")}
+        ref={mapRef}
         style={styles.map}
       >
         <Camera
@@ -184,6 +191,11 @@ export function RouteMap({ destination, origin, route }: RouteMapProps) {
           />
         </GeoJSONSource>
       </MapLibreMap>
+      <MapAttributionButton
+        onPress={() => {
+          void mapRef.current?.showAttribution();
+        }}
+      />
       {mapLoadState === "loading" ? (
         <View
           pointerEvents="none"

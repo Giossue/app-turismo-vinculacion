@@ -46,3 +46,7 @@ facilidades. También registra metadatos de cinco imágenes JPEG generadas para 
 los objetos correspondientes se copian desde `assets/seed-tourism-media/` a
 `apps/api/.data/media/` mediante `scripts/seed-guaranda-demo-media.sh` en el entorno local. Estas imágenes deben sustituirse por
 fotografías institucionales antes de producción.
+
+La migración `20260919_seed_guaranda_six_centers.sql` carga seis centros y sus catálogos
+territoriales mínimos con coordenadas distribuidas alrededor de Guaranda. Son registros de
+demostración para validar el mapa y deben sustituirse por fichas institucionales verificadas.

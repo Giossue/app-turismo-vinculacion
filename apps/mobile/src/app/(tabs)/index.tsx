@@ -18,7 +18,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useNavigation, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
@@ -51,16 +51,23 @@ import {
 import { SearchResultsSheet } from "@/features/centers/presentation/search-results-sheet";
 import { usePublishedCenter } from "@/features/centers/application/use-published-center";
 import { CenterMap } from "@/features/map/presentation/center-map";
+import { MapAttributionButton } from "@/features/map/presentation/map-attribution-button";
 import { useUserLocation } from "@/core/location/use-user-location";
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 
+type ExploreTabNavigation = {
+  addListener: (event: "tabPress", callback: () => void) => () => void;
+};
+
 export default function HomeScreen() {
   const router = useRouter();
+  const navigation = useNavigation<ExploreTabNavigation>();
   const colors = useTurismoPalette();
   const { closeMenu, menuVisible } = useTourismMenu();
   const { height, width } = useWindowDimensions();
   const isLandscape = width > height;
   const sheetRef = useRef<ExpoBottomSheet>(null);
+  const mapAttributionHandlerRef = useRef<(() => void) | null>(null);
   const [text, setText] = useState("");
   const [submittedText, setSubmittedText] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -77,6 +84,12 @@ export default function HomeScreen() {
     message: locationMessage,
   } = useUserLocation();
   const [filters, setFilters] = useState<DiscoveryFilterValues>({});
+  const handleAttributionChange = useCallback(
+    (handler: (() => void) | null) => {
+      mapAttributionHandlerRef.current = handler;
+    },
+    [],
+  );
   const submittedQuery = submittedText.trim();
   const query = useMemo(
     () => ({ ...filters, text: submittedQuery || undefined }),
@@ -96,7 +109,8 @@ export default function HomeScreen() {
   const visibleCenters = error || isFetching ? [] : centers;
 
   const selectedCenter = selectedCenterCode
-    ? (visibleCenters.find((center) => center.code === selectedCenterCode) ?? null)
+    ? (visibleCenters.find((center) => center.code === selectedCenterCode) ??
+      null)
     : null;
   const isSearchMode =
     searchFocused || Boolean(text.trim()) || Boolean(submittedQuery);
@@ -148,6 +162,14 @@ export default function HomeScreen() {
   ]);
 
   useScreenBackHandler(handleBeforeBack);
+
+  useEffect(() => {
+    return navigation.addListener("tabPress", () => {
+      sheetRef.current?.dismiss();
+      setSelectedCenterCode(null);
+      void refetch();
+    });
+  }, [navigation, refetch]);
 
   useEffect(() => {
     if (!submittedQuery) return;
@@ -212,7 +234,7 @@ export default function HomeScreen() {
   }, [refetch]);
 
   if (error && visibleCenters.length === 0) {
-    return <ErrorState onRetry={retryCenters} />;
+    return <ErrorState isRetrying={isFetching} onRetry={retryCenters} />;
   }
 
   return (
@@ -221,6 +243,7 @@ export default function HomeScreen() {
       <CenterMap
         basemapMode="streets"
         centers={visibleCenters}
+        onAttributionChange={handleAttributionChange}
         onCenterPress={(center) => setSelectedCenterCode(center.code)}
         onViewportChange={handleViewportChange}
         selectedCenterCode={selectedCenterCode}
@@ -278,6 +301,28 @@ export default function HomeScreen() {
               ) : null}
             </>
           ) : null}
+          {isFetching ? (
+            <View
+              accessible
+              accessibilityLabel="Actualizando lugares turísticos"
+              accessibilityRole="progressbar"
+              pointerEvents="none"
+              style={[
+                styles.refreshNotice,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <ActivityIndicator color={colors.primaryStrong} size="small" />
+              <Text
+                style={[styles.refreshNoticeText, { color: colors.textMuted }]}
+              >
+                Actualizando lugares…
+              </Text>
+            </View>
+          ) : null}
         </View>
       </SafeAreaView>
       <View
@@ -296,10 +341,7 @@ export default function HomeScreen() {
             ]}
           >
             {locationStatus === "requesting" ? (
-              <ActivityIndicator
-                color={colors.primaryStrong}
-                size="small"
-              />
+              <ActivityIndicator color={colors.primaryStrong} size="small" />
             ) : (
               <TurismoIcon
                 color={colors.primaryStrong}
@@ -322,6 +364,13 @@ export default function HomeScreen() {
           onPress={() => void handleLocateUser()}
           selected={locationStatus === "ready"}
           style={styles.locationAction}
+        />
+      </View>
+      <View pointerEvents="box-none" style={styles.attributionLayer}>
+        <MapAttributionButton
+          bottom={0}
+          left={0}
+          onPress={() => mapAttributionHandlerRef.current?.()}
         />
       </View>
       <ExpoBottomSheet
@@ -522,7 +571,7 @@ function PlaceDetail({ detail }: Readonly<{ detail: PublicCenterDetail }>) {
               />
             ) : null}
             {detail.admission.priceFrom !== null ||
-              detail.admission.priceTo !== null ? (
+            detail.admission.priceTo !== null ? (
               <PlaceInfoRow
                 label="Precio"
                 value={formatPrice(
@@ -576,9 +625,7 @@ function PlacePhotoGallery({
           />
         ))}
       </ScrollView>
-      <Text
-        style={[styles.detailInfoValue, { color: colors.textMuted }]}
-      >
+      <Text style={[styles.detailInfoValue, { color: colors.textMuted }]}>
         Imágenes publicadas en esta ficha.
       </Text>
     </PlaceSection>
@@ -698,7 +745,10 @@ function formatPrice(from: number | null, to: number | null): string {
   return value === null ? "No especificado" : `$${value.toFixed(2)}`;
 }
 
-function ErrorState({ onRetry }: Readonly<{ onRetry: () => void }>) {
+function ErrorState({
+  isRetrying,
+  onRetry,
+}: Readonly<{ isRetrying: boolean; onRetry: () => void }>) {
   const colors = useTurismoPalette();
   return (
     <View style={[styles.loading, { backgroundColor: colors.background }]}>
@@ -706,9 +756,18 @@ function ErrorState({ onRetry }: Readonly<{ onRetry: () => void }>) {
       <Text style={[styles.errorTitle, { color: colors.text }]}>
         No pudimos cargar el mapa turístico.
       </Text>
+      {isRetrying ? (
+        <View style={styles.detailState}>
+          <ActivityIndicator color={colors.primaryStrong} />
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>
+            Actualizando lugares…
+          </Text>
+        </View>
+      ) : null}
       <TourismActionButton
         icon="refresh"
-        label="Reintentar"
+        label={isRetrying ? "Actualizando…" : "Reintentar"}
+        disabled={isRetrying}
         onPress={onRetry}
       />
     </View>
@@ -735,6 +794,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: turismoSpacing.xs,
   },
+  refreshNotice: {
+    alignSelf: "center",
+    alignItems: "center",
+    borderRadius: turismoRadii.pill,
+    borderWidth: turismoMetrics.borderWidth,
+    flexDirection: "row",
+    gap: turismoSpacing.xs,
+    paddingHorizontal: turismoSpacing.md,
+    paddingVertical: turismoSpacing.xs,
+  },
+  refreshNoticeText: { ...turismoTypography.caption },
   mapActionLayer: {
     alignItems: "center",
     bottom: turismoSpacing.md,
@@ -748,6 +818,15 @@ const styles = StyleSheet.create({
   },
   mapActionLayerLandscape: {
     bottom: turismoSpacing.sm,
+  },
+  attributionLayer: {
+    bottom: 0,
+    elevation: 20,
+    height: 44,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    zIndex: 20,
   },
   locationAction: {
     height: turismoMetrics.controlLg,

@@ -10,6 +10,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useTurismoTheme, TurismoThemeProvider } from "@/core/ui/theme-context";
 import { TurismoPaperProvider } from "@/core/ui/turismo-paper-provider";
 import { getTurismoColors } from "@/core/ui/tokens";
+import { turismoMotion } from "@/core/ui/tokens";
 
 function AppProviders({ children }: Readonly<{ children: ReactNode }>) {
   const [queryClient] = useState(
@@ -67,6 +68,8 @@ function AppNavigation() {
       <StatusBar style={scheme === "dark" ? "light" : "dark"} />
       <Stack
         screenOptions={{
+          animation: "slide_from_right",
+          animationDuration: turismoMotion.screenTransitionDuration,
           contentStyle: { backgroundColor: "transparent" },
           headerShown: false,
           headerShadowVisible: false,

@@ -63,7 +63,9 @@ export const turismoIconSizes = {
 } as const;
 
 export const turismoMotion = {
+  contentTransitionDuration: 180,
   drawerAnimationSpeed: 1,
+  screenTransitionDuration: 260,
 } as const;
 
 export const turismoColors = {
@@ -90,8 +92,11 @@ export const turismoColors = {
     map: {
       background: "#E2ECE6",
       border: "#D4E2D8",
+      attribution: "#176B4D",
       info: "#2C7BE5",
       infoSoft: "rgba(44, 123, 229, 0.24)",
+      location: "#2563EB",
+      locationSoft: "rgba(37, 99, 235, 0.24)",
       onPrimary: "#FFFFFF",
       primary: "#176B4D",
       primarySoft: "#DCEFE3",
@@ -123,8 +128,11 @@ export const turismoColors = {
     map: {
       background: "#10251A",
       border: "#345844",
+      attribution: "#55C58D",
       info: "#8CB8FF",
       infoSoft: "rgba(140, 184, 255, 0.24)",
+      location: "#2563EB",
+      locationSoft: "rgba(37, 99, 235, 0.24)",
       onPrimary: "#092015",
       primary: "#55C58D",
       primarySoft: "#1A4931",

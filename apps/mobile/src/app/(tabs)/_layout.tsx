@@ -41,7 +41,7 @@ function PrimaryTabs() {
     <Tabs
       detachInactiveScreens={false}
       screenOptions={{
-        animation: "none",
+        animation: "fade",
         headerShown: false,
       }}
       tabBar={({ navigation, state }) => {
@@ -49,7 +49,22 @@ function PrimaryTabs() {
         return (
           <TourismTabBar
             active={active}
-            onChange={(tab) => navigation.navigate(routeByTab[tab])}
+            onChange={(tab) => {
+              const routeName = routeByTab[tab];
+              if (tab === "explore" && active === "explore") {
+                const route = state.routes.find(
+                  (candidate) => candidate.name === routeName,
+                );
+                if (!route) return;
+                navigation.emit({
+                  type: "tabPress",
+                  target: route.key,
+                  canPreventDefault: true,
+                });
+                return;
+              }
+              navigation.navigate(routeName);
+            }}
             onMenu={openMenu}
           />
         );
