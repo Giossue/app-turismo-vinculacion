@@ -1,0 +1,17 @@
+.git
+.github
+.agents
+node_modules
+**/node_modules
+dist
+**/dist
+build
+coverage
+.expo
+.next
+*.log
+apps/api/.data
+database
+docs
+infra
+scripts

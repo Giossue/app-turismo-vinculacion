@@ -37,6 +37,10 @@ aplicación nunca posee el único ejemplar de datos.
 Variables validadas al inicio. Proporcionar `.env.example`, nunca `.env` real. Separar
 credenciales por entorno y rotar rutas/tiles privados, IA, correo, JWT y almacenamiento.
 
+La API se construye desde el contexto raíz con `Dockerfile.api`, que instala únicamente la
+distribución de producción de `@turismo/api` y escucha en `0.0.0.0:3000`. En Dokploy, el
+servicio debe usar ese Dockerfile y conservar el contexto raíz del monorepo.
+
 ## Backups
 
 - PostgreSQL: respaldos completos + política de retención; PITR cuando la operación lo requiera.
