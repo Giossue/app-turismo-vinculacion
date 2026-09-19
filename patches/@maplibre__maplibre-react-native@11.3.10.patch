@@ -1,0 +1,169 @@
+diff --git a/android/src/main/java/org/maplibre/reactnative/components/mapview/MLRNMapView.kt b/android/src/main/java/org/maplibre/reactnative/components/mapview/MLRNMapView.kt
+index b088909a48c4265219e4e95c529f6c0a63ae7e11..f94dff4bdba9f60cfb6f30b99016ff2eebf39494 100644
+--- a/android/src/main/java/org/maplibre/reactnative/components/mapview/MLRNMapView.kt
++++ b/android/src/main/java/org/maplibre/reactnative/components/mapview/MLRNMapView.kt
+@@ -145,6 +145,7 @@ open class MLRNMapView(
+     private var doubleTapHoldZoomEnabled: Boolean? = null
+     private var rotateEnabled: Boolean? = null
+     private var pitchEnabled: Boolean? = null
++    private var activePointerCount = 0
+ 
+     var tintColor: Int? = null
+ 
+@@ -612,8 +613,33 @@ open class MLRNMapView(
+ 
+     @SuppressLint("ClickableViewAccessibility")
+     override fun onTouchEvent(ev: MotionEvent?): Boolean {
++        if (ev == null) {
++            return false
++        }
++
++        when (ev.actionMasked) {
++            MotionEvent.ACTION_DOWN,
++            MotionEvent.ACTION_POINTER_DOWN -> {
++                activePointerCount = ev.pointerCount
++                updateUISettings()
++            }
++        }
++
+         val result = super.onTouchEvent(ev)
+ 
++        when (ev.actionMasked) {
++            MotionEvent.ACTION_UP,
++            MotionEvent.ACTION_CANCEL -> {
++                activePointerCount = 0
++                updateUISettings()
++            }
++
++            MotionEvent.ACTION_POINTER_UP -> {
++                activePointerCount = (ev.pointerCount - 1).coerceAtLeast(0)
++                updateUISettings()
++            }
++        }
++
+         if (result && scrollEnabled == true) {
+             requestDisallowInterceptTouchEvent(true)
+         }
+@@ -1252,19 +1278,24 @@ open class MLRNMapView(
+         }
+ 
+         val uiSettings = mapLibreMap!!.uiSettings
++        val isThreeFingerGesture = activePointerCount >= 3
++        val requestedScrollEnabled = scrollEnabled ?: true
++        val requestedTouchZoomEnabled = touchZoomEnabled ?: true
++        val requestedRotateEnabled = rotateEnabled ?: true
++        val requestedPitchEnabled = pitchEnabled ?: true
+ 
+-        if (scrollEnabled != null && uiSettings.isScrollGesturesEnabled != scrollEnabled) {
+-            uiSettings.isScrollGesturesEnabled = scrollEnabled!!
++        if (uiSettings.isScrollGesturesEnabled != (requestedScrollEnabled && !isThreeFingerGesture)) {
++            uiSettings.isScrollGesturesEnabled = requestedScrollEnabled && !isThreeFingerGesture
+ 
+-            if (!scrollEnabled!!) {
++            if (!requestedScrollEnabled || isThreeFingerGesture) {
+                 mapLibreMap!!.gesturesManager.moveGestureDetector.interrupt()
+             }
+         }
+ 
+-        if (touchZoomEnabled != null && uiSettings.isZoomGesturesEnabled != touchZoomEnabled) {
+-            uiSettings.isZoomGesturesEnabled = touchZoomEnabled!!
++        if (uiSettings.isZoomGesturesEnabled != (requestedTouchZoomEnabled && !isThreeFingerGesture)) {
++            uiSettings.isZoomGesturesEnabled = requestedTouchZoomEnabled && !isThreeFingerGesture
+ 
+-            if (!touchZoomEnabled!!) {
++            if (!requestedTouchZoomEnabled || isThreeFingerGesture) {
+                 mapLibreMap!!.gesturesManager.standardScaleGestureDetector.interrupt()
+             }
+         }
+@@ -1281,18 +1312,23 @@ open class MLRNMapView(
+             }
+         }
+ 
+-        if (rotateEnabled != null && uiSettings.isRotateGesturesEnabled != rotateEnabled) {
+-            uiSettings.isRotateGesturesEnabled = rotateEnabled!!
++        if (uiSettings.isRotateGesturesEnabled != (requestedRotateEnabled && !isThreeFingerGesture)) {
++            uiSettings.isRotateGesturesEnabled = requestedRotateEnabled && !isThreeFingerGesture
+ 
+-            if (!rotateEnabled!!) {
++            if (!requestedRotateEnabled || isThreeFingerGesture) {
+                 mapLibreMap!!.gesturesManager.rotateGestureDetector.interrupt()
+             }
+         }
+ 
+-        if (pitchEnabled != null && uiSettings.isTiltGesturesEnabled != pitchEnabled) {
+-            uiSettings.isTiltGesturesEnabled = pitchEnabled!!
++        if (uiSettings.isTiltGesturesEnabled != (requestedPitchEnabled && isThreeFingerGesture)) {
++            uiSettings.isTiltGesturesEnabled = requestedPitchEnabled && isThreeFingerGesture
+         }
+ 
++        // MapLibre's native Android detector can otherwise classify a slow
++        // rotation as a pinch first. This keeps the two-finger rotation fluid
++        // without removing pinch zoom.
++        uiSettings.setIncreaseScaleThresholdWhenRotating(true)
++
+         if (tintColor != null) {
+             uiSettings.setAttributionTintColor(tintColor!!)
+         }
+diff --git a/ios/components/map-view/MLRNMapView.m b/ios/components/map-view/MLRNMapView.m
+index 22212748b1f1ca2eb73b5a1688ddb848b5c8ab0c..dfd9fa3d56c7e74f835a23f3339a7784811942c7 100644
+--- a/ios/components/map-view/MLRNMapView.m
++++ b/ios/components/map-view/MLRNMapView.m
+@@ -14,6 +14,7 @@
+ @implementation MLRNMapView {
+   BOOL _pendingInitialLayout;
+   CGPoint _lastTapPoint;
++  CGFloat _threeFingerPitchInitial;
+ }
+ 
+ static double const DEG2RAD = M_PI / 180;
+@@ -59,6 +60,17 @@ static double const M2PI = M_PI * 2;
+     for (int i = 0; i < self.gestureRecognizers.count; i++) {
+       UIGestureRecognizer *gestureRecognizer = self.gestureRecognizers[i];
+ 
++      // MapLibre Native's pitch recognizer is a two-finger pan. Keep its
++      // native camera behavior, but require three fingers so two-finger
++      // rotation and zoom remain independent from tilt.
++      if ([gestureRecognizer isKindOfClass:[UIPanGestureRecognizer class]]) {
++        UIPanGestureRecognizer *panGesture = (UIPanGestureRecognizer *)gestureRecognizer;
++        if (panGesture.minimumNumberOfTouches == 2 && panGesture.maximumNumberOfTouches == 2) {
++          panGesture.minimumNumberOfTouches = 3;
++          panGesture.maximumNumberOfTouches = 3;
++        }
++      }
++
+       if ([gestureRecognizer isKindOfClass:[UITapGestureRecognizer class]]) {
+         [tap requireGestureRecognizerToFail:gestureRecognizer];
+       }
+@@ -70,6 +82,32 @@ static double const M2PI = M_PI * 2;
+   return self;
+ }
+ 
++// MapLibre Native sends its pitch recognizer to this selector. Reimplementing
++// it here keeps the same gesture path while accepting the three-finger pan we
++// configured above.
++- (void)handleTwoFingerDragGesture:(UIPanGestureRecognizer *)gesture {
++  if (!self.isPitchEnabled) return;
++
++  if (gesture.state == UIGestureRecognizerStateBegan) {
++    _threeFingerPitchInitial = self.camera.pitch;
++  }
++
++  if (gesture.state == UIGestureRecognizerStateBegan ||
++      gesture.state == UIGestureRecognizerStateChanged) {
++    if (gesture.numberOfTouches != 3) return;
++
++    CGPoint translation = [gesture translationInView:gesture.view];
++    if (fabs(translation.y) <= fabs(translation.x) * 1.2) return;
++
++    CGFloat pitch = _threeFingerPitchInitial - (translation.y / 2.0);
++    pitch = MAX(0.0, MIN(60.0, pitch));
++
++    MLNMapCamera *camera = [self.camera copy];
++    camera.pitch = pitch;
++    [self setCamera:camera animated:NO];
++  }
++}
++
+ - (void)layoutSubviews {
+   [super layoutSubviews];
+   if (_pendingInitialLayout) {

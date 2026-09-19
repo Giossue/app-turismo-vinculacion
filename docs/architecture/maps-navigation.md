@@ -100,8 +100,9 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   separada. No se inicia seguimiento en segundo plano desde Explorar.
 - La brújula nativa de MapLibre aparece al girar el mapa y se ubica encima del botón de
   ubicación para permitir volver al norte sin añadir estado de rotación duplicado en React.
-- Explorar mantiene el desplazamiento con un dedo y el giro táctil con dos dedos, pero
-  desactiva la inclinación táctil para que el gesto circular no compita con el pitch.
+- Explorar mantiene el desplazamiento con un dedo y el giro táctil con dos dedos. El
+  wrapper nativo de MapLibre prioriza el giro frente al pinch-zoom y reserva la inclinación
+  para un gesto vertical de tres dedos, evitando que los gestos compitan entre sí.
 - La disponibilidad del permiso y del proveedor se vuelve a comprobar mientras Explorar
   está visible y al regresar de Ajustes; al desactivarse se limpia la posición local para
   no presentar una ubicación obsoleta.

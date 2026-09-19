@@ -269,7 +269,7 @@ export function CenterMap({
         onWillStartLoadingMap={() => setMapLoadState("loading")}
         style={styles.map}
         dragPan
-        touchPitch={false}
+        touchPitch
         touchRotate
       >
         <Camera
