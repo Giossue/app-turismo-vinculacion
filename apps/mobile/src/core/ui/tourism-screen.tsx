@@ -17,6 +17,7 @@ export function TourismScreenFrame({
   includeBottomInset = true,
   onBack,
   onMenu,
+  showHeader = true,
   subtitle,
   title,
 }: Readonly<{
@@ -24,6 +25,7 @@ export function TourismScreenFrame({
   includeBottomInset?: boolean;
   onBack?: () => void;
   onMenu?: () => void;
+  showHeader?: boolean;
   subtitle?: string;
   title: string;
 }>) {
@@ -34,14 +36,16 @@ export function TourismScreenFrame({
       edges={includeBottomInset ? ["top", "bottom"] : ["top"]}
       style={[styles.safeArea, { backgroundColor: colors.background }]}
     >
-      <View style={styles.headerWrap}>
-        <TourismHeader
-          onBack={onBack}
-          onMenu={onMenu}
-          subtitle={subtitle}
-          title={title}
-        />
-      </View>
+      {showHeader ? (
+        <View style={styles.headerWrap}>
+          <TourismHeader
+            onBack={onBack}
+            onMenu={onMenu}
+            subtitle={subtitle}
+            title={title}
+          />
+        </View>
+      ) : null}
       <View style={styles.contentFrame}>{children}</View>
     </SafeAreaView>
   );

@@ -22,8 +22,9 @@ Cada feature separa `domain`, `application`, `data` y `presentation` cuando la c
 lo amerita. Evitar capas ceremoniales para componentes triviales.
 
 La navegación turística está organizada alrededor del mapa: `Explorar` muestra MapLibre y
-una ficha rápida nativa; `Agente` y `Itinerario` son vistas secundarias con la misma barra
-inferior; `Cómo llegar` representa la ruta activa sin solicitar GPS en la vista previa.
+una ficha rápida nativa; `Agente` se presenta como una conversación tipo chat con el
+compositor fijo al pie; `Itinerario` es una vista secundaria con la misma barra inferior;
+`Cómo llegar` representa la ruta activa sin solicitar GPS en la vista previa.
 Los datos de ejemplo se identifican visualmente como demostración y se sustituyen por
 consultas de la API cuando esos módulos se conecten.
 

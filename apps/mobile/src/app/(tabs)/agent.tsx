@@ -1,7 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,16 +11,13 @@ import {
 import { useRouter } from "expo-router";
 
 import {
-  TourismActionButton,
-  TourismBadge,
+  TourismIconAction,
   TourismSurface,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
 import { useTourismMenu } from "@/core/ui/tourism-navigation";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
-import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
-  turismoIconSizes,
   turismoMetrics,
   turismoRadii,
   turismoSpacing,
@@ -42,6 +38,7 @@ export default function AgentScreen() {
   const [messages, setMessages] =
     useState<readonly AgentDemoMessage[]>(agentDemoMessages);
   const [sending, setSending] = useState(false);
+  const messagesScrollRef = useRef<ScrollView>(null);
 
   const handleBeforeBack = useCallback(() => {
     if (!menuVisible) return false;
@@ -89,43 +86,20 @@ export default function AgentScreen() {
   return (
     <TourismScreenFrame
       includeBottomInset={false}
-      subtitle="ANDES NOCTURNOS"
-      title="Agente turístico"
+      showHeader={false}
+      title="Agente"
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.flex}
-      >
+      <View style={styles.flex}>
         <ScrollView
           contentContainerStyle={styles.content}
+          onContentSizeChange={() =>
+            messagesScrollRef.current?.scrollToEnd({ animated: true })
+          }
+          ref={messagesScrollRef}
+          style={styles.messagesScroll}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <TourismSurface style={styles.introCard}>
-            <View
-              style={[
-                styles.introIcon,
-                { backgroundColor: colors.primarySoft },
-              ]}
-            >
-              <TurismoIcon
-                color={colors.primaryStrong}
-                name="sparkles"
-                size={turismoIconSizes.lg}
-              />
-            </View>
-            <View style={styles.introCopy}>
-              <Text style={[styles.introTitle, { color: colors.text }]}>
-                Tu guía de Ecuador
-              </Text>
-              <Text style={[styles.introBody, { color: colors.textMuted }]}>
-                Pregúntame por atractivos, rutas y experiencias creadas con
-                información turística validada.
-              </Text>
-            </View>
-            <TourismBadge>Vista previa</TourismBadge>
-          </TourismSurface>
-
           <View style={styles.messages}>
             {messages.map((message) => (
               <View
@@ -136,47 +110,23 @@ export default function AgentScreen() {
                     : styles.assistantMessageRow
                 }
               >
-                {message.role === "assistant" ? (
-                  <View
-                    style={[
-                      styles.agentAvatar,
-                      { backgroundColor: colors.primary },
-                    ]}
-                  >
-                    <TurismoIcon
-                      color={colors.onPrimary}
-                      name="sparkles"
-                      size={16}
-                    />
-                  </View>
-                ) : null}
                 <View
                   style={[
-                    styles.messageBubble,
+                    styles.messageBlock,
                     message.role === "user"
                       ? {
-                          backgroundColor: colors.primary,
+                          backgroundColor: colors.surfaceMuted,
                           borderBottomRightRadius: turismoRadii.sm,
                         }
                       : {
                           backgroundColor: colors.surface,
-                          borderColor: colors.border,
                           borderBottomLeftRadius: turismoRadii.sm,
+                          borderColor: colors.border,
                           borderWidth: turismoMetrics.borderWidth,
                         },
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.messageText,
-                      {
-                        color:
-                          message.role === "user"
-                            ? colors.onPrimary
-                            : colors.text,
-                      },
-                    ]}
-                  >
+                  <Text style={[styles.messageText, { color: colors.text }]}>
                     {message.text}
                   </Text>
                   {message.cards?.map((card) => (
@@ -198,14 +148,6 @@ export default function AgentScreen() {
                         },
                       ]}
                     >
-                      <View style={styles.resultCardTopline}>
-                        <TourismBadge>{card.category}</TourismBadge>
-                        <TurismoIcon
-                          color={colors.primaryStrong}
-                          name="chevronDown"
-                          size={16}
-                        />
-                      </View>
                       <Text
                         style={[styles.resultTitle, { color: colors.text }]}
                       >
@@ -229,134 +171,87 @@ export default function AgentScreen() {
                       </Text>
                     </Pressable>
                   ))}
-                  {message.sources?.length ? (
-                    <View style={styles.sources}>
-                      <TurismoIcon
-                        color={colors.textFaint}
-                        name="circleHelp"
-                        size={14}
-                      />
-                      <Text
-                        style={[
-                          styles.sourcesText,
-                          { color: colors.textFaint },
-                        ]}
-                      >
-                        Fuentes: {message.sources.join(" · ")}
-                      </Text>
-                    </View>
-                  ) : null}
                 </View>
               </View>
             ))}
           </View>
+        </ScrollView>
 
+        <KeyboardAvoidingView
+          behavior="position"
+          contentContainerStyle={styles.composerAvoidingContent}
+          style={styles.composerAvoiding}
+        >
           <TourismSurface style={styles.composerCard}>
             <TextInput
               accessibilityLabel="Escribe una consulta al agente"
               editable={!sending}
               multiline
               onChangeText={setDraft}
-              placeholder="Pregúntame algo sobre Guaranda…"
+              placeholder={sending ? "Consultando…" : "Pregunta algo…"}
               placeholderTextColor={colors.textFaint}
               style={[styles.composerInput, { color: colors.text }]}
               value={draft}
             />
-            <View style={styles.composerFooter}>
-              <Text style={[styles.composerHint, { color: colors.textFaint }]}>
-                {sending
-                  ? "Consultando fichas publicadas…"
-                  : "La respuesta se basa en información aprobada."}
-              </Text>
-              <TourismActionButton
-                disabled={!draft.trim() || sending}
-                icon="send"
-                label={sending ? "Enviando" : "Enviar"}
-                onPress={() => void sendMessage()}
-              />
-            </View>
+            <TourismIconAction
+              accessibilityLabel="Enviar mensaje"
+              disabled={!draft.trim() || sending}
+              icon="send"
+              onPress={() => void sendMessage()}
+              selected={Boolean(draft.trim()) && !sending}
+            />
           </TourismSurface>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </View>
     </TourismScreenFrame>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  messagesScroll: { flex: 1 },
+  composerAvoiding: {
+    alignSelf: "stretch",
+  },
+  composerAvoidingContent: { width: "100%" },
   content: {
-    gap: turismoSpacing.lg,
-    paddingVertical: turismoSpacing.md,
-    paddingBottom: turismoSpacing.xl,
+    paddingTop: turismoSpacing.md,
+    paddingBottom: turismoSpacing.md,
   },
-  introCard: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-    padding: turismoSpacing.md,
-  },
-  introIcon: {
-    alignItems: "center",
-    borderRadius: turismoRadii.md,
-    height: turismoMetrics.controlMd,
-    justifyContent: "center",
-    width: turismoMetrics.controlMd,
-  },
-  introCopy: { flex: 1, gap: turismoSpacing.xxs },
-  introTitle: { ...turismoTypography.heading },
-  introBody: { ...turismoTypography.caption },
-  messages: { gap: turismoSpacing.md },
+  messages: { gap: turismoSpacing.lg },
   userMessageRow: { alignItems: "flex-end" },
-  assistantMessageRow: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: turismoSpacing.xs,
-  },
-  agentAvatar: {
-    alignItems: "center",
-    borderRadius: turismoRadii.pill,
-    height: turismoMetrics.avatarSm,
-    justifyContent: "center",
-    width: turismoMetrics.avatarSm,
-  },
-  messageBubble: {
+  assistantMessageRow: { alignItems: "flex-start" },
+  messageBlock: {
     borderRadius: turismoRadii.md,
     gap: turismoSpacing.sm,
-    maxWidth: "88%",
-    padding: turismoSpacing.md,
+    maxWidth: "92%",
+    paddingHorizontal: turismoSpacing.md,
+    paddingVertical: turismoSpacing.sm,
   },
-  messageText: { ...turismoTypography.body },
+  messageText: { ...turismoTypography.label, fontWeight: "400" },
   resultCard: {
     borderRadius: turismoRadii.md,
     gap: turismoSpacing.xs,
     marginTop: turismoSpacing.xs,
     padding: turismoSpacing.md,
   },
-  resultCardTopline: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  resultTitle: { ...turismoTypography.heading },
+  resultTitle: { ...turismoTypography.label, fontWeight: "400" },
   resultSummary: { ...turismoTypography.caption },
-  resultLink: { ...turismoTypography.label, marginTop: turismoSpacing.xs },
-  sources: {
-    alignItems: "center",
+  resultLink: { ...turismoTypography.caption, marginTop: turismoSpacing.xs },
+  composerCard: {
+    alignItems: "flex-end",
+    borderRadius: turismoRadii.md,
     flexDirection: "row",
-    gap: turismoSpacing.xxs,
+    gap: turismoSpacing.xs,
+    marginBottom: turismoSpacing.sm,
+    padding: turismoSpacing.xs,
   },
-  sourcesText: { ...turismoTypography.caption, flex: 1 },
-  composerCard: { gap: turismoSpacing.sm, padding: turismoSpacing.md },
   composerInput: {
     ...turismoTypography.body,
-    minHeight: turismoMetrics.controlLg,
-    padding: 0,
+    flex: 1,
+    height: turismoMetrics.controlMd,
+    paddingHorizontal: turismoSpacing.sm,
+    paddingVertical: turismoSpacing.xs,
+    textAlignVertical: "center",
   },
-  composerFooter: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-    justifyContent: "space-between",
-  },
-  composerHint: { ...turismoTypography.caption, flex: 1 },
 });

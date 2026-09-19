@@ -206,7 +206,7 @@ SELECT c.id, t.id, seed.file_name,
        'centers/' || c.id || '/photos/' || seed.file_name,
        'LOCAL', seed.checksum, 'image/jpeg', seed.size_bytes,
        'Imagen generada por IA para prototipo; sustituir por fotografía institucional.',
-       'Imagen de referencia generada para la ficha turística.', 1, 'PUBLICADO', 1
+       'Imagen de referencia generada para la ficha turística.', 1, 'PUBLICADO', NULL
 FROM centros_turisticos c
 JOIN tipos_archivo_centro_turistico t ON t.codigo = 'FOTOGRAFIA'
 JOIN (
