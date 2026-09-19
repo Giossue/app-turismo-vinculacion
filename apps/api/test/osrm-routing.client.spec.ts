@@ -1,9 +1,20 @@
+import "reflect-metadata";
+
 import { ConfigService } from "@nestjs/config";
 import { describe, expect, it, vi } from "vitest";
 
 import { OsrmRoutingClient } from "../src/routing/infrastructure/osrm-routing.client";
 
 describe("OsrmRoutingClient", () => {
+  it("declares ConfigService for Nest dependency injection", () => {
+    const parameterTypes = Reflect.getMetadata(
+      "design:paramtypes",
+      OsrmRoutingClient,
+    ) as unknown[] | undefined;
+
+    expect(parameterTypes?.[0]).toBe(ConfigService);
+  });
+
   it("uses the selected OSRM profile and normalizes the route", async () => {
     const fetcher = vi.fn().mockResolvedValue({
       ok: true,

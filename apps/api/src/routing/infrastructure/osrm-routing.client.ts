@@ -1,3 +1,4 @@
+import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { z } from "zod";
 
@@ -52,6 +53,7 @@ const osrmProfileByMode: Record<RouteMode, string> = {
   foot: "walking",
 };
 
+@Injectable()
 export class OsrmRoutingClient implements RoutingProvider {
   constructor(
     private readonly config: ConfigService,

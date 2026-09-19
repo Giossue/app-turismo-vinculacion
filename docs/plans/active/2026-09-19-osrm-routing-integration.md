@@ -40,6 +40,13 @@ hasta un atractivo publicado.
 - [x] Servicios OSRM de automóvil, bicicleta y caminata desplegados en Dokploy.
 - [x] API y cliente móvil implementados con contrato validado.
 - [x] Pruebas, typecheck y lint locales aprobados.
-- [ ] Variables de rutas agregadas al servicio API en Dokploy.
-- [ ] Smoke test de `POST /api/v1/routing/route` desde la API desplegada.
+- [x] Variables de rutas presentes en el servicio API en Dokploy.
+- [x] API y los tres servicios OSRM comparten `dokploy-network`.
+- [ ] Redeploy de la corrección de inyección de `ConfigService` y smoke test de
+      `POST /api/v1/routing/route` desde la API desplegada.
 - [ ] Validación visual en el Development Build Android.
+
+Durante el smoke test remoto se confirmó que OSRM responde `200` desde el contenedor de la
+API, pero la API devolvía `500` porque `OsrmRoutingClient` no estaba decorado con
+`@Injectable()` y Nest recibía `ConfigService` como `undefined`. La corrección está aplicada
+localmente y verificada; requiere un nuevo despliegue de la API.
