@@ -103,9 +103,11 @@ una pantalla que puede cerrarse.
 ## Caché y funcionamiento sin conexión
 
 TanStack Query persiste el catálogo público en AsyncStorage durante un máximo de 24 horas.
-Los centros publicados usan `staleTime` de 10 minutos y no se vuelven a solicitar al montar
-una pestaña ya visitada; al recuperar conectividad se permite la revalidación. Esto es una
-copia de lectura para continuidad de UX, no sustituye PostgreSQL.
+El mapa en línea revalida los centros publicados al montar y solo dibuja los pines después de
+una respuesta exitosa de la API. Una respuesta vacía no se completa con datos persistidos y
+los datos anteriores se ocultan mientras la consulta está pendiente; así la caché no sustituye
+la fuente remota PostgreSQL. Los manifiestos guardados se usan únicamente desde el flujo
+explícito de mapas sin conexión.
 
 Los paquetes de mapa se descargan por ciudad desde `Mapas sin conexión`. MapLibre
 `OfflineManager` persiste tiles del estilo de calles y Expo SQLite conserva el manifiesto,

@@ -37,6 +37,8 @@ orientarse en el mapa, puede solicitar su posición de forma explícita.
 ## Datos e integraciones
 
 - Solo lectura de datos publicados de la API institucional.
+- Una respuesta remota vacía produce un mapa sin pines; no se generan atractivos de ejemplo
+  ni se usan centros offline como sustituto dentro de Explorar.
 - No se guardan coordenadas históricas del dispositivo, cuentas ni tokens.
 - La URL del backend se inyecta por variable pública `EXPO_PUBLIC_API_URL`, sin secretos.
 

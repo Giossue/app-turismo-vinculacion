@@ -90,9 +90,13 @@ export default function HomeScreen() {
     refetch,
   } = usePublishedCenters(query);
   const { data: catalog } = useDiscoveryCatalog();
+  // No conservamos pines mientras una consulta remota está en curso ni cuando
+  // terminó con error. Así una respuesta remota vacía también elimina los
+  // centros que pudieran haber quedado persistidos de una sesión anterior.
+  const visibleCenters = error || isFetching ? [] : centers;
 
   const selectedCenter = selectedCenterCode
-    ? (centers.find((center) => center.code === selectedCenterCode) ?? null)
+    ? (visibleCenters.find((center) => center.code === selectedCenterCode) ?? null)
     : null;
   const isSearchMode =
     searchFocused || Boolean(text.trim()) || Boolean(submittedQuery);
@@ -207,7 +211,7 @@ export default function HomeScreen() {
     void refetch();
   }, [refetch]);
 
-  if (error && centers.length === 0) {
+  if (error && visibleCenters.length === 0) {
     return <ErrorState onRetry={retryCenters} />;
   }
 
@@ -216,7 +220,7 @@ export default function HomeScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <CenterMap
         basemapMode="streets"
-        centers={centers}
+        centers={visibleCenters}
         onCenterPress={(center) => setSelectedCenterCode(center.code)}
         onViewportChange={handleViewportChange}
         selectedCenterCode={selectedCenterCode}
@@ -364,7 +368,7 @@ export default function HomeScreen() {
           >
             <SearchResultsSheet
               catalog={catalog}
-              centers={centers}
+              centers={visibleCenters}
               error={error ?? null}
               filters={filters}
               isFetching={isFetching}

@@ -3,6 +3,17 @@ import { describe, expect, it, vi } from "vitest";
 import { getPublishedCenters } from "./public-centers-api";
 
 describe("getPublishedCenters", () => {
+  it("keeps the map empty when the remote catalog is empty", async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [] }),
+    });
+
+    await expect(
+      getPublishedCenters({}, fetcher, "http://api.test/api/v1"),
+    ).resolves.toEqual([]);
+  });
+
   it("returns public data after validating its contract", async () => {
     const fetcher = vi.fn().mockResolvedValue({
       ok: true,

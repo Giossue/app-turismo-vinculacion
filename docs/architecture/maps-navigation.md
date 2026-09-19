@@ -10,9 +10,8 @@
 - El mapa móvil usa el estilo configurado en `EXPO_PUBLIC_TILESERVER_STYLE_URL`, servido
   por el TileServer GL propio y respaldado por los tiles
   vectoriales OpenMapTiles generados desde OpenStreetMap para Ecuador. La app descarga el
-  JSON del estilo, sustituye la referencia TileJSON por la plantilla explícita
-  `/data/v3/{z}/{x}/{y}.pbf` que MapLibre Native requiere y aplica una paleta propia para
-  terreno, edificios, agua, zonas verdes y calles. Si el servidor no responde, conserva
+  JSON del estilo, conserva la referencia TileJSON publicada por TileServer GL y aplica una
+  paleta propia para terreno, edificios, agua, zonas verdes y calles. Si el servidor no responde, conserva
   los pines sobre un fondo local neutro; no cambia a ArcGIS o Stadia.
 - No calcula rutas ni provee navegación por sí mismo.
 
@@ -92,6 +91,9 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   árbol React mientras el usuario hace zoom o panea. Los pines individuales usan un
   recurso de icono estático, sin una vista React ni un círculo de fondo. Los clusters sí
   usan una capa separada con conteo y se expanden mediante `getClusterExpansionZoom`.
+  En el mapa en línea, ese conjunto proviene exclusivamente de una respuesta exitosa de
+  `GET /api/v1/centers`; si la respuesta remota está vacía, no se crean pines de ejemplo ni
+  se reutiliza el manifiesto offline.
 - La selección es estado de la pantalla: el toque primero centra la cámara en el atractivo
   con el zoom de detalle predeterminado y luego presenta la ficha; una capa de símbolo
   separada pinta el pin seleccionado con el color de énfasis.

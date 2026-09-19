@@ -477,11 +477,6 @@ function normalizeSelfHostedStyle(
   }
 
   const tileJsonUrl = new URL("/data/v3.json", styleUrl).toString();
-  const tileTemplateUrl = new URL(
-    "/data/v3/{z}/{x}/{y}.pbf",
-    styleUrl,
-  ).toString();
-
   const normalizedSources = Object.fromEntries(
     Object.entries(sources).map(([sourceId, source]) => {
       if (!source || typeof source !== "object") return [sourceId, source];
@@ -491,13 +486,13 @@ function normalizeSelfHostedStyle(
           ? new URL(normalizedSource.url, styleUrl).toString()
           : undefined;
       if (sourceUrl === tileJsonUrl) {
-        normalizedSource.tiles = [
-          tileTemplateUrl,
-        ];
-        // Ecuador se generó hasta z14. Al declararlo, MapLibre hace overzoom
-        // con la última baldosa disponible en vez de pedir z15+ al servidor.
+        // Conservar el TileJSON permite que MapLibre resuelva el template de
+        // tiles y sus metadatos exactamente como los publica TileServer GL.
+        // Ecuador se generó hasta z14; se declara para evitar solicitudes
+        // innecesarias a niveles superiores.
+        normalizedSource.url = sourceUrl;
         normalizedSource.maxzoom = 14;
-        delete normalizedSource.url;
+        delete normalizedSource.tiles;
       }
       if (sourceId === "openmaptiles") {
         normalizedSource.attribution =
