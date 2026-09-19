@@ -7,16 +7,13 @@
 - Renderizado nativo de mapas base, capas y marcadores en Android/iOS.
 - Estilos de mapa y tiles configurados por entorno; el estilo de demostración nunca se usa
   en producción.
-- En desarrollo local, si `EXPO_PUBLIC_ARCGIS_API_KEY` está configurada, se usan los estilos
-  vectoriales autenticados `arcgis/streets` (Explorar) y `arcgis/navigation` (navegación),
-  con variantes nocturnas, etiquetas en español y `places=none` para que los atractivos
-  propios sean la capa visual principal. La app descarga el JSON del estilo, elimina la
-  referencia TileJSON duplicada de las fuentes de ArcGIS y atenúa las líneas de calles,
-  ocultando sus capas de borde para reducir el ruido visual. Conserva la plantilla
-  explícita `/tile/{z}/{y}/{x}.pbf` que MapLibre Native requiere. Sin la clave se usa una
-  base raster pública Canvas Light/Dark Gray con fondo blanco roto en claro y la
-  referencia de calles y etiquetas desaturada y atenuada; es un fallback de desarrollo
-  y no la variante de producción.
+- El mapa móvil usa el estilo configurado en `EXPO_PUBLIC_TILESERVER_STYLE_URL`, servido
+  por el TileServer GL propio (`https://mapas.devs-ueb.tech`) y respaldado por los tiles
+  vectoriales OpenMapTiles generados desde OpenStreetMap para Ecuador. La app descarga el
+  JSON del estilo, sustituye la referencia TileJSON por la plantilla explícita
+  `/data/v3/{z}/{x}/{y}.pbf` que MapLibre Native requiere y aplica una paleta propia para
+  terreno, edificios, agua, zonas verdes y calles. Si el servidor no responde, conserva
+  los pines sobre un fondo local neutro; no cambia a ArcGIS o Stadia.
 - No calcula rutas ni provee navegación por sí mismo.
 
 ### Proveedor de rutas
@@ -31,6 +28,10 @@
 - Consultas por viewport, distancia y territorio.
 - Geometría declarada de rutas de cooperativas.
 - Relación entre rutas, centros y paradas.
+- Si una ruta publicada no tiene `duracion_estimada`, la API estima sus minutos con la
+  longitud PostGIS y una velocidad media conservadora por tipo de transporte, sin tráfico.
+  La duración declarada por la administración siempre tiene prioridad y la respuesta
+  marca el valor estimado.
 
 No duplicar automáticamente toda la base en un proveedor cartográfico. Publicar capas
 externas solo cuando exista un workflow GIS que lo necesite.
@@ -50,9 +51,9 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 
 - Los estilos y tiles públicos declaran atribución y límites por entorno.
 - Operaciones privilegiadas, rutas y consumo controlado pasan por backend.
-- La clave de basemap que llegue al móvil debe ser pública, restringida al servicio de mapas
-  y separada de las credenciales privadas de rutas/geocodificación, que permanecen en backend.
-- Registrar consumo, expiración y rotación.
+- El estilo y el endpoint de tiles son públicos y deben conservar atribución visible de
+  OpenMapTiles y OpenStreetMap. Las credenciales privadas de rutas/geocodificación, si se
+  incorporan, permanecen en backend.
 
 ## Navegación
 
@@ -72,7 +73,7 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 - El cliente persiste la caché de consultas públicas durante 24 horas y evita repetir la
   petición al volver a una pestaña mientras el dato siga fresco; una revalidación puede
   ocurrir al recuperar conectividad o mediante una acción explícita.
-- El estilo ArcGIS se cachea en memoria por combinación de tema y modo (`streets` o
+- El estilo propio se cachea en memoria por combinación de tema y modo (`streets` o
   `navigation`), se deduplican solicitudes concurrentes y se muestran eventos de carga de
   MapLibre para evitar el destello negro durante el cambio de estilo.
 - No reemplazar el `GeoJSONSource` en cada cambio de cámara: el catálogo ya

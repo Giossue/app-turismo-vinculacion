@@ -42,6 +42,7 @@ export type OfflineCityManifest = Readonly<{
     origin: string;
     destination: string;
     durationMinutes: number | null;
+    durationEstimated: boolean;
     geometry: GeoJSON.LineString;
     directions: readonly unknown[];
   }>[];

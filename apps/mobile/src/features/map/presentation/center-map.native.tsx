@@ -61,8 +61,11 @@ const selectedCenterZoom = 16;
 const selectedCenterCameraDuration = 320;
 const cameraTargetTolerance = 0.001;
 const cameraZoomTolerance = 0.15;
-const arcgisStyleCache = new Map<string, StyleSpecification>();
-const arcgisStylePromiseCache = new Map<string, Promise<StyleSpecification>>();
+const selfHostedStyleCache = new Map<string, StyleSpecification>();
+const selfHostedStylePromiseCache = new Map<
+  string,
+  Promise<StyleSpecification>
+>();
 
 type PendingCenterSelection = Readonly<{
   center: PublicCenter;
@@ -126,53 +129,49 @@ export function CenterMap({
   // se reserva para catálogos grandes, evitando que un zoom corto cambie un
   // pin por un círculo de grupo durante la exploración inicial.
   const shouldCluster = centers.length > 20;
-  const fallbackMapStyle = useMemo(() => cleanRasterMapStyle(scheme), [scheme]);
+  const fallbackMapStyle = useMemo(
+    () => cleanFallbackMapStyle(scheme),
+    [scheme],
+  );
   // Cambiar esta revisión invalida estilos normalizados durante Fast Refresh
   // sin reiniciar la actividad nativa ni conservar colores de una versión
   // anterior en la caché de memoria.
-  const styleRequestKey = `quiet-v5:${scheme}:${basemapMode}`;
-  const apiKey = process.env.EXPO_PUBLIC_ARCGIS_API_KEY?.trim();
-  const [arcgisMapStyleState, setArcgisMapStyleState] = useState<{
+  const styleRequestKey = `self-hosted-v1:${scheme}:${basemapMode}`;
+  const [selfHostedMapStyleState, setSelfHostedMapStyleState] = useState<{
     requestKey: string;
     style: StyleSpecification;
   } | null>(() => {
-    const cached = arcgisStyleCache.get(styleRequestKey);
+    const cached = selfHostedStyleCache.get(styleRequestKey);
     return cached ? { requestKey: styleRequestKey, style: cached } : null;
   });
   const [mapLoadState, setMapLoadState] = useState<
     "loading" | "ready" | "error"
-  >(() =>
-    !apiKey || arcgisStyleCache.has(styleRequestKey) ? "ready" : "loading",
-  );
+  >(() => (selfHostedStyleCache.has(styleRequestKey) ? "ready" : "loading"));
 
   useEffect(() => {
-    if (!apiKey) return;
-
     let cancelled = false;
 
-    getArcgisStyle(apiKey, scheme, basemapMode, styleRequestKey)
+    getSelfHostedStyle(scheme, styleRequestKey)
       .then((style) => {
         if (!cancelled) {
-          setArcgisMapStyleState({ requestKey: styleRequestKey, style });
+          setSelfHostedMapStyleState({ requestKey: styleRequestKey, style });
           setMapLoadState("ready");
         }
       })
       .catch(() => {
-        // El fallback raster mantiene la exploración disponible si la clave
-        // expiró, no tiene el privilegio de basemaps o hay una caída de red.
-        // El estilo anterior, si existe, se conserva mientras cambia el tema;
-        // el fallback se usará hasta que llegue la respuesta nueva.
+        // El estilo vacío conserva la exploración y los pines si el servidor
+        // propio está temporalmente fuera de línea.
         if (!cancelled) setMapLoadState("ready");
       });
 
     return () => {
       cancelled = true;
     };
-  }, [apiKey, basemapMode, scheme, styleRequestKey]);
+  }, [basemapMode, scheme, styleRequestKey]);
 
   const mapStyle =
-    arcgisMapStyleState?.requestKey === styleRequestKey
-      ? arcgisMapStyleState.style
+    selfHostedMapStyleState?.requestKey === styleRequestKey
+      ? selfHostedMapStyleState.style
       : fallbackMapStyle;
   const handleSourcePress = useCallback(
     async (event: NativeSyntheticEvent<PressEventWithFeatures>) => {
@@ -403,88 +402,75 @@ export function CenterMap({
   );
 }
 
-const arcgisStylesBaseUrl =
-  "https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis";
+const selfHostedMapsBaseUrl = "https://mapas.devs-ueb.tech";
+const selfHostedTileJsonUrl = `${selfHostedMapsBaseUrl}/data/v3.json`;
+const selfHostedStyleUrlFromEnv =
+  process.env.EXPO_PUBLIC_TILESERVER_STYLE_URL?.trim() ||
+  `${selfHostedMapsBaseUrl}/styles/basic-preview/style.json`;
 
-function getArcgisStyle(
-  apiKey: string,
+function getSelfHostedStyle(
   scheme: "light" | "dark",
-  basemapMode: BasemapMode,
   requestKey: string,
 ): Promise<StyleSpecification> {
-  const cached = arcgisStyleCache.get(requestKey);
+  const cached = selfHostedStyleCache.get(requestKey);
   if (cached) return Promise.resolve(cached);
 
-  const pending = arcgisStylePromiseCache.get(requestKey);
+  const pending = selfHostedStylePromiseCache.get(requestKey);
   if (pending) return pending;
 
-  const request = fetch(arcgisStyleUrl(apiKey, scheme, basemapMode))
+  const request = fetch(selfHostedStyleUrl())
     .then(async (response) => {
       if (!response.ok) {
-        throw new Error(`ArcGIS basemap responded with ${response.status}`);
+        throw new Error(
+          `Self-hosted basemap responded with ${response.status}`,
+        );
       }
-      return normalizeArcgisStyle(await response.json(), scheme);
+      return normalizeSelfHostedStyle(await response.json(), scheme);
     })
     .then((style) => {
-      arcgisStyleCache.set(requestKey, style);
+      selfHostedStyleCache.set(requestKey, style);
       return style;
     })
-    .finally(() => arcgisStylePromiseCache.delete(requestKey));
+    .finally(() => selfHostedStylePromiseCache.delete(requestKey));
 
-  arcgisStylePromiseCache.set(requestKey, request);
+  selfHostedStylePromiseCache.set(requestKey, request);
   return request;
 }
 
-function arcgisStyleUrl(
-  apiKey: string,
-  scheme: "light" | "dark",
-  basemapMode: BasemapMode,
-) {
-  const styleName =
-    basemapMode === "navigation"
-      ? scheme === "dark"
-        ? "navigation-night"
-        : "navigation"
-      : scheme === "dark"
-        ? "streets-night"
-        : "streets";
-  const query = new URLSearchParams({
-    echoToken: "true",
-    language: "es",
-    // Los atractivos propios de Turismo Vinculación son la capa principal;
-    // ocultar los POI del proveedor deja el mapa más limpio y legible.
-    places: "none",
-    token: apiKey,
-  });
-  return `${arcgisStylesBaseUrl}/${styleName}?${query.toString()}`;
+function selfHostedStyleUrl() {
+  return selfHostedStyleUrlFromEnv;
 }
 
-/**
- * ArcGIS returns a valid Mapbox style with both `url` (TileJSON) and `tiles`
- * in its vector source. MapLibre Native resolves `url` first and then rejects
- * ArcGIS' service metadata because it does not expose a Mapbox `tiles` field.
- * Keeping the explicit tile template makes the same style portable to native.
- */
-function normalizeArcgisStyle(
+function normalizeSelfHostedStyle(
   value: unknown,
   scheme: "light" | "dark",
 ): StyleSpecification {
   if (!value || typeof value !== "object") {
-    throw new Error("ArcGIS returned an invalid basemap style");
+    throw new Error("The self-hosted basemap returned an invalid style");
   }
 
   const style = value as Record<string, unknown>;
   const sources = style.sources;
   if (!sources || typeof sources !== "object") {
-    throw new Error("ArcGIS basemap style has no sources");
+    throw new Error("The self-hosted basemap style has no sources");
   }
 
   const normalizedSources = Object.fromEntries(
     Object.entries(sources).map(([sourceId, source]) => {
       if (!source || typeof source !== "object") return [sourceId, source];
       const normalizedSource = { ...(source as Record<string, unknown>) };
-      if (normalizedSource.tiles && normalizedSource.url) {
+      if (normalizedSource.url === selfHostedTileJsonUrl) {
+        normalizedSource.tiles = [
+          `${selfHostedMapsBaseUrl}/data/v3/{z}/{x}/{y}.pbf`,
+        ];
+        // Ecuador se generó hasta z14. Al declararlo, MapLibre hace overzoom
+        // con la última baldosa disponible en vez de pedir z15+ al servidor.
+        normalizedSource.maxzoom = 14;
         delete normalizedSource.url;
+      }
+      if (sourceId === "openmaptiles") {
+        normalizedSource.attribution =
+          "© OpenMapTiles © OpenStreetMap contributors";
       }
       return [sourceId, normalizedSource];
     }),
@@ -501,8 +487,48 @@ function quietMapLayers(value: unknown, scheme: "light" | "dark"): unknown {
   if (!Array.isArray(value)) return value;
 
   const dark = scheme === "dark";
-  const roadColor = dark ? "#596675" : "#a8b1ba";
-  const neutralLineColor = dark ? "#43515e" : "#d9dee3";
+  const palette = dark
+    ? {
+        background: "#292a28",
+        building: "#454947",
+        farmland: "#454a3d",
+        fillDefault: "#303331",
+        grass: "#374d3b",
+        ice: "#4a4c4a",
+        landuse: "#3a3c38",
+        neutralLine: "#4b504f",
+        park: "#3d5941",
+        roadMajor: "#7b8585",
+        roadMinor: "#626b6c",
+        roadArea: "#3c3f3c",
+        sand: "#554b3f",
+        text: "#d3d7d5",
+        textHalo: "#292a28",
+        water: "#315565",
+        waterLine: "#4c7887",
+        wood: "#304a35",
+      }
+    : {
+        background: "#f4ece1",
+        building: "#e1dfdc",
+        farmland: "#dcebd8",
+        fillDefault: "#f4f0e9",
+        grass: "#d6ebcf",
+        ice: "#f8f7f3",
+        landuse: "#eee8dd",
+        neutralLine: "#d4d5d1",
+        park: "#cce7c9",
+        roadMajor: "#a9aba8",
+        roadMinor: "#c1c3bf",
+        roadArea: "#eee9df",
+        sand: "#eddfc9",
+        text: "#565254",
+        textHalo: "#fffdf9",
+        water: "#bfe1ed",
+        waterLine: "#78b8d0",
+        wood: "#c4dfbf",
+      };
+  const backgroundColor = palette.background;
 
   return value.map((layer) => {
     if (!layer || typeof layer !== "object") return layer;
@@ -513,35 +539,96 @@ function quietMapLayers(value: unknown, scheme: "light" | "dark"): unknown {
       .join(" ")
       .toLowerCase();
 
-    if (candidate.type === "background" && !dark) {
+    if (candidate.type === "background") {
       return {
         ...candidate,
         paint: {
           ...(isRecord(candidate.paint) ? candidate.paint : {}),
-          "background-color": "#f5f7f8",
+          "background-color": backgroundColor,
         },
       };
     }
 
-    if (
-      !dark &&
-      (candidate.type === "fill" || candidate.type === "fill-extrusion")
-    ) {
+    if (candidate.type === "fill" || candidate.type === "fill-extrusion") {
       const isWaterLayer = /water|ocean|sea|river|lake/.test(layerName);
-      const isGreenLayer =
-        /park|wood|forest|vegetation|grass|scrub|meadow|wetland|golf/.test(
-          layerName,
-        );
       const isBuildingLayer = /building|structure|footprint|house/.test(
         layerName,
       );
+      const isWoodLayer = /wood|forest/.test(layerName);
+      const isParkLayer = /park|golf/.test(layerName);
+      const isGrassLayer = /grass|vegetation|scrub|meadow|wetland/.test(
+        layerName,
+      );
+      const isFarmlandLayer = /farm|crop/.test(layerName);
+      const isSandLayer = /sand|bare|earth|rangeland|desert/.test(layerName);
+      const isIceLayer = /ice|glacier/.test(layerName);
+      const isResidentialLayer = /residential|urban|commercial|industrial/.test(
+        layerName,
+      );
+      const isRoadAreaLayer = /road|pier/.test(layerName);
+      const isAerowayLayer = /aeroway/.test(layerName);
 
-      // Conservamos los colores cartográficos específicos de agua y áreas
-      // verdes. Solo blanqueamos el relleno general amarillento y suavizamos
-      // los edificios para que la trama urbana no domine el mapa.
-      if (isWaterLayer || isGreenLayer) return layer;
-
-      const fillColor = isBuildingLayer ? "#e9edf0" : "#f5f7f8";
+      // Paleta propia inspirada en Alidade Bright y Alidade Smooth Dark:
+      // conserva variedad semántica sin recuperar el amarillo dominante ni
+      // hacer que las calles compitan con los atractivos.
+      const fillColor = dark
+        ? isBuildingLayer
+          ? palette.building
+          : isWaterLayer
+            ? palette.water
+            : isWoodLayer
+              ? palette.wood
+              : isParkLayer
+                ? palette.park
+                : isGrassLayer
+                  ? palette.grass
+                  : isFarmlandLayer
+                    ? palette.farmland
+                    : isSandLayer
+                      ? palette.sand
+                      : isIceLayer
+                        ? palette.ice
+                        : isResidentialLayer
+                          ? palette.fillDefault
+                          : isRoadAreaLayer
+                            ? palette.roadArea
+                            : isAerowayLayer
+                              ? palette.roadArea
+                              : palette.landuse
+        : isBuildingLayer
+          ? palette.building
+          : isWaterLayer
+            ? palette.water
+            : isWoodLayer
+              ? palette.wood
+              : isParkLayer
+                ? palette.park
+                : isGrassLayer
+                  ? palette.grass
+                  : isFarmlandLayer
+                    ? palette.farmland
+                    : isSandLayer
+                      ? palette.sand
+                      : isIceLayer
+                        ? palette.ice
+                        : isResidentialLayer
+                          ? "#fffdfa"
+                          : isRoadAreaLayer
+                            ? palette.roadArea
+                            : isAerowayLayer
+                              ? "#f0eee9"
+                              : palette.landuse;
+      const fillOpacity = isBuildingLayer
+        ? dark
+          ? 0.86
+          : 0.9
+        : isWaterLayer || isWoodLayer || isParkLayer || isGrassLayer
+          ? dark
+            ? 0.88
+            : 0.82
+          : dark
+            ? 0.86
+            : 0.78;
       return {
         ...candidate,
         paint: {
@@ -549,18 +636,18 @@ function quietMapLayers(value: unknown, scheme: "light" | "dark"): unknown {
           ...(candidate.type === "fill"
             ? {
                 "fill-color": fillColor,
-                "fill-opacity": isBuildingLayer ? 0.88 : 0.98,
-                "fill-outline-color": "#f5f7f8",
+                "fill-opacity": fillOpacity,
+                "fill-outline-color": "rgba(0, 0, 0, 0)",
               }
             : {
                 "fill-extrusion-color": fillColor,
-                "fill-extrusion-opacity": isBuildingLayer ? 0.88 : 0.98,
+                "fill-extrusion-opacity": isBuildingLayer ? 0.78 : 0.9,
               }),
         },
       };
     }
 
-    if (candidate.type === "symbol" && !dark) {
+    if (candidate.type === "symbol") {
       const paint = isRecord(candidate.paint) ? candidate.paint : {};
       return {
         ...candidate,
@@ -568,8 +655,8 @@ function quietMapLayers(value: unknown, scheme: "light" | "dark"): unknown {
           ...paint,
           ...(paint["text-color"]
             ? {
-                "text-color": "#5b6570",
-                "text-halo-color": "#f5f7f8",
+                "text-color": palette.text,
+                "text-halo-color": palette.textHalo,
                 "text-halo-width": 1,
               }
             : {}),
@@ -578,6 +665,18 @@ function quietMapLayers(value: unknown, scheme: "light" | "dark"): unknown {
     }
 
     if (candidate.type !== "line") return layer;
+
+    const isWaterwayLayer = /waterway/.test(layerName);
+    if (isWaterwayLayer) {
+      return {
+        ...candidate,
+        paint: {
+          ...(isRecord(candidate.paint) ? candidate.paint : {}),
+          "line-color": palette.waterLine,
+          "line-opacity": dark ? 0.7 : 0.82,
+        },
+      };
+    }
 
     const isRoadLayer =
       /road|street|highway|motorway|trunk|arterial|expressway|transportation/.test(
@@ -602,8 +701,16 @@ function quietMapLayers(value: unknown, scheme: "light" | "dark"): unknown {
       ...candidate,
       paint: {
         ...(isRecord(candidate.paint) ? candidate.paint : {}),
-        "line-color": isRoadLayer ? roadColor : neutralLineColor,
-        "line-opacity": isRoadLayer ? (dark ? 0.42 : 0.5) : 0.24,
+        "line-color": /trunk|primary|major|motorway/.test(layerName)
+          ? palette.roadMajor
+          : palette.roadMinor,
+        "line-opacity": /trunk|primary|major|motorway/.test(layerName)
+          ? dark
+            ? 0.84
+            : 0.88
+          : dark
+            ? 0.68
+            : 0.74,
       },
     };
   });
@@ -613,39 +720,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-// Fallback público sin credenciales para que el desarrollo local continúe
-// funcionando mientras se configura la clave restringida de ArcGIS. La base
-// Canvas gris se usa como textura muy tenue en claro (sobre fondo blanco) y
-// con más presencia en oscuro; la referencia separada conserva las calles y
-// etiquetas importantes para explorar.
-function cleanRasterMapStyle(scheme: "light" | "dark") {
+// Si el servidor propio no responde, conservamos los pines y controles sobre
+// un fondo local neutro; no se consulta otro proveedor de mapas.
+function cleanFallbackMapStyle(scheme: "light" | "dark") {
   const dark = scheme === "dark";
   const colors = getTurismoColors(scheme);
-  const baseTiles = dark
-    ? "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-    : "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}";
-  const referenceTiles = dark
-    ? "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
-    : "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}";
-  const attribution =
-    "Tiles © Esri, HERE, Garmin, © OpenStreetMap contributors, and the GIS user community";
 
   return {
     version: 8,
-    sources: {
-      "tourism-clean-base": {
-        attribution,
-        tileSize: 256,
-        tiles: [baseTiles],
-        type: "raster",
-      },
-      "tourism-clean-reference": {
-        attribution,
-        tileSize: 256,
-        tiles: [referenceTiles],
-        type: "raster",
-      },
-    },
+    sources: {},
     layers: [
       {
         id: "background",
@@ -654,26 +737,8 @@ function cleanRasterMapStyle(scheme: "light" | "dark") {
         },
         type: "background",
       },
-      {
-        id: "tourism-clean-base",
-        source: "tourism-clean-base",
-        paint: {
-          "raster-opacity": dark ? 0.94 : 0.18,
-          "raster-saturation": dark ? -0.25 : -1,
-        },
-        type: "raster",
-      },
-      {
-        id: "tourism-clean-reference",
-        source: "tourism-clean-reference",
-        paint: {
-          "raster-opacity": dark ? 0.54 : 0.45,
-          "raster-saturation": -0.75,
-        },
-        type: "raster",
-      },
     ],
-  } as never;
+  } as unknown as StyleSpecification;
 }
 
 const styles = StyleSheet.create({

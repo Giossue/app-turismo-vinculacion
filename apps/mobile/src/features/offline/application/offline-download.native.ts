@@ -9,18 +9,16 @@ export type OfflineDownloadResult = Readonly<{
   packageVersion: number;
 }>;
 
+const selfHostedMapStyleUrl =
+  process.env.EXPO_PUBLIC_TILESERVER_STYLE_URL?.trim() ||
+  "https://mapas.devs-ueb.tech/styles/basic-preview/style.json";
+
 export async function downloadOfflineCity(
   city: OfflineCity,
   onProgress?: (percentage: number) => void,
 ): Promise<OfflineDownloadResult> {
   if (!city.package)
     throw new Error("La ciudad no tiene un paquete publicado.");
-  const apiKey = process.env.EXPO_PUBLIC_ARCGIS_API_KEY?.trim();
-  if (!apiKey) {
-    throw new Error(
-      "Configura EXPO_PUBLIC_ARCGIS_API_KEY para descargar mapas.",
-    );
-  }
 
   const manifest = await getOfflineCityManifest(city.slug);
   const existingPacks = await OfflineManager.getPacks();
@@ -40,7 +38,7 @@ export async function downloadOfflineCity(
   const pack = await OfflineManager.createPack(
     {
       bounds,
-      mapStyle: arcgisStyleUrl(apiKey),
+      mapStyle: selfHostedMapStyleUrl,
       maxZoom: manifest.package.zoomMax,
       metadata: {
         citySlug: city.slug,
@@ -66,16 +64,6 @@ export async function downloadOfflineCity(
   await downloadComplete;
   await saveOfflineManifest(manifest);
   return { packId: pack.id, packageVersion: manifest.package.version };
-}
-
-function arcgisStyleUrl(apiKey: string): string {
-  const query = new URLSearchParams({
-    echoToken: "true",
-    language: "es",
-    places: "all",
-    token: apiKey,
-  });
-  return `https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis/streets?${query}`;
 }
 
 function getBounds(

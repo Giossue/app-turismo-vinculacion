@@ -61,6 +61,7 @@ const manifestSchema = z.object({
         origin: z.string(),
         destination: z.string(),
         durationMinutes: z.number().nullable(),
+        durationEstimated: z.boolean().default(false),
         geometry: z.object({
           type: z.literal("LineString"),
           coordinates: z.array(z.tuple([z.number(), z.number()])),

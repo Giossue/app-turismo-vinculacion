@@ -29,7 +29,9 @@ junto con el código, valoración y auditoría.
 ### Transporte
 
 Cooperativa, ruta, geometría de recorrido, paradas y horarios. Una ruta registrada no es
-lo mismo que una ruta calculada por un proveedor de rutas.
+lo mismo que una ruta calculada por un proveedor de rutas. La duración declarada por la
+administración prevalece; si falta, puede estimarse desde la geometría y una velocidad
+media del tipo de transporte, sin presentarla como tiempo garantizado.
 
 ### Itinerario
 

@@ -11,6 +11,7 @@ import type {
   OfflineManifestRoute,
 } from "../domain/offline-city";
 import type { OfflineCityRepository } from "../application/offline-city.repository";
+import { estimateRouteDurationMinutes } from "../../transport/domain/estimated-route-duration";
 
 type CityRow = {
   id: string;
@@ -31,7 +32,9 @@ type RouteRow = {
   name: string;
   origin: string;
   destination: string;
-  duration_minutes: number | null;
+  duration_minutes: number | string | null;
+  distance_meters: number | string | null;
+  transport_code: string | null;
   geometry: OfflineGeoJsonLineString;
   directions: unknown;
 };
@@ -86,9 +89,12 @@ export class PostgresOfflineCityRepository implements OfflineCityRepository {
         `SELECT DISTINCT ON (rt.id) rt.nombre AS name, rt.origen AS origin,
           rt.destino AS destination,
           EXTRACT(EPOCH FROM rt.duracion_estimada) / 60 AS duration_minutes,
+          ST_Length(version.geometria) AS distance_meters,
+          tipo.codigo AS transport_code,
           ST_AsGeoJSON(version.geometria)::jsonb AS geometry,
           version.indicaciones AS directions
          FROM rutas_transporte rt
+         JOIN tipos_transporte tipo ON tipo.id = rt.tipo_transporte_id
          JOIN rutas_transporte_versiones version
            ON version.ruta_transporte_id = rt.id
           AND version.estado = 'PUBLICADA'
@@ -159,6 +165,11 @@ function mapCity(row: CityRow): OfflineCity {
 }
 
 function mapRoute(row: RouteRow): OfflineManifestRoute {
+  const durationMinutes =
+    row.duration_minutes === null
+      ? estimateRouteDurationMinutes(row.distance_meters, row.transport_code)
+      : Number(row.duration_minutes);
+
   return {
     key: [row.name, row.origin, row.destination]
       .join("-")
@@ -170,8 +181,9 @@ function mapRoute(row: RouteRow): OfflineManifestRoute {
     name: row.name,
     origin: row.origin,
     destination: row.destination,
-    durationMinutes:
-      row.duration_minutes === null ? null : Number(row.duration_minutes),
+    durationMinutes,
+    durationEstimated:
+      row.duration_minutes === null && durationMinutes !== null,
     geometry: row.geometry,
     directions: Array.isArray(row.directions) ? row.directions : [],
   };

@@ -53,6 +53,7 @@ export type OfflineManifestRoute = Readonly<{
   origin: string;
   destination: string;
   durationMinutes: number | null;
+  durationEstimated: boolean;
   geometry: OfflineGeoJsonLineString;
   directions: readonly unknown[];
 }>;
