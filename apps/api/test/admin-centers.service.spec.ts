@@ -426,4 +426,38 @@ describe("AdminCentersService", () => {
       expect.arrayContaining([7, "FACILITY", 2, "DESACTIVAR"]),
     );
   });
+
+  it("exposes the institutional catalogs used by the structured sections", async () => {
+    const dataSource = {
+      query: vi.fn(async (sql: string) => {
+        if (sql.includes("FROM factores_alteracion")) {
+          return [
+            { id: "4", code: "EROSION", name: "Erosión", origin: "NATURAL" },
+          ];
+        }
+        if (sql.includes("FROM tipos_medio_promocion")) {
+          return [{ id: "8", code: "WEB", name: "Página web" }];
+        }
+        if (sql.includes("FROM meses")) {
+          return [{ id: "7", code: "7", name: "Julio" }];
+        }
+        return [];
+      }),
+    };
+    const service = new AdminCentersService(dataSource as never);
+
+    await expect(service.catalogs()).resolves.toMatchObject({
+      conservationFactors: [{ id: "4", code: "EROSION", origin: "NATURAL" }],
+      promotionMediaTypes: [{ id: "8", code: "WEB" }],
+      months: [{ id: "7", code: "7" }],
+    });
+    expect(dataSource.query).toHaveBeenCalledWith(
+      expect.stringContaining("FROM tipos_responsabilidad_ficha"),
+      [null],
+    );
+    expect(dataSource.query).toHaveBeenCalledWith(
+      expect.stringContaining("FROM tipos_formacion_personal"),
+      [null],
+    );
+  });
 });

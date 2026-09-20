@@ -24,6 +24,10 @@ explícita.
   apartado admite respuesta `SÍ`, `NO`, `SIN INFORMACIÓN` o `NO APLICA`, observación general
   y filas repetibles con cantidad y observación por fila; el guardado reemplaza únicamente
   la sección elegida dentro del snapshot versionado.
+- El contrato `GET /admin/catalogs` expone también los catálogos institucionales de las
+  secciones extendidas: conservación, higiene y seguridad, políticas, promoción, formación,
+  responsabilidades y meses. Su consulta es de solo lectura y no crea valores cuando el
+  despliegue todavía no los ha cargado.
 - El código institucional se muestra por componentes y la jerarquía es de solo lectura. Si
   la valoración aún no está calculada, el servidor usa provisionalmente la jerarquía `00`.
 - El panel consulta el estado de valoración por ficha; distingue resultados persistidos de la

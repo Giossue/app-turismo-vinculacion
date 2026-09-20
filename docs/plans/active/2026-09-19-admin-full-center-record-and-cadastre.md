@@ -17,6 +17,11 @@ catálogos faltantes y publicación completa pendientes.
   fiscales.
 - Añadido `localities` al contrato de catálogos para que el panel seleccione ciudades y
   poblados sin conexión directa a PostgreSQL.
+- Ampliado el contrato de catálogos de solo lectura con estados y factores de conservación,
+  servicios de higiene/seguridad, señalética, políticas, medios de promoción, formación,
+  responsabilidades institucionales y meses. No se sembraron datos ni se modificó el
+  esquema; el formulario ya tiene una fuente API para dejar de depender de texto libre
+  cuando esos catálogos sean cargados por operación.
 - Añadido contrato de lectura y guardado por sección para el snapshot JSONB del borrador,
   con lista blanca de las 14 claves (códigos compatibles con `seccion_codigo`), control optimista de versión y auditoría de sección;
   los adaptadores normalizados de publicación aún no se activan para contenido no soportado.

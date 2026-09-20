@@ -1883,6 +1883,21 @@ export class AdminCentersService {
       transportTypes,
       serviceFrequencies,
       serviceScopes,
+      conservationStates,
+      conservationFactors,
+      basicServiceCategories,
+      basicServiceTypes,
+      signageTypes,
+      signageMaterials,
+      healthServiceTypes,
+      securityServiceTypes,
+      communicationTypes,
+      threatTypes,
+      policyQuestions,
+      promotionMediaTypes,
+      trainingTypes,
+      responsibilityTypes,
+      months,
       plantTypes,
       complementaryServiceTypes,
       activityGroups,
@@ -2017,6 +2032,112 @@ export class AdminCentersService {
         [like],
       ),
       this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, activo AS active
+           FROM estados_conservacion
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, origen AS "origin", activo AS active
+           FROM factores_alteracion
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY origen, nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, activo AS active
+           FROM categorias_servicio_basico
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name,
+                categoria_servicio_basico_id AS "categoryId", activo AS active
+           FROM tipos_servicio_basico
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY "categoryId", nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, ambiente AS "group", activo AS active
+           FROM tipos_senaletica
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY ambiente, nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, activo AS active
+           FROM materiales_senaletica
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, activo AS active
+           FROM tipos_servicio_salud
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, activo AS active
+           FROM tipos_servicio_seguridad
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, grupo AS "group", activo AS active
+           FROM tipos_comunicacion
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY grupo, nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, activo AS active
+           FROM tipos_amenaza
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, pregunta AS name, orden AS "order", activo AS active
+           FROM preguntas_politica
+          WHERE ${activeCondition} AND ($1::text IS NULL OR pregunta ILIKE $1)
+          ORDER BY orden, pregunta`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, activo AS active
+           FROM tipos_medio_promocion
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, grupo AS "group", activo AS active
+           FROM tipos_formacion_personal
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY grupo, nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, TRUE AS active
+           FROM tipos_responsabilidad_ficha
+          WHERE ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, numero::text AS code, nombre AS name, TRUE AS active
+           FROM meses
+          WHERE ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY numero`,
+        [like],
+      ),
+      this.dataSource.query(
         `SELECT id, codigo AS code, nombre AS name, grupo AS "group",
                 unidad_1 AS "unit1", unidad_2 AS "unit2", unidad_3 AS "unit3",
                 activo AS active
@@ -2084,6 +2205,21 @@ export class AdminCentersService {
       transportTypes,
       serviceFrequencies,
       serviceScopes,
+      conservationStates,
+      conservationFactors,
+      basicServiceCategories,
+      basicServiceTypes,
+      signageTypes,
+      signageMaterials,
+      healthServiceTypes,
+      securityServiceTypes,
+      communicationTypes,
+      threatTypes,
+      policyQuestions,
+      promotionMediaTypes,
+      trainingTypes,
+      responsibilityTypes,
+      months,
       plantTypes,
       complementaryServiceTypes,
       activityGroups,
