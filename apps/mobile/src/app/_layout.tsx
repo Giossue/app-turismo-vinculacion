@@ -5,6 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SystemUI from "expo-system-ui";
 import { StatusBar } from "expo-status-bar";
 import { Stack } from "expo-router";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { useTurismoTheme, TurismoThemeProvider } from "@/core/ui/theme-context";
@@ -37,6 +38,15 @@ function AppProviders({ children }: Readonly<{ children: ReactNode }>) {
       client={queryClient}
       persistOptions={{
         buster: "mobile-v1",
+        dehydrateOptions: {
+          shouldDehydrateQuery: (query) => {
+            const rootKey = query.queryKey[0];
+            return (
+              rootKey !== "calculated-route" &&
+              rootKey !== "nearby-establishments"
+            );
+          },
+        },
         maxAge: 24 * 60 * 60 * 1000,
         persister,
       }}
@@ -52,9 +62,11 @@ function AppProviders({ children }: Readonly<{ children: ReactNode }>) {
 
 export default function RootLayout() {
   return (
-    <AppProviders>
-      <AppNavigation />
-    </AppProviders>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppProviders>
+        <AppNavigation />
+      </AppProviders>
+    </GestureHandlerRootView>
   );
 }
 

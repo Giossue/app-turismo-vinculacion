@@ -24,8 +24,9 @@ explícita y bajo las condiciones de plataforma.
 ### Segundo plano
 
 Solo cuando la persona activa explícitamente una función que lo necesita. Explicar la
-finalidad, solicitar el permiso específico, mostrar el indicador/notificación requerido por
-la plataforma, permitir detenerlo y finalizarlo cuando la función termine.
+finalidad, solicitar el permiso específico, ofrecer una alternativa en primer plano si lo
+rechaza, mostrar el indicador/notificación requerido por la plataforma, permitir detenerlo y
+finalizarlo cuando la función termine.
 
 ### Historial
 

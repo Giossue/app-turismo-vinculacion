@@ -12,15 +12,28 @@ import {
 } from "react";
 import {
   ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Share,
   StyleSheet,
   Text,
   Image,
-  ScrollView,
   useWindowDimensions,
   View,
 } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
+import { Defs, LinearGradient, Rect, Stop, Svg } from "react-native-svg";
 import { Stack, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 import {
   TourismActionButton,
@@ -65,6 +78,8 @@ import { useUserLocation } from "@/core/location/use-user-location";
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 
 type ExploreSearchMode = "CENTERS" | "ESTABLISHMENTS";
+type PlaceTab = "information" | "opinions" | "photos";
+const placeTabOrder = ["information", "opinions", "photos"] as const;
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -75,6 +90,7 @@ export default function HomeScreen() {
   const sheetRef = useRef<ExpoBottomSheet>(null);
   const agentSheetRef = useRef<ExpoBottomSheet>(null);
   const searchSheetOpenRef = useRef(false);
+  const preserveSelectionOnSearchCloseRef = useRef(false);
   const agentSheetOpenRef = useRef(false);
   const mapAttributionHandlerRef = useRef<(() => void) | null>(null);
   const [text, setText] = useState("");
@@ -88,6 +104,7 @@ export default function HomeScreen() {
   const [selectedCenterCode, setSelectedCenterCode] = useState<string | null>(
     null,
   );
+  const [selectedCenterExpanded, setSelectedCenterExpanded] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
   const [focusLocationKey, setFocusLocationKey] = useState(0);
   const [locationFocused, setLocationFocused] = useState(false);
@@ -196,8 +213,30 @@ export default function HomeScreen() {
     setShowFilters(false);
     setNearbyOnly(false);
     setSelectedCenterCode(null);
+    setSelectedCenterExpanded(false);
     dismissSearchSheet();
   }, [dismissSearchSheet]);
+  const closeSelectedCenter = useCallback(() => {
+    setSelectedCenterExpanded(false);
+    if (submittedQuery) {
+      setSelectedCenterCode(null);
+      dismissSearchSheet();
+      return;
+    }
+    clearSearch();
+  }, [clearSearch, dismissSearchSheet, submittedQuery]);
+  const expandSelectedCenter = useCallback(() => {
+    setSelectedCenterExpanded(true);
+  }, []);
+  const selectCenter = useCallback(
+    (center: PublicCenter) => {
+      preserveSelectionOnSearchCloseRef.current = searchSheetOpenRef.current;
+      dismissSearchSheet();
+      setSelectedCenterExpanded(false);
+      setSelectedCenterCode(center.code);
+    },
+    [dismissSearchSheet],
+  );
   const {
     data: selectedCenterDetail,
     error: selectedCenterDetailError,
@@ -219,9 +258,7 @@ export default function HomeScreen() {
       return true;
     }
     if (selectedCenterCode) {
-      dismissSearchSheet();
-      if (submittedQuery) clearSearch();
-      else setSelectedCenterCode(null);
+      closeSelectedCenter();
       return true;
     }
     if (searchMode === "ESTABLISHMENTS") {
@@ -235,9 +272,9 @@ export default function HomeScreen() {
     return false;
   }, [
     clearSearch,
+    closeSelectedCenter,
     closeAgent,
     closeMenu,
-    dismissSearchSheet,
     menuVisible,
     agentOpen,
     selectedCenterCode,
@@ -262,21 +299,6 @@ export default function HomeScreen() {
     presentSearchSheet();
   }, [agentOpen, presentSearchSheet, submittedQuery]);
 
-  useEffect(() => {
-    if (agentOpen || submittedQuery) return;
-    if (!selectedCenter) {
-      dismissSearchSheet();
-      return;
-    }
-    presentSearchSheet();
-  }, [
-    agentOpen,
-    dismissSearchSheet,
-    presentSearchSheet,
-    selectedCenter,
-    submittedQuery,
-  ]);
-
   const handleViewportChange = useCallback(() => {
     setLocationFocused(false);
     // El catálogo ya cargado no se reemplaza durante pan/zoom. Así MapLibre
@@ -292,6 +314,7 @@ export default function HomeScreen() {
     // cambiar de pantalla para no quedar montada sobre la ruta.
     dismissSearchSheet();
     setSelectedCenterCode(null);
+    setSelectedCenterExpanded(false);
     router.push({
       pathname: "/route",
       params: {
@@ -316,6 +339,7 @@ export default function HomeScreen() {
     setShowFilters(false);
     setNearbyOnly(false);
     setSelectedCenterCode(null);
+    setSelectedCenterExpanded(false);
   }, [dismissSearchSheet]);
 
   const openAgentCenter = useCallback(
@@ -371,7 +395,9 @@ export default function HomeScreen() {
         centers={visibleCenters}
         onAttributionChange={handleAttributionChange}
         onBearingChange={setMapBearing}
-        onCenterPress={(center) => setSelectedCenterCode(center.code)}
+        onCenterPress={(center) => {
+          selectCenter(center);
+        }}
         onViewportChange={handleViewportChange}
         resetNorthKey={resetNorthKey}
         selectedCenterCode={selectedCenterCode}
@@ -528,90 +554,86 @@ export default function HomeScreen() {
           onPress={() => mapAttributionHandlerRef.current?.()}
         />
       </View>
-      <ExpoBottomSheet
-        backgroundStyle={{ backgroundColor: colors.surface }}
-        enablePanDownToClose
-        index={-1}
-        onClose={() => {
-          searchSheetOpenRef.current = false;
-          if (selectedCenterCode) setSelectedCenterCode(null);
-          else clearSearch();
-        }}
-        ref={sheetRef}
-        snapPoints={["38%", "84%"]}
-      >
-        {selectedCenter ? (
-          <BottomSheetScrollView
-            key={selectedCenter.code}
-            contentContainerStyle={[
-              styles.sheetView,
-              isLandscape && styles.sheetViewLandscape,
-            ]}
-            showsVerticalScrollIndicator={false}
-          >
-            <PlaceSheet
-              center={selectedCenter}
-              detail={selectedCenterDetail}
-              detailError={selectedCenterDetailError}
-              detailPending={isSelectedCenterDetailPending}
-              onClose={() => {
-                if (submittedQuery) setSelectedCenterCode(null);
-                else clearSearch();
-              }}
-              onOpenRoute={openRoute}
-              onRetryDetail={() => void refetchSelectedCenterDetail()}
-            />
-          </BottomSheetScrollView>
-        ) : submittedQuery && searchMode === "CENTERS" ? (
-          <BottomSheetScrollView
-            contentContainerStyle={[
-              styles.sheetView,
-              isLandscape && styles.sheetViewLandscape,
-            ]}
-            key={`search-${submittedQuery}`}
-            showsVerticalScrollIndicator={false}
-          >
-            <SearchResultsSheet
-              catalog={catalog}
-              centers={visibleCenters}
-              error={error ?? null}
-              filters={filters}
-              isFetching={isFetching}
-              isPlaceholderData={isPlaceholderData}
-              nearbyOnly={nearbyOnly}
-              onChangeFilters={setFilters}
-              onClear={clearSearch}
-              onNearbyToggle={handleNearbyToggle}
-              onRetry={() => void refetch()}
-              onSelectCenter={(center) => setSelectedCenterCode(center.code)}
-              onToggleFilters={() => setShowFilters((value) => !value)}
-              query={submittedQuery}
-              showFilters={showFilters}
-              userLocation={userLocation}
-            />
-          </BottomSheetScrollView>
-        ) : submittedQuery && searchMode === "ESTABLISHMENTS" ? (
-          <BottomSheetScrollView
-            contentContainerStyle={[
-              styles.sheetView,
-              isLandscape && styles.sheetViewLandscape,
-            ]}
-            key={`establishments-${submittedQuery}`}
-            showsVerticalScrollIndicator={false}
-          >
-            <EstablishmentResultsSheet
-              data={nearbyEstablishments.data}
-              error={nearbyEstablishments.error as Error | null}
-              hasLocation={Boolean(userLocation)}
-              isFetching={nearbyEstablishments.isFetching}
-              onClear={clearSearch}
-              onRequestLocation={() => void handleLocateUser()}
-              onRetry={() => void nearbyEstablishments.refetch()}
-              query={submittedQuery}
-            />
-          </BottomSheetScrollView>
-        ) : null}
-      </ExpoBottomSheet>
+      {!selectedCenterCode ? (
+        <ExpoBottomSheet
+          backgroundStyle={{ backgroundColor: colors.surface }}
+          enablePanDownToClose
+          index={-1}
+          onClose={() => {
+            const preserveSelection = preserveSelectionOnSearchCloseRef.current;
+            preserveSelectionOnSearchCloseRef.current = false;
+            searchSheetOpenRef.current = false;
+            if (!preserveSelection) clearSearch();
+          }}
+          ref={sheetRef}
+          snapPoints={["38%", "84%"]}
+        >
+          {submittedQuery && searchMode === "CENTERS" ? (
+            <BottomSheetScrollView
+              contentContainerStyle={[
+                styles.sheetView,
+                isLandscape && styles.sheetViewLandscape,
+              ]}
+              key={`search-${submittedQuery}`}
+              showsVerticalScrollIndicator={false}
+            >
+              <SearchResultsSheet
+                catalog={catalog}
+                centers={visibleCenters}
+                error={error ?? null}
+                filters={filters}
+                isFetching={isFetching}
+                isPlaceholderData={isPlaceholderData}
+                nearbyOnly={nearbyOnly}
+                onChangeFilters={setFilters}
+                onClear={clearSearch}
+                onNearbyToggle={handleNearbyToggle}
+                onRetry={() => void refetch()}
+                onSelectCenter={selectCenter}
+                onToggleFilters={() => setShowFilters((value) => !value)}
+                query={submittedQuery}
+                showFilters={showFilters}
+                userLocation={userLocation}
+              />
+            </BottomSheetScrollView>
+          ) : submittedQuery && searchMode === "ESTABLISHMENTS" ? (
+            <BottomSheetScrollView
+              contentContainerStyle={[
+                styles.sheetView,
+                isLandscape && styles.sheetViewLandscape,
+              ]}
+              key={`establishments-${submittedQuery}`}
+              showsVerticalScrollIndicator={false}
+            >
+              <EstablishmentResultsSheet
+                data={nearbyEstablishments.data}
+                error={nearbyEstablishments.error as Error | null}
+                hasLocation={Boolean(userLocation)}
+                isFetching={nearbyEstablishments.isFetching}
+                onClear={clearSearch}
+                onRequestLocation={() => void handleLocateUser()}
+                onRetry={() => void nearbyEstablishments.refetch()}
+                query={submittedQuery}
+              />
+            </BottomSheetScrollView>
+          ) : null}
+        </ExpoBottomSheet>
+      ) : null}
+      {selectedCenter ? (
+        <CenterDetailSheet
+          center={selectedCenter}
+          detail={selectedCenterDetail}
+          detailError={selectedCenterDetailError}
+          detailPending={isSelectedCenterDetailPending}
+          expanded={selectedCenterExpanded}
+          isLandscape={isLandscape}
+          onClose={closeSelectedCenter}
+          onExpand={expandSelectedCenter}
+          onOpenRoute={openRoute}
+          onRetryDetail={() => void refetchSelectedCenterDetail()}
+          key={`${selectedCenter.code}-${isLandscape ? "landscape" : "portrait"}`}
+        />
+      ) : null}
       <ExpoBottomSheet
         backgroundStyle={{ backgroundColor: colors.surface }}
         enablePanDownToClose={false}
@@ -635,12 +657,23 @@ export default function HomeScreen() {
   );
 }
 
-function PlaceSheet({
+const CENTER_SHEET_SPRING = {
+  damping: 30,
+  mass: 0.8,
+  overshootClamping: true,
+  stiffness: 280,
+} as const;
+const CENTER_SHEET_EXPAND_THRESHOLD = 0.34;
+
+function CenterDetailSheet({
   center,
   detail,
   detailError,
   detailPending,
+  expanded,
+  isLandscape,
   onClose,
+  onExpand,
   onOpenRoute,
   onRetryDetail,
 }: Readonly<{
@@ -648,42 +681,293 @@ function PlaceSheet({
   detail?: PublicCenterDetail;
   detailError: Error | null;
   detailPending: boolean;
+  expanded: boolean;
+  isLandscape: boolean;
   onClose: () => void;
+  onExpand: () => void;
   onOpenRoute: () => void;
   onRetryDetail: () => void;
 }>) {
   const colors = useTurismoPalette();
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const fullOffset = Math.max(0, insets.top);
+  const compactHeight = Math.min(
+    Math.max(height * 0.52, 420),
+    Math.max(360, height - fullOffset - 24),
+  );
+  const compactOffset = Math.max(fullOffset, height - compactHeight);
+  const sheetOffset = useSharedValue(compactOffset);
+  const dragStartOffset = useSharedValue(compactOffset);
+
+  const panGesture = Gesture.Pan()
+    .activeOffsetY([-8, 8])
+    .enabled(!expanded)
+    .onBegin(() => {
+      dragStartOffset.value = sheetOffset.value;
+    })
+    .onUpdate((event) => {
+      const next = dragStartOffset.value + event.translationY;
+      sheetOffset.value = Math.max(fullOffset, Math.min(compactOffset, next));
+    })
+    .onEnd((event) => {
+      const travel = compactOffset - fullOffset;
+      const progress =
+        travel <= 0 ? 1 : (compactOffset - sheetOffset.value) / travel;
+      const shouldExpand =
+        progress >= CENTER_SHEET_EXPAND_THRESHOLD || event.velocityY < -650;
+      sheetOffset.value = withSpring(
+        shouldExpand ? fullOffset : compactOffset,
+        CENTER_SHEET_SPRING,
+      );
+      if (shouldExpand) runOnJS(onExpand)();
+    });
+  const sheetAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: sheetOffset.value }],
+  }));
+
+  return (
+    <View pointerEvents="box-none" style={styles.centerSheetOverlay}>
+      <View
+        pointerEvents="box-only"
+        style={[styles.centerSheetScrim, { backgroundColor: colors.scrim }]}
+      />
+      <GestureDetector gesture={panGesture}>
+        <Animated.View
+          style={[
+            styles.centerSheetSurface,
+            isLandscape && styles.centerSheetSurfaceLandscape,
+            { backgroundColor: colors.surface },
+            sheetAnimatedStyle,
+          ]}
+        >
+          <ScrollView
+            contentContainerStyle={[
+              styles.sheetView,
+              styles.centerSheetContent,
+              isLandscape && styles.sheetViewLandscape,
+            ]}
+            key={center.code}
+            scrollEnabled={expanded}
+            showsVerticalScrollIndicator={false}
+            style={styles.centerSheetScroll}
+          >
+            <PlaceSheet
+              center={center}
+              detail={detail}
+              detailError={detailError}
+              detailPending={detailPending}
+              onOpenRoute={onOpenRoute}
+              onRetryDetail={onRetryDetail}
+            />
+          </ScrollView>
+          {expanded ? (
+            <View
+              pointerEvents="box-none"
+              style={[
+                styles.centerSheetClose,
+                {
+                  bottom: Math.max(
+                    insets.bottom + turismoSpacing.xl,
+                    turismoMetrics.controlLg,
+                  ),
+                },
+              ]}
+            >
+              <TourismIconAction
+                accessibilityLabel="Cerrar ficha turística"
+                icon="close"
+                onPress={onClose}
+              />
+            </View>
+          ) : null}
+        </Animated.View>
+      </GestureDetector>
+    </View>
+  );
+}
+
+function PlaceSheet({
+  center,
+  detail,
+  detailError,
+  detailPending,
+  onOpenRoute,
+  onRetryDetail,
+}: Readonly<{
+  center: PublicCenter;
+  detail?: PublicCenterDetail;
+  detailError: Error | null;
+  detailPending: boolean;
+  onOpenRoute: () => void;
+  onRetryDetail: () => void;
+}>) {
+  const colors = useTurismoPalette();
+  const [activeTab, setActiveTab] = useState<PlaceTab>("information");
+  const [saved, setSaved] = useState(false);
+  const pagerRef = useRef<ScrollView>(null);
+  const [pagerWidth, setPagerWidth] = useState(0);
+  const [visitedTabs, setVisitedTabs] = useState<ReadonlySet<PlaceTab>>(
+    () => new Set<PlaceTab>(["information"]),
+  );
+  const heroPhoto = detail?.photos[0];
+  const location =
+    detail?.address ?? detail?.touristZone ?? "Ubicación no registrada";
+  const markTabVisited = useCallback((tab: PlaceTab) => {
+    setActiveTab(tab);
+    setVisitedTabs((current) => {
+      if (current.has(tab)) return current;
+      return new Set([...current, tab]);
+    });
+  }, []);
+  const changeTab = useCallback(
+    (tab: PlaceTab) => {
+      markTabVisited(tab);
+      const index = placeTabOrder.indexOf(tab);
+      if (pagerWidth > 0) {
+        pagerRef.current?.scrollTo({
+          animated: true,
+          x: index * pagerWidth,
+        });
+      }
+    },
+    [markTabVisited, pagerWidth],
+  );
+  const handlePagerEnd = useCallback(
+    (event: { nativeEvent: { contentOffset: { x: number } } }) => {
+      if (pagerWidth <= 0) return;
+      const index = Math.max(
+        0,
+        Math.min(
+          placeTabOrder.length - 1,
+          Math.round(event.nativeEvent.contentOffset.x / pagerWidth),
+        ),
+      );
+      markTabVisited(placeTabOrder[index]);
+    },
+    [markTabVisited, pagerWidth],
+  );
+
   return (
     <View style={styles.placeSheet}>
-      <View style={styles.placeHeader}>
-        <View style={styles.placeTitleBlock}>
-          <Text style={[styles.placeCategory, { color: colors.primaryStrong }]}>
-            {center.category}
-          </Text>
-          <Text
-            numberOfLines={2}
-            style={[styles.placeTitle, { color: colors.text }]}
+      <View style={styles.placeHero}>
+        {heroPhoto ? (
+          <Image
+            accessibilityLabel={
+              heroPhoto.description ?? `Fotografía de ${center.name}`
+            }
+            resizeMethod="resize"
+            resizeMode="cover"
+            source={{ uri: resolveMediaUrl(heroPhoto.url) }}
+            style={styles.placeHeroImage}
+          />
+        ) : (
+          <View
+            style={[
+              styles.placeHeroFallback,
+              { backgroundColor: colors.mapBackground },
+            ]}
           >
-            {center.name}
-          </Text>
-          <Text
-            numberOfLines={3}
-            style={[styles.placeDescription, { color: colors.textMuted }]}
-          >
-            {center.description ?? "Información turística verificada."}
-          </Text>
+            <TurismoIcon
+              color={colors.primaryStrong}
+              name="mapPinned"
+              size={turismoIconSizes.xl}
+            />
+          </View>
+        )}
+        <View pointerEvents="none" style={styles.placeHeroFade}>
+          <Svg height="100%" width="100%">
+            <Defs>
+              <LinearGradient
+                id="placeHeroFadeGradient"
+                x1="0%"
+                x2="0%"
+                y1="0%"
+                y2="100%"
+              >
+                <Stop offset="0%" stopColor={colors.surface} stopOpacity={0} />
+                <Stop offset="52%" stopColor={colors.surface} stopOpacity={0} />
+                <Stop
+                  offset="86%"
+                  stopColor={colors.surface}
+                  stopOpacity={0.78}
+                />
+                <Stop
+                  offset="100%"
+                  stopColor={colors.surface}
+                  stopOpacity={1}
+                />
+              </LinearGradient>
+            </Defs>
+            <Rect
+              fill="url(#placeHeroFadeGradient)"
+              height="100%"
+              width="100%"
+              x="0"
+              y="0"
+            />
+          </Svg>
         </View>
-        <TourismIconAction
-          accessibilityLabel="Cerrar ficha rápida"
-          icon="close"
-          onPress={onClose}
+      </View>
+      <View style={styles.placeActions}>
+        <Pressable
+          accessibilityLabel="Compartir ficha turística"
+          accessibilityRole="button"
+          hitSlop={4}
+          onPress={() =>
+            void Share.share({
+              message: `${center.name} · ${location}`,
+            })
+          }
+          style={({ pressed }) => [
+            styles.placeAction,
+            pressed && styles.placeActionPressed,
+          ]}
+        >
+          <TurismoIcon
+            color={colors.text}
+            name="share"
+            size={turismoIconSizes.md}
+          />
+        </Pressable>
+        <Pressable
+          accessibilityLabel={
+            saved ? "Quitar de guardados" : "Guardar centro turístico"
+          }
+          accessibilityRole="button"
+          accessibilityState={{ selected: saved }}
+          hitSlop={4}
+          onPress={() => setSaved((value) => !value)}
+          style={({ pressed }) => [
+            styles.placeAction,
+            pressed && styles.placeActionPressed,
+          ]}
+        >
+          <TurismoIcon
+            color={saved ? colors.primaryStrong : colors.primary}
+            name="bookmark"
+            size={turismoIconSizes.md}
+          />
+        </Pressable>
+      </View>
+      <Text style={[styles.placeTitle, { color: colors.text }]}>
+        {center.name}
+      </Text>
+      <View style={styles.placeLocationRow}>
+        <TurismoIcon
+          color={colors.primaryStrong}
+          name="mapPin"
+          size={turismoIconSizes.sm}
         />
+        <Text style={[styles.placeLocationText, { color: colors.textMuted }]}>
+          {location}
+        </Text>
       </View>
       <View style={styles.placeTags}>
-        <TourismBadge>{center.subtype}</TourismBadge>
-        {center.hierarchy ? (
-          <TourismBadge>Jerarquía {center.hierarchy}</TourismBadge>
-        ) : null}
+        <TourismBadge>{center.category}</TourismBadge>
+        <Text style={[styles.placeMetaText, { color: colors.textFaint }]}>
+          {center.type}
+        </Text>
       </View>
       <View style={styles.actions}>
         <TourismActionButton
@@ -718,17 +1002,93 @@ function PlaceSheet({
           />
         </View>
       ) : (
-        <PlaceDetail detail={detail} />
+        <>
+          <PlaceTabButton activeTab={activeTab} onChange={changeTab} />
+          <View
+            onLayout={(event) => setPagerWidth(event.nativeEvent.layout.width)}
+            style={styles.placePagerViewport}
+          >
+            <ScrollView
+              horizontal
+              nestedScrollEnabled
+              onMomentumScrollEnd={handlePagerEnd}
+              pagingEnabled
+              ref={pagerRef}
+              showsHorizontalScrollIndicator={false}
+            >
+              <View style={[styles.placePage, { width: pagerWidth || "100%" }]}>
+                {visitedTabs.has("information") ? (
+                  <PlaceInformation detail={detail} />
+                ) : null}
+              </View>
+              <View style={[styles.placePage, { width: pagerWidth || "100%" }]}>
+                {visitedTabs.has("opinions") ? <PlaceOpinions /> : null}
+              </View>
+              <View style={[styles.placePage, { width: pagerWidth || "100%" }]}>
+                {visitedTabs.has("photos") ? (
+                  <PlacePhotos photos={detail.photos} />
+                ) : null}
+              </View>
+            </ScrollView>
+          </View>
+        </>
       )}
     </View>
   );
 }
 
-function PlaceDetail({ detail }: Readonly<{ detail: PublicCenterDetail }>) {
+function PlaceTabButton({
+  activeTab,
+  onChange,
+}: Readonly<{
+  activeTab: PlaceTab;
+  onChange: (tab: PlaceTab) => void;
+}>) {
+  const colors = useTurismoPalette();
+  return (
+    <View style={[styles.placeTabs, { borderBottomColor: colors.border }]}>
+      {(
+        [
+          ["information", "Información"],
+          ["opinions", "Opiniones"],
+          ["photos", "Fotos"],
+        ] as const
+      ).map(([tab, label]) => (
+        <Pressable
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === tab }}
+          hitSlop={4}
+          key={tab}
+          onPress={() => onChange(tab)}
+          style={({ pressed }) => [
+            styles.placeTab,
+            pressed && styles.placeTabPressed,
+            activeTab === tab && { borderBottomColor: colors.primary },
+          ]}
+        >
+          <Text
+            style={[
+              styles.placeTabLabel,
+              {
+                color:
+                  activeTab === tab ? colors.primaryStrong : colors.textMuted,
+              },
+            ]}
+          >
+            {label}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+function PlaceInformation({
+  detail,
+}: Readonly<{ detail: PublicCenterDetail }>) {
   const colors = useTurismoPalette();
   return (
     <>
-      <PlacePhotoGallery photos={detail.photos} />
       {detail.description ? (
         <PlaceSection icon="circleHelp" title="Descripción">
           <Text style={[styles.detailInfoValue, { color: colors.text }]}>
@@ -799,30 +1159,49 @@ function PlaceDetail({ detail }: Readonly<{ detail: PublicCenterDetail }>) {
   );
 }
 
-function PlacePhotoGallery({
+function PlacePhotos({
   photos,
 }: Readonly<{ photos: PublicCenterDetail["photos"] }>) {
   const colors = useTurismoPalette();
-  if (!photos.length) return null;
+  if (!photos.length) {
+    return (
+      <PlaceSection icon="mapPinned" title="Fotos">
+        <PlaceEmptyState text="Todavía no hay imágenes publicadas para este centro." />
+      </PlaceSection>
+    );
+  }
   return (
-    <PlaceSection icon="mapPinned" title="Galería">
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.detailGallery}
-      >
-        {photos.map((photo) => (
+    <View style={styles.placePhotoGrid}>
+      {photos.map((photo) => (
+        <View
+          key={photo.id}
+          style={[
+            styles.placePhotoTile,
+            { backgroundColor: colors.surfaceMuted },
+          ]}
+        >
           <Image
-            key={photo.id}
             accessibilityLabel={photo.description ?? "Fotografía del atractivo"}
+            resizeMethod="resize"
+            resizeMode="cover"
             source={{ uri: resolveMediaUrl(photo.url) }}
-            style={styles.detailGalleryImage}
+            style={styles.placePhotoImage}
           />
-        ))}
-      </ScrollView>
-      <Text style={[styles.detailInfoValue, { color: colors.textMuted }]}>
-        Imágenes publicadas en esta ficha.
-      </Text>
+          {photo.description ? (
+            <Text style={[styles.placePhotoCaption, { color: colors.text }]}>
+              {photo.description}
+            </Text>
+          ) : null}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function PlaceOpinions() {
+  return (
+    <PlaceSection icon="circleHelp" title="Opiniones">
+      <PlaceEmptyState text="Esta versión todavía no tiene opiniones registradas para este centro." />
     </PlaceSection>
   );
 }
@@ -846,12 +1225,7 @@ function PlaceSection({
 }>) {
   const colors = useTurismoPalette();
   return (
-    <View
-      style={[
-        styles.detailSection,
-        { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
-      ]}
-    >
+    <View style={[styles.detailSection, { borderBottomColor: colors.border }]}>
       <View style={styles.detailSectionHeader}>
         <TurismoIcon
           color={colors.primaryStrong}
@@ -878,12 +1252,7 @@ function PlaceTagsSection({
 }>) {
   const colors = useTurismoPalette();
   return (
-    <View
-      style={[
-        styles.detailSection,
-        { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
-      ]}
-    >
+    <View style={[styles.detailSection, { borderBottomColor: colors.border }]}>
       <View style={styles.detailSectionHeader}>
         <TurismoIcon
           color={colors.primaryStrong}
@@ -895,9 +1264,18 @@ function PlaceTagsSection({
         </Text>
       </View>
       {values.length ? (
-        <View style={styles.detailTags}>
+        <View style={styles.detailBulletList}>
           {values.map((value) => (
-            <TourismBadge key={value}>{value}</TourismBadge>
+            <View key={value} style={styles.detailBulletRow}>
+              <Text
+                style={[styles.detailBullet, { color: colors.primaryStrong }]}
+              >
+                •
+              </Text>
+              <Text style={[styles.detailBulletText, { color: colors.text }]}>
+                {value}
+              </Text>
+            </View>
           ))}
         </View>
       ) : (
@@ -1040,6 +1418,47 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   sheetViewLandscape: { maxWidth: turismoMetrics.sheetMaxWidth },
+  centerSheetOverlay: {
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+    zIndex: 30,
+  },
+  centerSheetScrim: {
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  centerSheetSurface: {
+    borderTopLeftRadius: turismoRadii.lg,
+    borderTopRightRadius: turismoRadii.lg,
+    bottom: 0,
+    elevation: 24,
+    left: 0,
+    overflow: "hidden",
+    position: "absolute",
+    right: 0,
+    top: 0,
+    zIndex: 1,
+  },
+  centerSheetSurfaceLandscape: {
+    alignSelf: "center",
+    maxWidth: turismoMetrics.sheetMaxWidth,
+    width: "100%",
+  },
+  centerSheetContent: {
+    paddingBottom: turismoSpacing.xxl + turismoMetrics.iconButtonLg,
+  },
+  centerSheetScroll: { flex: 1 },
+  centerSheetClose: {
+    position: "absolute",
+    right: turismoSpacing.md,
+    zIndex: 10,
+  },
   agentSheetView: {
     flex: 1,
     minHeight: 360,
@@ -1047,18 +1466,82 @@ const styles = StyleSheet.create({
     paddingTop: turismoSpacing.sm,
   },
   placeSheet: { gap: turismoSpacing.md, paddingBottom: turismoSpacing.xl },
-  placeHeader: {
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-    justifyContent: "space-between",
+  placeHero: {
+    aspectRatio: 1.35,
+    alignSelf: "stretch",
+    marginHorizontal: -turismoSpacing.lg,
+    marginTop: -turismoSpacing.lg,
+    overflow: "hidden",
+    position: "relative",
   },
-  placeTitleBlock: { flex: 1, gap: turismoSpacing.xs },
-  placeCategory: { ...turismoTypography.label, textTransform: "uppercase" },
+  placeHeroImage: { height: "100%", width: "100%" },
+  placeHeroFallback: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
+  placeHeroFade: {
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  placeActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: turismoSpacing.xs,
+  },
+  placeAction: {
+    alignItems: "center",
+    height: turismoMetrics.touchTarget,
+    justifyContent: "center",
+    width: turismoMetrics.touchTarget,
+  },
+  placeActionPressed: { opacity: 0.68 },
   placeTitle: { ...turismoTypography.title },
-  placeDescription: { ...turismoTypography.body },
+  placeLocationRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: turismoSpacing.xs,
+  },
+  placeLocationText: { ...turismoTypography.label, flex: 1 },
   placeTags: { flexDirection: "row", flexWrap: "wrap", gap: turismoSpacing.xs },
+  placeMetaText: { ...turismoTypography.caption },
   actions: { flexDirection: "row", gap: turismoSpacing.xs },
   routeAction: { flex: 1 },
+  placeTabs: {
+    borderBottomWidth: turismoMetrics.borderWidth,
+    flexDirection: "row",
+    gap: turismoSpacing.lg,
+  },
+  placeTab: {
+    alignItems: "center",
+    borderBottomColor: "transparent",
+    borderBottomWidth: turismoMetrics.borderWidthStrong,
+    justifyContent: "center",
+    minHeight: turismoMetrics.touchTarget,
+    paddingHorizontal: turismoSpacing.xs,
+  },
+  placeTabPressed: { opacity: 0.72 },
+  placeTabLabel: { ...turismoTypography.label },
+  placePagerViewport: { width: "100%" },
+  placePage: { gap: turismoSpacing.md },
+  placePhotoGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: turismoSpacing.sm,
+  },
+  placePhotoTile: {
+    borderRadius: turismoRadii.md,
+    overflow: "hidden",
+    width: "48%",
+  },
+  placePhotoImage: { aspectRatio: 1.15, width: "100%" },
+  placePhotoCaption: {
+    ...turismoTypography.caption,
+    padding: turismoSpacing.xs,
+  },
   detailState: {
     alignItems: "center",
     gap: turismoSpacing.sm,
@@ -1066,10 +1549,10 @@ const styles = StyleSheet.create({
   },
   detailStateText: { ...turismoTypography.body, textAlign: "center" },
   detailSection: {
-    borderRadius: turismoRadii.md,
-    borderWidth: turismoMetrics.borderWidth,
+    borderBottomWidth: turismoMetrics.borderWidth,
     gap: turismoSpacing.sm,
-    padding: turismoSpacing.md,
+    paddingBottom: turismoSpacing.lg,
+    paddingTop: turismoSpacing.md,
   },
   detailSectionHeader: {
     alignItems: "center",
@@ -1078,21 +1561,19 @@ const styles = StyleSheet.create({
   },
   detailSectionTitle: { ...turismoTypography.heading },
   detailSectionContent: { gap: turismoSpacing.sm },
-  detailGallery: { gap: turismoSpacing.sm },
-  detailGalleryImage: {
-    backgroundColor: "#d8e4e6",
-    borderRadius: turismoRadii.md,
-    height: 150,
-    width: 220,
-  },
   detailInfoRow: { gap: turismoSpacing.xxs },
   detailInfoLabel: { ...turismoTypography.caption },
   detailInfoValue: { ...turismoTypography.body },
-  detailTags: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+  detailBulletList: {
     gap: turismoSpacing.xs,
   },
+  detailBulletRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: turismoSpacing.xs,
+  },
+  detailBullet: { ...turismoTypography.body, lineHeight: 20 },
+  detailBulletText: { ...turismoTypography.body, flex: 1 },
   detailEmptyText: { ...turismoTypography.body },
   loading: {
     alignItems: "center",

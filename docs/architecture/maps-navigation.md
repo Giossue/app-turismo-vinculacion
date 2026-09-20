@@ -70,9 +70,12 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   una sesión activa, `expo-location` mantiene una tarea de ubicación en segundo plano con
   el servicio foreground de Android. La tarea conserva únicamente la última posición en
   almacenamiento local; al volver a la app se restaura y se reevalúan indicaciones y
-  desvíos. El permiso de segundo plano se solicita al iniciar una función que lo necesita y
-  después de explicar su finalidad. En Android 13 o posterior también se solicita
-  `POST_NOTIFICATIONS` para mostrar el servicio en el cajón de notificaciones.
+  desvíos. El permiso de segundo plano se solicita únicamente al iniciar esta función,
+  después de explicar su finalidad y ofrecer una opción de rechazo. Si la persona lo
+  rechaza, la navegación continúa mientras la app está visible, pero no registra la tarea
+  persistente ni promete actualizaciones al cambiar de aplicación. En Android 13 o posterior
+  también se solicita `POST_NOTIFICATIONS` cuando el seguimiento persistente está habilitado,
+  para mostrar el servicio en el cajón de notificaciones.
 - Al detenerla, llegar al destino o cancelar, se eliminan el watcher, la tarea del sistema,
   la sesión persistida, la notificación foreground y la voz. La tarea también comprueba la
   distancia al destino cuando recibe una ubicación en segundo plano, para cerrar la sesión

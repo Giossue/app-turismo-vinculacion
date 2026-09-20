@@ -143,11 +143,12 @@ editan en el móvil.
   el GPS está apagado o la señal no está disponible; el control comunica el estado sin
   bloquear la exploración.
 - Solicitar segundo plano solo al activar explícitamente una función que lo requiere y
-  explicar el beneficio. La navegación visible combina el watcher de primer plano con una
-  tarea `expo-location` registrada en `expo-task-manager`; el servicio foreground se registra
-  desde la acción de inicio y Android muestra una notificación persistente mientras la sesión
-  está activa. En Android 13 o posterior se solicita también `POST_NOTIFICATIONS` para hacer
-  visible esa notificación.
+  explicar el beneficio y ofrecer rechazo. La navegación visible siempre combina el watcher
+  de primer plano con una tarea `expo-location` registrada en `expo-task-manager` solo cuando
+  se concede el segundo plano; si se rechaza, la ruta sigue funcionando mientras la app está
+  visible. El servicio foreground se registra desde la acción de inicio y Android muestra una
+  notificación persistente cuando el seguimiento persistente está habilitado. En Android 13 o
+  posterior se solicita también `POST_NOTIFICATIONS` para hacer visible esa notificación.
 - Persistir únicamente ruta, destino, modo y última posición para restaurar el estado al
   volver a la app; no conservar trazas precisas por defecto.
 - Detener seguimiento, eliminar la sesión local y limpiar la tarea y su notificación al

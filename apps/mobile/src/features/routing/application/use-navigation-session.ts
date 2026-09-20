@@ -23,6 +23,7 @@ import {
   type PersistedNavigationLocation,
 } from "../data/navigation-session-storage";
 import {
+  hasNavigationBackgroundPermission,
   startNavigationLocationTask,
   stopNavigationLocationTask,
   updateNavigationLocationTaskNotification,
@@ -315,6 +316,7 @@ export function useNavigationSession({
     const ensureBackgroundTask = async () => {
       if (disposed || Platform.OS === "web") return;
       if (AppState.currentState !== "active") return;
+      if (!(await hasNavigationBackgroundPermission())) return;
       await startNavigationLocationTask();
     };
 
@@ -350,23 +352,6 @@ export function useNavigationSession({
             }));
           }
           return;
-        }
-        if (disposed) return;
-
-        if (Platform.OS !== "web") {
-          const backgroundPermission =
-            await Location.getBackgroundPermissionsAsync();
-          if (!backgroundPermission.granted) {
-            if (!disposed) {
-              setState((current) => ({
-                ...current,
-                message:
-                  "Activa el permiso de ubicación en segundo plano para continuar al cambiar de aplicación.",
-                status: "denied",
-              }));
-            }
-            return;
-          }
         }
         if (disposed) return;
 

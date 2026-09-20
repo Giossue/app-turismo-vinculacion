@@ -13,7 +13,8 @@ pantalla, y restaurar la última ubicación al volver a primer plano.
 - Servicio foreground de Android y configuración de ubicación en segundo plano para Android
   e iOS mediante el plugin de Expo.
 - Solicitud de permiso de segundo plano solo al pulsar «Iniciar navegación», después de
-  explicar su finalidad.
+  explicar su finalidad y ofrecer continuar únicamente en primer plano si la persona lo
+  rechaza.
 - Solicitud de notificaciones en Android 13 o posterior al iniciar la navegación para que el
   servicio foreground sea visible en el cajón del sistema.
 - Registro del servicio foreground dentro de la acción de inicio, mientras la aplicación está
@@ -35,6 +36,9 @@ pantalla, y restaurar la última ubicación al volver a primer plano.
   parche no permite iniciar servicios nuevos desde segundo plano.
 - Una limpieza por desmontaje de pantalla no cancela la tarea: minimizar o destruir
   temporalmente la actividad no equivale a detener la navegación.
+- La sesión visible no depende del permiso de segundo plano: si se rechaza, conserva el
+  `watchPositionAsync` mientras la app está abierta y no inicia la tarea persistente ni pide
+  el permiso de notificaciones del servicio.
 
 ## Fuera de alcance
 

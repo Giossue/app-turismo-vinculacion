@@ -169,42 +169,49 @@ export default function RouteScreen() {
     const coordinate = await requestLocation();
     if (!coordinate) return;
 
-    if (Platform.OS !== "web" && !(await hasNavigationBackgroundPermission())) {
-      const confirmed = await confirmBackgroundNavigation();
-      if (!confirmed) return;
-
-      const backgroundPermission =
-        await requestNavigationBackgroundPermission();
-      if (!backgroundPermission.granted) {
-        setNavigationNotice(
-          backgroundPermission.canAskAgain
-            ? "Necesitamos permiso de ubicación en segundo plano para continuar si cambias de aplicación."
-            : "Activa el permiso de ubicación en segundo plano desde Ajustes para iniciar la navegación.",
-        );
-        return;
-      }
-    }
-
     let nextNotice: string | null = null;
+    let backgroundTrackingEnabled = false;
     if (Platform.OS !== "web") {
-      const notificationGranted =
-        await requestNavigationNotificationPermission();
-      if (!notificationGranted) {
-        nextNotice =
-          "La navegación seguirá activa, pero Android ocultará la notificación hasta que permitas las notificaciones en Ajustes.";
+      backgroundTrackingEnabled = await hasNavigationBackgroundPermission();
+
+      if (!backgroundTrackingEnabled) {
+        const confirmed = await confirmBackgroundNavigation();
+        if (confirmed) {
+          const backgroundPermission =
+            await requestNavigationBackgroundPermission();
+          backgroundTrackingEnabled = backgroundPermission.granted;
+
+          if (!backgroundTrackingEnabled) {
+            nextNotice = backgroundPermission.canAskAgain
+              ? "Navegación iniciada mientras la app está abierta. Para continuar al cambiar de aplicación, permite la ubicación en segundo plano."
+              : "Navegación iniciada mientras la app está abierta. Para continuar al cambiar de aplicación, activa la ubicación en segundo plano desde Ajustes.";
+          }
+        } else {
+          nextNotice =
+            "Navegación iniciada mientras la app está abierta. Puedes activar el seguimiento al cambiar de aplicación desde Ajustes.";
+        }
       }
 
-      try {
-        // Registra el servicio mientras la acción del usuario mantiene la app en
-        // primer plano. El efecto de la sesión lo vuelve idempotente después.
-        await startNavigationLocationTask();
-      } catch (error) {
-        setNavigationNotice(
-          error instanceof Error
-            ? error.message
-            : "No pudimos iniciar el seguimiento de ubicación.",
-        );
-        return;
+      if (backgroundTrackingEnabled) {
+        const notificationGranted =
+          await requestNavigationNotificationPermission();
+        if (!notificationGranted) {
+          nextNotice =
+            "La navegación seguirá activa, pero Android ocultará la notificación hasta que permitas las notificaciones en Ajustes.";
+        }
+
+        try {
+          // Registra el servicio mientras la acción del usuario mantiene la app
+          // en primer plano. El efecto de la sesión lo vuelve idempotente.
+          await startNavigationLocationTask();
+        } catch (error) {
+          setNavigationNotice(
+            error instanceof Error
+              ? error.message
+              : "No pudimos iniciar el seguimiento de ubicación.",
+          );
+          return;
+        }
       }
     }
 
@@ -549,8 +556,8 @@ function formatDuration(seconds: number): string {
 function confirmBackgroundNavigation(): Promise<boolean> {
   return new Promise((resolve) => {
     Alert.alert(
-      "Navegación activa",
-      "Para que la ruta continúe si cambias de aplicación o apagas la pantalla, Turismo Vinculación necesita tu ubicación durante la navegación.",
+      "¿Continuar la ruta al salir de la app?",
+      "Turismo Vinculación puede mantener tu posición mientras cambias de aplicación o apagas la pantalla. Solo se activa durante esta navegación y se detiene al llegar o tocar Detener. Si eliges Ahora no, podrás navegar con la app abierta.",
       [
         {
           onPress: () => resolve(false),
