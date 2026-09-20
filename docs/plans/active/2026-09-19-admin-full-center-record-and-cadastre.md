@@ -103,9 +103,9 @@ catálogos faltantes y publicación completa pendientes.
 - La sección 6 ya reemplaza evaluaciones y declaratorias en sus tablas existentes; los estados
   dependen del catálogo activo y los factores de alteración siguen bloqueando publicación
   hasta que el formulario conserve su identificador de factor.
-- La sección 7 ya publica radios portátiles y planes de contingencia; los servicios, señalética,
-  salud, seguridad, comunicación y amenazas siguen bloqueados hasta que sus filas incluyan
-  referencias de catálogo.
+- La sección 7 ya publica radios portátiles, planes de contingencia y filas tipadas de servicios
+  básicos, señalética, salud, seguridad, comunicación y amenazas; las respuestas negativas de
+  servicios no crean relaciones y las amenazas conservan explícitamente su presencia.
 - La sección 14 ya publica el levantamiento de accesibilidad, la validación del GAD y los
   responsables cuando tienen un tipo de responsabilidad activo; los anexos documentales
   siguen en el borrador hasta enlazarse con archivos institucionales.
@@ -515,7 +515,7 @@ Salida: especificación y criterios de aceptación actualizados, sin código de 
 La API ya expone lectura y guardado por sección sobre el borrador JSONB, con lista blanca de
 14 claves, control de versión, progreso calculado y auditoría. El contrato transitorio de
 respuestas, observaciones y filas repetibles se valida en el límite HTTP; los adaptadores de
-clima, conectividad, planta, conservación, higiene parcial, políticas, promoción parcial,
+clima, conectividad, planta, conservación, higiene, políticas, promoción y recurso humano,
 visitantes, recurso humano parcial y anexos parciales ya publican sus relaciones existentes.
 
 Salida: API capaz de guardar toda la propuesta sin publicarla todavía.

@@ -1027,12 +1027,28 @@ function validateHygieneSafetyBlock(value: unknown): string | null {
       if (!HYGIENE_ENTRY_KINDS.has(String(entry.kind))) {
         return "El tipo de registro de higiene y seguridad no es válido.";
       }
+      const typeIdError = validateOptionalPositiveInteger(
+        entry.typeId,
+        "tipo de higiene y seguridad",
+      );
+      if (typeIdError) return typeIdError;
+      const secondaryIdError = validateOptionalPositiveInteger(
+        entry.secondaryId,
+        "material de señalética",
+      );
+      if (secondaryIdError) return secondaryIdError;
       if (
-        typeof entry.name !== "string" ||
-        entry.name.trim().length === 0 ||
-        entry.name.length > 180
+        !entry.typeId &&
+        (typeof entry.name !== "string" || entry.name.trim().length === 0)
       ) {
-        return "Cada registro de higiene y seguridad requiere un nombre de hasta 180 caracteres.";
+        return "Cada registro requiere un tipo catalogado o un nombre de hasta 180 caracteres.";
+      }
+      if (
+        entry.name !== undefined &&
+        entry.name !== null &&
+        (typeof entry.name !== "string" || entry.name.length > 180)
+      ) {
+        return "El nombre del registro de higiene y seguridad supera 180 caracteres.";
       }
       if (
         entry.scope !== undefined &&
@@ -1057,6 +1073,13 @@ function validateHygieneSafetyBlock(value: unknown): string | null {
         (typeof entry.secondary !== "string" || entry.secondary.length > 250)
       ) {
         return "El detalle secundario de higiene y seguridad supera el límite permitido.";
+      }
+      if (
+        entry.provider !== undefined &&
+        entry.provider !== null &&
+        (typeof entry.provider !== "string" || entry.provider.length > 180)
+      ) {
+        return "El proveedor de higiene y seguridad supera 180 caracteres.";
       }
       if (
         entry.condition !== undefined &&
@@ -3819,8 +3842,150 @@ export class AdminCentersService {
       return;
     }
     if (!hygiene) return;
-    if (Array.isArray(hygiene.entries) && hygiene.entries.length === 0) {
+    if (Array.isArray(hygiene.entries)) {
       await clearEntries();
+      const entries = hygiene.entries as JsonRecord[];
+      const scopeCodes = [
+        ...new Set(
+          entries
+            .map((entry) => entry.scope)
+            .filter((scope): scope is string => typeof scope === "string"),
+        ),
+      ];
+      const scopeRows = scopeCodes.length
+        ? ((await manager.query(
+            `SELECT id, codigo FROM ambitos_ubicacion_servicio
+              WHERE activo = TRUE AND codigo = ANY($1::text[])`,
+            [scopeCodes],
+          )) as Array<{ id: string; codigo: string }>)
+        : [];
+      const scopeByCode = new Map(scopeRows.map((row) => [row.codigo, row.id]));
+      const conditionCodes = [
+        ...new Set(
+          entries
+            .map((entry) => entry.condition)
+            .filter(
+              (condition): condition is string =>
+                typeof condition === "string" && condition.length > 0,
+            ),
+        ),
+      ];
+      const conditionRows = conditionCodes.length
+        ? ((await manager.query(
+            `SELECT id, codigo FROM estados_condicion
+              WHERE activo = TRUE AND codigo = ANY($1::text[])`,
+            [conditionCodes],
+          )) as Array<{ id: string; codigo: string }>)
+        : [];
+      const conditionByCode = new Map(
+        conditionRows.map((row) => [row.codigo, row.id]),
+      );
+      for (const entry of entries) {
+        const kind = String(entry.kind);
+        const response = entry.response;
+        if (kind !== "THREAT" && response !== "SI") continue;
+        if (kind === "THREAT" && !isBinarySectionResponse(response)) continue;
+        if (!Number.isInteger(entry.typeId) || Number(entry.typeId) < 1) {
+          throw new ConflictException(
+            "Cada registro de higiene requiere un tipo activo del catálogo.",
+          );
+        }
+        const scopeId =
+          typeof entry.scope === "string"
+            ? scopeByCode.get(entry.scope)
+            : undefined;
+        if (
+          ["BASIC_SERVICE", "HEALTH", "COMMUNICATION"].includes(kind) &&
+          !scopeId
+        ) {
+          throw new ConflictException(
+            "Los servicios de higiene requieren un ámbito activo del catálogo.",
+          );
+        }
+        if (kind === "BASIC_SERVICE") {
+          await manager.query(
+            `INSERT INTO servicios_basicos_centro
+               (centro_turistico_id, ambito_ubicacion_servicio_id,
+                tipo_servicio_basico_id, proveedor, especificacion, observacion)
+             VALUES ($1,$2,$3,$4,$5,$6)`,
+            [
+              centerId,
+              scopeId,
+              entry.typeId,
+              entry.provider ?? null,
+              entry.secondary ?? null,
+              entry.observation ?? null,
+            ],
+          );
+        } else if (kind === "SIGNAGE") {
+          await manager.query(
+            `INSERT INTO senaletica_centro
+               (centro_turistico_id, tipo_senaletica_id,
+                material_senaletica_id, cantidad, estado_condicion_id,
+                detalle, observacion)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+            [
+              centerId,
+              entry.typeId,
+              entry.secondaryId ?? null,
+              entry.quantity ?? null,
+              typeof entry.condition === "string"
+                ? (conditionByCode.get(entry.condition) ?? null)
+                : null,
+              entry.secondary ?? null,
+              entry.observation ?? null,
+            ],
+          );
+        } else if (kind === "HEALTH") {
+          await manager.query(
+            `INSERT INTO servicios_salud_centro
+               (centro_turistico_id, ambito_ubicacion_servicio_id,
+                tipo_servicio_salud_id, cantidad, detalle_otro, observacion)
+             VALUES ($1,$2,$3,$4,$5,$6)`,
+            [
+              centerId,
+              scopeId,
+              entry.typeId,
+              entry.quantity ?? null,
+              entry.secondary ?? null,
+              entry.observation ?? null,
+            ],
+          );
+        } else if (kind === "SECURITY") {
+          await manager.query(
+            `INSERT INTO servicios_seguridad_centro
+               (centro_turistico_id, tipo_servicio_seguridad_id,
+                detalle, observacion)
+             VALUES ($1,$2,$3,$4)`,
+            [
+              centerId,
+              entry.typeId,
+              entry.secondary ?? null,
+              entry.observation ?? null,
+            ],
+          );
+        } else if (kind === "COMMUNICATION") {
+          await manager.query(
+            `INSERT INTO comunicaciones_centro
+               (centro_turistico_id, ambito_ubicacion_servicio_id,
+                tipo_comunicacion_id, observacion)
+             VALUES ($1,$2,$3,$4)`,
+            [centerId, scopeId, entry.typeId, entry.observation ?? null],
+          );
+        } else if (kind === "THREAT") {
+          await manager.query(
+            `INSERT INTO amenazas_centro
+               (centro_turistico_id, tipo_amenaza_id, presente, observacion)
+             VALUES ($1,$2,$3,$4)`,
+            [
+              centerId,
+              entry.typeId,
+              sectionResponseToBoolean(response) ?? false,
+              entry.observation ?? null,
+            ],
+          );
+        }
+      }
     }
     const radios = isJsonRecord(hygiene.radios) ? hygiene.radios : null;
     if (radios) {
@@ -4836,7 +5001,120 @@ export class AdminCentersService {
     manager: EntityManager,
     centerId: string,
   ): Promise<Record<string, unknown> | null> {
-    const [radioRows, contingencyRows] = (await Promise.all([
+    const [entryRows, radioRows, contingencyRows] = (await Promise.all([
+      manager.query(
+        `SELECT COALESCE(json_agg(entry ORDER BY sort_order, row_id), '[]'::json) AS data
+           FROM (
+                 SELECT 1 AS sort_order, sbc.id AS row_id,
+                        json_build_object(
+                          'kind', 'BASIC_SERVICE',
+                          'scope', aus.codigo,
+                          'typeId', sbc.tipo_servicio_basico_id,
+                          'name', tsb.nombre,
+                          'provider', sbc.proveedor,
+                          'secondary', sbc.especificacion,
+                          'response', 'SI',
+                          'quantity', NULL,
+                          'condition', NULL,
+                          'observation', sbc.observacion
+                        ) AS entry
+                   FROM servicios_basicos_centro sbc
+                   JOIN ambitos_ubicacion_servicio aus
+                     ON aus.id = sbc.ambito_ubicacion_servicio_id
+                   JOIN tipos_servicio_basico tsb
+                     ON tsb.id = sbc.tipo_servicio_basico_id
+                  WHERE sbc.centro_turistico_id = $1
+                 UNION ALL
+                 SELECT 2, sc.id,
+                        json_build_object(
+                          'kind', 'SIGNAGE',
+                          'scope', NULL,
+                          'typeId', sc.tipo_senaletica_id,
+                          'name', tsg.nombre,
+                          'secondaryId', sc.material_senaletica_id,
+                          'secondary', sc.detalle,
+                          'response', 'SI',
+                          'quantity', sc.cantidad,
+                          'condition', ec.codigo,
+                          'observation', sc.observacion
+                        )
+                   FROM senaletica_centro sc
+                   JOIN tipos_senaletica tsg ON tsg.id = sc.tipo_senaletica_id
+                   LEFT JOIN estados_condicion ec ON ec.id = sc.estado_condicion_id
+                  WHERE sc.centro_turistico_id = $1
+                 UNION ALL
+                 SELECT 3, ssc.id,
+                        json_build_object(
+                          'kind', 'HEALTH',
+                          'scope', aus.codigo,
+                          'typeId', ssc.tipo_servicio_salud_id,
+                          'name', tss.nombre,
+                          'secondary', ssc.detalle_otro,
+                          'response', 'SI',
+                          'quantity', ssc.cantidad,
+                          'condition', NULL,
+                          'observation', ssc.observacion
+                        )
+                   FROM servicios_salud_centro ssc
+                   JOIN ambitos_ubicacion_servicio aus
+                     ON aus.id = ssc.ambito_ubicacion_servicio_id
+                   JOIN tipos_servicio_salud tss
+                     ON tss.id = ssc.tipo_servicio_salud_id
+                  WHERE ssc.centro_turistico_id = $1
+                 UNION ALL
+                 SELECT 4, ssec.id,
+                        json_build_object(
+                          'kind', 'SECURITY',
+                          'scope', NULL,
+                          'typeId', ssec.tipo_servicio_seguridad_id,
+                          'name', tssg.nombre,
+                          'secondary', ssec.detalle,
+                          'response', 'SI',
+                          'quantity', NULL,
+                          'condition', NULL,
+                          'observation', ssec.observacion
+                        )
+                   FROM servicios_seguridad_centro ssec
+                   JOIN tipos_servicio_seguridad tssg
+                     ON tssg.id = ssec.tipo_servicio_seguridad_id
+                  WHERE ssec.centro_turistico_id = $1
+                 UNION ALL
+                 SELECT 5, cc.id,
+                        json_build_object(
+                          'kind', 'COMMUNICATION',
+                          'scope', aus.codigo,
+                          'typeId', cc.tipo_comunicacion_id,
+                          'name', tc.nombre,
+                          'secondary', NULL,
+                          'response', 'SI',
+                          'quantity', NULL,
+                          'condition', NULL,
+                          'observation', cc.observacion
+                        )
+                   FROM comunicaciones_centro cc
+                   JOIN ambitos_ubicacion_servicio aus
+                     ON aus.id = cc.ambito_ubicacion_servicio_id
+                   JOIN tipos_comunicacion tc ON tc.id = cc.tipo_comunicacion_id
+                  WHERE cc.centro_turistico_id = $1
+                 UNION ALL
+                 SELECT 6, ac.id,
+                        json_build_object(
+                          'kind', 'THREAT',
+                          'scope', NULL,
+                          'typeId', ac.tipo_amenaza_id,
+                          'name', ta.nombre,
+                          'secondary', NULL,
+                          'response', CASE WHEN ac.presente THEN 'SI' ELSE 'NO' END,
+                          'quantity', NULL,
+                          'condition', NULL,
+                          'observation', ac.observacion
+                        )
+                   FROM amenazas_centro ac
+                   JOIN tipos_amenaza ta ON ta.id = ac.tipo_amenaza_id
+                  WHERE ac.centro_turistico_id = $1
+                ) entries`,
+        [centerId],
+      ),
       manager.query(
         `SELECT json_build_object(
                   'available', CASE WHEN disponible THEN 'SI' ELSE 'NO' END,
@@ -4863,14 +5141,21 @@ export class AdminCentersService {
         [centerId],
       ),
     ])) as Array<Array<{ data: unknown }>>;
+    const entries = entryRows[0]?.data;
     const radios = radioRows[0]?.data;
     const contingency = contingencyRows[0]?.data;
-    if (radios === undefined && contingency === undefined) return null;
+    if (
+      (!Array.isArray(entries) || entries.length === 0) &&
+      radios === undefined &&
+      contingency === undefined
+    ) {
+      return null;
+    }
     return {
       schemaVersion: 1,
       response: "SI",
       hygieneSafety: {
-        entries: [],
+        entries: entries ?? [],
         radios: radios ?? {
           available: "SIN_INFORMACION",
           visitorUse: "SIN_INFORMACION",
@@ -5481,7 +5766,7 @@ export class AdminCentersService {
   }
 
   private async validateHygieneSectionReferences(
-    _manager: EntityManager,
+    manager: EntityManager,
     draft: CenterDraft,
   ) {
     const section = getAdminSectionRecord(draft, "higiene-seguridad");
@@ -5514,9 +5799,133 @@ export class AdminCentersService {
       );
     }
     if (Array.isArray(hygiene.entries) && hygiene.entries.length > 0) {
-      throw new ConflictException(
-        "Los registros de higiene requieren tipos activos de catálogo antes de publicar.",
+      const entries = hygiene.entries as JsonRecord[];
+      const typeTableByKind: Record<string, string> = {
+        BASIC_SERVICE: "tipos_servicio_basico",
+        SIGNAGE: "tipos_senaletica",
+        HEALTH: "tipos_servicio_salud",
+        SECURITY: "tipos_servicio_seguridad",
+        COMMUNICATION: "tipos_comunicacion",
+        THREAT: "tipos_amenaza",
+      };
+      const activeEntries = entries.filter(
+        (entry) => entry.kind === "THREAT" || entry.response === "SI",
       );
+      const typeIdsByKind = new Map<string, number[]>();
+      const scopeCodes = new Set<string>();
+      const conditionCodes = new Set<string>();
+      const uniqueRows = new Set<string>();
+      for (const entry of entries) {
+        if (!isBinarySectionResponse(entry.response)) {
+          throw new ConflictException(
+            "Cada registro de higiene requiere una respuesta SI o NO antes de publicar.",
+          );
+        }
+        if (!activeEntries.includes(entry)) continue;
+        const kind = String(entry.kind);
+        const typeId = entry.typeId;
+        if (!Number.isInteger(typeId) || Number(typeId) < 1) {
+          throw new ConflictException(
+            "Los registros de higiene requieren tipos activos de catálogo antes de publicar.",
+          );
+        }
+        const table = typeTableByKind[kind];
+        if (!table) {
+          throw new ConflictException(
+            "El tipo de registro de higiene no es válido.",
+          );
+        }
+        const ids = typeIdsByKind.get(kind) ?? [];
+        ids.push(Number(typeId));
+        typeIdsByKind.set(kind, ids);
+        if (["BASIC_SERVICE", "HEALTH", "COMMUNICATION"].includes(kind)) {
+          if (!SERVICE_SCOPE_VALUES.has(String(entry.scope))) {
+            throw new ConflictException(
+              "Los servicios de higiene requieren un ámbito antes de publicar.",
+            );
+          }
+          scopeCodes.add(String(entry.scope));
+          const key = `${kind}:${entry.scope}:${typeId}`;
+          if (uniqueRows.has(key)) {
+            throw new ConflictException(
+              "No repitas el mismo servicio y ámbito de higiene.",
+            );
+          }
+          uniqueRows.add(key);
+        } else if (["SECURITY", "THREAT"].includes(kind)) {
+          const key = `${kind}:${typeId}`;
+          if (uniqueRows.has(key)) {
+            throw new ConflictException(
+              "No repitas el mismo tipo de seguridad o amenaza.",
+            );
+          }
+          uniqueRows.add(key);
+        }
+        if (kind === "SIGNAGE") {
+          const secondaryIdError = validateOptionalPositiveInteger(
+            entry.secondaryId,
+            "material de señalética",
+          );
+          if (secondaryIdError) throw new ConflictException(secondaryIdError);
+          if (entry.condition !== undefined && entry.condition !== null) {
+            conditionCodes.add(String(entry.condition));
+          }
+        }
+      }
+      for (const [kind, ids] of typeIdsByKind) {
+        const uniqueIds = [...new Set(ids)];
+        const rows = (await manager.query(
+          `SELECT id FROM ${typeTableByKind[kind]}
+            WHERE activo = TRUE AND id = ANY($1::bigint[])`,
+          [uniqueIds],
+        )) as Array<{ id: string }>;
+        if (rows.length !== uniqueIds.length) {
+          throw new ConflictException(
+            "Un tipo de higiene o seguridad ya no está disponible en el catálogo.",
+          );
+        }
+      }
+      if (scopeCodes.size > 0) {
+        const rows = (await manager.query(
+          `SELECT codigo FROM ambitos_ubicacion_servicio
+            WHERE activo = TRUE AND codigo = ANY($1::text[])`,
+          [[...scopeCodes]],
+        )) as Array<{ codigo: string }>;
+        if (rows.length !== scopeCodes.size) {
+          throw new ConflictException(
+            "Un ámbito de higiene ya no está disponible en el catálogo.",
+          );
+        }
+      }
+      if (conditionCodes.size > 0) {
+        const rows = (await manager.query(
+          `SELECT codigo FROM estados_condicion
+            WHERE activo = TRUE AND codigo = ANY($1::text[])`,
+          [[...conditionCodes]],
+        )) as Array<{ codigo: string }>;
+        if (rows.length !== conditionCodes.size) {
+          throw new ConflictException(
+            "Un estado de señalética ya no está disponible en el catálogo.",
+          );
+        }
+      }
+      const materialIds = entries
+        .filter((entry) => entry.kind === "SIGNAGE" && entry.response === "SI")
+        .map((entry) => entry.secondaryId)
+        .filter((id): id is number => Number.isInteger(id) && Number(id) > 0);
+      if (materialIds.length > 0) {
+        const uniqueIds = [...new Set(materialIds)];
+        const rows = (await manager.query(
+          `SELECT id FROM materiales_senaletica
+            WHERE activo = TRUE AND id = ANY($1::bigint[])`,
+          [uniqueIds],
+        )) as Array<{ id: string }>;
+        if (rows.length !== uniqueIds.length) {
+          throw new ConflictException(
+            "Un material de señalética ya no está disponible en el catálogo.",
+          );
+        }
+      }
     }
   }
 

@@ -56,8 +56,9 @@ explícita.
   los factores requieren un identificador activo del catálogo.
 - La sección de higiene y seguridad separa servicios básicos, señalética, salud, seguridad,
   comunicación y amenazas, y conserva controles de radios y contingencia con sus respuestas,
-  cantidades y observaciones. Radios y contingencia se publican en sus relaciones existentes;
-  las filas de servicios requieren referencias activas de catálogo.
+  cantidades y observaciones. Radios, contingencia y filas con referencias activas de catálogo
+  se publican en sus relaciones existentes; los servicios afirmativos crean filas y las
+  amenazas conservan también una respuesta negativa explícita.
 - La sección de políticas y regulaciones presenta las cuatro preguntas institucionales con
   respuesta explícita, año, especificación y observación, conservando `SIN INFORMACIÓN` y
   `NO APLICA` como estados distintos. Al publicar, las respuestas se vinculan con las

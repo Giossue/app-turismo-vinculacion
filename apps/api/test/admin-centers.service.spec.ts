@@ -312,6 +312,67 @@ describe("AdminCentersService", () => {
     );
   });
 
+  it("publishes hygiene rows through their typed catalog relations", async () => {
+    const managerQuery = vi.fn(async (sql: string) => {
+      if (sql.includes("FROM ambitos_ubicacion_servicio")) {
+        return [{ id: "21", codigo: "EN_ATRACTIVO" }];
+      }
+      if (sql.includes("FROM estados_condicion")) {
+        return [{ id: "31", codigo: "BUENO" }];
+      }
+      return [];
+    });
+    const manager = { query: managerQuery };
+    const service = new AdminCentersService({} as never);
+    const applyHygieneSection = (
+      service as unknown as {
+        applyHygieneSection: (
+          value: typeof manager,
+          centerId: string,
+          section: Record<string, unknown>,
+        ) => Promise<void>;
+      }
+    ).applyHygieneSection;
+
+    await applyHygieneSection.call(service, manager, "10", {
+      response: "SI",
+      hygieneSafety: {
+        entries: [
+          {
+            kind: "BASIC_SERVICE",
+            scope: "EN_ATRACTIVO",
+            typeId: 41,
+            response: "SI",
+            provider: "Empresa pública",
+            secondary: "Red disponible",
+          },
+          {
+            kind: "SIGNAGE",
+            typeId: 42,
+            secondaryId: 43,
+            quantity: 2,
+            condition: "BUENO",
+            response: "SI",
+          },
+          {
+            kind: "THREAT",
+            typeId: 44,
+            response: "NO",
+          },
+        ],
+      },
+    });
+
+    const statements = managerQuery.mock.calls.map(([sql]) => sql);
+    expect(statements).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("INSERT INTO servicios_basicos_centro"),
+        expect.stringContaining("INSERT INTO senaletica_centro"),
+        expect.stringContaining("INSERT INTO amenazas_centro"),
+      ]),
+    );
+  });
+
   it("publishes accessibility survey and GAD validation metadata", async () => {
     const managerQuery = vi.fn().mockResolvedValue([]);
     const manager = { query: managerQuery };
