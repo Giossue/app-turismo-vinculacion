@@ -2675,6 +2675,7 @@ export class AdminCentersService {
       publishedHumanResources,
       publishedConservation,
       publishedHygiene,
+      publishedAnnexes,
     ] = await Promise.all([
       this.readPublishedAccessibilitySection(manager, center.id),
       this.readPublishedPlantSection(manager, center.id),
@@ -2684,6 +2685,7 @@ export class AdminCentersService {
       this.readPublishedHumanResourcesSection(manager, center.id),
       this.readPublishedConservationSection(manager, center.id),
       this.readPublishedHygieneSection(manager, center.id),
+      this.readPublishedAnnexesSection(manager, center.id),
     ]);
     const publishedSections: Record<string, unknown> = {};
     if (publishedAccessibility)
@@ -2698,6 +2700,7 @@ export class AdminCentersService {
       publishedSections.conservacion = publishedConservation;
     if (publishedHygiene)
       publishedSections["higiene-seguridad"] = publishedHygiene;
+    if (publishedAnnexes) publishedSections.anexos = publishedAnnexes;
     published.sections = publishedSections;
     return {
       code: center.code,
@@ -3042,6 +3045,10 @@ export class AdminCentersService {
     const hygieneSection = getAdminSectionRecord(draft, "higiene-seguridad");
     if (hygieneSection) {
       await this.applyHygieneSection(manager, center.id, hygieneSection);
+    }
+    const annexesSection = getAdminSectionRecord(draft, "anexos");
+    if (annexesSection) {
+      await this.applyAnnexesSection(manager, center.id, annexesSection);
     }
     const accessibilitySection = getAdminSectionRecord(draft, "accesibilidad");
     if (accessibilitySection) {
@@ -3661,6 +3668,85 @@ export class AdminCentersService {
           contingency.document ?? null,
           contingency.year ?? null,
           contingency.observation ?? section.observation ?? null,
+        ],
+      );
+    }
+  }
+
+  private async applyAnnexesSection(
+    manager: EntityManager,
+    centerId: string,
+    section: JsonRecord,
+  ) {
+    const annexes = isJsonRecord(section.annexes) ? section.annexes : null;
+    if (section.response === "NO_APLICA") {
+      await manager.query(
+        `DELETE FROM responsables_ficha WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      await manager.query(
+        `DELETE FROM levantamientos_accesibilidad WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      await manager.query(
+        `DELETE FROM validaciones_gad WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      return;
+    }
+    if (!annexes) return;
+
+    const survey = isJsonRecord(annexes.accessibilitySurvey)
+      ? annexes.accessibilitySurvey
+      : null;
+    await manager.query(
+      `DELETE FROM levantamientos_accesibilidad WHERE centro_turistico_id = $1`,
+      [centerId],
+    );
+    if (
+      survey &&
+      [survey.date, survey.responsible, survey.scope, survey.observation].some(
+        (value) => typeof value === "string" && value.trim().length > 0,
+      )
+    ) {
+      await manager.query(
+        `INSERT INTO levantamientos_accesibilidad
+           (centro_turistico_id, fecha, responsable_nombre,
+            responsable_institucion, observacion)
+         VALUES ($1,$2::date,$3,$4,$5)`,
+        [
+          centerId,
+          survey.date ?? null,
+          survey.responsible ?? null,
+          survey.scope ?? null,
+          survey.observation ?? section.observation ?? null,
+        ],
+      );
+    }
+
+    const gad = isJsonRecord(annexes.gadValidation)
+      ? annexes.gadValidation
+      : null;
+    await manager.query(
+      `DELETE FROM validaciones_gad WHERE centro_turistico_id = $1`,
+      [centerId],
+    );
+    if (gad) {
+      await manager.query(
+        `INSERT INTO validaciones_gad
+           (centro_turistico_id, nombre_validador, telefono, email,
+            institucion, cargo, fecha, acepta_publicacion, observacion)
+         VALUES ($1,$2,$3,$4,$5,$6,$7::date,$8,$9)`,
+        [
+          centerId,
+          gad.name,
+          gad.phone ?? null,
+          gad.email ?? null,
+          gad.institution,
+          gad.position ?? null,
+          gad.date ?? null,
+          sectionResponseToBoolean(gad.acceptance),
+          gad.observation ?? section.observation ?? null,
         ],
       );
     }
@@ -4566,6 +4652,95 @@ export class AdminCentersService {
     };
   }
 
+  private async readPublishedAnnexesSection(
+    manager: EntityManager,
+    centerId: string,
+  ): Promise<Record<string, unknown> | null> {
+    const [surveyRows, gadRows, responsibleRows] = (await Promise.all([
+      manager.query(
+        `SELECT json_build_object(
+                  'date', fecha,
+                  'responsible', responsable_nombre,
+                  'scope', responsable_institucion,
+                  'observation', observacion
+                ) AS data
+           FROM levantamientos_accesibilidad
+          WHERE centro_turistico_id = $1
+          ORDER BY id DESC LIMIT 1`,
+        [centerId],
+      ),
+      manager.query(
+        `SELECT json_build_object(
+                  'acceptance', CASE
+                    WHEN acepta_publicacion IS TRUE THEN 'SI'
+                    WHEN acepta_publicacion IS FALSE THEN 'NO'
+                    ELSE 'SIN_INFORMACION'
+                  END,
+                  'name', nombre_validador,
+                  'institution', institucion,
+                  'position', cargo,
+                  'phone', telefono,
+                  'email', email,
+                  'date', fecha,
+                  'observation', observacion
+                ) AS data
+           FROM validaciones_gad
+          WHERE centro_turistico_id = $1
+          ORDER BY id DESC LIMIT 1`,
+        [centerId],
+      ),
+      manager.query(
+        `SELECT COALESCE(json_agg(json_build_object(
+                  'typeId', rf.tipo_responsabilidad_ficha_id,
+                  'name', rf.nombre,
+                  'institution', rf.institucion,
+                  'role', rf.cargo,
+                  'phone', rf.telefono,
+                  'email', rf.email,
+                  'date', rf.fecha,
+                  'observation', rf.observacion
+                ) ORDER BY rf.id), '[]'::json) AS data
+           FROM responsables_ficha rf
+          WHERE rf.centro_turistico_id = $1`,
+        [centerId],
+      ),
+    ])) as Array<Array<{ data: unknown }>>;
+    const survey = surveyRows[0]?.data;
+    const gadValidation = gadRows[0]?.data;
+    const responsibles = responsibleRows[0]?.data;
+    if (
+      survey === undefined &&
+      gadValidation === undefined &&
+      (!Array.isArray(responsibles) || responsibles.length === 0)
+    ) {
+      return null;
+    }
+    return {
+      schemaVersion: 1,
+      response: "SI",
+      annexes: {
+        documents: [],
+        responsibles: responsibles ?? [],
+        accessibilitySurvey: survey ?? {
+          date: null,
+          responsible: "",
+          scope: "",
+          observation: "",
+        },
+        gadValidation: gadValidation ?? {
+          acceptance: "SIN_INFORMACION",
+          name: "",
+          institution: "",
+          position: "",
+          phone: "",
+          email: "",
+          date: null,
+          observation: "",
+        },
+      },
+    };
+  }
+
   private centerToDraft(center: CenterRow): CenterDraft {
     return {
       name: center.name,
@@ -4781,6 +4956,7 @@ export class AdminCentersService {
       await this.validateHumanResourcesSectionReferences(manager, draft);
       await this.validateConservationSectionReferences(manager, draft);
       await this.validateHygieneSectionReferences(manager, draft);
+      await this.validateAnnexesSectionReferences(manager, draft);
     }
     await this.validateCharacteristicsSectionReferences(
       manager,
@@ -5039,6 +5215,49 @@ export class AdminCentersService {
       throw new ConflictException(
         "Los registros de higiene requieren tipos activos de catálogo antes de publicar.",
       );
+    }
+  }
+
+  private async validateAnnexesSectionReferences(
+    _manager: EntityManager,
+    draft: CenterDraft,
+  ) {
+    const section = getAdminSectionRecord(draft, "anexos");
+    if (!section || section.response === "NO_APLICA") return;
+    const annexes = isJsonRecord(section.annexes) ? section.annexes : null;
+    if (!annexes) return;
+    if (Array.isArray(annexes.documents) && annexes.documents.length > 0) {
+      throw new ConflictException(
+        "Los anexos documentales requieren un archivo publicado y un tipo activo antes de publicar.",
+      );
+    }
+    if (
+      Array.isArray(annexes.responsibles) &&
+      annexes.responsibles.length > 0
+    ) {
+      throw new ConflictException(
+        "Los responsables requieren un tipo de responsabilidad activo antes de publicar.",
+      );
+    }
+    const gad = isJsonRecord(annexes.gadValidation)
+      ? annexes.gadValidation
+      : null;
+    if (gad) {
+      if (!isBinarySectionResponse(gad.acceptance)) {
+        throw new ConflictException(
+          "La validación del GAD requiere una aceptación SI o NO antes de publicar.",
+        );
+      }
+      if (
+        typeof gad.name !== "string" ||
+        gad.name.trim().length === 0 ||
+        typeof gad.institution !== "string" ||
+        gad.institution.trim().length === 0
+      ) {
+        throw new ConflictException(
+          "La validación del GAD requiere nombre e institución antes de publicar.",
+        );
+      }
     }
   }
 

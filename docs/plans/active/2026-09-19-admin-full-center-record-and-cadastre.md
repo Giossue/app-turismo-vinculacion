@@ -101,6 +101,9 @@ completa pendientes.
 - La sección 7 ya publica radios portátiles y planes de contingencia; los servicios, señalética,
   salud, seguridad, comunicación y amenazas siguen bloqueados hasta que sus filas incluyan
   referencias de catálogo.
+- La sección 14 ya publica el levantamiento de accesibilidad y la validación del GAD; anexos
+  documentales y responsables quedan en el borrador hasta enlazarse con archivos y tipos de
+  responsabilidad institucional.
 - Las facilidades del núcleo ya permiten cantidad y observación por opción seleccionada;
   dejan de guardar siempre la cantidad fija `1`.
 - La ficha ahora compara, por sección, la versión publicada con la propuesta y muestra

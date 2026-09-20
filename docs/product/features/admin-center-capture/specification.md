@@ -73,7 +73,9 @@ explícita.
   normalizada; la formación requiere un tipo activo del catálogo antes de publicarse.
 - La sección de anexos conserva tipo, fuente, autor, descripción y visibilidad controlada,
   junto con responsables, levantamiento de accesibilidad y validación del GAD; contactos,
-  firmas y documentos internos permanecen administrativos o restringidos.
+  firmas y documentos internos permanecen administrativos o restringidos. El levantamiento y
+  la validación se publican en sus relaciones existentes; documentos y responsables requieren
+  archivo/tipo institucional antes de publicarse.
 - La valoración usa un motor tipado con topes por criterio y jerarquía reproducible; la
   publicación todavía debe conectar cada indicador con sus tablas normalizadas y guardar el
   detalle auditable. Mientras `indicadores_valoracion` no tenga reglas activas, el servidor

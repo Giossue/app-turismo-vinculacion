@@ -240,6 +240,49 @@ describe("AdminCentersService", () => {
     );
   });
 
+  it("publishes accessibility survey and GAD validation metadata", async () => {
+    const managerQuery = vi.fn().mockResolvedValue([]);
+    const manager = { query: managerQuery };
+    const service = new AdminCentersService({} as never);
+    const applyAnnexesSection = (
+      service as unknown as {
+        applyAnnexesSection: (
+          value: typeof manager,
+          centerId: string,
+          section: Record<string, unknown>,
+        ) => Promise<void>;
+      }
+    ).applyAnnexesSection;
+
+    await applyAnnexesSection.call(service, manager, "10", {
+      response: "SI",
+      annexes: {
+        documents: [],
+        responsibles: [],
+        accessibilitySurvey: {
+          date: "2025-01-15",
+          responsible: "Ana Pérez",
+          scope: "GAD Guaranda",
+          observation: "Levantamiento de campo",
+        },
+        gadValidation: {
+          acceptance: "SI",
+          name: "Luis Gómez",
+          institution: "GAD Guaranda",
+          position: "Director",
+        },
+      },
+    });
+
+    const statements = managerQuery.mock.calls.map(([sql]) => sql);
+    expect(statements).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("INSERT INTO levantamientos_accesibilidad"),
+        expect.stringContaining("INSERT INTO validaciones_gad"),
+      ]),
+    );
+  });
+
   it("exposes persisted valuation status without recalculating the ficha", async () => {
     const managerQuery = vi
       .fn()
