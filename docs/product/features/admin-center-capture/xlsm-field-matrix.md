@@ -40,8 +40,8 @@ como pantallas independientes.
 La captura administrativa de la sección 4 conserva temporalmente esas relaciones en
 `accessibilityDetails` dentro del snapshot: vías terrestres con coordenadas/material/estado,
 accesos acuáticos y aéreos, tipos y operadores de transporte, criterios detallados de
-`ficha_Accesibilidad` y señalización. El adaptador transaccional a las tablas anteriores
-queda pendiente; no se considera publicado mientras no exista.
+`ficha_Accesibilidad` y señalización. El adaptador transaccional ya reemplaza las tablas
+anteriores para filas con catálogos activos; una fila manual bloquea su publicación.
 
 La sección 5 usa los bloques `plant`, `facilitiesDetails` y `complementaryServices` en el
 snapshot para conservar el ámbito y las cantidades de planta, el detalle de facilidades y

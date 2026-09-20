@@ -631,6 +631,7 @@ function validateAccessibilityDetailsBlock(value: unknown): string | null {
     if (!Array.isArray(value.criteria) || value.criteria.length > 300) {
       return "Los criterios de accesibilidad no son válidos.";
     }
+    const seenCriteria = new Set<number>();
     for (const criterion of value.criteria) {
       if (!isJsonRecord(criterion))
         return "Un criterio de accesibilidad no es válido.";
@@ -639,6 +640,16 @@ function validateAccessibilityDetailsBlock(value: unknown): string | null {
         "criterio de accesibilidad",
       );
       if (criterionIdError) return criterionIdError;
+      if (
+        criterion.criterionId !== undefined &&
+        criterion.criterionId !== null
+      ) {
+        const criterionId = Number(criterion.criterionId);
+        if (seenCriteria.has(criterionId)) {
+          return "No repitas criterios de accesibilidad.";
+        }
+        seenCriteria.add(criterionId);
+      }
       const typeIdError = validateOptionalPositiveInteger(
         criterion.accessibilityTypeId,
         "tipo de accesibilidad",
@@ -2577,10 +2588,15 @@ export class AdminCentersService {
           ? { code: draft.stateCode, name: draft.stateName }
           : { code: center.statusCode, name: center.statusName };
     const published = this.centerToDraft(center);
-    published.sections = await this.readPublishedPlantSection(
-      manager,
-      center.id,
-    );
+    const [publishedAccessibility, publishedPlant] = await Promise.all([
+      this.readPublishedAccessibilitySection(manager, center.id),
+      this.readPublishedPlantSection(manager, center.id),
+    ]);
+    const publishedSections: Record<string, unknown> = {};
+    if (publishedAccessibility)
+      publishedSections.accesibilidad = publishedAccessibility;
+    if (publishedPlant) publishedSections.planta = publishedPlant;
+    published.sections = publishedSections;
     return {
       code: center.code,
       status: effectiveStatus,
@@ -2875,6 +2891,14 @@ export class AdminCentersService {
         );
       }
     }
+    const accessibilitySection = getAdminSectionRecord(draft, "accesibilidad");
+    if (accessibilitySection) {
+      await this.applyAccessibilitySection(
+        manager,
+        center.id,
+        accessibilitySection,
+      );
+    }
     const plantSection = getAdminSectionRecord(draft, "planta");
     const detailedFacilities =
       Array.isArray(plantSection?.facilitiesDetails) &&
@@ -2901,6 +2925,214 @@ export class AdminCentersService {
     }
     if (plantSection) {
       await this.applyPlantSection(manager, center.id, plantSection);
+    }
+  }
+
+  private async applyAccessibilitySection(
+    manager: EntityManager,
+    centerId: string,
+    section: JsonRecord,
+  ) {
+    if (section.localityId !== undefined && section.localityId !== null) {
+      await manager.query(
+        `INSERT INTO centro_localidad_cercana
+           (centro_turistico_id, localidad_id, distancia_km, observacion)
+         VALUES ($1,$2,$3,$4)
+         ON CONFLICT (centro_turistico_id) DO UPDATE SET
+           localidad_id = EXCLUDED.localidad_id,
+           distancia_km = EXCLUDED.distancia_km,
+           observacion = EXCLUDED.observacion,
+           updated_at = CURRENT_TIMESTAMP`,
+        [
+          centerId,
+          section.localityId,
+          section.distanceKm ?? null,
+          section.observation ?? null,
+        ],
+      );
+    }
+
+    const details = isJsonRecord(section.accessibilityDetails)
+      ? section.accessibilityDetails
+      : null;
+    if (!details) return;
+
+    if (Array.isArray(details.roads) && details.roads.length > 0) {
+      await manager.query(
+        `DELETE FROM vias_acceso_terrestre WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      for (const item of details.roads as JsonRecord[]) {
+        await manager.query(
+          `INSERT INTO vias_acceso_terrestre
+             (centro_turistico_id, tipo_via_terrestre_id, latitud_inicio,
+              longitud_inicio, latitud_fin, longitud_fin, distancia_km,
+              material_via_id, estado_condicion_id, observacion)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+          [
+            centerId,
+            item.roadTypeId,
+            item.startLatitude ?? null,
+            item.startLongitude ?? null,
+            item.endLatitude ?? null,
+            item.endLongitude ?? null,
+            item.distanceKm ?? null,
+            item.materialId ?? null,
+            item.conditionId ?? null,
+            item.observation ?? null,
+          ],
+        );
+      }
+    }
+
+    if (Array.isArray(details.aquatic) && details.aquatic.length > 0) {
+      await manager.query(
+        `DELETE FROM accesos_acuaticos WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      for (const item of details.aquatic as JsonRecord[]) {
+        await manager.query(
+          `INSERT INTO accesos_acuaticos
+             (centro_turistico_id, modalidad_acceso_acuatico_id,
+              puerto_embarque, estado_puerto_embarque_id, puerto_llegada,
+              estado_puerto_llegada_id, observacion)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [
+            centerId,
+            item.modalityId,
+            item.departure ?? null,
+            item.departureConditionId ?? null,
+            item.arrival ?? null,
+            item.arrivalConditionId ?? null,
+            item.observation ?? null,
+          ],
+        );
+      }
+    }
+
+    if (Array.isArray(details.aerial) && details.aerial.length > 0) {
+      await manager.query(
+        `DELETE FROM accesos_aereos WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      for (const item of details.aerial as JsonRecord[]) {
+        await manager.query(
+          `INSERT INTO accesos_aereos
+             (centro_turistico_id, cobertura_acceso_aereo_id, observacion)
+           VALUES ($1,$2,$3)`,
+          [centerId, item.coverageId, item.observation ?? null],
+        );
+      }
+    }
+
+    if (
+      Array.isArray(details.transportTypes) &&
+      details.transportTypes.length > 0
+    ) {
+      await manager.query(
+        `DELETE FROM centro_tipos_transporte WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      await manager.query(
+        `DELETE FROM transporte_centro WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      const selected = (details.transportTypes as JsonRecord[]).filter(
+        (item) => item.applies === true,
+      );
+      for (const item of selected) {
+        await manager.query(
+          `INSERT INTO centro_tipos_transporte
+             (centro_turistico_id, tipo_transporte_id)
+           VALUES ($1,$2)`,
+          [centerId, item.typeId],
+        );
+      }
+      const other = (details.transportTypes as JsonRecord[])
+        .map((item) => String(item.detailOther ?? "").trim())
+        .filter(Boolean)
+        .join("; ");
+      const observations = (details.transportTypes as JsonRecord[])
+        .map((item) => String(item.observation ?? "").trim())
+        .filter(Boolean)
+        .join("; ");
+      if (other || observations) {
+        await manager.query(
+          `INSERT INTO transporte_centro
+             (centro_turistico_id, detalle_otro, observacion)
+           VALUES ($1,$2,$3)`,
+          [centerId, other || null, observations || null],
+        );
+      }
+    }
+
+    if (
+      Array.isArray(details.transportDetails) &&
+      details.transportDetails.length > 0
+    ) {
+      await manager.query(
+        `DELETE FROM detalles_transporte WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      for (const item of details.transportDetails as JsonRecord[]) {
+        await manager.query(
+          `INSERT INTO detalles_transporte
+             (centro_turistico_id, operador_cooperativa, estacion_terminal,
+              frecuencia_servicio_id, detalle_traslado, observacion)
+           VALUES ($1,$2,$3,$4,$5,$6)`,
+          [
+            centerId,
+            item.operator,
+            item.terminal ?? null,
+            item.frequencyId ?? null,
+            item.transferDetail ?? null,
+            item.observation ?? null,
+          ],
+        );
+      }
+    }
+
+    if (Array.isArray(details.criteria) && details.criteria.length > 0) {
+      await manager.query(
+        `DELETE FROM respuestas_accesibilidad WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      for (const item of details.criteria as JsonRecord[]) {
+        await manager.query(
+          `INSERT INTO respuestas_accesibilidad
+             (centro_turistico_id, criterio_accesibilidad_id, cumple, detalle, observacion)
+           VALUES ($1,$2,$3,$4,$5)`,
+          [
+            centerId,
+            item.criterionId,
+            sectionResponseToBoolean(item.response),
+            item.detail ?? null,
+            item.observation ?? null,
+          ],
+        );
+      }
+    }
+
+    if (isJsonRecord(details.signage)) {
+      const available = details.signage.available;
+      if (available === "SI" || available === "NO") {
+        await manager.query(
+          `INSERT INTO senalizaciones_aproximacion
+             (centro_turistico_id, disponible, estado_condicion_id, observacion)
+           VALUES ($1,$2,$3,$4)
+           ON CONFLICT (centro_turistico_id) DO UPDATE SET
+             disponible = EXCLUDED.disponible,
+             estado_condicion_id = EXCLUDED.estado_condicion_id,
+             observacion = EXCLUDED.observacion,
+             updated_at = CURRENT_TIMESTAMP`,
+          [
+            centerId,
+            available === "SI",
+            details.signage.conditionId ?? null,
+            details.signage.observation ?? null,
+          ],
+        );
+      }
     }
   }
 
@@ -2999,10 +3231,174 @@ export class AdminCentersService {
     }
   }
 
+  private async readPublishedAccessibilitySection(
+    manager: EntityManager,
+    centerId: string,
+  ): Promise<Record<string, unknown> | null> {
+    const [
+      localityRows,
+      roadsRows,
+      aquaticRows,
+      aerialRows,
+      transportRows,
+      detailRows,
+      criteriaRows,
+      signageRows,
+    ] = (await Promise.all([
+      manager.query(
+        `SELECT json_build_object(
+                    'localityId', localidad_id,
+                    'distanceKm', distancia_km,
+                    'observation', observacion
+                  ) AS data
+             FROM centro_localidad_cercana
+            WHERE centro_turistico_id = $1`,
+        [centerId],
+      ),
+      manager.query(
+        `SELECT COALESCE(json_agg(json_build_object(
+                    'roadTypeId', tipo_via_terrestre_id,
+                    'startLatitude', latitud_inicio,
+                    'startLongitude', longitud_inicio,
+                    'endLatitude', latitud_fin,
+                    'endLongitude', longitud_fin,
+                    'distanceKm', distancia_km,
+                    'materialId', material_via_id,
+                    'conditionId', estado_condicion_id,
+                    'observation', observacion
+                  ) ORDER BY id), '[]'::json) AS data
+             FROM vias_acceso_terrestre
+            WHERE centro_turistico_id = $1`,
+        [centerId],
+      ),
+      manager.query(
+        `SELECT COALESCE(json_agg(json_build_object(
+                    'modalityId', modalidad_acceso_acuatico_id,
+                    'departure', puerto_embarque,
+                    'departureConditionId', estado_puerto_embarque_id,
+                    'arrival', puerto_llegada,
+                    'arrivalConditionId', estado_puerto_llegada_id,
+                    'observation', observacion
+                  ) ORDER BY id), '[]'::json) AS data
+             FROM accesos_acuaticos
+            WHERE centro_turistico_id = $1`,
+        [centerId],
+      ),
+      manager.query(
+        `SELECT COALESCE(json_agg(json_build_object(
+                    'coverageId', cobertura_acceso_aereo_id,
+                    'observation', observacion
+                  ) ORDER BY id), '[]'::json) AS data
+             FROM accesos_aereos
+            WHERE centro_turistico_id = $1`,
+        [centerId],
+      ),
+      manager.query(
+        `SELECT COALESCE(json_agg(json_build_object(
+                    'typeId', ctt.tipo_transporte_id,
+                    'applies', TRUE,
+                    'detailOther', tc.detalle_otro,
+                    'observation', tc.observacion
+                  ) ORDER BY ctt.tipo_transporte_id), '[]'::json) AS data
+             FROM centro_tipos_transporte ctt
+             LEFT JOIN transporte_centro tc
+               ON tc.centro_turistico_id = ctt.centro_turistico_id
+            WHERE ctt.centro_turistico_id = $1`,
+        [centerId],
+      ),
+      manager.query(
+        `SELECT COALESCE(json_agg(json_build_object(
+                    'operator', operador_cooperativa,
+                    'terminal', estacion_terminal,
+                    'frequencyId', frecuencia_servicio_id,
+                    'transferDetail', detalle_traslado,
+                    'observation', observacion
+                  ) ORDER BY id), '[]'::json) AS data
+             FROM detalles_transporte
+            WHERE centro_turistico_id = $1`,
+        [centerId],
+      ),
+      manager.query(
+        `SELECT COALESCE(json_agg(json_build_object(
+                    'criterionId', ra.criterio_accesibilidad_id,
+                    'accessibilityTypeId', ca.tipo_accesibilidad_id,
+                    'label', ca.descripcion,
+                    'response', CASE
+                      WHEN ra.cumple IS TRUE THEN 'SI'
+                      WHEN ra.cumple IS FALSE THEN 'NO'
+                      ELSE 'SIN_INFORMACION'
+                    END,
+                    'detail', ra.detalle,
+                    'observation', ra.observacion
+                  ) ORDER BY ca.orden, ra.criterio_accesibilidad_id), '[]'::json) AS data
+             FROM respuestas_accesibilidad ra
+             JOIN criterios_accesibilidad ca
+               ON ca.id = ra.criterio_accesibilidad_id
+            WHERE ra.centro_turistico_id = $1`,
+        [centerId],
+      ),
+      manager.query(
+        `SELECT json_build_object(
+                    'available', CASE WHEN disponible THEN 'SI' ELSE 'NO' END,
+                    'conditionId', estado_condicion_id,
+                    'observation', observacion
+                  ) AS data
+             FROM senalizaciones_aproximacion
+            WHERE centro_turistico_id = $1`,
+        [centerId],
+      ),
+    ])) as Array<Array<{ data: unknown }>>;
+    const locality = localityRows[0]?.data;
+    const localityRecord = isJsonRecord(locality) ? locality : {};
+    const roads = roadsRows[0]?.data;
+    const aquatic = aquaticRows[0]?.data;
+    const aerial = aerialRows[0]?.data;
+    const transportTypes = transportRows[0]?.data;
+    const transportDetails = detailRows[0]?.data;
+    const criteria = criteriaRows[0]?.data;
+    const signage = signageRows[0]?.data;
+    const hasRows = [
+      roads,
+      aquatic,
+      aerial,
+      transportTypes,
+      transportDetails,
+      criteria,
+    ].some((value) => Array.isArray(value) && value.length > 0);
+    if (
+      localityRecord.localityId === undefined &&
+      localityRecord.distanceKm === undefined &&
+      !hasRows &&
+      signage === undefined
+    ) {
+      return null;
+    }
+    return {
+      schemaVersion: 1,
+      response: "SI",
+      localityId: localityRecord.localityId ?? null,
+      distanceKm: localityRecord.distanceKm ?? null,
+      accessibilityDetails: {
+        roads: roads ?? [],
+        aquatic: aquatic ?? [],
+        aerial: aerial ?? [],
+        transportTypes: transportTypes ?? [],
+        transportDetails: transportDetails ?? [],
+        criteria: criteria ?? [],
+        signage: signage ?? {
+          available: "SIN_INFORMACION",
+          conditionId: null,
+          observation: "",
+        },
+      },
+      observation: localityRecord.observation ?? "",
+    };
+  }
+
   private async readPublishedPlantSection(
     manager: EntityManager,
     centerId: string,
-  ): Promise<Record<string, unknown>> {
+  ): Promise<Record<string, unknown> | null> {
     const [plantRows, facilityRows, complementaryRows] = (await Promise.all([
       manager.query(
         `SELECT COALESCE(json_agg(json_build_object(
@@ -3055,12 +3451,22 @@ export class AdminCentersService {
         [centerId],
       ),
     ])) as Array<Array<{ data: unknown }>>;
+    const plant = plantRows[0]?.data;
+    const facilities = facilityRows[0]?.data;
+    const complementary = complementaryRows[0]?.data;
+    if (
+      (!Array.isArray(plant) || plant.length === 0) &&
+      (!Array.isArray(facilities) || facilities.length === 0) &&
+      (!Array.isArray(complementary) || complementary.length === 0)
+    ) {
+      return null;
+    }
     return {
       schemaVersion: 1,
       response: "SI",
-      plant: plantRows[0]?.data ?? [],
-      facilitiesDetails: facilityRows[0]?.data ?? [],
-      complementaryServices: complementaryRows[0]?.data ?? [],
+      plant: plant ?? [],
+      facilitiesDetails: facilities ?? [],
+      complementaryServices: complementary ?? [],
     };
   }
 
@@ -3272,6 +3678,7 @@ export class AdminCentersService {
     }
     if (forPublication) {
       await this.validatePlantSectionReferences(manager, draft);
+      await this.validateAccessibilitySectionReferences(manager, draft);
     }
   }
 
@@ -3413,6 +3820,215 @@ export class AdminCentersService {
           "tipo de servicio complementario",
         );
       }
+    }
+  }
+
+  private async validateAccessibilitySectionReferences(
+    manager: EntityManager,
+    draft: CenterDraft,
+  ) {
+    const section = getAdminSectionRecord(draft, "accesibilidad");
+    if (!section) return;
+    const details = isJsonRecord(section.accessibilityDetails)
+      ? section.accessibilityDetails
+      : null;
+    if (!details) {
+      if (
+        section.response === "SI" &&
+        (section.localityId === undefined || section.localityId === null)
+      ) {
+        throw new ConflictException(
+          "La sección accesibilidad requiere seleccionar la localidad cercana antes de publicar.",
+        );
+      }
+      return;
+    }
+    if (section.localityId !== undefined && section.localityId !== null) {
+      if (
+        !Number.isInteger(section.localityId) ||
+        Number(section.localityId) < 1
+      ) {
+        throw new ConflictException(
+          "La localidad cercana no es válida para publicar.",
+        );
+      }
+      await this.ensureReference(
+        manager,
+        "localidades",
+        Number(section.localityId),
+        "localidad cercana",
+      );
+    }
+
+    const requireCatalogId = (
+      item: JsonRecord,
+      idKey: string,
+      label: string,
+    ): number => {
+      const id = item[idKey];
+      if (!Number.isInteger(id) || Number(id) < 1) {
+        throw new ConflictException(
+          `La sección accesibilidad requiere seleccionar un ${label} del catálogo antes de publicar.`,
+        );
+      }
+      return Number(id);
+    };
+    const ensureOptional = async (
+      item: JsonRecord,
+      key: string,
+      table: string,
+      label: string,
+    ) => {
+      if (item[key] !== undefined && item[key] !== null) {
+        await this.ensureReference(
+          manager,
+          table,
+          requireCatalogId(item, key, label),
+          label,
+        );
+      }
+    };
+
+    if (Array.isArray(details.roads) && details.roads.length > 0) {
+      for (const item of details.roads) {
+        if (!isJsonRecord(item))
+          throw new ConflictException(
+            "Una vía terrestre no es válida para publicar.",
+          );
+        await this.ensureReference(
+          manager,
+          "tipos_via_terrestre",
+          requireCatalogId(item, "roadTypeId", "tipo de vía terrestre"),
+          "tipo de vía terrestre",
+        );
+        await ensureOptional(
+          item,
+          "materialId",
+          "materiales_via",
+          "material de vía",
+        );
+        await ensureOptional(
+          item,
+          "conditionId",
+          "estados_condicion",
+          "estado de vía",
+        );
+      }
+    }
+    if (Array.isArray(details.aquatic) && details.aquatic.length > 0) {
+      for (const item of details.aquatic) {
+        if (!isJsonRecord(item))
+          throw new ConflictException(
+            "Un acceso acuático no es válido para publicar.",
+          );
+        await this.ensureReference(
+          manager,
+          "modalidades_acceso_acuatico",
+          requireCatalogId(item, "modalityId", "modalidad de acceso acuático"),
+          "modalidad de acceso acuático",
+        );
+        await ensureOptional(
+          item,
+          "departureConditionId",
+          "estados_condicion",
+          "estado del puerto o muelle",
+        );
+        await ensureOptional(
+          item,
+          "arrivalConditionId",
+          "estados_condicion",
+          "estado del puerto o muelle",
+        );
+      }
+    }
+    if (Array.isArray(details.aerial) && details.aerial.length > 0) {
+      for (const item of details.aerial) {
+        if (!isJsonRecord(item))
+          throw new ConflictException(
+            "Un acceso aéreo no es válido para publicar.",
+          );
+        await this.ensureReference(
+          manager,
+          "coberturas_acceso_aereo",
+          requireCatalogId(item, "coverageId", "cobertura de acceso aéreo"),
+          "cobertura de acceso aéreo",
+        );
+      }
+    }
+    if (
+      Array.isArray(details.transportTypes) &&
+      details.transportTypes.length > 0
+    ) {
+      for (const item of details.transportTypes) {
+        if (!isJsonRecord(item))
+          throw new ConflictException(
+            "Un tipo de transporte no es válido para publicar.",
+          );
+        await this.ensureReference(
+          manager,
+          "tipos_transporte",
+          requireCatalogId(item, "typeId", "tipo de transporte"),
+          "tipo de transporte",
+        );
+      }
+    }
+    if (
+      Array.isArray(details.transportDetails) &&
+      details.transportDetails.length > 0
+    ) {
+      for (const item of details.transportDetails) {
+        if (!isJsonRecord(item))
+          throw new ConflictException(
+            "Un detalle de transporte no es válido para publicar.",
+          );
+        await ensureOptional(
+          item,
+          "frequencyId",
+          "frecuencias_servicio",
+          "frecuencia de transporte",
+        );
+      }
+    }
+    if (Array.isArray(details.criteria) && details.criteria.length > 0) {
+      for (const item of details.criteria) {
+        if (!isJsonRecord(item))
+          throw new ConflictException(
+            "Un criterio de accesibilidad no es válido para publicar.",
+          );
+        await this.ensureReference(
+          manager,
+          "criterios_accesibilidad",
+          requireCatalogId(item, "criterionId", "criterio de accesibilidad"),
+          "criterio de accesibilidad",
+        );
+        await ensureOptional(
+          item,
+          "accessibilityTypeId",
+          "tipos_accesibilidad",
+          "tipo de accesibilidad",
+        );
+      }
+    }
+    if (isJsonRecord(details.signage)) {
+      const available = details.signage.available;
+      if (
+        available !== undefined &&
+        available !== null &&
+        available !== "SI" &&
+        available !== "NO" &&
+        available !== "SIN_INFORMACION" &&
+        available !== "NO_APLICA"
+      ) {
+        throw new ConflictException(
+          "La señalización de aproximación requiere Sí o No antes de publicar.",
+        );
+      }
+      await ensureOptional(
+        details.signage,
+        "conditionId",
+        "estados_condicion",
+        "estado de señalización",
+      );
     }
   }
 

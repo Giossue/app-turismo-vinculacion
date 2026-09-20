@@ -31,7 +31,9 @@ explícita.
   coordenadas, distancia, material y estado; accesos acuáticos y aéreos; tipos y operadores
   de transporte; los criterios detallados de `ficha_Accesibilidad`; y señalización de
   aproximación. Los catálogos se consultan por API y, mientras falten opciones en el
-  despliegue, se permite una descripción manual que queda pendiente de normalización.
+  despliegue, se permite una descripción manual que queda pendiente de normalización. La
+  publicación transaccional reemplaza las tablas de la sección cuando las filas usan IDs
+  activos; una fila manual bloquea la publicación sin perderse del borrador.
 - La sección de características conserva el tipo de clima y sus rangos de temperatura y
   precipitación, distinguiendo valores ausentes de cero.
 - La sección de planta turística conserva registros de alojamiento, alimentos y bebidas,
@@ -72,8 +74,8 @@ explícita.
 
 El snapshot se puede consultar en `GET /admin/centers/:code/sections` y actualizar por
 sección con `PATCH /admin/centers/:code/sections/:sectionCode`. Durante la transición, el
-contenido aún no normalizado (incluida la conectividad de la sección 4 y cualquier fila
-manual de la sección 5) permanece en el borrador JSONB y no se considera publicado hasta
+contenido aún no normalizado (incluida cualquier fila manual) permanece en el borrador JSONB y
+no se considera publicado hasta
 que exista su adaptador transaccional. La lectura devuelve el progreso por sección y el API
 rechaza respuestas, cantidades o filas que no cumplan el contrato de captura.
 

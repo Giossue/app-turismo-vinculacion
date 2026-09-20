@@ -66,6 +66,10 @@ completa pendientes.
   `ficha_Accesibilidad` y señalización de aproximación. El API valida catálogos opcionales,
   coordenadas, respuestas, cantidades y textos sin tocar el esquema; mientras los catálogos
   desplegados estén vacíos se conserva también una descripción manual para no inventar datos.
+- La publicación de la sección 4 ya reemplaza, dentro de la misma transacción, localidad,
+  vías, accesos acuáticos/aéreos, tipos y detalles de transporte, respuestas detalladas y
+  señalización cuando las filas usan catálogos activos. Las filas manuales quedan en el
+  borrador y bloquean únicamente la publicación de esa propuesta.
 - La sección 5 ya captura planta turística por ámbito con sus tres cantidades, facilidades
   detalladas con coordenadas, administrador, accesibilidad y estado, y servicios
   complementarios. Sus catálogos se consultan por API y aceptan descripción manual mientras
@@ -142,8 +146,8 @@ se conviertan en catálogos o reglas y no en pantallas literales.
 - Las facilidades del núcleo ya no fuerzan cantidad `1`; el detalle de coordenadas,
   administrador, accesibilidad y estado ahora se captura en la sección 5 y se publica cuando
   usa IDs activos del catálogo.
-- La hoja de accesibilidad detallada ya se captura en el borrador, pero aún falta el adaptador
-  transaccional hacia `respuestas_accesibilidad` y las demás tablas normalizadas de la sección.
+- La hoja de accesibilidad detallada ya se captura y publica en sus tablas normalizadas cuando
+  los criterios usan catálogo; las filas manuales siguen requiriendo una opción de catálogo.
 - La revisión no compara publicado contra propuesto por sección.
 - No existen endpoints ni navegación administrativa para establecimientos del catastro.
 - La base desplegada no contiene establecimientos turísticos y su DPA/clasificación mínima
@@ -515,9 +519,8 @@ de cuatro estados, observaciones y filas repetibles con guardado independiente. 
 campos núcleo existentes se mantienen operativos y cada sección ofrece un enlace directo a
 su formulario normalizado. Ya tienen captura específica las secciones 3, 4, 6, 7, 8, 10,
 11, 12 y 14; las secciones 4 y 5 ya cuentan con captura estructurada de conectividad,
-accesibilidad detallada, planta y complementarios; la sección 5 ya tiene adaptador de
-publicación catalogada; aún faltan los adaptadores de la sección 4, la valoración persistida
-y la división física del componente monolítico.
+accesibilidad detallada, planta y complementarios, con adaptadores de publicación catalogada;
+aún faltan la valoración persistida y la división física del componente monolítico.
 
 Salida prevista: el administrador puede capturar la ficha completa sin navegar una sola
 página monolítica.
