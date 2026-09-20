@@ -50,3 +50,10 @@ fotografías institucionales antes de producción.
 La migración `20260919_seed_guaranda_six_centers.sql` carga seis centros y sus catálogos
 territoriales mínimos con coordenadas distribuidas alrededor de Guaranda. Son registros de
 demostración para validar el mapa y deben sustituirse por fichas institucionales verificadas.
+
+`database/seeds/003_xlsm_valuation_indicators.sql` es un seed de datos manual, no una
+migración de esquema. Carga de forma idempotente los 56 indicadores A-I derivados de
+`Jerarquia` y `Calculos`; debe ejecutarse solo cuando los nueve criterios de
+`criterios_valoracion` estén presentes. La API deja la jerarquía provisional y no calcula
+puntajes mientras este catálogo no esté completo, por lo que el seed no se aplica
+automáticamente a la base desplegada.

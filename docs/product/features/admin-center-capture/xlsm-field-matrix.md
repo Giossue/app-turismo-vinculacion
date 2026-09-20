@@ -40,6 +40,14 @@ El XLSM entregado produce `A–I = 0; 7,2; 10; 7,5; 2; 9; 5; 5; 3`, total `48,7`
 jerarquía `02`. La referencia anterior `56,2/53,2` queda marcada como documentación
 histórica hasta que exista otro libro aprobado.
 
+El adaptador del snapshot conserva esa correspondencia sin ejecutar fórmulas almacenadas:
+las cinco señales de accesibilidad se toman de los tipos catalogados, las tres de
+conectividad de transporte/operadores/señalización, la planta se agrupa en las 15 opciones
+del libro, las cuatro actividades se agrupan en agua/aire/tierra/cultura y el resto usa las
+respuestas explícitas de sus secciones. Los nombres de catálogos se resuelven por ID dentro
+de la transacción; una sección sin respuesta distinta de `SIN_INFORMACION` no se puntúa y
+mantiene la jerarquía provisional.
+
 ## Secciones de la ficha principal
 
 | Sección | Contenido del XLSM | Persistencia existente |

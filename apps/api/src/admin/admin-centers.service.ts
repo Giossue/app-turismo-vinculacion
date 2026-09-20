@@ -27,6 +27,12 @@ import type {
 } from "./admin.dto";
 import { ADMIN_CENTER_SECTION_CODES } from "./admin.dto";
 import { MediaService } from "../files/media.service";
+import {
+  buildXlsmValuationInput,
+  calculateXlsmValuation,
+  XLSM_INDICATOR_CODES,
+  type XlsmValuationCatalogs,
+} from "./valuation";
 
 type JsonRecord = Record<string, unknown>;
 type CatalogKey = "ACCESSIBILITY" | "ACTIVITY" | "FACILITY";
@@ -2713,9 +2719,13 @@ export class AdminCentersService {
 
       const [indicatorRows, criterionRows, totalRows] = await Promise.all([
         manager.query(
-          `SELECT COUNT(*)::int AS count
+          `SELECT COUNT(*)::int AS count,
+                  COUNT(*) FILTER (
+                    WHERE TRIM(codigo) = ANY($1::text[])
+                  )::int AS "requiredCount"
              FROM indicadores_valoracion
             WHERE activo = TRUE`,
+          [XLSM_INDICATOR_CODES],
         ),
         manager.query(
           `SELECT cv.codigo AS code, cv.nombre AS name,
@@ -2737,7 +2747,9 @@ export class AdminCentersService {
           [center.id],
         ),
       ]);
-      const configured = Number(indicatorRows[0]?.count ?? 0) > 0;
+      const configured =
+        Number(indicatorRows[0]?.requiredCount ?? 0) >=
+        XLSM_INDICATOR_CODES.length;
       const totalValue = totalRows[0]?.total;
       return {
         configured,
@@ -3290,6 +3302,255 @@ export class AdminCentersService {
     if (plantSection) {
       await this.applyPlantSection(manager, center.id, plantSection);
     }
+    await this.persistXlsmValuation(manager, center.id, draft);
+  }
+
+  private async persistXlsmValuation(
+    manager: EntityManager,
+    centerId: string,
+    draft: CenterDraft,
+  ): Promise<boolean> {
+    const indicatorRows = (await manager.query(
+      `SELECT iv.id, TRIM(iv.codigo) AS code,
+              iv.criterio_valoracion_id AS "criterionId",
+              TRIM(cv.codigo) AS "criterionCode",
+              iv.puntaje_maximo AS maximum
+         FROM indicadores_valoracion iv
+         JOIN criterios_valoracion cv
+           ON cv.id = iv.criterio_valoracion_id
+        WHERE iv.activo = TRUE AND cv.activo = TRUE
+        ORDER BY cv.orden, iv.orden`,
+    )) as Array<{
+      id: string;
+      code: string;
+      criterionId: string;
+      criterionCode: string;
+      maximum: string | number;
+    }>;
+
+    if (indicatorRows.length === 0) {
+      await this.clearPersistedValuation(manager, centerId);
+      return false;
+    }
+
+    const configuredCodes = new Set(indicatorRows.map((row) => row.code));
+    const missingCodes = XLSM_INDICATOR_CODES.filter(
+      (code) => !configuredCodes.has(code),
+    );
+    if (missingCodes.length > 0) {
+      throw new ConflictException(
+        `El catálogo de valoración XLSM está incompleto: faltan ${missingCodes.length} indicadores.`,
+      );
+    }
+
+    const criterionRows = (await manager.query(
+      `SELECT id, TRIM(codigo) AS code, puntaje_maximo AS maximum
+         FROM criterios_valoracion
+        WHERE activo = TRUE
+        ORDER BY orden`,
+    )) as Array<{
+      id: string;
+      code: string;
+      maximum: string | number;
+    }>;
+    const criterionByCode = new Map(
+      criterionRows.map((row) => [row.code, row]),
+    );
+    const missingCriteria = [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "G",
+      "H",
+      "I",
+    ].filter((code) => !criterionByCode.has(code));
+    if (missingCriteria.length > 0) {
+      throw new ConflictException(
+        `El catálogo de criterios de valoración está incompleto: faltan ${missingCriteria.join(", ")}.`,
+      );
+    }
+
+    if (!this.hasScorableXlsmSnapshot(draft)) {
+      await this.clearPersistedValuation(manager, centerId);
+      return false;
+    }
+
+    const catalogs = await this.loadXlsmValuationCatalogs(manager);
+    const result = calculateXlsmValuation(
+      buildXlsmValuationInput(draft, catalogs),
+    );
+    const indicatorByCode = new Map(
+      indicatorRows.map((row) => [row.code, row]),
+    );
+
+    // La publicación reemplaza el cálculo anterior dentro de la misma
+    // transacción. Así los indicadores nunca quedan mezclados entre versiones.
+    await manager.query(
+      `DELETE FROM resultados_indicador WHERE centro_turistico_id = $1`,
+      [centerId],
+    );
+    await manager.query(
+      `DELETE FROM resultados_criterio WHERE centro_turistico_id = $1`,
+      [centerId],
+    );
+
+    for (const criterion of result.criteria) {
+      for (const indicator of criterion.indicators) {
+        const catalogIndicator = indicatorByCode.get(indicator.code);
+        if (!catalogIndicator) continue;
+        const configuredIndicatorMaximum = Number(catalogIndicator.maximum);
+        const indicatorMaximum = Number.isFinite(configuredIndicatorMaximum)
+          ? configuredIndicatorMaximum
+          : indicator.maximum;
+        const indicatorScore = Math.min(indicator.score, indicatorMaximum);
+        await manager.query(
+          `INSERT INTO resultados_indicador
+             (centro_turistico_id, indicador_valoracion_id, valor_base,
+              puntaje_obtenido, detalle_calculo, observacion)
+           VALUES ($1,$2,$3,$4,$5::jsonb,$6)`,
+          [
+            centerId,
+            catalogIndicator.id,
+            indicator.value,
+            indicatorScore,
+            JSON.stringify({
+              source: "XLSM",
+              indicator: indicator.code,
+              ...indicator.detail,
+            }),
+            indicator.observation ?? null,
+          ],
+        );
+      }
+      const catalogCriterion = criterionByCode.get(criterion.code);
+      if (!catalogCriterion) continue;
+      const configuredCriterionMaximum = Number(catalogCriterion.maximum);
+      const criterionMaximum = Number.isFinite(configuredCriterionMaximum)
+        ? configuredCriterionMaximum
+        : criterion.maximum;
+      const criterionScore = Math.min(criterion.score, criterionMaximum);
+      await manager.query(
+        `INSERT INTO resultados_criterio
+           (centro_turistico_id, criterio_valoracion_id,
+            puntaje_obtenido, puntaje_maximo_aplicado)
+         VALUES ($1,$2,$3,$4)`,
+        [centerId, catalogCriterion.id, criterionScore, criterionMaximum],
+      );
+    }
+    return true;
+  }
+
+  private hasScorableXlsmSnapshot(draft: CenterDraft): boolean {
+    if (!Array.isArray(draft.activities)) return false;
+    const requiredSections = [
+      "accesibilidad",
+      "planta",
+      "conservacion",
+      "higiene-seguridad",
+      "politicas",
+      "promocion",
+      "visitantes",
+      "recurso-humano",
+    ];
+    return requiredSections.every((code) => {
+      const value = draft.sections?.[code];
+      const section = isJsonRecord(value) ? value : null;
+      return (
+        section !== null &&
+        typeof section.response === "string" &&
+        section.response !== "SIN_INFORMACION"
+      );
+    });
+  }
+
+  private async clearPersistedValuation(
+    manager: EntityManager,
+    centerId: string,
+  ) {
+    await manager.query(
+      `DELETE FROM resultados_indicador WHERE centro_turistico_id = $1`,
+      [centerId],
+    );
+    await manager.query(
+      `DELETE FROM resultados_criterio WHERE centro_turistico_id = $1`,
+      [centerId],
+    );
+  }
+
+  private async loadXlsmValuationCatalogs(
+    manager: EntityManager,
+  ): Promise<XlsmValuationCatalogs> {
+    const [conditions, plants, activities, accessibility, hygiene] =
+      await Promise.all([
+        manager.query(
+          `SELECT id, codigo FROM estados_condicion WHERE activo = TRUE`,
+        ),
+        manager.query(
+          `SELECT id, nombre FROM tipos_planta_turistica WHERE activo = TRUE`,
+        ),
+        manager.query(
+          `SELECT at.id, ga.codigo AS "groupCode"
+             FROM actividades_turisticas at
+             JOIN grupos_actividad ga ON ga.id = at.grupo_actividad_id
+            WHERE at.activo = TRUE AND ga.activo = TRUE`,
+        ),
+        manager.query(
+          `SELECT id, codigo, nombre
+             FROM tipos_accesibilidad
+            WHERE activo = TRUE`,
+        ),
+        manager.query(
+          `SELECT 'BASIC_SERVICE' AS kind, id, nombre FROM tipos_servicio_basico WHERE activo = TRUE
+           UNION ALL
+           SELECT 'SIGNAGE' AS kind, id, nombre FROM tipos_senaletica WHERE activo = TRUE
+           UNION ALL
+           SELECT 'HEALTH' AS kind, id, nombre FROM tipos_servicio_salud WHERE activo = TRUE
+           UNION ALL
+           SELECT 'SECURITY' AS kind, id, nombre FROM tipos_servicio_seguridad WHERE activo = TRUE
+           UNION ALL
+           SELECT 'COMMUNICATION' AS kind, id, nombre FROM tipos_comunicacion WHERE activo = TRUE
+           UNION ALL
+           SELECT 'THREAT' AS kind, id, nombre FROM tipos_amenaza WHERE activo = TRUE`,
+        ),
+      ]);
+
+    return {
+      conditionCodes: new Map(
+        (conditions as Array<{ id: string; codigo: string }>).map((row) => [
+          Number(row.id),
+          row.codigo,
+        ]),
+      ),
+      plantNames: new Map(
+        (plants as Array<{ id: string; nombre: string }>).map((row) => [
+          Number(row.id),
+          row.nombre,
+        ]),
+      ),
+      activityGroups: new Map(
+        (activities as Array<{ id: string; groupCode: string }>).map((row) => [
+          Number(row.id),
+          row.groupCode,
+        ]),
+      ),
+      accessibilityNames: new Map(
+        (
+          accessibility as Array<{
+            id: string;
+            codigo: string;
+            nombre: string;
+          }>
+        ).map((row) => [Number(row.id), `${row.codigo} ${row.nombre}`]),
+      ),
+      hygieneNames: new Map(
+        (hygiene as Array<{ kind: string; id: string; nombre: string }>).map(
+          (row) => [`${row.kind}:${row.id}`, row.nombre],
+        ),
+      ),
+    };
   }
 
   private async applyCharacteristicsSection(

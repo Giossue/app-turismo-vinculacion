@@ -84,9 +84,12 @@ explícita.
   la validación y responsables con tipo institucional se publican en sus relaciones existentes;
   documentos requieren archivo/tipo institucional antes de publicarse.
 - La valoración usa un motor tipado que reproduce las fórmulas de `Jerarquia` y `Calculos`,
-  con detalle por indicador, normalización de accesos y topes por criterio. La publicación
-  todavía debe conectar cada señal con sus tablas normalizadas y guardar el detalle auditable.
-  Mientras `indicadores_valoracion` no tenga reglas activas, el servidor conserva la
+  con detalle por indicador, normalización de accesos y topes por criterio. Al publicar,
+  el servidor traduce el snapshot a esas señales y guarda `resultados_indicador` y
+  `resultados_criterio` en la misma transacción; los triggers existentes actualizan el
+  puntaje, la jerarquía y el código institucional. El seed manual
+  `database/seeds/003_xlsm_valuation_indicators.sql` habilita los 56 indicadores sin
+  modificar el esquema. Mientras el catálogo no esté completo, el servidor conserva la
   jerarquía provisional `00` y no calcula puntajes inventados.
 - Las facilidades seleccionadas conservan cantidad y observación por opción, en lugar de
   imponer siempre una cantidad fija.

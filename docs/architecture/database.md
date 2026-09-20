@@ -55,6 +55,9 @@ Crear mediante migraciones cuando su feature se especifique:
 - Probar desde cero y sobre una copia anonimizada representativa.
 - Índices grandes se crean de forma compatible con operación (`CONCURRENTLY` cuando aplique).
 - Seeds idempotentes para DPA, catálogos y roles; no insertar contraseñas reales.
+- El catálogo XLSM de valoración vive en `database/seeds/003_xlsm_valuation_indicators.sql`:
+  es una carga de datos manual, sin DDL, y se aplica únicamente después de verificar los
+  criterios A-I. Hasta entonces la API conserva la jerarquía provisional `00`.
 
 ## Consultas críticas
 

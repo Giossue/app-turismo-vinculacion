@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { AdminCentersService } from "../src/admin/admin-centers.service";
+import { XLSM_INDICATOR_CODES } from "../src/admin/valuation";
 
 describe("AdminCentersService", () => {
   it("publishes the visitor section across its normalized relations", async () => {
@@ -567,7 +568,7 @@ describe("AdminCentersService", () => {
       .mockResolvedValueOnce([
         { id: "10", hierarchyId: 2, hierarchyCode: "02" },
       ])
-      .mockResolvedValueOnce([{ count: "3" }])
+      .mockResolvedValueOnce([{ count: "56", requiredCount: "56" }])
       .mockResolvedValueOnce([
         {
           code: "A",
@@ -601,6 +602,113 @@ describe("AdminCentersService", () => {
       ],
     });
     expect(managerQuery).toHaveBeenCalledTimes(4);
+  });
+
+  it("persists the typed XLSM valuation with auditable indicator details", async () => {
+    const criterionCodes = ["A", "B", "C", "D", "E", "F", "G", "H", "I"];
+    const criterionRows = criterionCodes.map((code, index) => ({
+      id: String(index + 1),
+      code,
+      maximum: [18, 18, 14, 14, 10, 9, 7, 5, 5][index],
+    }));
+    const indicatorRows = XLSM_INDICATOR_CODES.map((code, index) => ({
+      id: String(index + 10),
+      code,
+      criterionId: String(criterionCodes.indexOf(code.slice(0, 1)) + 1),
+      criterionCode: code.slice(0, 1),
+      maximum: 9,
+    }));
+    const managerQuery = vi.fn(async (sql: string) => {
+      if (sql.includes("FROM indicadores_valoracion")) return indicatorRows;
+      if (sql.includes("FROM criterios_valoracion")) return criterionRows;
+      return [];
+    });
+    const manager = { query: managerQuery };
+    const service = new AdminCentersService({} as never);
+    const persistXlsmValuation = (
+      service as unknown as {
+        persistXlsmValuation: (
+          value: typeof manager,
+          centerId: string,
+          draft: Record<string, unknown>,
+        ) => Promise<boolean>;
+      }
+    ).persistXlsmValuation;
+
+    await expect(
+      persistXlsmValuation.call(service, manager, "10", {
+        activities: [],
+        sections: {
+          accesibilidad: { response: "NO_APLICA" },
+          planta: { response: "NO_APLICA" },
+          conservacion: { response: "NO_APLICA" },
+          "higiene-seguridad": { response: "NO_APLICA" },
+          politicas: { response: "NO_APLICA" },
+          promocion: {
+            response: "SI",
+            promotion: {
+              hasPlan: "SI",
+              includedInPlan: "SI",
+              partOfPackage: "NO",
+            },
+          },
+          visitantes: { response: "NO_APLICA" },
+          "recurso-humano": { response: "NO_APLICA" },
+        },
+      }),
+    ).resolves.toBe(true);
+
+    const statements = managerQuery.mock.calls.map(([sql]) => sql);
+    expect(statements).toContainEqual(
+      expect.stringContaining("DELETE FROM resultados_indicador"),
+    );
+    expect(statements).toContainEqual(
+      expect.stringContaining("DELETE FROM resultados_criterio"),
+    );
+    expect(statements).toContainEqual(
+      expect.stringContaining("INSERT INTO resultados_indicador"),
+    );
+    expect(statements).toContainEqual(
+      expect.stringContaining("INSERT INTO resultados_criterio"),
+    );
+    const indicatorInsert = managerQuery.mock.calls.find(([sql]) =>
+      sql.includes("INSERT INTO resultados_indicador"),
+    );
+    const indicatorValues = (indicatorInsert as unknown[] | undefined)?.[1] as
+      unknown[] | undefined;
+    expect(indicatorValues?.[4]).toContain('"source":"XLSM"');
+  });
+
+  it("does not calculate against a partial XLSM catalog", async () => {
+    const manager = {
+      query: vi.fn(async (sql: string) =>
+        sql.includes("FROM indicadores_valoracion")
+          ? [
+              {
+                id: "1",
+                code: "A.TRANSPORT",
+                criterionId: "1",
+                criterionCode: "A",
+                maximum: 9,
+              },
+            ]
+          : [],
+      ),
+    };
+    const service = new AdminCentersService({} as never);
+    const persistXlsmValuation = (
+      service as unknown as {
+        persistXlsmValuation: (
+          value: typeof manager,
+          centerId: string,
+          draft: Record<string, unknown>,
+        ) => Promise<boolean>;
+      }
+    ).persistXlsmValuation;
+
+    await expect(
+      persistXlsmValuation.call(service, manager, "10", {}),
+    ).rejects.toThrow("catálogo de valoración XLSM está incompleto");
   });
 
   it("rejects valuation status for an unknown ficha", async () => {

@@ -2,8 +2,9 @@
 
 Fecha: 2026-09-19
 Estado: en curso; catastro inicial, navegación integral, revisión por diferencias, captura
-estructurada y varios adaptadores normalizados implementados; valoración persistida,
-catálogos faltantes y publicación completa pendientes.
+estructurada, valoración XLSM persistida y adaptadores normalizados implementados. Quedan
+como operación manual la carga del seed de indicadores y la auditoría/importación durable
+del catastro, porque esta ejecución no altera la base desplegada.
 
 ## Avance de esta ejecución
 
@@ -70,8 +71,10 @@ catálogos faltantes y publicación completa pendientes.
   reproduce sus nueve resultados (`0, 7,2, 10, 7,5, 2, 9, 5, 5, 3`), total `48,7` y
   jerarquía `02`. `temp/db.md` conserva una anotación histórica `56,2/53,2` que no coincide
   con el libro entregado y ya no se usa como fixture. La base desplegada mantiene
-  `criterios_valoracion`, pero no tiene filas en `indicadores_valoracion`, por lo que el
-  servidor conserva la jerarquía provisional `00` y no inventa puntajes.
+  `criterios_valoracion`, pero no tiene filas en `indicadores_valoracion`. La publicación ya
+  traduce el snapshot a señales tipadas y persiste sus resultados; hasta aplicar el seed
+  manual `database/seeds/003_xlsm_valuation_indicators.sql`, el servidor conserva la
+  jerarquía provisional `00` y no inventa puntajes.
 - El panel consulta `GET /admin/centers/:code/valuation` y muestra si la jerarquía/código son
   provisionales; el endpoint solo expone resultados persistidos y no calcula cuando faltan
   indicadores activos.
@@ -505,7 +508,8 @@ preparará con inventario, respaldo y rollback explícitos antes de ejecutarla e
 
 La matriz de las nueve hojas y las 14 secciones ya está documentada; el fixture del libro
 entregado quedó aprobado como referencia técnica (`48,7`/`02`). La carga operativa de
-catálogos y sus indicadores en la base sigue pendiente.
+catálogos e indicadores queda como paso manual y explícito de despliegue, no como cambio
+automático de esta refactorización.
 
 Salida: especificación y criterios de aceptación actualizados, sin código de producto.
 
@@ -537,9 +541,11 @@ Salida: API capaz de guardar toda la propuesta sin publicarla todavía.
 Salida: jerarquía y código calculados, reproducibles y auditables.
 
 El motor tipado exacto y la regresión del XLSM ya están implementados en
-`apps/api/src/admin/valuation.ts`. La persistencia queda deliberadamente pendiente hasta
-que `indicadores_valoracion` tenga reglas activas; el cálculo ya no depende de ejecutar texto
-de `regla_calculo` y usa el fixture actual del libro.
+`apps/api/src/admin/valuation.ts`. El adaptador del snapshot y la persistencia transaccional
+ya conectan las señales con `resultados_indicador` y `resultados_criterio`; el seed manual
+`database/seeds/003_xlsm_valuation_indicators.sql` deja listo el catálogo sin tocar el
+esquema ni la base desplegada. Mientras no se aplique ese seed, el cálculo permanece
+provisional y no depende de ejecutar texto de `regla_calculo`.
 
 ### Fase 3 — Publicación normalizada completa
 
@@ -549,10 +555,10 @@ de `regla_calculo` y usa el fixture actual del libro.
 - Probar rollback ante fallo intermedio.
 
 Los adaptadores de clima, accesibilidad, planta, conservación, controles de higiene, políticas,
-visitantes, plan de promoción, resumen de recurso humano y anexos ya operan dentro de la
-transacción. Los documentos se cargan con un tipo institucional y se validan por ficha antes
-de publicar; sigue pendiente la integración de valoración antes de poder declarar publicación
-completa.
+visitantes, plan de promoción, resumen de recurso humano, anexos y valoración XLSM ya operan
+dentro de la transacción. Los documentos se cargan con un tipo institucional y se validan por
+ficha antes de publicar; una ficha sin snapshot puntuable conserva explícitamente la jerarquía
+provisional en vez de generar ceros como si fueran respuestas.
 
 Salida: una ficha aprobada publica cada bloque soportado o rechaza atómicamente el bloque que
 no tiene referencias institucionales válidas.
@@ -570,9 +576,9 @@ de cuatro estados, observaciones y filas repetibles con guardado independiente. 
 campos núcleo existentes se mantienen operativos y cada sección ofrece un enlace directo a
 su formulario normalizado. Ya tienen captura específica las secciones 3, 4, 6, 7, 8, 10,
 11, 12 y 14; las secciones 4 y 5 ya cuentan con captura estructurada de conectividad,
-accesibilidad detallada, planta y complementarios, con adaptadores de publicación catalogada;
-aún faltan la valoración persistida, el llenado de catálogos y la división física del componente
-monolítico.
+accesibilidad detallada, planta y complementarios, con adaptadores de publicación catalogada.
+La valoración persistida está conectada; quedan el llenado operativo de catálogos y la
+división física del componente monolítico como mejoras posteriores.
 
 Salida prevista: el administrador puede capturar la ficha completa sin navegar una sola
 página monolítica.

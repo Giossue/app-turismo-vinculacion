@@ -1,12 +1,109 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildXlsmValuationInput,
   calculateValuation,
   calculateXlsmValuation,
   hierarchyForScore,
 } from "../src/admin/valuation";
 
 describe("valuation engine", () => {
+  it("maps the structured center snapshot to the XLSM signals", () => {
+    const input = buildXlsmValuationInput(
+      {
+        sections: {
+          accesibilidad: {
+            accessibilityDetails: {
+              roads: [{ typeLabel: "Tercer orden", condition: "Bueno" }],
+              aquatic: [],
+              aerial: [],
+              transportTypes: [{ applies: true }],
+              transportDetails: [{ operator: "Cooperativa" }],
+              criteria: [
+                { label: "Discapacidad física", response: "SI" },
+                { label: "Discapacidad visual", response: "SI" },
+              ],
+              signage: { available: "SI" },
+            },
+          },
+          planta: {
+            plant: [
+              {
+                typeLabel: "Restaurantes",
+                quantity1: 1,
+                quantity2: 10,
+                quantity3: 20,
+              },
+            ],
+          },
+          conservacion: {
+            conservation: {
+              attraction: { state: "CONSERVADO" },
+              environment: { state: "ALTERADO" },
+            },
+          },
+          "higiene-seguridad": {
+            hygieneSafety: {
+              entries: [
+                { kind: "BASIC_SERVICE", typeId: 1, response: "SI" },
+                { kind: "HEALTH", typeId: 2, response: "SI" },
+              ],
+              radios: { available: "SI", visitorUse: "NO" },
+              contingency: { exists: "SI" },
+            },
+          },
+          politicas: { policies: [{ response: "SI" }] },
+          promocion: {
+            promotion: {
+              hasPlan: "SI",
+              includedInPlan: "NO",
+              partOfPackage: "SI",
+            },
+          },
+          visitantes: {
+            visitors: {
+              registry: { exists: "SI", reports: "NO" },
+              influx: { weekday: 10 },
+            },
+          },
+          "recurso-humano": {
+            humanResources: {
+              summary: { administrationOperation: 2 },
+              training: [{ quantity: 1 }],
+            },
+          },
+        },
+        activities: [{ activityId: 7, active: true }],
+      },
+      {
+        activityGroups: new Map([[7, "CULTURA"]]),
+        hygieneNames: new Map([
+          ["BASIC_SERVICE:1", "Agua potable"],
+          ["HEALTH:2", "Hospital"],
+        ]),
+      },
+    );
+
+    expect(input.accessibility.transport.terrestrial.enabled).toBe(true);
+    expect(input.accessibility.physicalAccess).toEqual([
+      false,
+      true,
+      true,
+      false,
+      false,
+    ]);
+    expect(input.accessibility.connectivity).toEqual([true, true, true]);
+    expect(input.plant[9]).toBe(true);
+    expect(input.conservation).toEqual({
+      attraction: "CONSERVADO",
+      environment: "ALTERADO",
+    });
+    expect(input.activities).toEqual([false, false, false, true]);
+    expect(input.promotion).toEqual([true, false, true]);
+    expect(input.visitors).toEqual([true, false, true]);
+    expect(input.humanResources).toEqual([true, false, true]);
+  });
+
   it("reproduces the nine XLSM criteria from the workbook signals", () => {
     const result = calculateXlsmValuation({
       accessibility: {
