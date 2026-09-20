@@ -83,10 +83,11 @@ explícita.
   firmas y documentos internos permanecen administrativos o restringidos. El levantamiento,
   la validación y responsables con tipo institucional se publican en sus relaciones existentes;
   documentos requieren archivo/tipo institucional antes de publicarse.
-- La valoración usa un motor tipado con topes por criterio y jerarquía reproducible; la
-  publicación todavía debe conectar cada indicador con sus tablas normalizadas y guardar el
-  detalle auditable. Mientras `indicadores_valoracion` no tenga reglas activas, el servidor
-  conserva la jerarquía provisional `00` y no calcula puntajes inventados.
+- La valoración usa un motor tipado que reproduce las fórmulas de `Jerarquia` y `Calculos`,
+  con detalle por indicador, normalización de accesos y topes por criterio. La publicación
+  todavía debe conectar cada señal con sus tablas normalizadas y guardar el detalle auditable.
+  Mientras `indicadores_valoracion` no tenga reglas activas, el servidor conserva la
+  jerarquía provisional `00` y no calcula puntajes inventados.
 - Las facilidades seleccionadas conservan cantidad y observación por opción, en lugar de
   imponer siempre una cantidad fija.
 - Durante la revisión, el editor compara la versión publicada con la propuesta por cada

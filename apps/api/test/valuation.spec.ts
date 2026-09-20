@@ -1,8 +1,132 @@
 import { describe, expect, it } from "vitest";
 
-import { calculateValuation, hierarchyForScore } from "../src/admin/valuation";
+import {
+  calculateValuation,
+  calculateXlsmValuation,
+  hierarchyForScore,
+} from "../src/admin/valuation";
 
 describe("valuation engine", () => {
+  it("reproduces the nine XLSM criteria from the workbook signals", () => {
+    const result = calculateXlsmValuation({
+      accessibility: {
+        transport: {
+          terrestrial: {
+            enabled: false,
+            routes: [
+              { selected: true, condition: "BUENO" },
+              { selected: false, condition: "REGULAR" },
+              { selected: false, condition: "MALO" },
+            ],
+          },
+          aquatic: {
+            enabled: false,
+            routes: [
+              {
+                selected: false,
+                departure: "BUENO",
+                arrival: "BUENO",
+              },
+              {
+                selected: false,
+                departure: null,
+                arrival: null,
+              },
+              {
+                selected: false,
+                departure: null,
+                arrival: null,
+              },
+            ],
+          },
+          aerial: { enabled: false },
+        },
+        physicalAccess: [false, false, false, false, false],
+        connectivity: [false, false, false],
+      },
+      plant: [
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        true,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ],
+      conservation: { attraction: "ALTERADO", environment: "ALTERADO" },
+      hygieneSafety: [
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        true,
+        true,
+        true,
+      ],
+      policies: [false, false, false, true],
+      activities: [false, false, false, true],
+      promotion: [false, true, true],
+      visitors: [true, true, false],
+      humanResources: [false, true, true],
+    });
+
+    expect(result.criteria.map((criterion) => criterion.score)).toEqual([
+      0, 7.2, 10, 7.5, 2, 9, 5, 5, 3,
+    ]);
+    expect(result.total).toBe(48.7);
+    expect(result.hierarchyCode).toBe("02");
+  });
+
+  it("normalizes transport modes as Calculos!I18 does", () => {
+    const result = calculateXlsmValuation({
+      accessibility: {
+        transport: {
+          terrestrial: {
+            enabled: true,
+            routes: [{ selected: true, condition: "BUENO" }],
+          },
+          aquatic: {
+            enabled: true,
+            routes: [
+              {
+                selected: true,
+                departure: "REGULAR",
+                arrival: "REGULAR",
+              },
+            ],
+          },
+          aerial: { enabled: true },
+        },
+        physicalAccess: [],
+        connectivity: [],
+      },
+      plant: [],
+      conservation: { attraction: null, environment: null },
+      hygieneSafety: [],
+      policies: [],
+      activities: [],
+      promotion: [],
+      visitors: [],
+      humanResources: [],
+    });
+
+    expect(result.criteria[0]?.indicators[0]?.score).toBe(8);
+  });
+
   it("reproduces the cached XLSM reference total and hierarchy", () => {
     const result = calculateValuation([
       { code: "A", indicators: [{ code: "A01", value: 0, maximum: 9 }] },
@@ -38,8 +162,12 @@ describe("valuation engine", () => {
       },
     ]);
 
-    expect(result.criteria.find((criterion) => criterion.code === "F")?.score).toBe(9);
-    expect(result.criteria.find((criterion) => criterion.code === "H")?.score).toBe(5);
+    expect(
+      result.criteria.find((criterion) => criterion.code === "F")?.score,
+    ).toBe(9);
+    expect(
+      result.criteria.find((criterion) => criterion.code === "H")?.score,
+    ).toBe(5);
     expect(result.total).toBe(14);
     expect(result.hierarchyCode).toBe("01");
   });

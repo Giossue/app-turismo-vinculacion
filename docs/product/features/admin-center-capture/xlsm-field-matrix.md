@@ -18,6 +18,28 @@ como pantallas independientes.
 | `ficha_Accesibilidad` | Criterios detallados por accesibilidad | `criterios_accesibilidad`, `respuestas_accesibilidad`, resumen de accesibilidad |
 | `Validación-GAD` | Control de validación institucional | `validaciones_gad`, estado/observación y anexos restringidos |
 
+## Fórmula de valoración observada
+
+La hoja `Jerarquia` suma nueve criterios A–I y la hoja `Calculos` normaliza las modalidades
+de acceso antes de aportar el resultado A. El traslado tipado de esas fórmulas usa esta
+matriz; nunca ejecuta el texto de una regla guardada en la base.
+
+| Criterio | Regla trasladada | Máximo aplicado |
+| --- | --- | ---: |
+| A | Vías terrestre/acuática/aérea normalizadas a 9 y promediadas entre modalidades activas; se agregan accesibilidad física y conectividad | 18 |
+| B | Indicadores de planta turística con pesos `1,5` y `0,6` según la hoja | 18 |
+| C | Atractivo y entorno: `conservado=7`, `alterado=5`, `en proceso=3`, `deteriorado=1` | 14 |
+| D | Indicadores de higiene y seguridad con pesos `1,5`, `0,6`, `2` y `1` | 14 |
+| E | Cuatro respuestas de políticas con pesos `3`, `3`, `2` y `2` | 10 |
+| F | Cuatro actividades con pesos `3`, `3`, `3` y `9`; la suma se limita a 9 | 9 |
+| G | Tres medios/decisiones de promoción con pesos `2`, `2` y `3` | 7 |
+| H | Registro, estadísticas y afluencia con pesos `3`, `2` y `2`; la suma se limita a 5 | 5 |
+| I | Personal y capacidades con pesos `2`, `2` y `1` | 5 |
+
+El XLSM entregado produce `A–I = 0; 7,2; 10; 7,5; 2; 9; 5; 5; 3`, total `48,7` y
+jerarquía `02`. La referencia anterior `56,2/53,2` queda marcada como documentación
+histórica hasta que exista otro libro aprobado.
+
 ## Secciones de la ficha principal
 
 | Sección | Contenido del XLSM | Persistencia existente |

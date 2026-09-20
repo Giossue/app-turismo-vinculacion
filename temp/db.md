@@ -2435,7 +2435,9 @@ Cada modalidad —terrestre, acuática o aérea— se normaliza a un máximo de 
 
 El XLSM permite que el criterio F sume hasta 18 aunque su máximo declarado es 9, y que H sume hasta 7 aunque su máximo es 5\. Además, un total superior a 100 queda fuera de los rangos de jerarquía. En la base se conserva la intención de la ficha y se aplica el tope de cada criterio con `LEAST(...)`; así el total siempre queda entre 0 y 100\.
 
-En el archivo entregado, el total mostrado es `56,2`. Aplicando el tope de F, el total corregido es `53,2`; en ambos casos corresponde a jerarquía `II` (`02`).
+El XLSM entregado (`Centro Cultural Indio Guaranga (2).xlsm`) muestra `48,7` en la celda
+`Jerarquia!C1` y jerarquía `02`. Los valores `56,2/53,2` que aparecían en esta nota
+pertenecen a una referencia anterior y no deben usarse como fixture del libro actual.
 
 ---
 

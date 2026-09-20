@@ -64,12 +64,14 @@ catálogos faltantes y publicación completa pendientes.
 - La sección 14 ahora captura anexos con visibilidad pública/administrativa/restringida,
   responsables, levantamiento de accesibilidad y validación del GAD con contactos y fechas
   validados; no expone esos datos en la superficie pública.
-- El motor tipado de valoración ya conserva máximos A–I, topes de F/H, total máximo de 100 y
-  rangos de jerarquía; la regresión del libro reproduce el total cacheado `48,7` y jerarquía
-  `02`. `temp/db.md` todavía documenta `56,2/53,2`, por lo que falta aprobar un fixture
-  recalculado y resolver esa discrepancia antes de persistir resultados. La base desplegada
-  mantiene `criterios_valoracion`, pero no tiene filas en `indicadores_valoracion`, por lo
-  que el servidor conserva la jerarquía provisional `00` y no inventa puntajes.
+- El motor tipado de valoración traslada las fórmulas observables de `Jerarquia` y `Calculos`:
+  normalización de vías a 9, estados de conservación 7/5/3/1, pesos A–I, topes efectivos
+  de F/H, total máximo de 100 y rangos de jerarquía. La regresión contra el XLSM actual
+  reproduce sus nueve resultados (`0, 7,2, 10, 7,5, 2, 9, 5, 5, 3`), total `48,7` y
+  jerarquía `02`. `temp/db.md` conserva una anotación histórica `56,2/53,2` que no coincide
+  con el libro entregado y ya no se usa como fixture. La base desplegada mantiene
+  `criterios_valoracion`, pero no tiene filas en `indicadores_valoracion`, por lo que el
+  servidor conserva la jerarquía provisional `00` y no inventa puntajes.
 - El panel consulta `GET /admin/centers/:code/valuation` y muestra si la jerarquía/código son
   provisionales; el endpoint solo expone resultados persistidos y no calcula cuando faltan
   indicadores activos.
@@ -501,8 +503,9 @@ preparará con inventario, respaldo y rollback explícitos antes de ejecutarla e
 - Resolver la discrepancia de valoración y aprobar el fixture de referencia.
 - Documentar el significado exacto de cada opción de catastro.
 
-La matriz de las nueve hojas y las 14 secciones ya está documentada; la aprobación del
-fixture de valoración y la normalización de catálogos siguen pendientes.
+La matriz de las nueve hojas y las 14 secciones ya está documentada; el fixture del libro
+entregado quedó aprobado como referencia técnica (`48,7`/`02`). La carga operativa de
+catálogos y sus indicadores en la base sigue pendiente.
 
 Salida: especificación y criterios de aceptación actualizados, sin código de producto.
 
@@ -533,9 +536,10 @@ Salida: API capaz de guardar toda la propuesta sin publicarla todavía.
 
 Salida: jerarquía y código calculados, reproducibles y auditables.
 
-El motor tipado y la regresión del XLSM ya están implementados. La persistencia queda
-deliberadamente pendiente hasta que `indicadores_valoracion` tenga reglas activas y se apruebe
-el fixture que resuelve la discrepancia de totales del libro.
+El motor tipado exacto y la regresión del XLSM ya están implementados en
+`apps/api/src/admin/valuation.ts`. La persistencia queda deliberadamente pendiente hasta
+que `indicadores_valoracion` tenga reglas activas; el cálculo ya no depende de ejecutar texto
+de `regla_calculo` y usa el fixture actual del libro.
 
 ### Fase 3 — Publicación normalizada completa
 
