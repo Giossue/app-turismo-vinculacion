@@ -112,6 +112,38 @@ describe("AdminCentersService", () => {
     );
   });
 
+  it("publishes the human-resources summary without inventing training types", async () => {
+    const managerQuery = vi.fn().mockResolvedValue([]);
+    const manager = { query: managerQuery };
+    const service = new AdminCentersService({} as never);
+    const applyHumanResourcesSection = (
+      service as unknown as {
+        applyHumanResourcesSection: (
+          value: typeof manager,
+          centerId: string,
+          section: Record<string, unknown>,
+        ) => Promise<void>;
+      }
+    ).applyHumanResourcesSection;
+
+    await applyHumanResourcesSection.call(service, manager, "10", {
+      response: "SI",
+      humanResources: {
+        summary: {
+          administrationOperation: 3,
+          specializedTourism: 2,
+          observation: "Equipo permanente",
+        },
+        training: [],
+      },
+    });
+
+    expect(managerQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO resumen_recurso_humano"),
+      ["10", 3, 2, "Equipo permanente"],
+    );
+  });
+
   it("exposes persisted valuation status without recalculating the ficha", async () => {
     const managerQuery = vi
       .fn()

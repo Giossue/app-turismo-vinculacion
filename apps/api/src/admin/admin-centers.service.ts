@@ -2672,12 +2672,14 @@ export class AdminCentersService {
       publishedVisitors,
       publishedPolicies,
       publishedPromotion,
+      publishedHumanResources,
     ] = await Promise.all([
       this.readPublishedAccessibilitySection(manager, center.id),
       this.readPublishedPlantSection(manager, center.id),
       this.readPublishedVisitorsSection(manager, center.id),
       this.readPublishedPoliciesSection(manager, center.id),
       this.readPublishedPromotionSection(manager, center.id),
+      this.readPublishedHumanResourcesSection(manager, center.id),
     ]);
     const publishedSections: Record<string, unknown> = {};
     if (publishedAccessibility)
@@ -2686,6 +2688,8 @@ export class AdminCentersService {
     if (publishedVisitors) publishedSections.visitantes = publishedVisitors;
     if (publishedPolicies) publishedSections.politicas = publishedPolicies;
     if (publishedPromotion) publishedSections.promocion = publishedPromotion;
+    if (publishedHumanResources)
+      publishedSections["recurso-humano"] = publishedHumanResources;
     published.sections = publishedSections;
     return {
       code: center.code,
@@ -3007,6 +3011,17 @@ export class AdminCentersService {
     const promotionSection = getAdminSectionRecord(draft, "promocion");
     if (promotionSection) {
       await this.applyPromotionSection(manager, center.id, promotionSection);
+    }
+    const humanResourcesSection = getAdminSectionRecord(
+      draft,
+      "recurso-humano",
+    );
+    if (humanResourcesSection) {
+      await this.applyHumanResourcesSection(
+        manager,
+        center.id,
+        humanResourcesSection,
+      );
     }
     const accessibilitySection = getAdminSectionRecord(draft, "accesibilidad");
     if (accessibilitySection) {
@@ -3373,6 +3388,54 @@ export class AdminCentersService {
     if (Array.isArray(promotion.media) && promotion.media.length === 0) {
       await manager.query(
         `DELETE FROM medios_promocion_centro WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+    }
+  }
+
+  private async applyHumanResourcesSection(
+    manager: EntityManager,
+    centerId: string,
+    section: JsonRecord,
+  ) {
+    if (section.response === "NO_APLICA") {
+      await manager.query(
+        `DELETE FROM formacion_personal_centro WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      await manager.query(
+        `DELETE FROM resumen_recurso_humano WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      return;
+    }
+    const resources = isJsonRecord(section.humanResources)
+      ? section.humanResources
+      : null;
+    if (!resources) return;
+    const summary = isJsonRecord(resources.summary) ? resources.summary : null;
+    if (summary) {
+      await manager.query(
+        `INSERT INTO resumen_recurso_humano
+           (centro_turistico_id, personas_administracion_operacion,
+            personal_especializado_turismo, observacion)
+         VALUES ($1,$2,$3,$4)
+         ON CONFLICT (centro_turistico_id) DO UPDATE SET
+           personas_administracion_operacion = EXCLUDED.personas_administracion_operacion,
+           personal_especializado_turismo = EXCLUDED.personal_especializado_turismo,
+           observacion = EXCLUDED.observacion,
+           updated_at = CURRENT_TIMESTAMP`,
+        [
+          centerId,
+          summary.administrationOperation ?? null,
+          summary.specializedTourism ?? null,
+          summary.observation ?? section.observation ?? null,
+        ],
+      );
+    }
+    if (Array.isArray(resources.training) && resources.training.length === 0) {
+      await manager.query(
+        `DELETE FROM formacion_personal_centro WHERE centro_turistico_id = $1`,
         [centerId],
       );
     }
@@ -4116,6 +4179,55 @@ export class AdminCentersService {
     };
   }
 
+  private async readPublishedHumanResourcesSection(
+    manager: EntityManager,
+    centerId: string,
+  ): Promise<Record<string, unknown> | null> {
+    const [summaryRows, trainingRows] = (await Promise.all([
+      manager.query(
+        `SELECT json_build_object(
+                  'administrationOperation', personas_administracion_operacion,
+                  'specializedTourism', personal_especializado_turismo,
+                  'observation', observacion
+                ) AS data
+           FROM resumen_recurso_humano
+          WHERE centro_turistico_id = $1`,
+        [centerId],
+      ),
+      manager.query(
+        `SELECT COALESCE(json_agg(json_build_object(
+                  'typeId', fpc.tipo_formacion_personal_id,
+                  'quantity', fpc.cantidad_personas,
+                  'detailOther', fpc.detalle_otro,
+                  'observation', fpc.observacion
+                ) ORDER BY fpc.id), '[]'::json) AS data
+           FROM formacion_personal_centro fpc
+          WHERE fpc.centro_turistico_id = $1`,
+        [centerId],
+      ),
+    ])) as Array<Array<{ data: unknown }>>;
+    const summary = summaryRows[0]?.data;
+    const training = trainingRows[0]?.data;
+    if (
+      summary === undefined &&
+      (!Array.isArray(training) || training.length === 0)
+    ) {
+      return null;
+    }
+    return {
+      schemaVersion: 1,
+      response: "SI",
+      humanResources: {
+        summary: summary ?? {
+          administrationOperation: null,
+          specializedTourism: null,
+          observation: "",
+        },
+        training: training ?? [],
+      },
+    };
+  }
+
   private centerToDraft(center: CenterRow): CenterDraft {
     return {
       name: center.name,
@@ -4328,6 +4440,7 @@ export class AdminCentersService {
       await this.validateVisitorsSectionReferences(manager, draft);
       await this.validatePoliciesSectionReferences(manager, draft);
       await this.validatePromotionSectionReferences(manager, draft);
+      await this.validateHumanResourcesSectionReferences(manager, draft);
     }
     await this.validateCharacteristicsSectionReferences(
       manager,
@@ -4483,6 +4596,23 @@ export class AdminCentersService {
     if (Array.isArray(promotion.media) && promotion.media.length > 0) {
       throw new ConflictException(
         "Los medios de promoción requieren un tipo activo del catálogo antes de publicar.",
+      );
+    }
+  }
+
+  private async validateHumanResourcesSectionReferences(
+    _manager: EntityManager,
+    draft: CenterDraft,
+  ) {
+    const section = getAdminSectionRecord(draft, "recurso-humano");
+    if (!section || section.response === "NO_APLICA") return;
+    const resources = isJsonRecord(section.humanResources)
+      ? section.humanResources
+      : null;
+    if (!resources) return;
+    if (Array.isArray(resources.training) && resources.training.length > 0) {
+      throw new ConflictException(
+        "La formación del personal requiere un tipo activo del catálogo antes de publicar.",
       );
     }
   }

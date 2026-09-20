@@ -67,7 +67,8 @@ explícita.
 - Las temporadas rechazan meses fuera de 1–12 o repetidos, y las procedencias distinguen
   ciudad nacional de país extranjero antes de publicar la ficha.
 - La sección de recurso humano conserva cantidades del resumen y registros de educación,
-  capacitación e idiomas sin crear un centro separado.
+  capacitación e idiomas sin crear un centro separado. El resumen se publica en su relación
+  normalizada; la formación requiere un tipo activo del catálogo antes de publicarse.
 - La sección de anexos conserva tipo, fuente, autor, descripción y visibilidad controlada,
   junto con responsables, levantamiento de accesibilidad y validación del GAD; contactos,
   firmas y documentos internos permanecen administrativos o restringidos.

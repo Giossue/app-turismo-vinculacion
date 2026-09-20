@@ -58,6 +58,8 @@ Las políticas se publican contra preguntas activas del catálogo y se leen de v
 comparación; mientras falten esas preguntas, el borrador no puede publicarse.
 El plan de promoción se normaliza de forma independiente; los medios sin tipo catalogado se
 conservan en el borrador y detienen la publicación.
+El resumen de recurso humano se normaliza sin separar el centro; educación, capacitación e
+idiomas requieren un tipo de formación catalogado para poder publicarse.
 Las facilidades seleccionadas conservan cantidad y observación por opción. El panel consulta
 `/admin/summary`, `/admin/centers`, `/admin/catalogs`,
 `/admin/centers/:code/valuation` y `/admin/centers/:code`; las
