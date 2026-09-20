@@ -121,4 +121,82 @@ describe("EstablishmentsService", () => {
     ).rejects.toThrow("localidad, el nombre comercial y la actividad");
     expect(transaction).not.toHaveBeenCalled();
   });
+
+  it("audits a new establishment in the same transaction", async () => {
+    const managerQuery = vi
+      .fn()
+      .mockResolvedValueOnce([{ 1: 1 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: "9" }])
+      .mockResolvedValueOnce([{ ...row, id: "9" }])
+      .mockResolvedValueOnce([]);
+    const manager = { query: managerQuery };
+    const transaction = vi.fn(
+      async (callback: (value: typeof manager) => unknown) => callback(manager),
+    );
+    const service = new EstablishmentsService({ transaction } as never);
+
+    await service.create(7, {
+      localityId: 1,
+      numeroRegistro: "CAT-9",
+      nombreComercial: "Nuevo comedor",
+      actividad: "Alimentación",
+    });
+
+    expect(managerQuery).toHaveBeenLastCalledWith(
+      expect.stringContaining("INSERT INTO auditoria_catalogos"),
+      expect.arrayContaining([7, 9, "CREAR"]),
+    );
+  });
+
+  it("audits activation changes and locks the establishment first", async () => {
+    const managerQuery = vi
+      .fn()
+      .mockResolvedValueOnce([row])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ ...row, active: false }])
+      .mockResolvedValueOnce([]);
+    const manager = { query: managerQuery };
+    const transaction = vi.fn(
+      async (callback: (value: typeof manager) => unknown) => callback(manager),
+    );
+    const service = new EstablishmentsService({ transaction } as never);
+
+    await service.setActive("8", 7, false);
+
+    expect(managerQuery.mock.calls[0]?.[0]).toContain("FOR UPDATE OF e");
+    expect(managerQuery).toHaveBeenLastCalledWith(
+      expect.stringContaining("INSERT INTO auditoria_catalogos"),
+      expect.arrayContaining([7, 8, "DESACTIVAR"]),
+    );
+  });
+
+  it("reads only establishment audit entries for an administrator", async () => {
+    const query = vi.fn().mockResolvedValue([
+      {
+        action: "MODIFICAR",
+        previous: { nombreComercial: "Antes" },
+        next: { nombreComercial: "Después" },
+        createdAt: "2026-09-20T00:00:00.000Z",
+        actor: "Admin",
+      },
+    ]);
+    const service = new EstablishmentsService({ query } as never);
+
+    await expect(service.getAudit("8")).resolves.toEqual({
+      items: [
+        {
+          action: "MODIFICAR",
+          previous: { nombreComercial: "Antes" },
+          next: { nombreComercial: "Después" },
+          createdAt: "2026-09-20T00:00:00.000Z",
+          actor: "Admin",
+        },
+      ],
+    });
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("a.catalogo_codigo = 'ESTABLISHMENT'"),
+      [8],
+    );
+  });
 });

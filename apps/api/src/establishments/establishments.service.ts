@@ -46,6 +46,29 @@ type LocalityRow = {
   distanceMeters?: string | null;
 };
 
+type AdminEstablishmentItem = {
+  id: number;
+  localityId: number;
+  localityName: string;
+  localityType: string;
+  cantonName: string;
+  provinceName: string;
+  numeroRegistro: string | null;
+  ruc: string | null;
+  nombreComercial: string;
+  razonSocial: string | null;
+  actividad: string;
+  clasificacion: string | null;
+  categoria: string | null;
+  direccion: string | null;
+  telefono: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 const establishmentSelect = `
   SELECT e.id,
          e.localidad_id AS "localityId",
@@ -141,21 +164,28 @@ export class EstablishmentsService {
   }
 
   async create(actorId: number, input: SaveEstablishmentDto) {
-    void actorId;
     const required = this.requireCreateFields(input);
     return this.dataSource.transaction(async (manager) => {
       await this.assertLocality(manager, required.localityId);
       await this.assertUniqueRegistration(manager, input.numeroRegistro);
       const row = await this.insert(manager, input, required);
-      return this.findWithManager(manager, row.id);
+      const created = await this.findWithManager(manager, row.id);
+      await this.audit(
+        manager,
+        Number(row.id),
+        actorId,
+        "CREAR",
+        null,
+        created,
+      );
+      return created;
     });
   }
 
   async save(id: string, actorId: number, input: SaveEstablishmentDto) {
-    void actorId;
     const numericId = this.parseId(id);
     return this.dataSource.transaction(async (manager) => {
-      const current = await this.findWithManager(manager, numericId);
+      const current = await this.findWithManager(manager, numericId, true);
       const nextLocalityId = input.localityId ?? Number(current.localityId);
       const nextLatitude =
         input.latitude ?? this.toNullableNumber(current.latitude);
@@ -227,23 +257,59 @@ export class EstablishmentsService {
           WHERE id = $13`,
         values,
       );
-      return this.findWithManager(manager, numericId);
+      const saved = await this.findWithManager(manager, numericId);
+      await this.audit(
+        manager,
+        numericId,
+        actorId,
+        "MODIFICAR",
+        current,
+        saved,
+      );
+      return saved;
     });
   }
 
   async setActive(id: string, actorId: number, active: boolean) {
-    void actorId;
     const numericId = this.parseId(id);
-    const result = await this.dataSource.query(
-      `UPDATE establecimientos_turisticos
-          SET activo = $1, updated_at = CURRENT_TIMESTAMP
-        WHERE id = $2
-      RETURNING id`,
-      [active, numericId],
+    return this.dataSource.transaction(async (manager) => {
+      const current = await this.findWithManager(manager, numericId, true);
+      if (current.active === active) return current;
+      await manager.query(
+        `UPDATE establecimientos_turisticos
+            SET activo = $1, updated_at = CURRENT_TIMESTAMP
+          WHERE id = $2`,
+        [active, numericId],
+      );
+      const saved = await this.findWithManager(manager, numericId);
+      await this.audit(
+        manager,
+        numericId,
+        actorId,
+        active ? "ACTIVAR" : "DESACTIVAR",
+        current,
+        saved,
+      );
+      return saved;
+    });
+  }
+
+  async getAudit(id: string) {
+    const numericId = this.parseId(id);
+    const rows = await this.dataSource.query(
+      `SELECT a.accion AS action,
+              a.datos_anteriores AS "previous",
+              a.datos_nuevos AS "next",
+              a.created_at AS "createdAt",
+              u.nombre AS actor
+         FROM auditoria_catalogos a
+         JOIN usuarios u ON u.id = a.usuario_id
+        WHERE a.catalogo_codigo = 'ESTABLISHMENT'
+          AND a.registro_id = $1
+        ORDER BY a.created_at DESC, a.id DESC`,
+      [numericId],
     );
-    if (!result[0])
-      throw new NotFoundException("No se encontró el establecimiento.");
-    return this.find(String(numericId));
+    return { items: rows };
   }
 
   async nearby(query: PublicEstablishmentsQueryDto) {
@@ -325,9 +391,13 @@ export class EstablishmentsService {
     );
   }
 
-  private async findWithManager(manager: EntityManager, id: string | number) {
+  private async findWithManager(
+    manager: EntityManager,
+    id: string | number,
+    lock = false,
+  ) {
     const rows = (await manager.query(
-      `${establishmentSelect} ${establishmentJoin} WHERE e.id = $1`,
+      `${establishmentSelect} ${establishmentJoin} WHERE e.id = $1${lock ? " FOR UPDATE OF e" : ""}`,
       [id],
     )) as EstablishmentRow[];
     const row = rows[0];
@@ -586,7 +656,47 @@ export class EstablishmentsService {
     };
   }
 
-  private toAdminItem(row: EstablishmentRow) {
+  private async audit(
+    manager: EntityManager,
+    establishmentId: number,
+    actorId: number,
+    action: "CREAR" | "MODIFICAR" | "ACTIVAR" | "DESACTIVAR",
+    previous: AdminEstablishmentItem | null,
+    next: AdminEstablishmentItem | null,
+  ) {
+    await manager.query(
+      `INSERT INTO auditoria_catalogos
+        (usuario_id, catalogo_codigo, registro_id, accion, datos_anteriores, datos_nuevos)
+       VALUES ($1, 'ESTABLISHMENT', $2, $3, $4::jsonb, $5::jsonb)`,
+      [
+        actorId,
+        establishmentId,
+        action,
+        JSON.stringify(previous ? this.auditData(previous) : {}),
+        JSON.stringify(next ? this.auditData(next) : {}),
+      ],
+    );
+  }
+
+  private auditData(item: AdminEstablishmentItem) {
+    return {
+      localityId: item.localityId,
+      numeroRegistro: item.numeroRegistro,
+      ruc: item.ruc,
+      nombreComercial: item.nombreComercial,
+      razonSocial: item.razonSocial,
+      actividad: item.actividad,
+      clasificacion: item.clasificacion,
+      categoria: item.categoria,
+      direccion: item.direccion,
+      telefono: item.telefono,
+      latitude: item.latitude,
+      longitude: item.longitude,
+      active: item.active,
+    };
+  }
+
+  private toAdminItem(row: EstablishmentRow): AdminEstablishmentItem {
     return {
       id: Number(row.id),
       localityId: Number(row.localityId),

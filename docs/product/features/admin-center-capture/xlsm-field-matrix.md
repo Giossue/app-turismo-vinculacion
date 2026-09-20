@@ -42,7 +42,7 @@ histórica hasta que exista otro libro aprobado.
 
 El adaptador del snapshot conserva esa correspondencia sin ejecutar fórmulas almacenadas:
 las cinco señales de accesibilidad se toman de los tipos catalogados, las tres de
-conectividad de transporte/operadores/señalización, la planta se agrupa en las 15 opciones
+conectividad de transporte/operadores/señalización, la planta se agrupa en las 20 opciones
 del libro, las cuatro actividades se agrupan en agua/aire/tierra/cultura y el resto usa las
 respuestas explícitas de sus secciones. Los nombres de catálogos se resuelven por ID dentro
 de la transacción; una sección sin respuesta distinta de `SIN_INFORMACION` no se puntúa y

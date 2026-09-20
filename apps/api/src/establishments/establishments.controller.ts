@@ -34,6 +34,12 @@ export class AdminEstablishmentsController {
     return { data: await this.establishments.list(query) };
   }
 
+  @Get(":id/audit")
+  @Roles("ADMINISTRADOR")
+  async audit(@Param("id") id: string) {
+    return { data: await this.establishments.getAudit(id) };
+  }
+
   @Get(":id")
   @Roles("ADMINISTRADOR")
   async find(@Param("id") id: string) {

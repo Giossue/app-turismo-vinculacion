@@ -2,9 +2,11 @@
 
 Fecha: 2026-09-19
 Estado: en curso; catastro inicial, navegación integral, revisión por diferencias, captura
-estructurada, valoración XLSM persistida y adaptadores normalizados implementados. Quedan
-como pendiente la auditoría/importación durable del catastro. El seed de indicadores ya fue
-aplicado a la base remota sin modificar el esquema.
+estructurada, valoración XLSM persistida y adaptadores normalizados implementados. El
+catastro ya tiene una muestra durable de 50 establecimientos en cinco ciudades para probar
+la consulta y el fallback territorial; la auditoría de mutaciones ya reutiliza la tabla
+existente y la importación nacional completa queda fuera del alcance. El seed de indicadores
+ya fue aplicado a la base remota sin modificar el esquema.
 
 ## Avance de esta ejecución
 
@@ -29,9 +31,8 @@ aplicado a la base remota sin modificar el esquema.
 - Añadido contrato de lectura y guardado por sección para el snapshot JSONB del borrador,
   con lista blanca de las 14 claves (códigos compatibles con `seccion_codigo`), control optimista de versión y auditoría de sección;
   los adaptadores normalizados de publicación aún no se activan para contenido no soportado.
-- La auditoría durable específica de catastro queda bloqueada deliberadamente: el esquema
-  actual solo audita fichas y catálogos técnicos, y el alcance prohíbe modificar la BD en
-  esta refactorización.
+- La auditoría de catastro reutiliza la tabla inmutable existente de auditoría de catálogos
+  con el discriminador `ESTABLISHMENT`; no se crean tablas ni columnas nuevas.
 - Registrada la matriz de trazabilidad de las nueve hojas en
   `docs/product/features/admin-center-capture/xlsm-field-matrix.md`.
 - Iniciada la captura web integral: el editor muestra las 14 secciones con progreso,
@@ -191,8 +192,9 @@ se conviertan en catálogos o reglas y no en pantallas literales.
   los criterios usan catálogo; las filas manuales siguen requiriendo una opción de catálogo.
 - La revisión no compara publicado contra propuesto por sección.
 - No existen endpoints ni navegación administrativa para establecimientos del catastro.
-- La base desplegada no contiene establecimientos turísticos y su DPA/clasificación mínima
-  de demostración no reproduce los valores del libro.
+- La base desplegada ya contiene una muestra de 50 establecimientos ratificados en cinco
+  ciudades; la importación nacional completa y la auditoría específica del catastro siguen
+  pendientes.
 
 ## Alcance funcional
 
@@ -606,8 +608,9 @@ Salida: revisión operativa con trazabilidad visual de la propuesta.
 - Diseñar después la importación persistente.
 
 El CRUD, filtros territoriales, selección de localidad y activación lógica ya están
-disponibles. La auditoría específica e importación quedan pendientes por la restricción de
-no alterar el esquema.
+disponibles. La muestra reproducible de 50 registros ya está cargada en la base remota y
+las mutaciones del CRUD quedan auditadas mediante la tabla existente; la importación
+nacional completa queda fuera del alcance actual.
 
 Salida: establecimientos administrables por ciudad/localidad sin mezclarse con centros.
 

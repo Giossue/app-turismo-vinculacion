@@ -12,6 +12,8 @@ la ficha técnica de un centro turístico.
   territoriales en cascada (provincia, cantón y localidad) y estado activo.
 - Alta, edición y activación/desactivación lógica utilizando únicamente las columnas ya
   existentes en `establecimientos_turisticos`.
+- Auditoría inmutable de altas, ediciones, activaciones y desactivaciones mediante la
+  tabla existente `auditoria_catalogos`, identificada con `ESTABLISHMENT`.
 - Catálogo activo de `localidades` para seleccionar la ciudad o poblado de referencia.
 - Consulta pública por actividad y localidad/posición, con orden por distancia cuando existe
   ubicación.
@@ -38,6 +40,7 @@ la ficha técnica de un centro turístico.
 ```text
 GET   /api/v1/admin/establishments
 GET   /api/v1/admin/establishments/:id
+GET   /api/v1/admin/establishments/:id/audit
 POST  /api/v1/admin/establishments
 PATCH /api/v1/admin/establishments/:id
 POST  /api/v1/admin/establishments/:id/deactivate
@@ -51,8 +54,8 @@ Las rutas administrativas requieren `ADMINISTRADOR`. La consulta pública devuel
 ## Pendientes explícitos
 
 - La importación Excel/CSV se implementará con el módulo persistente de importaciones.
-- El esquema desplegado no tiene una tabla de auditoría específica para establecimientos;
-  no se crea una migración en esta fase porque el alcance congela el modelo de datos. Antes
-  de declarar completa la auditoría de catastro se debe aprobar una extensión de esquema.
+- La auditoría reutiliza la tabla existente y no añade columnas ni tablas; la migración
+  `20260920_establishment_audit.sql` solo amplía sus restricciones para aceptar el
+  discriminador `ESTABLISHMENT` y las acciones del catastro.
 - Las taxonomías de actividad, clasificación y categoría seguirán siendo texto hasta que
   producto apruebe catálogos/fuentes canónicas compatibles con los datos ecuatorianos.

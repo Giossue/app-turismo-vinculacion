@@ -51,6 +51,44 @@ La migración `20260919_seed_guaranda_six_centers.sql` carga seis centros y sus 
 territoriales mínimos con coordenadas distribuidas alrededor de Guaranda. Son registros de
 demostración para validar el mapa y deben sustituirse por fichas institucionales verificadas.
 
+La migración `20260920_seed_xlsm_fixed_catalogs.sql` carga de forma idempotente los
+catálogos fijos del libro institucional de la ficha: 25 provincias, 227 cantones, 1.250
+parroquias, 2 categorías, 15 tipos y 79 subtipos. Actualiza y reactiva los códigos
+presentes en la fuente y desactiva lógicamente los obsoletos; no elimina filas ni crea
+localidades o zonas. La fuente reproducible es `temp/Centro Cultural Indio Guaranga (2).xlsm`
+(SHA-256 `137a3c2db2c9b0d94d5590ae7d87e3ea2dea9a59cb9cda7fbb86e116ca0ed8cf`), y el
+generador se encuentra en `scripts/generate-xlsm-fixed-catalog-migration.py`.
+
+La migración `20260920_seed_xlsm_operational_catalogs.sql` carga las opciones cerradas
+de las secciones operativas del mismo libro: 14 transportes, 51 criterios de
+accesibilidad, 20 tipos de planta turística, 5 servicios complementarios, 4 estados y
+16 tipos de facilidad en 5 categorías, 4 estados y 22 factores de conservación,
+23 servicios básicos, 24 tipos de señalética, 3 materiales,
+5 servicios de salud, 4 de seguridad, 8 medios de comunicación, 8 amenazas, 4 preguntas
+de política, 56 actividades, 8 medios de promoción y 17 opciones de formación. Es
+idempotente, reactiva los códigos fuente y no elimina catálogos técnicos que el panel
+pueda haber añadido. No carga el ejemplo de Guaranda, `catalogo_clima`, `materiales_via`,
+localidades ni zonas; esos valores se mantienen libres o pertenecen al módulo de
+catastro. Usa la misma fuente y SHA-256, y se reproduce con
+`scripts/generate-xlsm-operational-catalog-migration.py`.
+
+La migración `20260920_seed_catastro_demo.sql` carga una muestra reproducible del
+consolidado nacional: diez establecimientos ratificados de parroquias urbanas por cada
+una de las ciudades Guaranda, Riobamba, Ambato, Latacunga y Babahoyo. Crea o reactiva
+las cinco localidades como `CIUDAD`, conserva los números de registro oficiales como
+clave de upsert y deja vacías dirección, teléfono y coordenadas individuales porque no
+son columnas informadas por la fuente. Las coordenadas aproximadas de la cabecera se
+guardan en la localidad para probar el fallback territorial. Es idempotente, no elimina
+ni desactiva datos fuera de la muestra y se reproduce con
+`scripts/generate-catastro-demo-migration.py` desde
+`temp/Consolidado-Nacional-2026-publico-8 (1).xlsx`
+(SHA-256 `3e5598c95edb2b4dc31ce0f776742e0bea59c146a2d9cb7087e0c47b53374e7d`).
+
+La migración `20260920_establishment_audit.sql` amplía los valores permitidos de la
+tabla inmutable existente `auditoria_catalogos` para registrar mutaciones de
+`establecimientos_turisticos` con el discriminador `ESTABLISHMENT`. No crea tablas ni
+columnas nuevas; conserva el trigger de inmutabilidad y los JSONB de antes/después.
+
 `database/seeds/003_xlsm_valuation_indicators.sql` es un seed de datos manual, no una
 migración de esquema. Carga de forma idempotente los 56 indicadores A-I derivados de
 `Jerarquia` y `Calculos`; debe ejecutarse solo cuando los nueve criterios de
