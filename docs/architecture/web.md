@@ -52,6 +52,8 @@ facilidades con ubicación y responsables, y servicios complementarios en el mis
 ninguna de esas relaciones crea un centro turístico nuevo.
 La sección de características publica sus rangos de clima en la relación normalizada existente
 y puede retirar el registro cuando se marca como no aplicable.
+La sección de visitantes publica registros, temporadas, procedencias, informantes y afluencia
+con sus meses normalizados, sin convertir un estado desconocido en una respuesta negativa.
 Las facilidades seleccionadas conservan cantidad y observación por opción. El panel consulta
 `/admin/summary`, `/admin/centers`, `/admin/catalogs`,
 `/admin/centers/:code/valuation` y `/admin/centers/:code`; las

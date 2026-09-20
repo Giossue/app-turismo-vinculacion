@@ -3,6 +3,46 @@ import { describe, expect, it, vi } from "vitest";
 import { AdminCentersService } from "../src/admin/admin-centers.service";
 
 describe("AdminCentersService", () => {
+  it("publishes the visitor section across its normalized relations", async () => {
+    const managerQuery = vi.fn(async (sql: string) =>
+      sql.includes("RETURNING id") ? [{ id: "50" }] : [],
+    );
+    const manager = { query: managerQuery };
+    const service = new AdminCentersService({} as never);
+    const applyVisitorsSection = (
+      service as unknown as {
+        applyVisitorsSection: (
+          value: typeof manager,
+          centerId: string,
+          section: Record<string, unknown>,
+        ) => Promise<void>;
+      }
+    ).applyVisitorsSection;
+
+    await applyVisitorsSection.call(service, manager, "10", {
+      response: "SI",
+      visitors: {
+        registry: { exists: "SI", reports: "NO", type: "DIGITAL" },
+        seasons: [{ type: "ALTA", year: 2025, months: [7, 8] }],
+        origins: [{ type: "NACIONAL", place: "Guaranda", month: 7 }],
+        informants: [{ name: "Ana Pérez" }],
+        influx: { weekday: 10, frequency: "PERMANENTE" },
+      },
+    });
+
+    const statements = managerQuery.mock.calls.map(([sql]) => sql);
+    expect(statements).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("INSERT INTO registros_visitantes"),
+        expect.stringContaining("INSERT INTO temporadas_visitacion"),
+        expect.stringContaining("INSERT INTO temporada_meses"),
+        expect.stringContaining("INSERT INTO procedencias_visitantes"),
+        expect.stringContaining("INSERT INTO informantes_clave"),
+        expect.stringContaining("INSERT INTO afluencia_visitantes"),
+      ]),
+    );
+  });
+
   it("exposes persisted valuation status without recalculating the ficha", async () => {
     const managerQuery = vi
       .fn()

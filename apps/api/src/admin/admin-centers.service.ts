@@ -425,6 +425,10 @@ function sectionResponseToBoolean(value: unknown): boolean | null {
   return null;
 }
 
+function isBinarySectionResponse(value: unknown): value is "SI" | "NO" {
+  return value === "SI" || value === "NO";
+}
+
 function validateAccessibilityDetailsBlock(value: unknown): string | null {
   if (!isJsonRecord(value)) return "El detalle de accesibilidad no es válido.";
 
@@ -2662,14 +2666,17 @@ export class AdminCentersService {
           ? { code: draft.stateCode, name: draft.stateName }
           : { code: center.statusCode, name: center.statusName };
     const published = this.centerToDraft(center);
-    const [publishedAccessibility, publishedPlant] = await Promise.all([
-      this.readPublishedAccessibilitySection(manager, center.id),
-      this.readPublishedPlantSection(manager, center.id),
-    ]);
+    const [publishedAccessibility, publishedPlant, publishedVisitors] =
+      await Promise.all([
+        this.readPublishedAccessibilitySection(manager, center.id),
+        this.readPublishedPlantSection(manager, center.id),
+        this.readPublishedVisitorsSection(manager, center.id),
+      ]);
     const publishedSections: Record<string, unknown> = {};
     if (publishedAccessibility)
       publishedSections.accesibilidad = publishedAccessibility;
     if (publishedPlant) publishedSections.planta = publishedPlant;
+    if (publishedVisitors) publishedSections.visitantes = publishedVisitors;
     published.sections = publishedSections;
     return {
       code: center.code,
@@ -2980,6 +2987,10 @@ export class AdminCentersService {
         characteristicsSection,
       );
     }
+    const visitorsSection = getAdminSectionRecord(draft, "visitantes");
+    if (visitorsSection) {
+      await this.applyVisitorsSection(manager, center.id, visitorsSection);
+    }
     const accessibilitySection = getAdminSectionRecord(draft, "accesibilidad");
     if (accessibilitySection) {
       await this.applyAccessibilitySection(
@@ -3058,6 +3069,195 @@ export class AdminCentersService {
         climate.observation ?? section.observation ?? null,
       ],
     );
+  }
+
+  private async applyVisitorsSection(
+    manager: EntityManager,
+    centerId: string,
+    section: JsonRecord,
+  ) {
+    const visitors = isJsonRecord(section.visitors) ? section.visitors : null;
+    if (section.response === "NO_APLICA") {
+      await manager.query(
+        `DELETE FROM temporada_meses
+          WHERE temporada_visitacion_id IN (
+            SELECT id FROM temporadas_visitacion WHERE centro_turistico_id = $1
+          )`,
+        [centerId],
+      );
+      await manager.query(
+        `DELETE FROM temporadas_visitacion WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      await manager.query(
+        `DELETE FROM procedencias_visitantes WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      await manager.query(
+        `DELETE FROM informantes_clave WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      await manager.query(
+        `DELETE FROM registros_visitantes WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      await manager.query(
+        `DELETE FROM afluencia_visitantes WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      return;
+    }
+    if (!visitors) return;
+
+    if (visitors.registry !== undefined) {
+      const registry = isJsonRecord(visitors.registry)
+        ? visitors.registry
+        : null;
+      if (!registry) {
+        await manager.query(
+          `DELETE FROM registros_visitantes WHERE centro_turistico_id = $1`,
+          [centerId],
+        );
+      } else {
+        await manager.query(
+          `INSERT INTO registros_visitantes
+             (centro_turistico_id, existe_registro, tipo_registro, anios_registro,
+              genera_reportes, frecuencia_reporte, observacion)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)
+           ON CONFLICT (centro_turistico_id) DO UPDATE SET
+             existe_registro = EXCLUDED.existe_registro,
+             tipo_registro = EXCLUDED.tipo_registro,
+             anios_registro = EXCLUDED.anios_registro,
+             genera_reportes = EXCLUDED.genera_reportes,
+             frecuencia_reporte = EXCLUDED.frecuencia_reporte,
+             observacion = EXCLUDED.observacion,
+             updated_at = CURRENT_TIMESTAMP`,
+          [
+            centerId,
+            sectionResponseToBoolean(registry.exists) ?? false,
+            registry.type ?? null,
+            registry.years ?? null,
+            sectionResponseToBoolean(registry.reports) ?? false,
+            registry.frequency ?? null,
+            registry.observation ?? null,
+          ],
+        );
+      }
+    }
+
+    if (Array.isArray(visitors.seasons)) {
+      await manager.query(
+        `DELETE FROM temporada_meses
+          WHERE temporada_visitacion_id IN (
+            SELECT id FROM temporadas_visitacion WHERE centro_turistico_id = $1
+          )`,
+        [centerId],
+      );
+      await manager.query(
+        `DELETE FROM temporadas_visitacion WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      for (const season of visitors.seasons as JsonRecord[]) {
+        const rows = (await manager.query(
+          `INSERT INTO temporadas_visitacion
+             (centro_turistico_id, tipo_temporada, cantidad_visitantes, anio, observacion)
+           VALUES ($1,$2,$3,$4,$5)
+           RETURNING id`,
+          [
+            centerId,
+            season.type,
+            season.quantity ?? null,
+            season.year ?? null,
+            season.observation ?? null,
+          ],
+        )) as Array<{ id: string }>;
+        const seasonId = rows[0]?.id;
+        if (!seasonId || !Array.isArray(season.months)) continue;
+        for (const month of season.months) {
+          await manager.query(
+            `INSERT INTO temporada_meses (temporada_visitacion_id, mes_id)
+             VALUES ($1,$2)`,
+            [seasonId, month],
+          );
+        }
+      }
+    }
+
+    if (Array.isArray(visitors.origins)) {
+      await manager.query(
+        `DELETE FROM procedencias_visitantes WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      for (const origin of visitors.origins as JsonRecord[]) {
+        await manager.query(
+          `INSERT INTO procedencias_visitantes
+             (centro_turistico_id, tipo_procedencia, lugar, mes_id, anio,
+              cantidad_visitantes, observacion)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [
+            centerId,
+            origin.type,
+            origin.place,
+            origin.month ?? null,
+            origin.year ?? null,
+            origin.quantity ?? null,
+            origin.observation ?? null,
+          ],
+        );
+      }
+    }
+
+    if (Array.isArray(visitors.informants)) {
+      await manager.query(
+        `DELETE FROM informantes_clave WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      for (const informant of visitors.informants as JsonRecord[]) {
+        await manager.query(
+          `INSERT INTO informantes_clave
+             (centro_turistico_id, nombre, contacto, observacion)
+           VALUES ($1,$2,$3,$4)`,
+          [
+            centerId,
+            informant.name,
+            informant.contact ?? null,
+            informant.observation ?? null,
+          ],
+        );
+      }
+    }
+
+    if (visitors.influx !== undefined) {
+      const influx = isJsonRecord(visitors.influx) ? visitors.influx : null;
+      if (!influx) {
+        await manager.query(
+          `DELETE FROM afluencia_visitantes WHERE centro_turistico_id = $1`,
+          [centerId],
+        );
+      } else {
+        await manager.query(
+          `INSERT INTO afluencia_visitantes
+             (centro_turistico_id, cantidad_entre_semana, cantidad_fin_semana,
+              cantidad_feriados, frecuencia_demanda, observacion)
+           VALUES ($1,$2,$3,$4,$5,$6)
+           ON CONFLICT (centro_turistico_id) DO UPDATE SET
+             cantidad_entre_semana = EXCLUDED.cantidad_entre_semana,
+             cantidad_fin_semana = EXCLUDED.cantidad_fin_semana,
+             cantidad_feriados = EXCLUDED.cantidad_feriados,
+             frecuencia_demanda = EXCLUDED.frecuencia_demanda,
+             observacion = EXCLUDED.observacion,
+             updated_at = CURRENT_TIMESTAMP`,
+          [
+            centerId,
+            influx.weekday ?? null,
+            influx.weekend ?? null,
+            influx.holidays ?? null,
+            influx.frequency ?? null,
+            influx.observation ?? null,
+          ],
+        );
+      }
+    }
   }
 
   private async applyAccessibilitySection(
@@ -3602,6 +3802,116 @@ export class AdminCentersService {
     };
   }
 
+  private async readPublishedVisitorsSection(
+    manager: EntityManager,
+    centerId: string,
+  ): Promise<Record<string, unknown> | null> {
+    const [registryRows, seasonRows, originRows, informantRows, influxRows] =
+      (await Promise.all([
+        manager.query(
+          `SELECT json_build_object(
+                    'exists', CASE WHEN existe_registro THEN 'SI' ELSE 'NO' END,
+                    'type', tipo_registro,
+                    'years', anios_registro,
+                    'reports', CASE WHEN genera_reportes THEN 'SI' ELSE 'NO' END,
+                    'frequency', frecuencia_reporte,
+                    'observation', observacion
+                  ) AS data
+             FROM registros_visitantes
+            WHERE centro_turistico_id = $1`,
+          [centerId],
+        ),
+        manager.query(
+          `SELECT COALESCE(json_agg(json_build_object(
+                    'type', tv.tipo_temporada,
+                    'quantity', tv.cantidad_visitantes,
+                    'year', tv.anio,
+                    'months', COALESCE(months.data, '[]'::json),
+                    'observation', tv.observacion
+                  ) ORDER BY tv.tipo_temporada, tv.anio NULLS LAST, tv.id), '[]'::json) AS data
+             FROM temporadas_visitacion tv
+             LEFT JOIN LATERAL (
+               SELECT json_agg(tm.mes_id ORDER BY tm.mes_id) AS data
+                 FROM temporada_meses tm
+                WHERE tm.temporada_visitacion_id = tv.id
+             ) months ON TRUE
+            WHERE tv.centro_turistico_id = $1`,
+          [centerId],
+        ),
+        manager.query(
+          `SELECT COALESCE(json_agg(json_build_object(
+                    'type', tipo_procedencia,
+                    'place', lugar,
+                    'month', mes_id,
+                    'year', anio,
+                    'quantity', cantidad_visitantes,
+                    'observation', observacion
+                  ) ORDER BY id), '[]'::json) AS data
+             FROM procedencias_visitantes
+            WHERE centro_turistico_id = $1`,
+          [centerId],
+        ),
+        manager.query(
+          `SELECT COALESCE(json_agg(json_build_object(
+                    'name', nombre,
+                    'contact', contacto,
+                    'observation', observacion
+                  ) ORDER BY id), '[]'::json) AS data
+             FROM informantes_clave
+            WHERE centro_turistico_id = $1`,
+          [centerId],
+        ),
+        manager.query(
+          `SELECT json_build_object(
+                    'weekday', cantidad_entre_semana,
+                    'weekend', cantidad_fin_semana,
+                    'holidays', cantidad_feriados,
+                    'frequency', frecuencia_demanda,
+                    'observation', observacion
+                  ) AS data
+             FROM afluencia_visitantes
+            WHERE centro_turistico_id = $1`,
+          [centerId],
+        ),
+      ])) as Array<Array<{ data: unknown }>>;
+    const registry = registryRows[0]?.data;
+    const seasons = seasonRows[0]?.data;
+    const origins = originRows[0]?.data;
+    const informants = informantRows[0]?.data;
+    const influx = influxRows[0]?.data;
+    const hasRows =
+      registry !== undefined ||
+      influx !== undefined ||
+      [seasons, origins, informants].some(
+        (value) => Array.isArray(value) && value.length > 0,
+      );
+    if (!hasRows) return null;
+    return {
+      schemaVersion: 1,
+      response: "SI",
+      visitors: {
+        registry: registry ?? {
+          exists: "SIN_INFORMACION",
+          type: null,
+          years: null,
+          reports: "SIN_INFORMACION",
+          frequency: "",
+          observation: "",
+        },
+        seasons: seasons ?? [],
+        origins: origins ?? [],
+        informants: informants ?? [],
+        influx: influx ?? {
+          weekday: null,
+          weekend: null,
+          holidays: null,
+          frequency: null,
+          observation: "",
+        },
+      },
+    };
+  }
+
   private centerToDraft(center: CenterRow): CenterDraft {
     return {
       name: center.name,
@@ -3811,6 +4121,7 @@ export class AdminCentersService {
     if (forPublication) {
       await this.validatePlantSectionReferences(manager, draft);
       await this.validateAccessibilitySectionReferences(manager, draft);
+      await this.validateVisitorsSectionReferences(manager, draft);
     }
     await this.validateCharacteristicsSectionReferences(
       manager,
@@ -3844,6 +4155,66 @@ export class AdminCentersService {
         "catalogo_clima",
         Number(climateId),
         "clima",
+      );
+    }
+  }
+
+  private async validateVisitorsSectionReferences(
+    manager: EntityManager,
+    draft: CenterDraft,
+  ) {
+    const section = getAdminSectionRecord(draft, "visitantes");
+    if (!section || section.response === "NO_APLICA") return;
+    const visitors = isJsonRecord(section.visitors) ? section.visitors : null;
+    if (!visitors) return;
+
+    const registry = isJsonRecord(visitors.registry) ? visitors.registry : null;
+    if (registry) {
+      if (
+        !isBinarySectionResponse(registry.exists) ||
+        !isBinarySectionResponse(registry.reports)
+      ) {
+        throw new ConflictException(
+          "La sección visitantes requiere respuestas SI o NO para publicar el registro.",
+        );
+      }
+    }
+
+    const monthIds: number[] = [];
+    const seasonKeys = new Set<string>();
+    if (Array.isArray(visitors.seasons)) {
+      for (const season of visitors.seasons as JsonRecord[]) {
+        const year = season.year === null ? "" : String(season.year ?? "");
+        const key = `${String(season.type)}:${year}`;
+        if (season.year !== null && season.year !== undefined) {
+          if (seasonKeys.has(key)) {
+            throw new ConflictException(
+              "No repitas una temporada del mismo tipo y año.",
+            );
+          }
+          seasonKeys.add(key);
+        }
+        if (Array.isArray(season.months)) {
+          for (const month of season.months) monthIds.push(Number(month));
+        }
+      }
+    }
+    if (Array.isArray(visitors.origins)) {
+      for (const origin of visitors.origins as JsonRecord[]) {
+        if (origin.month !== null && origin.month !== undefined) {
+          monthIds.push(Number(origin.month));
+        }
+      }
+    }
+    const uniqueMonthIds = [...new Set(monthIds)];
+    if (uniqueMonthIds.length === 0) return;
+    const rows = (await manager.query(
+      `SELECT id FROM meses WHERE id = ANY($1::smallint[])`,
+      [uniqueMonthIds],
+    )) as Array<{ id: number }>;
+    if (rows.length !== uniqueMonthIds.length) {
+      throw new ConflictException(
+        "Un mes de visitantes ya no está disponible en el catálogo.",
       );
     }
   }

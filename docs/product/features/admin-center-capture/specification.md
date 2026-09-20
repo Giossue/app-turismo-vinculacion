@@ -59,6 +59,8 @@ explícita.
   los medios de difusión, con nombre, periodicidad, URL y observación validados.
 - La sección de visitantes y afluencia separa registros, temporadas, procedencias,
   informantes y cantidades habituales, conservando meses, años y cero como datos explícitos.
+  Al publicar, reemplaza sus relaciones normalizadas; los meses se validan contra el catálogo
+  existente y un registro con estado desconocido no se publica como falso.
 - Las temporadas rechazan meses fuera de 1–12 o repetidos, y las procedencias distinguen
   ciudad nacional de país extranjero antes de publicar la ficha.
 - La sección de recurso humano conserva cantidades del resumen y registros de educación,

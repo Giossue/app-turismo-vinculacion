@@ -83,6 +83,9 @@ completa pendientes.
 - La sección 3 ya captura tipo de clima, temperaturas y precipitaciones con rangos validados;
   al publicar, el adaptador reemplaza la relación normalizada de clima y permite retirar el
   registro cuando la sección se marca como no aplicable.
+- La sección 11 ya reemplaza transaccionalmente registros, temporadas y meses, procedencias,
+  informantes y afluencia; los meses se comprueban contra el catálogo existente y la lectura
+  pública de la propuesta normalizada vuelve a alimentar la revisión por diferencias.
 - Las facilidades del núcleo ya permiten cantidad y observación por opción seleccionada;
   dejan de guardar siempre la cantidad fija `1`.
 - La ficha ahora compara, por sección, la versión publicada con la propuesta y muestra
