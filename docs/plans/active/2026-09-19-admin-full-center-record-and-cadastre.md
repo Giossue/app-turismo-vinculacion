@@ -1,7 +1,8 @@
 # Refactor administrativo: ficha integral y catastro por localidad
 
 Fecha: 2026-09-19
-Estado: en curso; fase inicial de catastro implementada, ficha integral pendiente.
+Estado: en curso; catastro inicial y navegación de ficha integral implementados, formularios
+normalizados y valoración pendientes.
 
 ## Avance de esta ejecución
 
@@ -23,6 +24,11 @@ Estado: en curso; fase inicial de catastro implementada, ficha integral pendient
   esta refactorización.
 - Registrada la matriz de trazabilidad de las nueve hojas en
   `docs/product/features/admin-center-capture/xlsm-field-matrix.md`.
+- Iniciada la captura web integral: el editor muestra las 14 secciones con progreso,
+  navegación accesible y estado de cada apartado; las respuestas, observaciones y filas
+  repetibles se guardan por sección en el snapshot JSONB con control de versión.
+- Las secciones que todavía usan tablas normalizadas enlazan al formulario núcleo existente;
+  la captura adicional no publica datos hasta que se implementen sus adaptadores.
 
 ## Objetivo
 
@@ -444,7 +450,7 @@ Salida: jerarquía y código calculados, reproducibles y auditables.
 
 Salida: una ficha aprobada se publica completa sin exponer parcialmente la propuesta.
 
-### Fase 4 — Editor web de 14 secciones
+### Fase 4 — Editor web de 14 secciones (iniciada)
 
 - Dividir `center-editor.tsx` en shell, navegación y formularios por sección.
 - Implementar selects DPA y clasificación en cascada.
@@ -452,8 +458,14 @@ Salida: una ficha aprobada se publica completa sin exponer parcialmente la propu
 - Mostrar progreso, errores por sección, código y valoración.
 - Conservar diseño responsive, navegación accesible y guardado explícito.
 
-Salida: el administrador puede capturar la ficha completa sin navegar una sola página
-monolítica.
+El primer corte ya entrega la navegación y el progreso de las 14 secciones, respuestas
+de cuatro estados, observaciones y filas repetibles con guardado independiente. Los
+campos núcleo existentes se mantienen operativos y cada sección ofrece un enlace directo a
+su formulario normalizado. Quedan pendientes los formularios específicos de cada tabla,
+los anexos con control de visibilidad y la división física del componente monolítico.
+
+Salida prevista: el administrador puede capturar la ficha completa sin navegar una sola
+página monolítica.
 
 ### Fase 5 — Revisión por diferencias
 

@@ -20,6 +20,10 @@ explícita.
 - El editor presenta provincia → cantón → parroquia y categoría → tipo → subtipo en cascada;
   el contrato administrativo ya dispone de catorce claves de sección para ampliar el
   snapshot sin crear centros derivados.
+- El editor web presenta las catorce secciones con progreso y navegación accesible. Cada
+  apartado admite respuesta `SÍ`, `NO`, `SIN INFORMACIÓN` o `NO APLICA`, observación general
+  y filas repetibles con cantidad y observación por fila; el guardado reemplaza únicamente
+  la sección elegida dentro del snapshot versionado.
 
 El snapshot se puede consultar en `GET /admin/centers/:code/sections` y actualizar por
 sección con `PATCH /admin/centers/:code/sections/:sectionCode`. Durante la transición, el
