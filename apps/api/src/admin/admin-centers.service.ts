@@ -151,6 +151,12 @@ const HYGIENE_ENTRY_KINDS = new Set([
 ]);
 const SERVICE_SCOPE_VALUES = new Set(["EN_ATRACTIVO", "EN_POBLADO_CERCANO"]);
 const SIGNAGE_CONDITION_VALUES = new Set(["BUENO", "REGULAR", "MALO"]);
+const POLICY_CODES = new Set([
+  "PLAN_DESARROLLO_GAD",
+  "PLANIFICACION_TERRITORIAL",
+  "REGULACIONES_APLICABLES",
+  "ORDENANZAS_APLICABLES",
+]);
 
 /**
  * Validates the transitional JSON contract used by the web section editor.
@@ -275,6 +281,10 @@ export function validateAdminSectionContent(content: unknown): string | null {
   if (content.hygieneSafety !== undefined) {
     const hygieneError = validateHygieneSafetyBlock(content.hygieneSafety);
     if (hygieneError) return hygieneError;
+  }
+  if (content.policies !== undefined) {
+    const policiesError = validatePolicyBlock(content.policies);
+    if (policiesError) return policiesError;
   }
   if (content.rows !== undefined) {
     if (!Array.isArray(content.rows) || content.rows.length > 200) {
@@ -570,6 +580,54 @@ function validateHygieneSafetyBlock(value: unknown): string | null {
         Number(value.contingency.year) > 2200)
     ) {
       return "El año del plan de contingencia no es válido.";
+    }
+  }
+  return null;
+}
+
+function validatePolicyBlock(value: unknown): string | null {
+  if (!Array.isArray(value) || value.length > 4) {
+    return "Las respuestas de políticas no son válidas.";
+  }
+  const seen = new Set<string>();
+  for (const policy of value) {
+    if (!isJsonRecord(policy)) return "Una respuesta de políticas no es válida.";
+    if (
+      typeof policy.code !== "string" ||
+      !POLICY_CODES.has(policy.code) ||
+      seen.has(policy.code)
+    ) {
+      return "El código de política no es válido o está repetido.";
+    }
+    seen.add(policy.code);
+    if (!isSectionResponse(policy.response)) {
+      return "Cada política requiere una respuesta válida.";
+    }
+    if (
+      policy.question !== undefined &&
+      policy.question !== null &&
+      (typeof policy.question !== "string" || policy.question.length > 250)
+    ) {
+      return "La pregunta de política supera el límite permitido.";
+    }
+    if (
+      policy.year !== undefined &&
+      policy.year !== null &&
+      (!Number.isInteger(policy.year) ||
+        Number(policy.year) < 1900 ||
+        Number(policy.year) > 2200)
+    ) {
+      return "El año de política no es válido.";
+    }
+    for (const key of ["specification", "observation"]) {
+      const field = policy[key];
+      if (
+        field !== undefined &&
+        field !== null &&
+        (typeof field !== "string" || field.length > 1_000)
+      ) {
+        return "Los detalles de política superan los límites permitidos.";
+      }
     }
   }
   return null;

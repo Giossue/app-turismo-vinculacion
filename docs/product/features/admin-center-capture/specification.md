@@ -36,6 +36,9 @@ explícita.
 - La sección de higiene y seguridad separa servicios básicos, señalética, salud, seguridad,
   comunicación y amenazas, y conserva controles de radios y contingencia con sus respuestas,
   cantidades y observaciones.
+- La sección de políticas y regulaciones presenta las cuatro preguntas institucionales con
+  respuesta explícita, año, especificación y observación, conservando `SIN INFORMACIÓN` y
+  `NO APLICA` como estados distintos.
 - Las facilidades seleccionadas conservan cantidad y observación por opción, en lugar de
   imponer siempre una cantidad fija.
 - Durante la revisión, el editor compara la versión publicada con la propuesta por cada

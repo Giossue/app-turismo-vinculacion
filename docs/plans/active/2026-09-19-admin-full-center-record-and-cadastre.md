@@ -41,6 +41,9 @@ implementados, formularios normalizados y valoración pendientes.
 - La sección 7 ahora separa registros de servicios básicos, señalética, salud, seguridad,
   comunicación y amenazas, además de radios portátiles y plan de contingencia; el API valida
   ámbitos, respuestas, cantidades, condiciones y años sin introducir tablas nuevas.
+- La sección 8 ahora presenta las cuatro preguntas institucionales de políticas y
+  regulaciones con respuesta de cuatro estados, año, especificación y observación, y rechaza
+  códigos repetidos o fuera del catálogo contractual.
 - La sección 4 ya captura localidad cercana y distancia desde el catálogo administrativo,
   además de sus filas de vías, transporte y accesibilidad, con validación de cantidades y
   distancia no negativa.

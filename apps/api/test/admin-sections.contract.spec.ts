@@ -224,6 +224,38 @@ describe("admin section contract", () => {
     ).toContain("cantidad de radios");
   });
 
+  it("validates the four institutional policy responses", () => {
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        policies: [
+          {
+            code: "PLAN_DESARROLLO_GAD",
+            question: "¿Está incluido en el plan del GAD?",
+            response: "SI",
+            year: 2025,
+            specification: "Objetivo turístico cantonal",
+          },
+          {
+            code: "PLANIFICACION_TERRITORIAL",
+            response: "NO",
+          },
+        ],
+      }),
+    ).toBeNull();
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        policies: [
+          { code: "PLAN_DESARROLLO_GAD", response: "SI" },
+          { code: "PLAN_DESARROLLO_GAD", response: "NO" },
+        ],
+      }),
+    ).toContain("repetido");
+  });
+
   it("derives core progress and explicit no aplica states", () => {
     const progress = buildAdminSectionProgress({
       name: "Centro de prueba",
