@@ -502,8 +502,9 @@ Salida: una ficha aprobada se publica completa sin exponer parcialmente la propu
 El primer corte ya entrega la navegación y el progreso de las 14 secciones, respuestas
 de cuatro estados, observaciones y filas repetibles con guardado independiente. Los
 campos núcleo existentes se mantienen operativos y cada sección ofrece un enlace directo a
-su formulario normalizado. Quedan pendientes los formularios específicos de cada tabla,
-los anexos con control de visibilidad y la división física del componente monolítico.
+su formulario normalizado. Ya tienen captura específica las secciones 3, 4, 6, 7, 8, 10,
+11, 12 y 14; aún faltan los adaptadores de publicación para esas estructuras, el detalle
+normalizado completo de la sección 5 y la división física del componente monolítico.
 
 Salida prevista: el administrador puede capturar la ficha completa sin navegar una sola
 página monolítica.
