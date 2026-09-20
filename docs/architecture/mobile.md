@@ -139,12 +139,22 @@ editan en el móvil.
   bloquear la exploración.
 - Solicitar segundo plano solo al activar navegación y explicar el beneficio. La navegación
   visible combina el watcher de primer plano con una tarea `expo-location` registrada en
-  `expo-task-manager`; Android muestra el servicio foreground mientras la sesión está activa.
+  `expo-task-manager`; el servicio foreground se registra desde la acción de inicio y Android
+  muestra una notificación persistente mientras la sesión está activa. En Android 13 o
+  posterior se solicita también `POST_NOTIFICATIONS` para hacer visible esa notificación.
 - Persistir únicamente ruta, destino, modo y última posición para restaurar el estado al
   volver a la app; no conservar trazas precisas por defecto.
-- Detener seguimiento, eliminar la sesión local y limpiar la tarea al terminar/cancelar la
-  ruta. El sistema puede limitar el segundo plano por batería, permisos o políticas del
-  fabricante.
+- Detener seguimiento, eliminar la sesión local y limpiar la tarea y su notificación al
+  terminar/cancelar la ruta. La tarea comprueba también la llegada mientras la app está en
+  segundo plano. Desmontar la pantalla al pasar a segundo plano no cancela la sesión. La
+  misma notificación foreground muestra la próxima maniobra y distancia redondeada y se
+  actualiza solo cuando cambia ese contenido. Android 13 o posterior puede permitir que el
+  usuario la descarte, así que el servicio vuelve a publicar el mismo registro en la siguiente
+  actualización de ubicación mientras la navegación siga activa; el Task Manager puede detener
+  toda la aplicación. El sistema también puede limitar el segundo plano por batería, permisos
+  o políticas del fabricante. El móvil fija `expo-location` 57.0.18 con
+  un parche nativo para actualizar las opciones de un servicio foreground ya iniciado cuando
+  la actividad está pausada; cualquier actualización futura de Expo debe revisar ese parche.
 - Permitir origen manual cuando el permiso se niega.
 
 ## Estados obligatorios

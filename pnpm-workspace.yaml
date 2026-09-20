@@ -12,3 +12,4 @@ allowBuilds:
 
 patchedDependencies:
   '@maplibre/maplibre-react-native@11.3.10': patches/@maplibre__maplibre-react-native@11.3.10.patch
+  expo-location@57.0.18: patches/expo-location@57.0.18.patch

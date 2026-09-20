@@ -4,6 +4,7 @@ import {
   getDistanceMeters,
   getDistanceToRouteMeters,
   getNavigationGuidance,
+  getNavigationNotification,
 } from "./navigation-guidance";
 import type { CalculatedRoute } from "./routing";
 
@@ -66,6 +67,19 @@ describe("navigation guidance", () => {
     ).toMatchObject({
       instruction: "Gira a la derecha hacia el destino",
       stepIndex: 1,
+    });
+  });
+
+  it("formats a dynamic notification for the next maneuver", () => {
+    expect(
+      getNavigationNotification({
+        distanceMeters: 184,
+        instruction: "Gira a la derecha por Calle R-23",
+        stepIndex: 1,
+      }),
+    ).toEqual({
+      body: "En 180 m: Gira a la derecha por Calle R-23",
+      key: "1:180 m:Gira a la derecha por Calle R-23",
     });
   });
 });

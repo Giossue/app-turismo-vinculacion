@@ -70,10 +70,24 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   una sesión activa, `expo-location` mantiene una tarea de ubicación en segundo plano con
   el servicio foreground de Android. La tarea conserva únicamente la última posición en
   almacenamiento local; al volver a la app se restaura y se reevalúan indicaciones y
-  desvíos. El permiso de segundo plano se solicita solo al iniciar la navegación.
+  desvíos. El permiso de segundo plano se solicita solo al iniciar la navegación. En Android
+  13 o posterior también se solicita `POST_NOTIFICATIONS` para mostrar el servicio en el
+  cajón de notificaciones.
 - Al detenerla, llegar al destino o cancelar, se eliminan el watcher, la tarea del sistema,
-  la sesión persistida y la voz. No se guarda un historial de coordenadas ni se reinicia
-  automáticamente una navegación después de forzar el cierre de la app.
+  la sesión persistida, la notificación foreground y la voz. La tarea también comprueba la
+  distancia al destino cuando recibe una ubicación en segundo plano, para cerrar la sesión
+  al llegar aunque la app no esté visible. El cuerpo de la misma notificación foreground se
+  actualiza con la próxima maniobra y la distancia redondeada, sin crear notificaciones
+  duplicadas. Cuando no hay una maniobra disponible comunica que la navegación sigue activa.
+  Android 13 o posterior permite descartar manualmente notificaciones de foreground services;
+  por eso el parche nativo comprueba la presencia del mismo registro en cada actualización de
+  ubicación y lo vuelve a publicar si el sistema lo retiró. Esto no impide el botón del Task
+  Manager que detiene toda la aplicación.
+  En Android, el cambio de texto de un servicio ya registrado usa un parche fijado para
+  `expo-location` 57.0.18: permite actualizar sus opciones mientras la actividad está
+  pausada, pero mantiene bloqueado el inicio de un servicio nuevo desde segundo plano.
+  No se guarda un historial de coordenadas ni se reinicia automáticamente una navegación
+  después de forzar el cierre de la app.
 - En móvil, la pantalla de ruta usa MapLibre a pantalla completa: la geometría y los
   extremos se dibujan como capas sobre el mapa y el tiempo, modo e indicaciones viven en
   un `BottomSheet` nativo desplazable, con las indicaciones visibles sin un botón

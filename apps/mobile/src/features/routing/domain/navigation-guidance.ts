@@ -9,6 +9,11 @@ export type NavigationGuidance = Readonly<{
   distanceMeters: number;
 }>;
 
+export type NavigationNotification = Readonly<{
+  body: string;
+  key: string;
+}>;
+
 type RouteProgress = Readonly<{
   distanceAlongRouteMeters: number;
   distanceToRouteMeters: number;
@@ -79,6 +84,27 @@ export function getNavigationGuidance(
   }
 
   return null;
+}
+
+/** Builds a compact notification body and a key for meaningful updates only. */
+export function getNavigationNotification(
+  guidance: NavigationGuidance | null,
+): NavigationNotification {
+  if (!guidance) {
+    return {
+      body: "Navegación activa. Abre la app para ver la ruta.",
+      key: "active",
+    };
+  }
+
+  const distance = formatNotificationDistance(guidance.distanceMeters);
+  return {
+    body:
+      guidance.distanceMeters <= 5
+        ? `Ahora: ${guidance.instruction}`
+        : `En ${distance}: ${guidance.instruction}`,
+    key: `${guidance.stepIndex}:${distance}:${guidance.instruction}`,
+  };
 }
 
 function getRouteProgress(
@@ -179,4 +205,11 @@ function projectPoint(
 
 function toRadians(value: number): number {
   return (value * Math.PI) / 180;
+}
+
+function formatNotificationDistance(meters: number): string {
+  if (meters < 1000) {
+    return `${Math.max(10, Math.round(meters / 10) * 10)} m`;
+  }
+  return `${(meters / 1000).toFixed(1)} km`;
 }

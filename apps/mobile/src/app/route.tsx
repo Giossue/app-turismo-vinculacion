@@ -34,7 +34,10 @@ import {
 } from "@/features/routing/application/use-navigation-session";
 import {
   hasNavigationBackgroundPermission,
+  requestNavigationNotificationPermission,
   requestNavigationBackgroundPermission,
+  startNavigationLocationTask,
+  stopNavigationLocationTask,
 } from "@/features/routing/infrastructure/navigation-background-task";
 import type {
   RouteCoordinate,
@@ -88,6 +91,7 @@ export default function RouteScreen() {
   const isCalculating = request !== null && routeQuery.isFetching;
 
   const handleArrive = useCallback(() => {
+    void stopNavigationLocationTask();
     setNavigationActive(false);
     setNavigationNotice("Has llegado a tu destino.");
   }, []);
@@ -170,7 +174,30 @@ export default function RouteScreen() {
       }
     }
 
-    setNavigationNotice(null);
+    let nextNotice: string | null = null;
+    if (Platform.OS !== "web") {
+      const notificationGranted =
+        await requestNavigationNotificationPermission();
+      if (!notificationGranted) {
+        nextNotice =
+          "La navegación seguirá activa, pero Android ocultará la notificación hasta que permitas las notificaciones en Ajustes.";
+      }
+
+      try {
+        // Registra el servicio mientras la acción del usuario mantiene la app en
+        // primer plano. El efecto de la sesión lo vuelve idempotente después.
+        await startNavigationLocationTask();
+      } catch (error) {
+        setNavigationNotice(
+          error instanceof Error
+            ? error.message
+            : "No pudimos iniciar el seguimiento de ubicación.",
+        );
+        return;
+      }
+    }
+
+    setNavigationNotice(nextNotice);
     setOrigin(coordinate);
     setNavigationActive(true);
   }, [
@@ -182,6 +209,7 @@ export default function RouteScreen() {
   ]);
 
   const handleStopNavigation = useCallback(() => {
+    void stopNavigationLocationTask();
     setNavigationActive(false);
     setNavigationNotice(null);
   }, []);

@@ -1,0 +1,100 @@
+diff --git a/android/src/main/java/expo/modules/location/LocationModule.kt b/android/src/main/java/expo/modules/location/LocationModule.kt
+index b286ea277f3658b62ab9fd9ed1df67359cea46fc..da8bcd46f90b800aa9c8fd2bd6a750094d6f398f 100644
+--- a/android/src/main/java/expo/modules/location/LocationModule.kt
++++ b/android/src/main/java/expo/modules/location/LocationModule.kt
+@@ -323,7 +323,8 @@ class LocationModule : Module(), SensorEventListener, ActivityEventListener {
+       if (!shouldUseForegroundService && isMissingBackgroundPermissions()) {
+         throw LocationBackgroundUnauthorizedException()
+       }
+-      if (!AppForegroundedSingleton.isForegrounded && options.foregroundService != null) {
++      val taskAlreadyRegistered = mTaskManager.taskHasConsumerOfClass(taskName, LocationTaskConsumer::class.java)
++      if (!AppForegroundedSingleton.isForegrounded && options.foregroundService != null && !taskAlreadyRegistered) {
+         throw ForegroundServiceStartNotAllowedException()
+       }
+ 
+diff --git a/android/src/main/java/expo/modules/location/services/LocationTaskService.kt b/android/src/main/java/expo/modules/location/services/LocationTaskService.kt
+index 0019485f58ba2a6f33ca227a40c37355adabf0c6..3d4e4ce14ce50de32774beeffb894fce98c8d5b0 100644
+--- a/android/src/main/java/expo/modules/location/services/LocationTaskService.kt
++++ b/android/src/main/java/expo/modules/location/services/LocationTaskService.kt
+@@ -64,6 +64,18 @@ class LocationTaskService : Service() {
+     startForeground(mServiceId, notification)
+   }
+ 
++  fun ensureForegroundNotification(serviceOptions: Bundle) {
++    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
++      return
++    }
++    val notificationManager = getSystemService(NOTIFICATION_SERVICE) as? NotificationManager
++      ?: return
++    val isNotificationActive = notificationManager.activeNotifications.any { it.id == mServiceId }
++    if (!isNotificationActive) {
++      startForeground(mServiceId, buildServiceNotification(serviceOptions))
++    }
++  }
++
+   //region private
+   @TargetApi(26)
+   private fun buildServiceNotification(serviceOptions: Bundle): Notification {
+@@ -106,6 +118,8 @@ class LocationTaskService : Service() {
+     }
+ 
+     return builder.setCategory(Notification.CATEGORY_SERVICE)
++      .setOngoing(true)
++      .setAutoCancel(false)
+       .setSmallIcon(iconsResId)
+       .build()
+   }
+diff --git a/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt b/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt
+index b4f6c06ab28e48d377e7ae7e63f334792b2c9633..4129fd785fc4cec413dea2e5e6049df58c9f90f3 100644
+--- a/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt
++++ b/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt
+@@ -80,6 +80,7 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
+ 
+   override fun didReceiveBroadcast(intent: Intent) {
+     mTask ?: return
++    ensureForegroundServiceNotification()
+     val result = LocationResult.extractResult(intent)
+     if (result != null) {
+       handleLocationUpdate(result.locations)
+@@ -113,6 +114,7 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
+   }
+ 
+   override fun didExecuteJob(jobService: JobService, params: JobParameters): Boolean {
++    ensureForegroundServiceNotification()
+     val data = taskManagerUtils.extractDataFromJobParams(params)
+     val locationBundles = ArrayList<Bundle>()
+     for (persistableLocationBundle in data) {
+@@ -178,7 +180,10 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
+     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+       return
+     }
+-    if (!AppForegroundedSingleton.isForegrounded) {
++    // A running foreground service may receive updated notification options while
++    // the host activity is paused. Starting a new service from the background is
++    // still blocked by LocationModule.
++    if (!AppForegroundedSingleton.isForegrounded && mService == null) {
+       Log.w(TAG, "Foreground location task cannot be started while the app is in the background!")
+       return
+     }
+@@ -240,6 +245,21 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
+     mService?.stop()
+   }
+ 
++  private fun ensureForegroundServiceNotification() {
++    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
++      return
++    }
++    val task = mTask ?: return
++    val service = mService ?: return
++    if (!shouldUseForegroundService(task.options)) {
++      return
++    }
++    val options = MapArguments(task.options)
++    service.ensureForegroundNotification(
++      options.getArguments(FOREGROUND_SERVICE_KEY).toBundle(),
++    )
++  }
++
+   /**
+    * Reports locations immediately without deferred batching.
+    * Used in foreground mode to provide responsive location updates (matches iOS behavior).

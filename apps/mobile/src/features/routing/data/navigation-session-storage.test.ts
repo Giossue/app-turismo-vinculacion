@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   clearNavigationSession,
+  markNavigationSessionInactive,
   readNavigationSession,
   saveNavigationSession,
+  updateNavigationNotificationKey,
   updateNavigationLocation,
   type NavigationSessionSnapshot,
 } from "./navigation-session-storage";
@@ -75,5 +77,24 @@ describe("navigation session storage", () => {
     await clearNavigationSession();
 
     await expect(readNavigationSession()).resolves.toBeNull();
+  });
+
+  it("marks a background arrival without losing the session before resume", async () => {
+    await saveNavigationSession(snapshot);
+    await markNavigationSessionInactive();
+
+    await expect(readNavigationSession()).resolves.toMatchObject({
+      active: false,
+      destination: snapshot.destination,
+    });
+  });
+
+  it("persists the last notification key for background deduplication", async () => {
+    await saveNavigationSession(snapshot);
+    await updateNavigationNotificationKey("1:180 m:Gira a la derecha");
+
+    await expect(readNavigationSession()).resolves.toMatchObject({
+      lastNotificationKey: "1:180 m:Gira a la derecha",
+    });
   });
 });

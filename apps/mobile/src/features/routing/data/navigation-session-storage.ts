@@ -19,6 +19,7 @@ export type NavigationSessionSnapshot = Readonly<{
   active: boolean;
   destination: RouteCoordinate;
   lastAnnouncedStepIndex: number;
+  lastNotificationKey?: string | null;
   lastLocation: PersistedNavigationLocation | null;
   lastRerouteAt: number;
   mode: RouteMode;
@@ -64,6 +65,38 @@ export function updateNavigationLocation(
       JSON.stringify({
         ...current,
         lastLocation: location,
+        updatedAt: Date.now(),
+      } satisfies NavigationSessionSnapshot),
+    );
+  });
+}
+
+export function updateNavigationNotificationKey(key: string): Promise<void> {
+  return enqueueWrite(async () => {
+    const current = await readNavigationSession();
+    if (!current?.active) return;
+
+    await AsyncStorage.setItem(
+      navigationSessionStorageKey,
+      JSON.stringify({
+        ...current,
+        lastNotificationKey: key,
+        updatedAt: Date.now(),
+      } satisfies NavigationSessionSnapshot),
+    );
+  });
+}
+
+export function markNavigationSessionInactive(): Promise<void> {
+  return enqueueWrite(async () => {
+    const current = await readNavigationSession();
+    if (!current) return;
+
+    await AsyncStorage.setItem(
+      navigationSessionStorageKey,
+      JSON.stringify({
+        ...current,
+        active: false,
         updatedAt: Date.now(),
       } satisfies NavigationSessionSnapshot),
     );

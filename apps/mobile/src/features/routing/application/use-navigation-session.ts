@@ -7,6 +7,7 @@ import {
   getDistanceMeters,
   getDistanceToRouteMeters,
   getNavigationGuidance,
+  getNavigationNotification,
   type NavigationGuidance,
 } from "../domain/navigation-guidance";
 import type {
@@ -24,6 +25,7 @@ import {
 import {
   startNavigationLocationTask,
   stopNavigationLocationTask,
+  updateNavigationLocationTaskNotification,
 } from "../infrastructure/navigation-background-task";
 
 const arrivalThresholdMeters = 35;
@@ -95,6 +97,7 @@ export function useNavigationSession({
   const arrivedRef = useRef(false);
   const lastProcessedLocationAtRef = useRef(0);
   const lastLocationRef = useRef<PersistedNavigationLocation | null>(null);
+  const notificationKeyRef = useRef<string | null>(null);
   const ownsActiveSessionRef = useRef(false);
 
   useEffect(() => {
@@ -173,6 +176,7 @@ export function useNavigationSession({
       arrivedRef.current = false;
       lastProcessedLocationAtRef.current = 0;
       lastLocationRef.current = null;
+      notificationKeyRef.current = null;
       if (ownsActiveSessionRef.current) {
         ownsActiveSessionRef.current = false;
         void stopNavigationLocationTask();
@@ -237,6 +241,11 @@ export function useNavigationSession({
       if (!currentRoute) return;
 
       const guidance = getNavigationGuidance(currentRoute, coordinate);
+      const notification = getNavigationNotification(guidance);
+      if (notification.key !== notificationKeyRef.current) {
+        notificationKeyRef.current = notification.key;
+        void updateNavigationLocationTaskNotification(notification.body);
+      }
       if (guidance) {
         setState((current) => ({ ...current, nextInstruction: guidance }));
         if (
@@ -284,6 +293,10 @@ export function useNavigationSession({
 
     const restoreLastLocation = async () => {
       const snapshot = await readNavigationSession();
+      if (!disposed && snapshot && !snapshot.active) {
+        onArriveRef.current();
+        return;
+      }
       if (!disposed && snapshot?.active && snapshot.lastLocation) {
         processLocation(snapshot.lastLocation);
       }
@@ -297,6 +310,12 @@ export function useNavigationSession({
           "No pudimos seguir tu ubicación. Revisa el GPS e inténtalo de nuevo.",
         status: "error",
       }));
+    };
+
+    const ensureBackgroundTask = async () => {
+      if (disposed || Platform.OS === "web") return;
+      if (AppState.currentState !== "active") return;
+      await startNavigationLocationTask();
     };
 
     const startTracking = async () => {
@@ -371,7 +390,7 @@ export function useNavigationSession({
           version: 1,
         });
         if (disposed) return;
-        await startNavigationLocationTask();
+        await ensureBackgroundTask();
         if (disposed) {
           await stopNavigationLocationTask();
           return;
@@ -410,7 +429,10 @@ export function useNavigationSession({
     const appStateSubscription = AppState.addEventListener(
       "change",
       (nextState) => {
-        if (nextState === "active") void restoreLastLocation();
+        if (nextState === "active") {
+          void restoreLastLocation();
+          void ensureBackgroundTask().catch(() => undefined);
+        }
       },
     );
 
@@ -419,11 +441,9 @@ export function useNavigationSession({
       disposed = true;
       subscription?.remove();
       appStateSubscription.remove();
-      if (ownsActiveSessionRef.current) {
-        ownsActiveSessionRef.current = false;
-        void stopNavigationLocationTask();
-        void clearNavigationSession();
-      }
+      // La pantalla puede desmontarse cuando Android manda la actividad a segundo
+      // plano. La tarea del sistema y la sesión persistida solo se detienen desde
+      // la transición explícita a active=false (detener o llegar).
       void Speech.stop();
     };
   }, [active]);
