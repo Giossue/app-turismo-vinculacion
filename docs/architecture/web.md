@@ -43,7 +43,10 @@ y captura adicional por sección (respuesta, observaciones y filas repetibles), 
 actividades, accesibilidad y facilidades normalizadas. El código institucional se muestra
 por componentes y la jerarquía se mantiene de solo lectura; la sección de accesibilidad
 selecciona la localidad cercana desde el catálogo y conserva su distancia aproximada. El
-panel captura también el catálogo de clima y rangos medibles antes de guardar el snapshot.
+panel captura también vías terrestres, accesos acuáticos/aéreos, operadores de transporte,
+criterios detallados de accesibilidad y señalización de aproximación antes de guardar el
+snapshot. Los catálogos de conectividad se entregan por la API y admiten texto manual cuando
+el despliegue aún no tiene una opción sembrada.
 Las facilidades seleccionadas conservan cantidad y observación por opción. El panel consulta
 `/admin/summary`, `/admin/centers`, `/admin/catalogs` y `/admin/centers/:code`; las
 mutaciones de borrador, revisión, aprobación, publicación, desactivación y reactivación

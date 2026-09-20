@@ -27,7 +27,11 @@ explícita.
 - El código institucional se muestra por componentes y la jerarquía es de solo lectura. Si
   la valoración aún no está calculada, el servidor usa provisionalmente la jerarquía `00`.
 - La sección de accesibilidad conserva la localidad cercana y su distancia aproximada,
-  separadas de la localidad oficial del centro y validadas contra el contrato de captura.
+  separadas de la localidad oficial del centro. También captura vías terrestres con sus
+  coordenadas, distancia, material y estado; accesos acuáticos y aéreos; tipos y operadores
+  de transporte; los criterios detallados de `ficha_Accesibilidad`; y señalización de
+  aproximación. Los catálogos se consultan por API y, mientras falten opciones en el
+  despliegue, se permite una descripción manual que queda pendiente de normalización.
 - La sección de características conserva el tipo de clima y sus rangos de temperatura y
   precipitación, distinguiendo valores ausentes de cero.
 - La sección de conservación distingue el estado del atractivo y del entorno, factores de
@@ -61,7 +65,8 @@ explícita.
 
 El snapshot se puede consultar en `GET /admin/centers/:code/sections` y actualizar por
 sección con `PATCH /admin/centers/:code/sections/:sectionCode`. Durante la transición, el
-contenido aún no normalizado permanece en el borrador JSONB y no se considera publicado hasta
+contenido aún no normalizado (incluida la conectividad y accesibilidad detallada de la sección
+4) permanece en el borrador JSONB y no se considera publicado hasta
 que exista su adaptador transaccional. La lectura devuelve el progreso por sección y el API
 rechaza respuestas, cantidades o filas que no cumplan el contrato de captura.
 

@@ -1,8 +1,9 @@
 # Refactor administrativo: ficha integral y catastro por localidad
 
 Fecha: 2026-09-19
-Estado: en curso; catastro inicial, navegación integral y revisión por diferencias
-implementados, formularios normalizados y valoración pendientes.
+Estado: en curso; catastro inicial, navegación integral, revisión por diferencias y captura
+estructurada implementados; adaptadores normalizados, valoración persistida y publicación
+completa pendientes.
 
 ## Avance de esta ejecución
 
@@ -60,8 +61,11 @@ implementados, formularios normalizados y valoración pendientes.
   `02`. `temp/db.md` todavía documenta `56,2/53,2`, por lo que falta aprobar un fixture
   recalculado y resolver esa discrepancia antes de persistir resultados.
 - La sección 4 ya captura localidad cercana y distancia desde el catálogo administrativo,
-  además de sus filas de vías, transporte y accesibilidad, con validación de cantidades y
-  distancia no negativa.
+  además de vías terrestres (coordenadas, distancia, material y estado), accesos acuáticos
+  y aéreos, tipos y operadores de transporte, los criterios detallados de la hoja
+  `ficha_Accesibilidad` y señalización de aproximación. El API valida catálogos opcionales,
+  coordenadas, respuestas, cantidades y textos sin tocar el esquema; mientras los catálogos
+  desplegados estén vacíos se conserva también una descripción manual para no inventar datos.
 - La sección 3 ya captura tipo de clima, temperaturas y precipitaciones con rangos validados;
   estos datos permanecen en el snapshot hasta implementar su adaptador normalizado.
 - Las facilidades del núcleo ya permiten cantidad y observación por opción seleccionada;
@@ -132,7 +136,8 @@ se conviertan en catálogos o reglas y no en pantallas literales.
   captura.
 - Las facilidades seleccionadas se guardan con cantidad fija `1` y pierden detalle,
   coordenadas, administrador, accesibilidad y estado.
-- La hoja de accesibilidad detallada no está implementada.
+- La hoja de accesibilidad detallada ya se captura en el borrador, pero aún falta el adaptador
+  transaccional hacia `respuestas_accesibilidad` y las demás tablas normalizadas de la sección.
 - La revisión no compara publicado contra propuesto por sección.
 - No existen endpoints ni navegación administrativa para establecimientos del catastro.
 - La base desplegada no contiene establecimientos turísticos y su DPA/clasificación mínima
@@ -503,7 +508,8 @@ El primer corte ya entrega la navegación y el progreso de las 14 secciones, res
 de cuatro estados, observaciones y filas repetibles con guardado independiente. Los
 campos núcleo existentes se mantienen operativos y cada sección ofrece un enlace directo a
 su formulario normalizado. Ya tienen captura específica las secciones 3, 4, 6, 7, 8, 10,
-11, 12 y 14; aún faltan los adaptadores de publicación para esas estructuras, el detalle
+11, 12 y 14; la sección 4 ya cuenta con captura estructurada de conectividad y accesibilidad
+detallada; aún faltan los adaptadores de publicación para esas estructuras, el detalle
 normalizado completo de la sección 5 y la división física del componente monolítico.
 
 Salida prevista: el administrador puede capturar la ficha completa sin navegar una sola

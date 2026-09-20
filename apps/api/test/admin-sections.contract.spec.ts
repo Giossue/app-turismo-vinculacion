@@ -72,6 +72,106 @@ describe("admin section contract", () => {
     ).toContain("temperatura mínima");
   });
 
+  it("validates the complete accessibility and connectivity detail", () => {
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        localityId: 3,
+        distanceKm: 3.5,
+        accessibilityDetails: {
+          roads: [
+            {
+              roadTypeId: 3,
+              startLatitude: -1.5922,
+              startLongitude: -79.00136,
+              endLatitude: -1.5883,
+              endLongitude: -79.00685,
+              distanceKm: 3.5,
+              materialId: 2,
+              conditionId: 1,
+              observation: "Adoquín y asfalto.",
+            },
+          ],
+          aquatic: [
+            {
+              modalityId: 1,
+              departure: "Muelle de partida",
+              departureConditionId: 1,
+              arrival: "Muelle de llegada",
+              arrivalConditionId: 2,
+            },
+          ],
+          aerial: [{ coverageId: 1 }],
+          transportTypes: [
+            { typeId: 4, applies: true, observation: "Taxi disponible." },
+          ],
+          transportDetails: [
+            {
+              operator: "Cooperativa de taxis",
+              terminal: "Centro de la ciudad",
+              frequencyId: 1,
+              transferDetail: "Guaranda - atractivo",
+            },
+          ],
+          criteria: [
+            {
+              accessibilityTypeId: 2,
+              criterionId: 10,
+              label: "",
+              response: "SI",
+              detail: "Acceso principal",
+            },
+          ],
+          signage: {
+            available: "SI",
+            conditionId: 1,
+            observation: "Señalización visible desde la vía.",
+          },
+        },
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects incomplete accessibility detail rows", () => {
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        accessibilityDetails: {
+          roads: [{ distanceKm: -1 }],
+        },
+      }),
+    ).toContain("tipo de vía");
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        accessibilityDetails: {
+          criteria: [{ label: "Rampas", response: "MAYBE" }],
+        },
+      }),
+    ).toContain("criterio de accesibilidad requiere una respuesta");
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        accessibilityDetails: {
+          criteria: [{ label: "", response: "SI" }],
+        },
+      }),
+    ).toContain("criterio catalogado o una descripción");
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        accessibilityDetails: {
+          signage: { available: "SI", conditionId: 0 },
+        },
+      }),
+    ).toContain("estado de señalización");
+  });
+
   it("keeps legacy section objects readable while marking them incomplete", () => {
     const legacy = { localidadCercana: { localidadId: 3 } };
 
@@ -201,9 +301,7 @@ describe("admin section contract", () => {
         schemaVersion: 1,
         response: "SI",
         hygieneSafety: {
-          entries: [
-            { kind: "UNKNOWN", name: "Registro", response: "SI" },
-          ],
+          entries: [{ kind: "UNKNOWN", name: "Registro", response: "SI" }],
         },
       }),
     ).toContain("tipo de registro");
@@ -303,9 +401,17 @@ describe("admin section contract", () => {
             reports: "SI",
             frequency: "Mensual",
           },
-          seasons: [{ type: "ALTA", quantity: 120, year: 2025, months: [7, 8] }],
+          seasons: [
+            { type: "ALTA", quantity: 120, year: 2025, months: [7, 8] },
+          ],
           origins: [
-            { type: "NACIONAL", place: "Guaranda", month: 8, year: 2025, quantity: 80 },
+            {
+              type: "NACIONAL",
+              place: "Guaranda",
+              month: 8,
+              year: 2025,
+              quantity: 80,
+            },
           ],
           informants: [{ name: "Ana Pérez", contact: "0999999999" }],
           influx: {

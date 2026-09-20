@@ -168,7 +168,12 @@ const VISITOR_FREQUENCIES = new Set([
   "INEXISTENTE",
 ]);
 const TRAINING_GROUPS = new Set(["EDUCACION", "CAPACITACION", "IDIOMA"]);
-const ANNEX_VISIBILITIES = new Set(["PUBLICA", "ADMINISTRATIVA", "RESTRINGIDA"]);
+const ANNEX_VISIBILITIES = new Set([
+  "PUBLICA",
+  "ADMINISTRATIVA",
+  "RESTRINGIDA",
+]);
+const ACCESSIBILITY_DETAILS_MAX_ROWS = 100;
 
 /**
  * Validates the transitional JSON contract used by the web section editor.
@@ -183,6 +188,7 @@ export function validateAdminSectionContent(content: unknown): string | null {
     "response",
     "observation",
     "rows",
+    "accessibilityDetails",
   ].some((key) => key in content);
   if (!usesStructuredContract) return null;
   if (content.schemaVersion !== undefined && content.schemaVersion !== 1) {
@@ -280,6 +286,12 @@ export function validateAdminSectionContent(content: unknown): string | null {
       return "La precipitación mínima no puede superar la máxima.";
     }
   }
+  if (content.accessibilityDetails !== undefined) {
+    const accessibilityError = validateAccessibilityDetailsBlock(
+      content.accessibilityDetails,
+    );
+    if (accessibilityError) return accessibilityError;
+  }
   if (content.conservation !== undefined) {
     const conservationError = validateConservationBlock(content.conservation);
     if (conservationError) return conservationError;
@@ -307,7 +319,9 @@ export function validateAdminSectionContent(content: unknown): string | null {
     if (visitorsError) return visitorsError;
   }
   if (content.humanResources !== undefined) {
-    const humanResourcesError = validateHumanResourcesBlock(content.humanResources);
+    const humanResourcesError = validateHumanResourcesBlock(
+      content.humanResources,
+    );
     if (humanResourcesError) return humanResourcesError;
   }
   if (content.annexes !== undefined) {
@@ -378,6 +392,316 @@ function isJsonRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function validateAccessibilityDetailsBlock(value: unknown): string | null {
+  if (!isJsonRecord(value)) return "El detalle de accesibilidad no es válido.";
+
+  if (value.roads !== undefined) {
+    if (
+      !Array.isArray(value.roads) ||
+      value.roads.length > ACCESSIBILITY_DETAILS_MAX_ROWS
+    ) {
+      return "Las vías terrestres de acceso no son válidas.";
+    }
+    for (const road of value.roads) {
+      if (!isJsonRecord(road))
+        return "Una vía terrestre de acceso no es válida.";
+      const typeError = validateOptionalPositiveInteger(
+        road.roadTypeId,
+        "tipo de vía terrestre",
+      );
+      if (typeError) return typeError;
+      if (
+        !road.roadTypeId &&
+        (typeof road.typeLabel !== "string" ||
+          road.typeLabel.trim().length === 0)
+      ) {
+        return "Cada vía terrestre requiere un tipo de vía.";
+      }
+      const materialError = validateOptionalPositiveInteger(
+        road.materialId,
+        "material de vía",
+      );
+      if (materialError) return materialError;
+      const conditionError = validateOptionalPositiveInteger(
+        road.conditionId,
+        "estado de vía",
+      );
+      if (conditionError) return conditionError;
+      const distanceError = validateOptionalNonNegativeNumber(
+        road.distanceKm,
+        "distancia de vía",
+      );
+      if (distanceError) return distanceError;
+      for (const [key, label, min, max] of [
+        ["startLatitude", "latitud inicial", -90, 90],
+        ["endLatitude", "latitud final", -90, 90],
+        ["startLongitude", "longitud inicial", -180, 180],
+        ["endLongitude", "longitud final", -180, 180],
+      ] as const) {
+        const coordinate = road[key];
+        if (
+          coordinate !== undefined &&
+          coordinate !== null &&
+          (typeof coordinate !== "number" ||
+            !Number.isFinite(coordinate) ||
+            coordinate < min ||
+            coordinate > max)
+        ) {
+          return `La ${label} de la vía no es válida.`;
+        }
+      }
+      const textError = validateAccessibilityTextFields(road, [
+        ["typeLabel", 180],
+        ["observation", 1_000],
+      ]);
+      if (textError) return textError;
+    }
+  }
+
+  if (value.aquatic !== undefined) {
+    if (
+      !Array.isArray(value.aquatic) ||
+      value.aquatic.length > ACCESSIBILITY_DETAILS_MAX_ROWS
+    ) {
+      return "Los accesos acuáticos no son válidos.";
+    }
+    for (const access of value.aquatic) {
+      if (!isJsonRecord(access)) return "Un acceso acuático no es válido.";
+      const modalityError = validateOptionalPositiveInteger(
+        access.modalityId,
+        "modalidad de acceso acuático",
+      );
+      if (modalityError) return modalityError;
+      if (
+        !access.modalityId &&
+        (typeof access.modalityLabel !== "string" ||
+          access.modalityLabel.trim().length === 0)
+      ) {
+        return "Cada acceso acuático requiere una modalidad.";
+      }
+      for (const key of [
+        "departureConditionId",
+        "arrivalConditionId",
+      ] as const) {
+        const conditionError = validateOptionalPositiveInteger(
+          access[key],
+          "estado del puerto o muelle",
+        );
+        if (conditionError) return conditionError;
+      }
+      const textError = validateAccessibilityTextFields(access, [
+        ["modalityLabel", 120],
+        ["departure", 180],
+        ["arrival", 180],
+        ["observation", 1_000],
+      ]);
+      if (textError) return textError;
+    }
+  }
+
+  if (value.aerial !== undefined) {
+    if (
+      !Array.isArray(value.aerial) ||
+      value.aerial.length > ACCESSIBILITY_DETAILS_MAX_ROWS
+    ) {
+      return "Los accesos aéreos no son válidos.";
+    }
+    for (const access of value.aerial) {
+      if (!isJsonRecord(access)) return "Un acceso aéreo no es válido.";
+      const coverageError = validateOptionalPositiveInteger(
+        access.coverageId,
+        "cobertura de acceso aéreo",
+      );
+      if (coverageError) return coverageError;
+      if (
+        !access.coverageId &&
+        (typeof access.coverageLabel !== "string" ||
+          access.coverageLabel.trim().length === 0)
+      ) {
+        return "Cada acceso aéreo requiere una cobertura.";
+      }
+      const textError = validateAccessibilityTextFields(access, [
+        ["coverageLabel", 120],
+        ["observation", 1_000],
+      ]);
+      if (textError) return textError;
+    }
+  }
+
+  if (value.transportTypes !== undefined) {
+    if (
+      !Array.isArray(value.transportTypes) ||
+      value.transportTypes.length > ACCESSIBILITY_DETAILS_MAX_ROWS
+    ) {
+      return "Los tipos de transporte no son válidos.";
+    }
+    for (const transport of value.transportTypes) {
+      if (!isJsonRecord(transport))
+        return "Un tipo de transporte no es válido.";
+      const typeError = validateOptionalPositiveInteger(
+        transport.typeId,
+        "tipo de transporte",
+      );
+      if (typeError) return typeError;
+      if (
+        !transport.typeId &&
+        (typeof transport.label !== "string" ||
+          transport.label.trim().length === 0)
+      ) {
+        return "Cada tipo de transporte requiere una identificación.";
+      }
+      if (typeof transport.applies !== "boolean") {
+        return "Cada tipo de transporte requiere indicar si aplica.";
+      }
+      const textError = validateAccessibilityTextFields(transport, [
+        ["label", 120],
+        ["detailOther", 180],
+        ["observation", 1_000],
+      ]);
+      if (textError) return textError;
+    }
+  }
+
+  if (value.transportDetails !== undefined) {
+    if (
+      !Array.isArray(value.transportDetails) ||
+      value.transportDetails.length > ACCESSIBILITY_DETAILS_MAX_ROWS
+    ) {
+      return "Los detalles de transporte no son válidos.";
+    }
+    for (const detail of value.transportDetails) {
+      if (!isJsonRecord(detail))
+        return "Un detalle de transporte no es válido.";
+      if (
+        typeof detail.operator !== "string" ||
+        detail.operator.trim().length === 0 ||
+        detail.operator.length > 180
+      ) {
+        return "Cada detalle de transporte requiere un operador de hasta 180 caracteres.";
+      }
+      const frequencyError = validateOptionalPositiveInteger(
+        detail.frequencyId,
+        "frecuencia de transporte",
+      );
+      if (frequencyError) return frequencyError;
+      const textError = validateAccessibilityTextFields(detail, [
+        ["terminal", 180],
+        ["frequencyLabel", 80],
+        ["transferDetail", 1_000],
+        ["observation", 1_000],
+      ]);
+      if (textError) return textError;
+    }
+  }
+
+  if (value.criteria !== undefined) {
+    if (!Array.isArray(value.criteria) || value.criteria.length > 300) {
+      return "Los criterios de accesibilidad no son válidos.";
+    }
+    for (const criterion of value.criteria) {
+      if (!isJsonRecord(criterion))
+        return "Un criterio de accesibilidad no es válido.";
+      const criterionIdError = validateOptionalPositiveInteger(
+        criterion.criterionId,
+        "criterio de accesibilidad",
+      );
+      if (criterionIdError) return criterionIdError;
+      const typeIdError = validateOptionalPositiveInteger(
+        criterion.accessibilityTypeId,
+        "tipo de accesibilidad",
+      );
+      if (typeIdError) return typeIdError;
+      if (
+        !criterion.criterionId &&
+        (typeof criterion.label !== "string" ||
+          criterion.label.trim().length === 0)
+      ) {
+        return "Cada criterio de accesibilidad requiere un criterio catalogado o una descripción.";
+      }
+      if (
+        criterion.label !== undefined &&
+        criterion.label !== null &&
+        (typeof criterion.label !== "string" || criterion.label.length > 300)
+      ) {
+        return "La descripción del criterio de accesibilidad supera 300 caracteres.";
+      }
+      if (!isSectionResponse(criterion.response)) {
+        return "Cada criterio de accesibilidad requiere una respuesta válida.";
+      }
+      const textError = validateAccessibilityTextFields(criterion, [
+        ["detail", 1_000],
+        ["observation", 1_000],
+      ]);
+      if (textError) return textError;
+    }
+  }
+
+  if (value.signage !== undefined) {
+    if (!isJsonRecord(value.signage)) {
+      return "La señalización de aproximación no es válida.";
+    }
+    if (!isSectionResponse(value.signage.available)) {
+      return "La señalización de aproximación requiere una respuesta válida.";
+    }
+    const conditionError = validateOptionalPositiveInteger(
+      value.signage.conditionId,
+      "estado de señalización",
+    );
+    if (conditionError) return conditionError;
+    const textError = validateAccessibilityTextFields(value.signage, [
+      ["observation", 1_000],
+    ]);
+    if (textError) return textError;
+  }
+
+  return null;
+}
+
+function validateOptionalPositiveInteger(
+  value: unknown,
+  label: string,
+): string | null {
+  if (
+    value !== undefined &&
+    value !== null &&
+    (!Number.isInteger(value) || Number(value) < 1)
+  ) {
+    return `El ${label} no es válido.`;
+  }
+  return null;
+}
+
+function validateOptionalNonNegativeNumber(
+  value: unknown,
+  label: string,
+): string | null {
+  if (
+    value !== undefined &&
+    value !== null &&
+    (typeof value !== "number" || !Number.isFinite(value) || value < 0)
+  ) {
+    return `La ${label} debe ser un número mayor o igual que cero.`;
+  }
+  return null;
+}
+
+function validateAccessibilityTextFields(
+  value: JsonRecord,
+  fields: ReadonlyArray<readonly [string, number]>,
+): string | null {
+  for (const [key, maxLength] of fields) {
+    const field = value[key];
+    if (
+      field !== undefined &&
+      field !== null &&
+      (typeof field !== "string" || field.length > maxLength)
+    ) {
+      return "Los textos del detalle de accesibilidad superan los límites permitidos.";
+    }
+  }
+  return null;
+}
+
 function validateConservationBlock(value: unknown): string | null {
   if (!isJsonRecord(value)) return "El bloque de conservación no es válido.";
   for (const component of ["attraction", "environment"]) {
@@ -396,7 +720,8 @@ function validateConservationBlock(value: unknown): string | null {
     if (
       entry.observation !== undefined &&
       entry.observation !== null &&
-      (typeof entry.observation !== "string" || entry.observation.length > 2_000)
+      (typeof entry.observation !== "string" ||
+        entry.observation.length > 2_000)
     ) {
       return "La observación de conservación supera el límite permitido.";
     }
@@ -423,14 +748,16 @@ function validateConservationBlock(value: unknown): string | null {
       if (
         factor.observation !== undefined &&
         factor.observation !== null &&
-        (typeof factor.observation !== "string" || factor.observation.length > 1_000)
+        (typeof factor.observation !== "string" ||
+          factor.observation.length > 1_000)
       ) {
         return "La observación del factor de alteración supera el límite permitido.";
       }
       if (
         factor.detailOther !== undefined &&
         factor.detailOther !== null &&
-        (typeof factor.detailOther !== "string" || factor.detailOther.length > 180)
+        (typeof factor.detailOther !== "string" ||
+          factor.detailOther.length > 180)
       ) {
         return "El detalle del factor de alteración supera el límite permitido.";
       }
@@ -503,13 +830,15 @@ function isConservationBlockComplete(value: unknown): boolean {
 }
 
 function validateHygieneSafetyBlock(value: unknown): string | null {
-  if (!isJsonRecord(value)) return "El bloque de higiene y seguridad no es válido.";
+  if (!isJsonRecord(value))
+    return "El bloque de higiene y seguridad no es válido.";
   if (value.entries !== undefined) {
     if (!Array.isArray(value.entries) || value.entries.length > 300) {
       return "Los registros de higiene y seguridad no son válidos.";
     }
     for (const entry of value.entries) {
-      if (!isJsonRecord(entry)) return "Un registro de higiene y seguridad no es válido.";
+      if (!isJsonRecord(entry))
+        return "Un registro de higiene y seguridad no es válido.";
       if (!HYGIENE_ENTRY_KINDS.has(String(entry.kind))) {
         return "El tipo de registro de higiene y seguridad no es válido.";
       }
@@ -554,7 +883,8 @@ function validateHygieneSafetyBlock(value: unknown): string | null {
       if (
         entry.observation !== undefined &&
         entry.observation !== null &&
-        (typeof entry.observation !== "string" || entry.observation.length > 1_000)
+        (typeof entry.observation !== "string" ||
+          entry.observation.length > 1_000)
       ) {
         return "La observación de higiene y seguridad supera el límite permitido.";
       }
@@ -562,7 +892,12 @@ function validateHygieneSafetyBlock(value: unknown): string | null {
   }
   if (value.radios !== undefined) {
     if (!isJsonRecord(value.radios)) return "El bloque de radios no es válido.";
-    for (const key of ["available", "visitorUse", "internalUse", "emergencyUse"]) {
+    for (const key of [
+      "available",
+      "visitorUse",
+      "internalUse",
+      "emergencyUse",
+    ]) {
       if (!isSectionResponse(value.radios[key])) {
         return "Cada uso de radios requiere una respuesta válida.";
       }
@@ -570,7 +905,8 @@ function validateHygieneSafetyBlock(value: unknown): string | null {
     if (
       value.radios.quantity !== undefined &&
       value.radios.quantity !== null &&
-      (!Number.isInteger(value.radios.quantity) || Number(value.radios.quantity) < 0)
+      (!Number.isInteger(value.radios.quantity) ||
+        Number(value.radios.quantity) < 0)
     ) {
       return "La cantidad de radios debe ser un entero no negativo.";
     }
@@ -595,7 +931,8 @@ function validateHygieneSafetyBlock(value: unknown): string | null {
       if (
         field !== undefined &&
         field !== null &&
-        (typeof field !== "string" || field.length > (key === "document" ? 250 : 1_000))
+        (typeof field !== "string" ||
+          field.length > (key === "document" ? 250 : 1_000))
       ) {
         return "Los datos del plan de contingencia superan los límites permitidos.";
       }
@@ -619,7 +956,8 @@ function validatePolicyBlock(value: unknown): string | null {
   }
   const seen = new Set<string>();
   for (const policy of value) {
-    if (!isJsonRecord(policy)) return "Una respuesta de políticas no es válida.";
+    if (!isJsonRecord(policy))
+      return "Una respuesta de políticas no es válida.";
     if (
       typeof policy.code !== "string" ||
       !POLICY_CODES.has(policy.code) ||
@@ -673,7 +1011,8 @@ function validatePromotionBlock(value: unknown): string | null {
     if (
       field !== undefined &&
       field !== null &&
-      (typeof field !== "string" || field.length > (key === "planName" ? 250 : 1_000))
+      (typeof field !== "string" ||
+        field.length > (key === "planName" ? 250 : 1_000))
     ) {
       return "Los detalles de promoción superan los límites permitidos.";
     }
@@ -692,7 +1031,8 @@ function validatePromotionBlock(value: unknown): string | null {
         if (
           field !== undefined &&
           field !== null &&
-          (typeof field !== "string" || field.length > (key === "observation" ? 1_000 : 180))
+          (typeof field !== "string" ||
+            field.length > (key === "observation" ? 1_000 : 180))
         ) {
           return "Los datos del medio de promoción superan los límites permitidos.";
         }
@@ -707,7 +1047,7 @@ function validatePromotionBlock(value: unknown): string | null {
       if (typeof medium.url === "string" && medium.url.trim()) {
         try {
           const url = new URL(medium.url);
-          if (!['http:', 'https:'].includes(url.protocol)) {
+          if (!["http:", "https:"].includes(url.protocol)) {
             return "La URL del medio de promoción debe usar HTTP o HTTPS.";
           }
         } catch {
@@ -722,7 +1062,8 @@ function validatePromotionBlock(value: unknown): string | null {
 function validateVisitorsBlock(value: unknown): string | null {
   if (!isJsonRecord(value)) return "El bloque de visitantes no es válido.";
   if (value.registry !== undefined) {
-    if (!isJsonRecord(value.registry)) return "El registro de visitantes no es válido.";
+    if (!isJsonRecord(value.registry))
+      return "El registro de visitantes no es válido.";
     for (const key of ["exists", "reports"]) {
       if (!isSectionResponse(value.registry[key])) {
         return "Cada decisión del registro de visitantes requiere una respuesta válida.";
@@ -766,7 +1107,10 @@ function validateVisitorsBlock(value: unknown): string | null {
       return "Las temporadas de visitación no son válidas.";
     }
     for (const season of value.seasons) {
-      if (!isJsonRecord(season) || !VISITOR_SEASON_TYPES.has(String(season.type))) {
+      if (
+        !isJsonRecord(season) ||
+        !VISITOR_SEASON_TYPES.has(String(season.type))
+      ) {
         return "El tipo de temporada no es válido.";
       }
       if (
@@ -783,7 +1127,8 @@ function validateVisitorsBlock(value: unknown): string | null {
       if (
         season.observation !== undefined &&
         season.observation !== null &&
-        (typeof season.observation !== "string" || season.observation.length > 1_000)
+        (typeof season.observation !== "string" ||
+          season.observation.length > 1_000)
       ) {
         return "La observación de temporada supera el límite permitido.";
       }
@@ -794,7 +1139,10 @@ function validateVisitorsBlock(value: unknown): string | null {
       return "Las procedencias de visitantes no son válidas.";
     }
     for (const origin of value.origins) {
-      if (!isJsonRecord(origin) || !VISITOR_ORIGIN_TYPES.has(String(origin.type))) {
+      if (
+        !isJsonRecord(origin) ||
+        !VISITOR_ORIGIN_TYPES.has(String(origin.type))
+      ) {
         return "El tipo de procedencia no es válido.";
       }
       if (
@@ -825,7 +1173,8 @@ function validateVisitorsBlock(value: unknown): string | null {
       if (
         origin.observation !== undefined &&
         origin.observation !== null &&
-        (typeof origin.observation !== "string" || origin.observation.length > 1_000)
+        (typeof origin.observation !== "string" ||
+          origin.observation.length > 1_000)
       ) {
         return "La observación de procedencia supera el límite permitido.";
       }
@@ -849,7 +1198,8 @@ function validateVisitorsBlock(value: unknown): string | null {
         if (
           field !== undefined &&
           field !== null &&
-          (typeof field !== "string" || field.length > (key === "contact" ? 120 : 1_000))
+          (typeof field !== "string" ||
+            field.length > (key === "contact" ? 120 : 1_000))
         ) {
           return "Los datos del informante superan los límites permitidos.";
         }
@@ -857,7 +1207,8 @@ function validateVisitorsBlock(value: unknown): string | null {
     }
   }
   if (value.influx !== undefined) {
-    if (!isJsonRecord(value.influx)) return "La afluencia de visitantes no es válida.";
+    if (!isJsonRecord(value.influx))
+      return "La afluencia de visitantes no es válida.";
     for (const key of ["weekday", "weekend", "holidays"]) {
       const quantity = value.influx[key];
       if (
@@ -908,7 +1259,8 @@ function validateMonths(value: unknown): string | null {
     if (!Number.isInteger(month) || Number(month) < 1 || Number(month) > 12) {
       return "Cada mes de temporada debe estar entre 1 y 12.";
     }
-    if (seen.has(Number(month))) return "Los meses de temporada no pueden repetirse.";
+    if (seen.has(Number(month)))
+      return "Los meses de temporada no pueden repetirse.";
     seen.add(Number(month));
   }
   return null;
@@ -917,7 +1269,8 @@ function validateMonths(value: unknown): string | null {
 function validateHumanResourcesBlock(value: unknown): string | null {
   if (!isJsonRecord(value)) return "El bloque de recurso humano no es válido.";
   if (value.summary !== undefined) {
-    if (!isJsonRecord(value.summary)) return "El resumen de recurso humano no es válido.";
+    if (!isJsonRecord(value.summary))
+      return "El resumen de recurso humano no es válido.";
     for (const key of ["administrationOperation", "specializedTourism"]) {
       const quantity = value.summary[key];
       if (
@@ -942,7 +1295,8 @@ function validateHumanResourcesBlock(value: unknown): string | null {
       return "La formación del personal no es válida.";
     }
     for (const training of value.training) {
-      if (!isJsonRecord(training)) return "Un registro de formación no es válido.";
+      if (!isJsonRecord(training))
+        return "Un registro de formación no es válido.";
       if (!TRAINING_GROUPS.has(String(training.group))) {
         return "El grupo de formación no es válido.";
       }
@@ -963,14 +1317,16 @@ function validateHumanResourcesBlock(value: unknown): string | null {
       if (
         training.detailOther !== undefined &&
         training.detailOther !== null &&
-        (typeof training.detailOther !== "string" || training.detailOther.length > 180)
+        (typeof training.detailOther !== "string" ||
+          training.detailOther.length > 180)
       ) {
         return "El detalle de otra formación supera el límite permitido.";
       }
       if (
         training.observation !== undefined &&
         training.observation !== null &&
-        (typeof training.observation !== "string" || training.observation.length > 1_000)
+        (typeof training.observation !== "string" ||
+          training.observation.length > 1_000)
       ) {
         return "La observación de formación supera el límite permitido.";
       }
@@ -992,7 +1348,8 @@ function validateAnnexesBlock(value: unknown): string | null {
         if (
           field !== undefined &&
           field !== null &&
-          (typeof field !== "string" || field.length > (key === "description" ? 1_000 : 180))
+          (typeof field !== "string" ||
+            field.length > (key === "description" ? 1_000 : 180))
         ) {
           return "Los datos del anexo superan los límites permitidos.";
         }
@@ -1003,7 +1360,8 @@ function validateAnnexesBlock(value: unknown): string | null {
       if (
         document.observation !== undefined &&
         document.observation !== null &&
-        (typeof document.observation !== "string" || document.observation.length > 1_000)
+        (typeof document.observation !== "string" ||
+          document.observation.length > 1_000)
       ) {
         return "La observación del anexo supera el límite permitido.";
       }
@@ -1022,9 +1380,16 @@ function validateAnnexesBlock(value: unknown): string | null {
       ) {
         return "Cada responsable requiere un nombre de hasta 180 caracteres.";
       }
-      for (const key of ["role", "institution", "phone", "email", "observation"]) {
+      for (const key of [
+        "role",
+        "institution",
+        "phone",
+        "email",
+        "observation",
+      ]) {
         const field = responsible[key];
-        const maxLength = key === "observation" ? 1_000 : key === "email" ? 254 : 180;
+        const maxLength =
+          key === "observation" ? 1_000 : key === "email" ? 254 : 180;
         if (
           field !== undefined &&
           field !== null &&
@@ -1033,7 +1398,8 @@ function validateAnnexesBlock(value: unknown): string | null {
           return "Los datos del responsable superan los límites permitidos.";
         }
         if (key === "email" && typeof field === "string" && field.trim()) {
-          if (!isReasonableEmail(field)) return "El correo del responsable no es válido.";
+          if (!isReasonableEmail(field))
+            return "El correo del responsable no es válido.";
         }
       }
     }
@@ -1050,18 +1416,24 @@ function validateAnnexesBlock(value: unknown): string | null {
 }
 
 function validateSurveyBlock(value: unknown): string | null {
-  if (!isJsonRecord(value)) return "El levantamiento de accesibilidad no es válido.";
+  if (!isJsonRecord(value))
+    return "El levantamiento de accesibilidad no es válido.";
   for (const key of ["responsible", "scope", "observation"]) {
     const field = value[key];
     if (
       field !== undefined &&
       field !== null &&
-      (typeof field !== "string" || field.length > (key === "observation" ? 1_000 : 250))
+      (typeof field !== "string" ||
+        field.length > (key === "observation" ? 1_000 : 250))
     ) {
       return "Los datos del levantamiento de accesibilidad superan los límites permitidos.";
     }
   }
-  if (value.date !== undefined && value.date !== null && !isIsoDate(value.date)) {
+  if (
+    value.date !== undefined &&
+    value.date !== null &&
+    !isIsoDate(value.date)
+  ) {
     return "La fecha del levantamiento de accesibilidad no es válida.";
   }
   return null;
@@ -1072,9 +1444,17 @@ function validateGadValidationBlock(value: unknown): string | null {
   if (!isSectionResponse(value.acceptance)) {
     return "La aceptación de publicación del GAD requiere una respuesta válida.";
   }
-  for (const key of ["name", "institution", "position", "phone", "email", "observation"]) {
+  for (const key of [
+    "name",
+    "institution",
+    "position",
+    "phone",
+    "email",
+    "observation",
+  ]) {
     const field = value[key];
-    const maxLength = key === "observation" ? 1_000 : key === "email" ? 254 : 180;
+    const maxLength =
+      key === "observation" ? 1_000 : key === "email" ? 254 : 180;
     if (
       field !== undefined &&
       field !== null &&
@@ -1083,10 +1463,15 @@ function validateGadValidationBlock(value: unknown): string | null {
       return "Los datos de validación del GAD superan los límites permitidos.";
     }
     if (key === "email" && typeof field === "string" && field.trim()) {
-      if (!isReasonableEmail(field)) return "El correo del validador no es válido.";
+      if (!isReasonableEmail(field))
+        return "El correo del validador no es válido.";
     }
   }
-  if (value.date !== undefined && value.date !== null && !isIsoDate(value.date)) {
+  if (
+    value.date !== undefined &&
+    value.date !== null &&
+    !isIsoDate(value.date)
+  ) {
     return "La fecha de validación del GAD no es válida.";
   }
   return null;
@@ -1304,6 +1689,14 @@ export class AdminCentersService {
       incomeTypes,
       attentionModes,
       accessibilityTypes,
+      accessibilityCriteria,
+      conditionStates,
+      roadTypes,
+      roadMaterials,
+      aquaticAccessModes,
+      aerialAccessCoverages,
+      transportTypes,
+      serviceFrequencies,
       activityGroups,
       activities,
       facilityCategories,
@@ -1372,6 +1765,63 @@ export class AdminCentersService {
         [like],
       ),
       this.dataSource.query(
+        `SELECT id, codigo AS code, descripcion AS name, activo AS active,
+                tipo_accesibilidad_id AS "typeId"
+           FROM criterios_accesibilidad
+          WHERE ${activeCondition} AND ($1::text IS NULL OR descripcion ILIKE $1)
+          ORDER BY tipo_accesibilidad_id, orden, descripcion`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, activo AS active
+           FROM estados_condicion
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, activo AS active
+           FROM tipos_via_terrestre
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, activo AS active
+           FROM materiales_via
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, activo AS active
+           FROM modalidades_acceso_acuatico
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, activo AS active
+           FROM coberturas_acceso_aereo
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, activo AS active
+           FROM tipos_transporte
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, activo AS active
+           FROM frecuencias_servicio
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
         `SELECT id, codigo AS code, nombre AS name, activo AS active, categoria_atractivo_id AS "categoryId" FROM grupos_actividad WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1) ORDER BY nombre`,
         [like],
       ),
@@ -1414,6 +1864,14 @@ export class AdminCentersService {
       incomeTypes,
       attentionModes,
       accessibilityTypes,
+      accessibilityCriteria,
+      conditionStates,
+      roadTypes,
+      roadMaterials,
+      aquaticAccessModes,
+      aerialAccessCoverages,
+      transportTypes,
+      serviceFrequencies,
       activityGroups,
       activities,
       facilityCategories,

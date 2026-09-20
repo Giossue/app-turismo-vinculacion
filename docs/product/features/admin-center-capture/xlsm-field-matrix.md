@@ -37,6 +37,12 @@ como pantallas independientes.
 | 13. Descripción | descripción narrativa y observaciones | `centros_turisticos.descripcion`, `observaciones_seccion_centro_turistico` |
 | 14. Anexos y responsabilidades | archivos, responsables, levantamiento de accesibilidad y validación GAD | `archivos_centro_turistico`, `responsables_ficha`, `levantamientos_accesibilidad`, `validaciones_gad` |
 
+La captura administrativa de la sección 4 conserva temporalmente esas relaciones en
+`accessibilityDetails` dentro del snapshot: vías terrestres con coordenadas/material/estado,
+accesos acuáticos y aéreos, tipos y operadores de transporte, criterios detallados de
+`ficha_Accesibilidad` y señalización. El adaptador transaccional a las tablas anteriores
+queda pendiente; no se considera publicado mientras no exista.
+
 ## Reglas de captura
 
 - Cada fila repetible se guarda como una relación del mismo `centro_turistico_id`; nunca se
