@@ -64,8 +64,9 @@ explícita.
   preguntas activas del catálogo y los estados no binarios mantienen la propuesta en revisión.
 - La sección de promoción y comercialización separa el plan institucional, los paquetes y
   los medios de difusión, con nombre, periodicidad, URL y observación validados. El plan se
-  publica en su relación normalizada; los medios requieren un tipo activo del catálogo antes
-  de publicarse.
+  publica en su relación normalizada; los medios afirmativos requieren un tipo activo del
+  catálogo y se publican en `medios_promocion_centro_turistico`, mientras las respuestas
+  negativas no crean relaciones.
 - La sección de visitantes y afluencia separa registros, temporadas, procedencias,
   informantes y cantidades habituales, conservando meses, años y cero como datos explícitos.
   Al publicar, reemplaza sus relaciones normalizadas; los meses se validan contra el catálogo
@@ -73,13 +74,14 @@ explícita.
 - Las temporadas rechazan meses fuera de 1–12 o repetidos, y las procedencias distinguen
   ciudad nacional de país extranjero antes de publicar la ficha.
 - La sección de recurso humano conserva cantidades del resumen y registros de educación,
-  capacitación e idiomas sin crear un centro separado. El resumen se publica en su relación
-  normalizada; la formación requiere un tipo activo del catálogo antes de publicarse.
+  capacitación e idiomas sin crear un centro separado. El resumen y las filas con tipos
+  activos se publican en sus relaciones normalizadas; una fila sin referencia catalogada
+  permanece en el borrador.
 - La sección de anexos conserva tipo, fuente, autor, descripción y visibilidad controlada,
   junto con responsables, levantamiento de accesibilidad y validación del GAD; contactos,
-  firmas y documentos internos permanecen administrativos o restringidos. El levantamiento y
-  la validación se publican en sus relaciones existentes; documentos y responsables requieren
-  archivo/tipo institucional antes de publicarse.
+  firmas y documentos internos permanecen administrativos o restringidos. El levantamiento,
+  la validación y responsables con tipo institucional se publican en sus relaciones existentes;
+  documentos requieren archivo/tipo institucional antes de publicarse.
 - La valoración usa un motor tipado con topes por criterio y jerarquía reproducible; la
   publicación todavía debe conectar cada indicador con sus tablas normalizadas y guardar el
   detalle auditable. Mientras `indicadores_valoracion` no tenga reglas activas, el servidor

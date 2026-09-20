@@ -112,6 +112,44 @@ describe("AdminCentersService", () => {
     );
   });
 
+  it("publishes promotion media through the existing typed relation", async () => {
+    const managerQuery = vi.fn().mockResolvedValue([]);
+    const manager = { query: managerQuery };
+    const service = new AdminCentersService({} as never);
+    const applyPromotionSection = (
+      service as unknown as {
+        applyPromotionSection: (
+          value: typeof manager,
+          centerId: string,
+          section: Record<string, unknown>,
+        ) => Promise<void>;
+      }
+    ).applyPromotionSection;
+
+    await applyPromotionSection.call(service, manager, "10", {
+      response: "SI",
+      promotion: {
+        hasPlan: "NO",
+        includedInPlan: "NO",
+        partOfPackage: "NO",
+        media: [
+          {
+            response: "SI",
+            typeId: 8,
+            name: "Facebook institucional",
+            url: "https://example.com/guaranda",
+            periodicity: "Mensual",
+          },
+        ],
+      },
+    });
+
+    expect(managerQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO medios_promocion_centro_turistico"),
+      expect.arrayContaining(["10", 8, "Facebook institucional"]),
+    );
+  });
+
   it("publishes the human-resources summary without inventing training types", async () => {
     const managerQuery = vi.fn().mockResolvedValue([]);
     const manager = { query: managerQuery };
@@ -141,6 +179,40 @@ describe("AdminCentersService", () => {
     expect(managerQuery).toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO resumen_recurso_humano"),
       ["10", 3, 2, "Equipo permanente"],
+    );
+  });
+
+  it("publishes typed human-resources training rows", async () => {
+    const managerQuery = vi.fn().mockResolvedValue([]);
+    const manager = { query: managerQuery };
+    const service = new AdminCentersService({} as never);
+    const applyHumanResourcesSection = (
+      service as unknown as {
+        applyHumanResourcesSection: (
+          value: typeof manager,
+          centerId: string,
+          section: Record<string, unknown>,
+        ) => Promise<void>;
+      }
+    ).applyHumanResourcesSection;
+
+    await applyHumanResourcesSection.call(service, manager, "10", {
+      response: "SI",
+      humanResources: {
+        training: [
+          {
+            typeId: 12,
+            quantity: 4,
+            detailOther: "",
+            observation: "Curso vigente",
+          },
+        ],
+      },
+    });
+
+    expect(managerQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO formacion_personal_centro"),
+      ["10", 12, 4, "", "Curso vigente"],
     );
   });
 
@@ -280,6 +352,41 @@ describe("AdminCentersService", () => {
         expect.stringContaining("INSERT INTO levantamientos_accesibilidad"),
         expect.stringContaining("INSERT INTO validaciones_gad"),
       ]),
+    );
+  });
+
+  it("publishes typed ficha responsibilities", async () => {
+    const managerQuery = vi.fn().mockResolvedValue([]);
+    const manager = { query: managerQuery };
+    const service = new AdminCentersService({} as never);
+    const applyAnnexesSection = (
+      service as unknown as {
+        applyAnnexesSection: (
+          value: typeof manager,
+          centerId: string,
+          section: Record<string, unknown>,
+        ) => Promise<void>;
+      }
+    ).applyAnnexesSection;
+
+    await applyAnnexesSection.call(service, manager, "10", {
+      response: "SI",
+      annexes: {
+        documents: [],
+        responsibles: [
+          {
+            typeId: 2,
+            name: "Ana Pérez",
+            institution: "GAD Guaranda",
+            role: "Técnica",
+          },
+        ],
+      },
+    });
+
+    expect(managerQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO responsables_ficha"),
+      expect.arrayContaining(["10", 2, "Ana Pérez", "GAD Guaranda"]),
     );
   });
 

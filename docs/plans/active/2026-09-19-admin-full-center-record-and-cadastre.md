@@ -94,21 +94,21 @@ catálogos faltantes y publicación completa pendientes.
 - La sección 8 ya reemplaza las respuestas de políticas mediante sus preguntas activas de
   catálogo; las respuestas `SIN_INFORMACION` y `NO_APLICA` no se convierten en falsos y el
   despliegue debe tener sembradas las cuatro preguntas antes de publicar.
-- La sección 10 ya publica el plan institucional y sus decisiones en la relación normalizada;
-  los medios siguen en el snapshot y bloquean la publicación hasta que el formulario capture
-  un tipo activo del catálogo de medios.
+- La sección 10 ya publica el plan institucional y sus decisiones; los medios con respuesta
+  afirmativa se reemplazan en `medios_promocion_centro_turistico` usando tipos activos de su
+  catálogo y los medios no utilizados no se convierten en relaciones publicadas.
 - La sección 12 ya publica el resumen de administración/operación y personal especializado;
-  los registros de educación, capacitación e idiomas quedan en el borrador hasta enlazarse
-  con tipos activos de formación.
+  los registros de educación, capacitación e idiomas también se reemplazan cuando tienen un
+  tipo activo de formación.
 - La sección 6 ya reemplaza evaluaciones y declaratorias en sus tablas existentes; los estados
   dependen del catálogo activo y los factores de alteración siguen bloqueando publicación
   hasta que el formulario conserve su identificador de factor.
 - La sección 7 ya publica radios portátiles y planes de contingencia; los servicios, señalética,
   salud, seguridad, comunicación y amenazas siguen bloqueados hasta que sus filas incluyan
   referencias de catálogo.
-- La sección 14 ya publica el levantamiento de accesibilidad y la validación del GAD; anexos
-  documentales y responsables quedan en el borrador hasta enlazarse con archivos y tipos de
-  responsabilidad institucional.
+- La sección 14 ya publica el levantamiento de accesibilidad, la validación del GAD y los
+  responsables cuando tienen un tipo de responsabilidad activo; los anexos documentales
+  siguen en el borrador hasta enlazarse con archivos institucionales.
 - Las facilidades del núcleo ya permiten cantidad y observación por opción seleccionada;
   dejan de guardar siempre la cantidad fija `1`.
 - La ficha ahora compara, por sección, la versión publicada con la propuesta y muestra

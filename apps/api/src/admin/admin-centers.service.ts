@@ -1208,6 +1208,11 @@ function validatePromotionBlock(value: unknown): string | null {
     }
     for (const medium of value.media) {
       if (!isJsonRecord(medium)) return "Un medio de promoción no es válido.";
+      const typeIdError = validateOptionalPositiveInteger(
+        medium.typeId,
+        "tipo de medio de promoción",
+      );
+      if (typeIdError) return typeIdError;
       if (!PROMOTION_MEDIA_RESPONSE_VALUES.has(String(medium.response))) {
         return "Cada medio de promoción requiere una respuesta válida.";
       }
@@ -1485,12 +1490,23 @@ function validateHumanResourcesBlock(value: unknown): string | null {
       if (!TRAINING_GROUPS.has(String(training.group))) {
         return "El grupo de formación no es válido.";
       }
+      const typeIdError = validateOptionalPositiveInteger(
+        training.typeId,
+        "tipo de formación",
+      );
+      if (typeIdError) return typeIdError;
       if (
-        typeof training.name !== "string" ||
-        training.name.trim().length === 0 ||
-        training.name.length > 140
+        !training.typeId &&
+        (typeof training.name !== "string" || training.name.trim().length === 0)
       ) {
-        return "Cada formación requiere un nombre de hasta 140 caracteres.";
+        return "Cada formación requiere un tipo catalogado o un nombre de hasta 140 caracteres.";
+      }
+      if (
+        training.name !== undefined &&
+        training.name !== null &&
+        (typeof training.name !== "string" || training.name.length > 140)
+      ) {
+        return "El nombre de la formación supera 140 caracteres.";
       }
       if (
         training.quantity !== undefined &&
@@ -1557,8 +1573,15 @@ function validateAnnexesBlock(value: unknown): string | null {
       return "Los responsables de la ficha no son válidos.";
     }
     for (const responsible of value.responsibles) {
+      if (!isJsonRecord(responsible)) {
+        return "Cada responsable requiere un nombre de hasta 180 caracteres.";
+      }
+      const typeIdError = validateOptionalPositiveInteger(
+        responsible.typeId,
+        "tipo de responsabilidad",
+      );
+      if (typeIdError) return typeIdError;
       if (
-        !isJsonRecord(responsible) ||
         typeof responsible.name !== "string" ||
         responsible.name.trim().length === 0 ||
         responsible.name.length > 180
@@ -3512,7 +3535,7 @@ export class AdminCentersService {
   ) {
     if (section.response === "NO_APLICA") {
       await manager.query(
-        `DELETE FROM medios_promocion_centro WHERE centro_turistico_id = $1`,
+        `DELETE FROM medios_promocion_centro_turistico WHERE centro_turistico_id = $1`,
         [centerId],
       );
       await manager.query(
@@ -3548,11 +3571,35 @@ export class AdminCentersService {
         promotion.observation ?? section.observation ?? null,
       ],
     );
-    if (Array.isArray(promotion.media) && promotion.media.length === 0) {
+    if (Array.isArray(promotion.media)) {
       await manager.query(
-        `DELETE FROM medios_promocion_centro WHERE centro_turistico_id = $1`,
+        `DELETE FROM medios_promocion_centro_turistico WHERE centro_turistico_id = $1`,
         [centerId],
       );
+      for (const medium of (promotion.media as JsonRecord[]).filter(
+        (item) => item.response === "SI",
+      )) {
+        if (!Number.isInteger(medium.typeId) || Number(medium.typeId) < 1) {
+          throw new ConflictException(
+            "Cada medio de promoción requiere un tipo activo del catálogo.",
+          );
+        }
+        await manager.query(
+          `INSERT INTO medios_promocion_centro_turistico
+             (centro_turistico_id, tipo_medio_promocion_id, nombre, url,
+              periodicidad, detalle_otro, observacion)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [
+            centerId,
+            medium.typeId,
+            medium.name ?? null,
+            medium.url ?? null,
+            medium.periodicity ?? null,
+            medium.detailOther ?? null,
+            medium.observation ?? null,
+          ],
+        );
+      }
     }
   }
 
@@ -3596,11 +3643,31 @@ export class AdminCentersService {
         ],
       );
     }
-    if (Array.isArray(resources.training) && resources.training.length === 0) {
+    if (Array.isArray(resources.training)) {
       await manager.query(
         `DELETE FROM formacion_personal_centro WHERE centro_turistico_id = $1`,
         [centerId],
       );
+      for (const training of resources.training as JsonRecord[]) {
+        if (!Number.isInteger(training.typeId) || Number(training.typeId) < 1) {
+          throw new ConflictException(
+            "Cada formación requiere un tipo activo del catálogo.",
+          );
+        }
+        await manager.query(
+          `INSERT INTO formacion_personal_centro
+             (centro_turistico_id, tipo_formacion_personal_id,
+              cantidad_personas, detalle_otro, observacion)
+           VALUES ($1,$2,$3,$4,$5)`,
+          [
+            centerId,
+            training.typeId,
+            training.quantity ?? 0,
+            training.detailOther ?? null,
+            training.observation ?? null,
+          ],
+        );
+      }
     }
   }
 
@@ -3885,6 +3952,40 @@ export class AdminCentersService {
           gad.observation ?? section.observation ?? null,
         ],
       );
+    }
+
+    if (Array.isArray(annexes.responsibles)) {
+      await manager.query(
+        `DELETE FROM responsables_ficha WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      for (const responsible of annexes.responsibles as JsonRecord[]) {
+        if (
+          !Number.isInteger(responsible.typeId) ||
+          Number(responsible.typeId) < 1
+        ) {
+          throw new ConflictException(
+            "Cada responsable requiere un tipo activo de responsabilidad.",
+          );
+        }
+        await manager.query(
+          `INSERT INTO responsables_ficha
+             (centro_turistico_id, tipo_responsabilidad_ficha_id, nombre,
+              institucion, cargo, email, telefono, fecha, observacion)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8::date,$9)`,
+          [
+            centerId,
+            responsible.typeId,
+            responsible.name,
+            responsible.institution ?? null,
+            responsible.role ?? null,
+            responsible.email ?? null,
+            responsible.phone ?? null,
+            responsible.date ?? null,
+            responsible.observation ?? null,
+          ],
+        );
+      }
     }
   }
 
@@ -4591,6 +4692,7 @@ export class AdminCentersService {
       ),
       manager.query(
         `SELECT COALESCE(json_agg(json_build_object(
+                  'response', 'SI',
                   'typeId', mpc.tipo_medio_promocion_id,
                   'name', mpc.nombre,
                   'url', mpc.url,
@@ -4598,7 +4700,7 @@ export class AdminCentersService {
                   'detailOther', mpc.detalle_otro,
                   'observation', mpc.observacion
                 ) ORDER BY mpc.id), '[]'::json) AS data
-           FROM medios_promocion_centro mpc
+           FROM medios_promocion_centro_turistico mpc
           WHERE mpc.centro_turistico_id = $1`,
         [centerId],
       ),
@@ -5228,7 +5330,7 @@ export class AdminCentersService {
   }
 
   private async validatePromotionSectionReferences(
-    _manager: EntityManager,
+    manager: EntityManager,
     draft: CenterDraft,
   ) {
     const section = getAdminSectionRecord(draft, "promocion");
@@ -5255,14 +5357,41 @@ export class AdminCentersService {
       }
     }
     if (Array.isArray(promotion.media) && promotion.media.length > 0) {
-      throw new ConflictException(
-        "Los medios de promoción requieren un tipo activo del catálogo antes de publicar.",
-      );
+      const media = promotion.media as JsonRecord[];
+      for (const medium of media) {
+        if (!isBinarySectionResponse(medium.response)) {
+          throw new ConflictException(
+            "Cada medio de promoción requiere una respuesta SI o NO antes de publicar.",
+          );
+        }
+      }
+      const activeMedia = media.filter((medium) => medium.response === "SI");
+      const typeIds = activeMedia.map((medium) => medium.typeId);
+      if (
+        typeIds.some(
+          (typeId) => !Number.isInteger(typeId) || Number(typeId) < 1,
+        )
+      ) {
+        throw new ConflictException(
+          "Los medios de promoción requieren un tipo activo del catálogo antes de publicar.",
+        );
+      }
+      const uniqueTypeIds = [...new Set(typeIds as number[])];
+      const rows = (await manager.query(
+        `SELECT id FROM tipos_medio_promocion
+          WHERE activo = TRUE AND id = ANY($1::bigint[])`,
+        [uniqueTypeIds],
+      )) as Array<{ id: string }>;
+      if (rows.length !== uniqueTypeIds.length) {
+        throw new ConflictException(
+          "Un tipo de medio de promoción ya no está disponible en el catálogo.",
+        );
+      }
     }
   }
 
   private async validateHumanResourcesSectionReferences(
-    _manager: EntityManager,
+    manager: EntityManager,
     draft: CenterDraft,
   ) {
     const section = getAdminSectionRecord(draft, "recurso-humano");
@@ -5272,9 +5401,27 @@ export class AdminCentersService {
       : null;
     if (!resources) return;
     if (Array.isArray(resources.training) && resources.training.length > 0) {
-      throw new ConflictException(
-        "La formación del personal requiere un tipo activo del catálogo antes de publicar.",
-      );
+      const typeIds = resources.training.map((training) => training.typeId);
+      if (
+        typeIds.some(
+          (typeId) => !Number.isInteger(typeId) || Number(typeId) < 1,
+        )
+      ) {
+        throw new ConflictException(
+          "La formación del personal requiere un tipo activo del catálogo antes de publicar.",
+        );
+      }
+      const uniqueTypeIds = [...new Set(typeIds as number[])];
+      const rows = (await manager.query(
+        `SELECT id FROM tipos_formacion_personal
+          WHERE activo = TRUE AND id = ANY($1::bigint[])`,
+        [uniqueTypeIds],
+      )) as Array<{ id: string }>;
+      if (rows.length !== uniqueTypeIds.length) {
+        throw new ConflictException(
+          "Un tipo de formación ya no está disponible en el catálogo.",
+        );
+      }
     }
   }
 
@@ -5364,7 +5511,7 @@ export class AdminCentersService {
   }
 
   private async validateAnnexesSectionReferences(
-    _manager: EntityManager,
+    manager: EntityManager,
     draft: CenterDraft,
   ) {
     const section = getAdminSectionRecord(draft, "anexos");
@@ -5380,9 +5527,29 @@ export class AdminCentersService {
       Array.isArray(annexes.responsibles) &&
       annexes.responsibles.length > 0
     ) {
-      throw new ConflictException(
-        "Los responsables requieren un tipo de responsabilidad activo antes de publicar.",
+      const typeIds = annexes.responsibles.map(
+        (responsible) => responsible.typeId,
       );
+      if (
+        typeIds.some(
+          (typeId) => !Number.isInteger(typeId) || Number(typeId) < 1,
+        )
+      ) {
+        throw new ConflictException(
+          "Los responsables requieren un tipo de responsabilidad activo antes de publicar.",
+        );
+      }
+      const uniqueTypeIds = [...new Set(typeIds as number[])];
+      const rows = (await manager.query(
+        `SELECT id FROM tipos_responsabilidad_ficha
+          WHERE id = ANY($1::bigint[])`,
+        [uniqueTypeIds],
+      )) as Array<{ id: string }>;
+      if (rows.length !== uniqueTypeIds.length) {
+        throw new ConflictException(
+          "Un tipo de responsabilidad ya no está disponible en el catálogo.",
+        );
+      }
     }
     const gad = isJsonRecord(annexes.gadValidation)
       ? annexes.gadValidation
