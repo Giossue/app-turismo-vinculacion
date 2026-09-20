@@ -1,8 +1,8 @@
 # Refactor administrativo: ficha integral y catastro por localidad
 
 Fecha: 2026-09-19
-Estado: en curso; catastro inicial y navegación de ficha integral implementados, formularios
-normalizados y valoración pendientes.
+Estado: en curso; catastro inicial, navegación integral y revisión por diferencias
+implementados, formularios normalizados y valoración pendientes.
 
 ## Avance de esta ejecución
 
@@ -42,6 +42,9 @@ normalizados y valoración pendientes.
   estos datos permanecen en el snapshot hasta implementar su adaptador normalizado.
 - Las facilidades del núcleo ya permiten cantidad y observación por opción seleccionada;
   dejan de guardar siempre la cantidad fija `1`.
+- La ficha ahora compara, por sección, la versión publicada con la propuesta y muestra
+  cambios agregados, modificados o retirados con valores de catálogo legibles, sin exponer
+  identificadores técnicos ni permitir mutaciones desde el comparador.
 
 ## Objetivo
 
@@ -483,12 +486,15 @@ página monolítica.
 
 ### Fase 5 — Revisión por diferencias
 
-- Mostrar publicado y propuesto por sección.
-- Resaltar altas, cambios y retiros.
-- Exigir inspección antes de aprobar/publicar.
-- Conservar observación de rechazo y retorno al borrador.
+- Mostrar publicado frente a propuesto por sección.
+- Distinguir agregado, modificado, retirado y sin cambio.
+- Mantener la revisión como lectura administrativa antes de aprobar o publicar.
 
-Salida: revisión auditable de la ficha completa.
+La comparación por secciones ya está disponible en el editor web; la aprobación y la
+publicación siguen usando las acciones protegidas existentes. Falta cubrir diferencias de
+los adaptadores normalizados cuando se implemente la publicación completa.
+
+Salida: revisión operativa con trazabilidad visual de la propuesta.
 
 ### Fase 6 — Catastro administrativo (CRUD y consulta inicial implementados)
 

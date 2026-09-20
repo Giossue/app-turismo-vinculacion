@@ -32,6 +32,9 @@ explícita.
   precipitación, distinguiendo valores ausentes de cero.
 - Las facilidades seleccionadas conservan cantidad y observación por opción, en lugar de
   imponer siempre una cantidad fija.
+- Durante la revisión, el editor compara la versión publicada con la propuesta por cada
+  sección y distingue altas, modificaciones y retiros con valores de catálogo legibles;
+  la comparación es de solo lectura.
 
 El snapshot se puede consultar en `GET /admin/centers/:code/sections` y actualizar por
 sección con `PATCH /admin/centers/:code/sections/:sectionCode`. Durante la transición, el
