@@ -8,7 +8,7 @@
 | Búsqueda | texto, territorio, clasificación, distancia, servicios y accesibilidad | núcleo |
 | Centros | ficha pública simplificada y detalle técnico autorizado | núcleo |
 | POI | consulta, cercanía, favoritos, opiniones y navegación | núcleo |
-| Catastro | alojamiento, alimentación, agencias y contacto | núcleo |
+| Catastro | alojamiento, alimentación, agencias, CRUD administrativo por localidad, contacto y fallback territorial | núcleo |
 | Rutas | origen manual/actual, cálculo, instrucciones y navegación | núcleo gradual |
 | Transporte | cooperativas, recorridos, paradas, horarios y precios referenciales | núcleo gradual |
 | Favoritos | centros/POI guardados y sincronización | núcleo |

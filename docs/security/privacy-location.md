@@ -35,3 +35,8 @@ consentimiento separado, retención, descarga/borrado y evaluación de impacto.
 
 La app distingue permiso denegado, ubicación del dispositivo apagada, señal insuficiente,
 precisión aproximada y dato antiguo. Nunca muestra una posición antigua como actual.
+
+La consulta de establecimientos puede usar la posición puntual solo para ordenar resultados
+durante la solicitud. La API no la guarda dentro del catastro ni la devuelve junto con datos
+fiscales; sin coordenadas se puede buscar por localidad y se informa la precisión territorial
+disponible.

@@ -28,4 +28,5 @@ servidores falsos; mantener pruebas de smoke separadas para staging.
 ## Datos
 
 Fixtures deterministas que incluyan coordenadas ecuatorianas válidas, zonas sin datos,
-acentos, textos largos, usuarios sin permisos y estados editoriales distintos.
+acentos, textos largos, usuarios sin permisos, estados editoriales distintos y localidades
+con/sin resultados de una misma actividad para verificar el fallback territorial.

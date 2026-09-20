@@ -37,13 +37,16 @@ contenidos, además de componentes reutilizables con tokens centralizados.
 - No mostrar nombres de tablas, IDs, JSON, rutas de objeto o proveedor salvo herramienta técnica autorizada.
 
 La primera superficie operativa implementada en `web-turismo-admin` incluye Resumen,
-Revisión, inventario, captura del núcleo de fichas y Configuración. El editor consulta
+Revisión, inventario, captura del núcleo de fichas, Catastro por localidad y Configuración. El editor consulta
 catálogos activos y captura además actividades, accesibilidad y facilidades. El panel consulta
 `/admin/summary`, `/admin/centers`, `/admin/catalogs` y `/admin/centers/:code`; las
 mutaciones de borrador, revisión, aprobación, publicación, desactivación y reactivación
 se realizan exclusivamente mediante la API. Los borradores se mantienen aislados de la
-versión pública hasta publicar y cada mutación genera auditoría. Las importaciones y
-multimedia se incorporarán en fases posteriores.
+versión pública hasta publicar y cada mutación genera auditoría. Catastro consulta el
+catálogo activo de localidades y mantiene sus establecimientos separados de las fichas de
+centros. La consulta pública de catastro aplica fallback por actividad a la localidad activa
+más cercana que tenga resultados y lo marca explícitamente. Las importaciones y auditoría
+específica de catastro se incorporarán en fases posteriores.
 La sección Catálogos permite administrar las opciones técnicas mediante la API y muestra
 estados activos/inactivos sin conexión directa a PostgreSQL.
 El editor también carga fotografías como multipart hacia `/admin/centers/:code/media`; la

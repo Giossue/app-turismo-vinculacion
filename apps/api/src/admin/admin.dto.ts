@@ -6,6 +6,7 @@ import {
   IsIn,
   IsInt,
   IsNumber,
+  IsObject,
   IsOptional,
   IsPositive,
   Matches,
@@ -25,6 +26,26 @@ export const REVIEWABLE_STATUSES = [
   "PUBLICADO",
   "INACTIVO",
 ] as const;
+
+export const ADMIN_CENTER_SECTION_CODES = [
+  "identificacion",
+  "ubicacion-admin",
+  "caracteristicas",
+  "accesibilidad",
+  "planta",
+  "conservacion",
+  "higiene-seguridad",
+  "politicas",
+  "actividades",
+  "promocion",
+  "visitantes",
+  "recurso-humano",
+  "descripcion",
+  "anexos",
+] as const;
+
+export type AdminCenterSectionCode =
+  (typeof ADMIN_CENTER_SECTION_CODES)[number];
 
 export class AdminCentersQueryDto {
   @IsOptional()
@@ -356,10 +377,29 @@ export class SaveAdminCenterDto {
   @Type(() => AdminFacilityDto)
   facilities?: AdminFacilityDto[];
 
+  /**
+   * Secciones adicionales del snapshot integral. Se guardan en el borrador JSONB
+   * hasta que cada sección tenga su adaptador normalizado de publicación.
+   */
+  @IsOptional()
+  @IsObject()
+  sections?: Record<string, unknown>;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  version?: number;
+}
+
+export class SaveAdminSectionDto {
+  @IsObject()
+  content!: Record<string, unknown>;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
   version?: number;
 }
 

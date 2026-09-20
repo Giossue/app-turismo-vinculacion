@@ -7,6 +7,9 @@
 - Validar toda frontera: HTTP, archivo, job, webhook, proveedor y configuración.
 - Usar consultas parametrizadas y allowlists para filtros/orden.
 - Separar contenido publicado, pendiente y privado.
+- El catastro administrativo exige `ADMINISTRADOR`; su consulta pública solo devuelve
+  establecimientos activos y omite RUC, razón social, número de registro e identificadores
+  internos.
 - IA y archivos son entradas no confiables.
 - Credenciales de producción con privilegio mínimo y rotación.
 - Respaldos cifrados, acceso auditado y restauración probada.

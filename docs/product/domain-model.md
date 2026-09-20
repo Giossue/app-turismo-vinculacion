@@ -19,6 +19,11 @@ opiniones, y participar en itinerarios.
 Registro de catastro como alojamiento, alimentación u operadora. No equivale a un centro
 turístico y no implica reservas.
 
+Pertenece a una `localidad` (ciudad o poblado). La consulta pública puede resolver una
+localidad efectiva distinta de la solicitada cuando no existe un registro activo para la
+actividad buscada; esa resolución no modifica la pertenencia del establecimiento ni la
+ficha del centro.
+
 ### Ficha y revisión
 
 Un administrador prepara cambios en `borradores_centros_turisticos`. Una revisión conserva

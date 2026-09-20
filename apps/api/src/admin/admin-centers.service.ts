@@ -16,11 +16,14 @@ import type {
   AdminCentersQueryDto,
   AdminCatalogsQueryDto,
   AdminCatalogUpdateDto,
+  AdminCenterSectionCode,
   AdminClimateDto,
   AdminFacilityDto,
   ReviewCenterDto,
+  SaveAdminSectionDto,
   SaveAdminCenterDto,
 } from "./admin.dto";
+import { ADMIN_CENTER_SECTION_CODES } from "./admin.dto";
 import { MediaService } from "../files/media.service";
 
 type JsonRecord = Record<string, unknown>;
@@ -56,6 +59,7 @@ type CenterDraft = {
   activities?: AdminActivityDto[];
   accessibility?: AdminAccessibilityDto[];
   facilities?: AdminFacilityDto[];
+  sections?: Record<string, unknown>;
 };
 
 interface CenterRow extends JsonRecord {
@@ -280,6 +284,7 @@ export class AdminCentersService {
       provinces,
       cantons,
       parishes,
+      localities,
       zones,
       lines,
       scenarios,
@@ -315,6 +320,15 @@ export class AdminCentersService {
       ),
       this.dataSource.query(
         `SELECT id, codigo_pqa AS code, nombre AS name, canton_id AS "cantonId" FROM parroquias WHERE activo AND ($1::text IS NULL OR nombre ILIKE $1) ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT l.id, l.nombre AS name, l.tipo_localidad AS "localityType",
+                l.canton_id AS "cantonId", co.provincia_id AS "provinceId"
+           FROM localidades l
+           JOIN cantones co ON co.id = l.canton_id
+          WHERE l.activo AND ($1::text IS NULL OR l.nombre ILIKE $1)
+          ORDER BY l.nombre`,
         [like],
       ),
       this.dataSource.query(
@@ -380,6 +394,7 @@ export class AdminCentersService {
       provinces,
       cantons,
       parishes,
+      localities,
       zones,
       lines,
       scenarios,
@@ -524,7 +539,10 @@ export class AdminCentersService {
       const base =
         currentDraft && currentDraft.stateCode !== "PUBLICADO"
           ? currentDraft.data
-          : this.centerToDraft(center);
+          : {
+              ...this.centerToDraft(center),
+              sections: currentDraft?.data.sections,
+            };
       const draftState = currentDraft?.stateCode ?? center.statusCode;
       if (
         !EDITABLE_DRAFT_STATES.has(draftState) &&
@@ -736,6 +754,97 @@ export class AdminCentersService {
       [code],
     );
     return { items: rows };
+  }
+
+  async sections(code: string) {
+    return this.dataSource.transaction(async (manager) => {
+      const rows = (await manager.query(
+        this.centerSelect() + " WHERE TRIM(c.codigo_atractivo) = TRIM($1)",
+        [code],
+      )) as CenterRow[];
+      const center = rows[0];
+      if (!center)
+        throw new NotFoundException("No se encontró la ficha turística.");
+      const draft = await this.getDraft(manager, center.id);
+      return {
+        code: center.code ?? code,
+        version: draft?.version ?? 0,
+        sections: draft?.data.sections ?? {},
+      };
+    });
+  }
+
+  async saveSection(
+    code: string,
+    sectionCode: AdminCenterSectionCode,
+    actorId: number,
+    input: SaveAdminSectionDto,
+  ) {
+    if (!ADMIN_CENTER_SECTION_CODES.includes(sectionCode)) {
+      throw new ConflictException("La sección de ficha no está disponible.");
+    }
+    const serialized = JSON.stringify(input.content);
+    if (serialized.length > 300_000) {
+      throw new ConflictException("La sección supera el tamaño permitido.");
+    }
+    return this.dataSource.transaction(async (manager) => {
+      const center = await this.lockCenter(manager, code);
+      const currentDraft = await this.getDraft(manager, center.id);
+      const base =
+        currentDraft && currentDraft.stateCode !== "PUBLICADO"
+          ? currentDraft.data
+          : {
+              ...this.centerToDraft(center),
+              sections: currentDraft?.data.sections,
+            };
+      const draftState = currentDraft?.stateCode ?? center.statusCode;
+      if (
+        !EDITABLE_DRAFT_STATES.has(draftState) &&
+        draftState !== "PUBLICADO"
+      ) {
+        throw new ConflictException(
+          "La ficha no se puede editar mientras está en revisión o aprobada.",
+        );
+      }
+      if (
+        input.version !== undefined &&
+        currentDraft &&
+        input.version !== currentDraft.version
+      ) {
+        throw new ConflictException(
+          "La ficha cambió mientras la editabas. Recarga antes de guardar.",
+        );
+      }
+      const next: CenterDraft = {
+        ...base,
+        sections: {
+          ...(base.sections ?? {}),
+          [sectionCode]: input.content,
+        },
+      };
+      this.validateSectionMap(next.sections);
+      await this.validateReferences(manager, next);
+      const state = await this.stateId(manager, "BORRADOR");
+      const nextVersion = (currentDraft?.version ?? 0) + 1;
+      await this.upsertDraft(
+        manager,
+        center.id,
+        state.id,
+        nextVersion,
+        next,
+        actorId,
+      );
+      await this.audit(
+        manager,
+        center.id,
+        actorId,
+        "MODIFICAR",
+        base,
+        next,
+        sectionCode,
+      );
+      return this.findById(manager, center.id);
+    });
   }
 
   private async findByCode(manager: EntityManager, code: string) {
@@ -1136,6 +1245,7 @@ export class AdminCentersService {
   }
 
   private async validateReferences(manager: EntityManager, draft: CenterDraft) {
+    this.validateSectionMap(draft.sections);
     const references: Array<[string, number, string]> = [
       ["subtipos_atractivo", draft.subtypeId, "subtipo"],
       ["zonas_turisticas", draft.touristZoneId, "zona turística"],
@@ -1176,6 +1286,26 @@ export class AdminCentersService {
       );
     }
     await this.validateTechnicalSections(manager, draft);
+  }
+
+  private validateSectionMap(sections: Record<string, unknown> | undefined) {
+    if (!sections) return;
+    const invalid = Object.keys(sections).filter(
+      (key) =>
+        !ADMIN_CENTER_SECTION_CODES.includes(
+          key as (typeof ADMIN_CENTER_SECTION_CODES)[number],
+        ),
+    );
+    if (invalid.length > 0) {
+      throw new ConflictException(
+        `La sección de ficha no está disponible: ${invalid[0]}.`,
+      );
+    }
+    if (JSON.stringify(sections).length > 300_000) {
+      throw new ConflictException(
+        "El snapshot de secciones supera el tamaño permitido.",
+      );
+    }
   }
 
   private async validateTechnicalSections(
@@ -1320,14 +1450,17 @@ export class AdminCentersService {
     action: string,
     previous: unknown,
     next: unknown,
+    sectionCode?: string,
   ) {
     await manager.query(
-      `INSERT INTO auditoria_fichas (centro_turistico_id, usuario_id, accion, datos_anteriores, datos_nuevos)
-       VALUES ($1,$2,$3,$4::jsonb,$5::jsonb)`,
+      `INSERT INTO auditoria_fichas
+        (centro_turistico_id, usuario_id, accion, seccion_codigo, datos_anteriores, datos_nuevos)
+       VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb)`,
       [
         centerId,
         actorId,
         action,
+        sectionCode ?? null,
         previous ? JSON.stringify(previous) : null,
         next ? JSON.stringify(next) : null,
       ],

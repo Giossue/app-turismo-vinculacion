@@ -11,6 +11,7 @@ import { AuthModule } from "./auth/auth.module";
 import { AdminModule } from "./admin/admin.module";
 import { FilesModule } from "./files/files.module";
 import { RoutingModule } from "./routing/routing.module";
+import { EstablishmentsModule } from "./establishments/establishments.module";
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { RoutingModule } from "./routing/routing.module";
     AdminModule,
     FilesModule,
     RoutingModule,
+    EstablishmentsModule,
   ],
 })
 export class AppModule {}

@@ -17,6 +17,14 @@ explícita.
 - Multimedia institucional con descripción y fuente/autor. El panel valida fotos JPEG/PNG/WebP,
   video MP4/WebM y audio MP3/M4A/WAV/OGG, aplica límites de tamaño y mantiene los archivos
   pendientes hasta la publicación.
+- El editor presenta provincia → cantón → parroquia y categoría → tipo → subtipo en cascada;
+  el contrato administrativo ya dispone de catorce claves de sección para ampliar el
+  snapshot sin crear centros derivados.
+
+El snapshot se puede consultar en `GET /admin/centers/:code/sections` y actualizar por
+sección con `PATCH /admin/centers/:code/sections/:sectionCode`. Durante la transición, el
+contenido aún no normalizado permanece en el borrador JSONB y no se considera publicado hasta
+que exista su adaptador transaccional.
 
 El administrador puede renombrar y activar/desactivar opciones de los catálogos técnicos;
 cada cambio queda auditado. El panel acepta fotos, video y audio; documentos, importaciones y

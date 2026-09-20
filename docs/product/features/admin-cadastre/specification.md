@@ -1,0 +1,58 @@
+# Catastro administrativo por localidad
+
+## Propósito
+
+Permitir que un administrador mantenga establecimientos turísticos individuales
+(alojamiento, alimentación, agencias, operadoras y otras actividades) sin confundirlos con
+la ficha técnica de un centro turístico.
+
+## Alcance implementado
+
+- Listado administrativo paginado mediante la API, con búsqueda por texto, filtros
+  territoriales en cascada (provincia, cantón y localidad) y estado activo.
+- Alta, edición y activación/desactivación lógica utilizando únicamente las columnas ya
+  existentes en `establecimientos_turisticos`.
+- Catálogo activo de `localidades` para seleccionar la ciudad o poblado de referencia.
+- Consulta pública por actividad y localidad/posición, con orden por distancia cuando existe
+  ubicación.
+- Fallback por actividad a la localidad activa más cercana con resultados; la respuesta
+  informa localidad solicitada, localidad efectiva y si el fallback fue aplicado.
+- La respuesta pública no expone `id`, RUC, razón social ni número de registro.
+
+## Reglas
+
+1. Un establecimiento pertenece a una `localidad`; no se convierte en centro turístico ni
+   se copia dentro de la ficha.
+2. `localidad_id` es obligatorio al crear. Latitud y longitud son opcionales, pero deben
+   enviarse juntas y se validan dentro de los rangos geográficos.
+3. El número de registro es único cuando se informa y el RUC, si se informa, debe contener
+   13 dígitos.
+4. Desactivar es lógico: el registro se conserva para operación e historia.
+5. El fallback se calcula para la actividad solicitada y prioriza localidades de tipo
+   `CIUDAD`. Una localidad con otra actividad no es una alternativa válida.
+6. El catastro público solo incluye establecimientos activos. La disponibilidad no implica
+   reserva ni garantiza que el establecimiento esté abierto en tiempo real.
+
+## Contrato REST
+
+```text
+GET   /api/v1/admin/establishments
+GET   /api/v1/admin/establishments/:id
+POST  /api/v1/admin/establishments
+PATCH /api/v1/admin/establishments/:id
+POST  /api/v1/admin/establishments/:id/deactivate
+POST  /api/v1/admin/establishments/:id/reactivate
+GET   /api/v1/establishments/nearby
+```
+
+Las rutas administrativas requieren `ADMINISTRADOR`. La consulta pública devuelve `items`,
+`requestedLocalityName`, `effectiveLocality` y `fallbackApplied`.
+
+## Pendientes explícitos
+
+- La importación Excel/CSV se implementará con el módulo persistente de importaciones.
+- El esquema desplegado no tiene una tabla de auditoría específica para establecimientos;
+  no se crea una migración en esta fase porque el alcance congela el modelo de datos. Antes
+  de declarar completa la auditoría de catastro se debe aprobar una extensión de esquema.
+- Las taxonomías de actividad, clasificación y categoría seguirán siendo texto hasta que
+  producto apruebe catálogos/fuentes canónicas compatibles con los datos ecuatorianos.

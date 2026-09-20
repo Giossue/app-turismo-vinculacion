@@ -17,7 +17,9 @@ import {
   AdminCentersQueryDto,
   AdminCatalogsQueryDto,
   AdminCatalogUpdateDto,
+  ADMIN_CENTER_SECTION_CODES,
   ReviewCenterDto,
+  SaveAdminSectionDto,
   SaveAdminCenterDto,
 } from "./admin.dto";
 import { CurrentUser, Roles } from "../auth/auth.decorators";
@@ -56,6 +58,37 @@ export class AdminController {
   @Roles("ADMINISTRADOR")
   async find(@Param("code") code: string) {
     return { data: await this.centers.find(code) };
+  }
+
+  @Get("centers/:code/sections")
+  @Roles("ADMINISTRADOR")
+  async sections(@Param("code") code: string) {
+    return { data: await this.centers.sections(code) };
+  }
+
+  @Patch("centers/:code/sections/:sectionCode")
+  @Roles("ADMINISTRADOR")
+  async saveSection(
+    @Param("code") code: string,
+    @Param("sectionCode") sectionCode: string,
+    @Body() body: SaveAdminSectionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    if (
+      !ADMIN_CENTER_SECTION_CODES.includes(
+        sectionCode as (typeof ADMIN_CENTER_SECTION_CODES)[number],
+      )
+    ) {
+      throw new BadRequestException("La sección de ficha no está disponible.");
+    }
+    return {
+      data: await this.centers.saveSection(
+        code,
+        sectionCode as (typeof ADMIN_CENTER_SECTION_CODES)[number],
+        user.id,
+        body,
+      ),
+    };
   }
 
   @Patch("catalogs/:catalog/:id")
