@@ -6,16 +6,18 @@ import type { CalculatedRoute, RouteCoordinate } from "../domain/routing";
 type RouteMapProps = Readonly<{
   currentLocation?: RouteCoordinate | null;
   destination: RouteCoordinate;
+  fullScreen?: boolean;
   origin: RouteCoordinate | null;
   route: CalculatedRoute | null;
 }>;
 
-export function RouteMap(_props: RouteMapProps) {
+export function RouteMap({ fullScreen = false }: RouteMapProps) {
   const colors = useTurismoPalette();
   return (
     <View
       style={[
         styles.container,
+        fullScreen && styles.fullScreenContainer,
         { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
       ]}
     >
@@ -34,6 +36,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minHeight: 180,
     padding: 20,
+  },
+  fullScreenContainer: {
+    borderRadius: 0,
+    flex: 1,
+    minHeight: 0,
   },
   text: { textAlign: "center" },
 });

@@ -65,16 +65,31 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 - La primera versión online calcula auto, bicicleta y caminata con OSRM sin tráfico en
   tiempo real. El modo bus usa rutas institucionales publicadas en PostgreSQL, no un perfil
   OSRM genérico.
-- La navegación activa se inicia explícitamente desde una ruta calculada y sigue la posición
-  solo en primer plano con `Location.watchPositionAsync`; al detenerla o llegar al destino
-  se elimina el watcher y se detiene la voz.
+- La navegación activa se inicia explícitamente desde una ruta calculada. En primer plano
+  usa `Location.watchPositionAsync` para actualizar el mapa de inmediato y, mientras existe
+  una sesión activa, `expo-location` mantiene una tarea de ubicación en segundo plano con
+  el servicio foreground de Android. La tarea conserva únicamente la última posición en
+  almacenamiento local; al volver a la app se restaura y se reevalúan indicaciones y
+  desvíos. El permiso de segundo plano se solicita solo al iniciar la navegación.
+- Al detenerla, llegar al destino o cancelar, se eliminan el watcher, la tarea del sistema,
+  la sesión persistida y la voz. No se guarda un historial de coordenadas ni se reinicia
+  automáticamente una navegación después de forzar el cierre de la app.
+- En móvil, la pantalla de ruta usa MapLibre a pantalla completa: la geometría y los
+  extremos se dibujan como capas sobre el mapa y el tiempo, modo e indicaciones viven en
+  un `BottomSheet` nativo desplazable, con las indicaciones visibles sin un botón
+  intermedio; no se monta un minimapa dentro del contenido. Durante la navegación activa
+  se oculta el selector de modo porque el modo ya fue confirmado.
+- Al abrir “Cómo llegar” desde un atractivo publicado, el cliente solicita la ubicación
+  puntual y calcula automáticamente la primera ruta; iniciar la navegación sigue siendo
+  una acción explícita. Si la ubicación o el cálculo fallan, el panel permite reintentar.
 - Las instrucciones se leen en español con `expo-speech`. Si la posición queda a más de
   60 m del trazado, la API recalcula usando la ubicación actual como nuevo origen; no se
   guarda un historial de coordenadas.
 - Advertir que horarios/precios de transporte registrado son informativos.
 - No prometer rutas accesibles sin datos verificables.
-- Segundo plano únicamente durante una sesión activa.
-- La navegación debe tolerar pérdida de señal y ubicación antigua.
+- Segundo plano únicamente durante una sesión activa y con consentimiento específico.
+- La navegación debe tolerar pérdida de señal y ubicación antigua; una posición guardada
+  se usa como último estado conocido, no como una ubicación actual garantizada.
 
 ## Rendimiento del mapa
 

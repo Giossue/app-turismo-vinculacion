@@ -16,6 +16,7 @@ import {
   IconButton as PaperIconButton,
   Surface as PaperSurface,
 } from "react-native-paper";
+import { G, Polygon, Svg } from "react-native-svg";
 
 import { TurismoIcon, type TurismoIconName } from "./turismo-icons";
 import {
@@ -184,65 +185,20 @@ export function TourismCompassAction({
         style,
       ]}
     >
-      <View
+      <Svg
+        height={42}
         pointerEvents="none"
-        style={[
-          styles.compassFace,
-          { transform: [{ rotate: `${-bearing}deg` }] },
-        ]}
+        style={styles.compassGraphic}
+        viewBox="0 0 24 24"
+        width={42}
       >
-        <Text
-          style={[
-            styles.compassCardinal,
-            styles.compassNorth,
-            { color: colors.primary },
-          ]}
-        >
-          N
-        </Text>
-        <Text
-          style={[
-            styles.compassCardinal,
-            styles.compassEast,
-            { color: colors.textMuted },
-          ]}
-        >
-          E
-        </Text>
-        <Text
-          style={[
-            styles.compassCardinal,
-            styles.compassSouth,
-            { color: colors.textMuted },
-          ]}
-        >
-          S
-        </Text>
-        <Text
-          style={[
-            styles.compassCardinal,
-            styles.compassWest,
-            { color: colors.textMuted },
-          ]}
-        >
-          O
-        </Text>
-        <View
-          style={[
-            styles.compassNeedleNorth,
-            { borderBottomColor: colors.primary },
-          ]}
-        />
-        <View
-          style={[
-            styles.compassNeedleSouth,
-            { borderTopColor: colors.textFaint },
-          ]}
-        />
-        <View
-          style={[styles.compassCenter, { backgroundColor: colors.text }]}
-        />
-      </View>
+        <G rotation={-bearing} origin="12, 12">
+          <Polygon fill="#EF4444" points="12,4 15,12 12,10" />
+          <Polygon fill="#DC2626" opacity={0.9} points="12,4 9,12 12,10" />
+          <Polygon fill={colors.text} points="12,20 15,12 12,10" />
+          <Polygon fill={colors.text} opacity={0.7} points="12,20 9,12 12,10" />
+        </G>
+      </Svg>
     </Pressable>
   );
 }
@@ -439,54 +395,7 @@ const styles = StyleSheet.create({
     margin: 0,
     width: turismoMetrics.controlLg,
   },
-  compassFace: {
-    height: 42,
-    position: "relative",
-    width: 42,
-  },
-  compassCardinal: {
-    ...turismoTypography.caption,
-    fontWeight: "700",
-    position: "absolute",
-    textAlign: "center",
-    width: 14,
-  },
-  compassNorth: { left: 14, top: 0 },
-  compassEast: { right: 0, top: 13 },
-  compassSouth: { bottom: 0, left: 14 },
-  compassWest: { left: 0, top: 13 },
-  compassNeedleNorth: {
-    borderBottomWidth: 10,
-    borderLeftColor: "transparent",
-    borderLeftWidth: 4,
-    borderRightColor: "transparent",
-    borderRightWidth: 4,
-    height: 0,
-    left: 17,
-    position: "absolute",
-    top: 12,
-    width: 0,
-  },
-  compassNeedleSouth: {
-    borderLeftColor: "transparent",
-    borderLeftWidth: 4,
-    borderRightColor: "transparent",
-    borderRightWidth: 4,
-    borderTopWidth: 10,
-    bottom: 12,
-    height: 0,
-    left: 17,
-    position: "absolute",
-    width: 0,
-  },
-  compassCenter: {
-    borderRadius: turismoRadii.pill,
-    height: 5,
-    left: 19,
-    position: "absolute",
-    top: 19,
-    width: 5,
-  },
+  compassGraphic: { height: 42, width: 42 },
   chip: {
     borderRadius: turismoRadii.pill,
     borderWidth: turismoMetrics.borderWidth,

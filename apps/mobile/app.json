@@ -42,6 +42,10 @@
       [
         "expo-location",
         {
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
+          "isIosBackgroundLocationEnabled": true,
+          "locationAlwaysAndWhenInUsePermission": "Permitir que Turismo Vinculación use tu ubicación durante una navegación activa, incluso al cambiar de aplicación.",
           "locationWhenInUsePermission": "Permitir que Turismo Vinculación use tu ubicación para mostrar tu posición en el mapa y calcular rutas."
         }
       ],

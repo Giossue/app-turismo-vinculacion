@@ -196,11 +196,20 @@ export default function HomeScreen() {
   }, []);
 
   const openRoute = () => {
+    if (!selectedCenter) return;
+
     // La ficha es un overlay transitorio del mapa: debe desaparecer antes de
     // cambiar de pantalla para no quedar montada sobre la ruta.
     sheetRef.current?.dismiss();
     setSelectedCenterCode(null);
-    router.push("/route" as never);
+    router.push({
+      pathname: "/route",
+      params: {
+        destinationLatitude: String(selectedCenter.latitude),
+        destinationLongitude: String(selectedCenter.longitude),
+        destinationName: selectedCenter.name,
+      },
+    } as never);
   };
 
   const handleLocateUser = useCallback(async () => {

@@ -267,6 +267,9 @@ export function CenterMap({
         onDidFailLoadingMap={() => setMapLoadState("error")}
         onDidFinishLoadingMap={() => setMapLoadState("ready")}
         onDidFinishLoadingStyle={() => setMapLoadState("ready")}
+        onRegionIsChanging={(event) => {
+          onBearingChange?.(event.nativeEvent.bearing);
+        }}
         onRegionDidChange={(event) => {
           const { bounds, center, userInteraction, zoom } = event.nativeEvent;
           onBearingChange?.(event.nativeEvent.bearing);

@@ -1,24 +1,24 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  ScrollView,
+  Alert,
+  Platform,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams } from "expo-router";
+import ExpoBottomSheet, {
+  BottomSheetScrollView,
+} from "@expo/ui/community/bottom-sheet";
 
-import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 import { useUserLocation } from "@/core/location/use-user-location";
 import {
   TourismActionButton,
-  TourismBadge,
   TourismChoiceChip,
   TourismSurface,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
-import { TourismMenuDrawer } from "@/core/ui/tourism-navigation";
-import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import { TurismoIcon, type TurismoIconName } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
@@ -32,6 +32,10 @@ import {
   useNavigationSession,
   type NavigationSessionStatus,
 } from "@/features/routing/application/use-navigation-session";
+import {
+  hasNavigationBackgroundPermission,
+  requestNavigationBackgroundPermission,
+} from "@/features/routing/infrastructure/navigation-background-task";
 import type {
   RouteCoordinate,
   RouteMode,
@@ -56,16 +60,15 @@ const modeOptions: readonly Readonly<{
 ];
 
 export default function RouteScreen() {
-  const router = useRouter();
   const colors = useTurismoPalette();
   const params = useLocalSearchParams<RouteParams>();
-  const [menuVisible, setMenuVisible] = useState(false);
   const [mode, setMode] = useState<RouteMode>("car");
   const [origin, setOrigin] = useState<RouteCoordinate | null>(null);
   const [routeRequested, setRouteRequested] = useState(false);
   const [navigationActive, setNavigationActive] = useState(false);
   const [navigationNotice, setNavigationNotice] = useState<string | null>(null);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const routeSheetRef = useRef<ExpoBottomSheet>(null);
   const {
     message: locationMessage,
     requestLocation,
@@ -77,14 +80,12 @@ export default function RouteScreen() {
       parseDestination(params.destinationLatitude, params.destinationLongitude),
     [params.destinationLatitude, params.destinationLongitude],
   );
-  const destinationName =
-    firstParam(params.destinationName) ?? "Destino seleccionado";
   const request = useMemo<RouteRequest | null>(() => {
     if (!routeRequested || !origin || !destination) return null;
     return { destination, mode, origin };
   }, [destination, mode, origin, routeRequested]);
   const routeQuery = useCalculatedRoute(request);
-  const isCalculating = routeQuery.isPending || routeQuery.isFetching;
+  const isCalculating = request !== null && routeQuery.isFetching;
 
   const handleArrive = useCallback(() => {
     setNavigationActive(false);
@@ -100,19 +101,28 @@ export default function RouteScreen() {
     active: navigationActive,
     destination,
     isRecalculating: isCalculating,
+    mode,
     onArrive: handleArrive,
     onReroute: handleReroute,
+    origin,
     route: routeQuery.data ?? null,
     voiceEnabled,
   });
 
-  const handleBeforeBack = useCallback(() => {
-    if (!menuVisible) return false;
-    setMenuVisible(false);
-    return true;
-  }, [menuVisible]);
+  useEffect(() => {
+    if (!destination || origin || routeRequested || navigationActive) return;
 
-  useScreenBackHandler(handleBeforeBack);
+    let cancelled = false;
+    void requestLocation().then((coordinate) => {
+      if (cancelled || !coordinate) return;
+      setOrigin(coordinate);
+      setRouteRequested(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [destination, navigationActive, origin, requestLocation, routeRequested]);
 
   const handleCalculateRoute = useCallback(async () => {
     if (!destination || isCalculating || navigationActive) return;
@@ -143,6 +153,23 @@ export default function RouteScreen() {
 
     const coordinate = await requestLocation();
     if (!coordinate) return;
+
+    if (Platform.OS !== "web" && !(await hasNavigationBackgroundPermission())) {
+      const confirmed = await confirmBackgroundNavigation();
+      if (!confirmed) return;
+
+      const backgroundPermission =
+        await requestNavigationBackgroundPermission();
+      if (!backgroundPermission.granted) {
+        setNavigationNotice(
+          backgroundPermission.canAskAgain
+            ? "Necesitamos permiso de ubicación en segundo plano para continuar si cambias de aplicación."
+            : "Activa el permiso de ubicación en segundo plano desde Ajustes para iniciar la navegación.",
+        );
+        return;
+      }
+    }
+
     setNavigationNotice(null);
     setOrigin(coordinate);
     setNavigationActive(true);
@@ -165,291 +192,270 @@ export default function RouteScreen() {
     routeQuery.error instanceof Error ? routeQuery.error.message : null;
 
   return (
-    <TourismScreenFrame
-      onBack={() => router.back()}
-      onMenu={() => setMenuVisible(true)}
-      subtitle="NAVEGACIÓN"
-      title="Cómo llegar"
-    >
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <TourismSurface style={styles.routeSummary}>
-          <View
-            style={[styles.routeIcon, { backgroundColor: colors.primarySoft }]}
-          >
-            <TurismoIcon
-              color={colors.primaryStrong}
-              name="mapPinned"
-              size={turismoIconSizes.lg}
-            />
-          </View>
-          <View style={styles.routeCopy}>
-            <Text style={[styles.routeTitle, { color: colors.text }]}>
-              {destinationName}
-            </Text>
-            <Text style={[styles.routeMeta, { color: colors.textMuted }]}>
-              {destination
-                ? `Desde tu ubicación · ${modeLabel.toLowerCase()}`
-                : "Abre Cómo llegar desde un atractivo publicado"}
-            </Text>
-          </View>
-          <TourismBadge>{modeLabel}</TourismBadge>
-        </TourismSurface>
-
-        <TourismSurface style={styles.modeCard}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Modo de transporte
-          </Text>
-          <View style={styles.modeOptions}>
-            {modeOptions.map((option) => (
-              <View key={option.mode} style={styles.modeOption}>
-                <TurismoIcon
-                  color={
-                    mode === option.mode
-                      ? colors.primaryStrong
-                      : colors.textMuted
-                  }
-                  name={option.icon}
-                  size={turismoIconSizes.md}
-                />
-                <TourismChoiceChip
-                  disabled={navigationActive}
-                  label={option.label}
-                  onPress={() => setMode(option.mode)}
-                  selected={mode === option.mode}
-                />
-              </View>
-            ))}
-          </View>
-        </TourismSurface>
-
-        {destination && origin ? (
-          <RouteMap
-            currentLocation={navigationSession.currentLocation}
-            destination={destination}
-            origin={origin}
-            route={routeQuery.data ?? null}
-          />
-        ) : null}
-
-        <TourismActionButton
-          disabled={!destination || isCalculating || navigationActive}
-          icon={isCalculating || navigationActive ? undefined : "navigation"}
-          label={
-            navigationActive
-              ? "Navegación activa"
-              : isCalculating
-                ? "Calculando ruta…"
-                : routeQuery.data
-                  ? "Recalcular ruta"
-                  : "Calcular ruta"
-          }
-          onPress={() => void handleCalculateRoute()}
+    <View style={[styles.screen, { backgroundColor: colors.mapBackground }]}>
+      <Stack.Screen options={{ headerShown: false }} />
+      {destination ? (
+        <RouteMap
+          currentLocation={navigationSession.currentLocation}
+          destination={destination}
+          fullScreen
+          origin={origin}
+          route={routeQuery.data ?? null}
         />
-
-        {routeQuery.data && !navigationActive && !isCalculating ? (
-          <TourismActionButton
-            icon="navigation"
-            label="Iniciar navegación"
-            onPress={() => void handleStartNavigation()}
-          />
-        ) : null}
-
-        {navigationActive ? (
-          <TourismSurface style={styles.navigationCard}>
-            <View style={styles.navigationHeader}>
-              <View
-                style={[
-                  styles.navigationIcon,
-                  { backgroundColor: colors.primarySoft },
-                ]}
-              >
-                <TurismoIcon
-                  color={colors.primaryStrong}
-                  name="navigation"
-                  size={turismoIconSizes.md}
-                />
-              </View>
-              <View style={styles.navigationCopy}>
+      ) : (
+        <View
+          style={[
+            styles.mapPlaceholder,
+            { backgroundColor: colors.background },
+          ]}
+        />
+      )}
+      {destination ? (
+        <ExpoBottomSheet
+          backgroundStyle={{ backgroundColor: colors.surface }}
+          enablePanDownToClose={false}
+          index={0}
+          ref={routeSheetRef}
+          snapPoints={navigationActive ? ["24%", "54%"] : ["38%", "84%"]}
+        >
+          <BottomSheetScrollView
+            contentContainerStyle={styles.panelContent}
+            key={navigationActive ? "navigation-active" : "route-preview"}
+            showsVerticalScrollIndicator={false}
+          >
+            {!navigationActive ? (
+              <TourismSurface style={styles.modeCard}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  {isCalculating
-                    ? "Recalculando ruta"
-                    : navigationStatusLabel(navigationSession.status)}
+                  Modo de transporte
                 </Text>
-                <Text
-                  style={[styles.navigationInstruction, { color: colors.text }]}
-                >
-                  {navigationSession.nextInstruction?.instruction ??
-                    navigationSession.message ??
-                    "Siguiendo tu ubicación…"}
-                </Text>
-                {navigationSession.nextInstruction ? (
-                  <Text
-                    style={[styles.stepDistance, { color: colors.textFaint }]}
-                  >
-                    En{" "}
-                    {formatDistance(
-                      navigationSession.nextInstruction.distanceMeters,
-                    )}
-                  </Text>
-                ) : null}
-              </View>
-              {isCalculating || navigationSession.status === "starting" ? (
-                <ActivityIndicator color={colors.primary} />
-              ) : null}
-            </View>
-            <View style={styles.navigationActions}>
-              <TourismActionButton
-                compact
-                label={voiceEnabled ? "Silenciar voz" : "Activar voz"}
-                mode="outlined"
-                onPress={() => setVoiceEnabled((current) => !current)}
-                style={styles.navigationAction}
-              />
-              <TourismActionButton
-                compact
-                icon="close"
-                label="Detener"
-                mode="outlined"
-                onPress={handleStopNavigation}
-                style={styles.navigationAction}
-              />
-            </View>
-          </TourismSurface>
-        ) : null}
-
-        {isCalculating ? (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator color={colors.primary} />
-            <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-              {navigationActive
-                ? "Recalculando tu ruta…"
-                : "Buscando una ruta sin tráfico en tiempo real…"}
-            </Text>
-          </View>
-        ) : null}
-
-        {navigationNotice || locationMessage || routeError ? (
-          <TourismSurface style={styles.noticeCard}>
-            <TurismoIcon
-              color={colors.danger}
-              name="circleHelp"
-              size={turismoIconSizes.md}
-            />
-            <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-              {navigationNotice ?? routeError ?? locationMessage}
-            </Text>
-          </TourismSurface>
-        ) : null}
-
-        {routeQuery.data ? (
-          <>
-            <View style={styles.metrics}>
-              <Metric
-                label="Tiempo estimado"
-                value={formatDuration(routeQuery.data.durationSeconds)}
-              />
-              <Metric
-                label="Distancia"
-                value={formatDistance(routeQuery.data.distanceMeters)}
-              />
-              <Metric label="Modo" value={modeLabel} />
-            </View>
-            <TourismSurface style={styles.stepsCard}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Indicaciones
-              </Text>
-              {routeQuery.data.steps.length ? (
-                routeQuery.data.steps.map((step, index) => (
-                  <View
-                    key={`${step.instruction}-${index}`}
-                    style={styles.stepRow}
-                  >
-                    <View
-                      style={[
-                        styles.stepIcon,
-                        { backgroundColor: colors.primarySoft },
-                      ]}
-                    >
+                <View style={styles.modeOptions}>
+                  {modeOptions.map((option) => (
+                    <View key={option.mode} style={styles.modeOption}>
                       <TurismoIcon
-                        color={colors.primaryStrong}
-                        name={index === 0 ? "locate" : "navigation"}
-                        size={turismoIconSizes.sm}
+                        color={
+                          mode === option.mode
+                            ? colors.primaryStrong
+                            : colors.textMuted
+                        }
+                        name={option.icon}
+                        size={turismoIconSizes.md}
+                      />
+                      <TourismChoiceChip
+                        label={option.label}
+                        onPress={() => setMode(option.mode)}
+                        selected={mode === option.mode}
                       />
                     </View>
-                    <View style={styles.stepCopy}>
-                      <Text
-                        style={[styles.stepInstruction, { color: colors.text }]}
-                      >
-                        {step.instruction}
-                      </Text>
+                  ))}
+                </View>
+              </TourismSurface>
+            ) : null}
+
+            {destination && !routeQuery.data ? (
+              <TourismActionButton
+                disabled={
+                  isCalculating ||
+                  navigationActive ||
+                  locationStatus === "requesting"
+                }
+                icon={
+                  isCalculating ||
+                  navigationActive ||
+                  locationStatus === "requesting"
+                    ? undefined
+                    : "navigation"
+                }
+                label={
+                  isCalculating
+                    ? "Calculando ruta…"
+                    : locationStatus === "requesting"
+                      ? "Obteniendo ubicación…"
+                      : routeQuery.isError
+                        ? "Reintentar ruta"
+                        : "Calcular ruta"
+                }
+                onPress={() => void handleCalculateRoute()}
+              />
+            ) : null}
+
+            {routeQuery.data && !navigationActive && !isCalculating ? (
+              <TourismActionButton
+                icon="navigation"
+                label="Iniciar navegación"
+                onPress={() => void handleStartNavigation()}
+              />
+            ) : null}
+
+            {navigationActive ? (
+              <TourismSurface style={styles.navigationCard}>
+                <View style={styles.navigationHeader}>
+                  <View
+                    style={[
+                      styles.navigationIcon,
+                      { backgroundColor: colors.primarySoft },
+                    ]}
+                  >
+                    <TurismoIcon
+                      color={colors.primaryStrong}
+                      name="navigation"
+                      size={turismoIconSizes.md}
+                    />
+                  </View>
+                  <View style={styles.navigationCopy}>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      {isCalculating
+                        ? "Recalculando ruta"
+                        : navigationStatusLabel(navigationSession.status)}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.navigationInstruction,
+                        { color: colors.text },
+                      ]}
+                    >
+                      {navigationSession.nextInstruction?.instruction ??
+                        navigationSession.message ??
+                        "Siguiendo tu ubicación…"}
+                    </Text>
+                    {navigationSession.nextInstruction ? (
                       <Text
                         style={[
                           styles.stepDistance,
                           { color: colors.textFaint },
                         ]}
                       >
-                        {formatDistance(step.distanceMeters)}
+                        En{" "}
+                        {formatDistance(
+                          navigationSession.nextInstruction.distanceMeters,
+                        )}
                       </Text>
-                    </View>
-                    {index < routeQuery.data.steps.length - 1 ? (
-                      <View
-                        style={[
-                          styles.stepLine,
-                          { backgroundColor: colors.border },
-                        ]}
-                      />
                     ) : null}
                   </View>
-                ))
-              ) : (
-                <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-                  No hay indicaciones detalladas para este trayecto.
-                </Text>
-              )}
-            </TourismSurface>
-          </>
-        ) : destination && locationStatus === "idle" ? (
-          <TourismSurface style={styles.noticeCard}>
-            <TurismoIcon
-              color={colors.primaryStrong}
-              name="circleHelp"
-              size={turismoIconSizes.md}
-            />
-            <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-              Pulsa “Calcular ruta” para solicitar tu ubicación y buscar el
-              trayecto hasta este atractivo.
-            </Text>
-          </TourismSurface>
-        ) : null}
+                  {isCalculating || navigationSession.status === "starting" ? (
+                    <ActivityIndicator color={colors.primary} />
+                  ) : null}
+                </View>
+                <View style={styles.navigationActions}>
+                  <TourismActionButton
+                    compact
+                    label={voiceEnabled ? "Silenciar voz" : "Activar voz"}
+                    mode="outlined"
+                    onPress={() => setVoiceEnabled((current) => !current)}
+                    style={styles.navigationAction}
+                  />
+                  <TourismActionButton
+                    compact
+                    icon="close"
+                    label="Detener"
+                    mode="outlined"
+                    onPress={handleStopNavigation}
+                    style={styles.navigationAction}
+                  />
+                </View>
+              </TourismSurface>
+            ) : null}
 
-        <TourismActionButton
-          icon="arrowLeft"
-          label="Volver al mapa"
-          mode="outlined"
-          onPress={() => router.back()}
-        />
-      </ScrollView>
-      <TourismMenuDrawer
-        onClose={() => setMenuVisible(false)}
-        onItinerary={() => {
-          setMenuVisible(false);
-          router.replace("/itinerary" as never);
-        }}
-        onOfflineMaps={() => {
-          setMenuVisible(false);
-          router.push("/offline" as never);
-        }}
-        onSettings={() => {
-          setMenuVisible(false);
-          router.push("/settings" as never);
-        }}
-        onSaved={() => setMenuVisible(false)}
-        visible={menuVisible}
-      />
-    </TourismScreenFrame>
+            {isCalculating ? (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator color={colors.primary} />
+                <Text style={[styles.noticeText, { color: colors.textMuted }]}>
+                  {navigationActive
+                    ? "Recalculando tu ruta…"
+                    : "Buscando una ruta sin tráfico en tiempo real…"}
+                </Text>
+              </View>
+            ) : null}
+
+            {navigationNotice || locationMessage || routeError ? (
+              <TourismSurface style={styles.noticeCard}>
+                <TurismoIcon
+                  color={colors.danger}
+                  name="circleHelp"
+                  size={turismoIconSizes.md}
+                />
+                <Text style={[styles.noticeText, { color: colors.textMuted }]}>
+                  {navigationNotice ?? routeError ?? locationMessage}
+                </Text>
+              </TourismSurface>
+            ) : null}
+
+            {routeQuery.data ? (
+              <>
+                <View style={styles.metrics}>
+                  <Metric
+                    label="Tiempo estimado"
+                    value={formatDuration(routeQuery.data.durationSeconds)}
+                  />
+                  <Metric
+                    label="Distancia"
+                    value={formatDistance(routeQuery.data.distanceMeters)}
+                  />
+                  <Metric label="Modo" value={modeLabel} />
+                </View>
+                <TourismSurface style={styles.stepsCard}>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Indicaciones
+                  </Text>
+                  {routeQuery.data.steps.length ? (
+                    routeQuery.data.steps.map((step, index) => (
+                      <View
+                        key={`${step.instruction}-${index}`}
+                        style={styles.stepRow}
+                      >
+                        <View
+                          style={[
+                            styles.stepIcon,
+                            { backgroundColor: colors.primarySoft },
+                          ]}
+                        >
+                          <TurismoIcon
+                            color={colors.primaryStrong}
+                            name={index === 0 ? "locate" : "navigation"}
+                            size={turismoIconSizes.sm}
+                          />
+                        </View>
+                        <View style={styles.stepCopy}>
+                          <Text
+                            style={[
+                              styles.stepInstruction,
+                              { color: colors.text },
+                            ]}
+                          >
+                            {step.instruction}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.stepDistance,
+                              { color: colors.textFaint },
+                            ]}
+                          >
+                            {formatDistance(step.distanceMeters)}
+                          </Text>
+                        </View>
+                        {index < routeQuery.data.steps.length - 1 ? (
+                          <View
+                            style={[
+                              styles.stepLine,
+                              { backgroundColor: colors.border },
+                            ]}
+                          />
+                        ) : null}
+                      </View>
+                    ))
+                  ) : (
+                    <Text
+                      style={[styles.noticeText, { color: colors.textMuted }]}
+                    >
+                      No hay indicaciones detalladas para este trayecto.
+                    </Text>
+                  )}
+                </TourismSurface>
+              </>
+            ) : null}
+          </BottomSheetScrollView>
+        </ExpoBottomSheet>
+      ) : null}
+    </View>
   );
 }
 
@@ -501,6 +507,27 @@ function formatDuration(seconds: number): string {
   return rest ? `${hours} h ${rest} min` : `${hours} h`;
 }
 
+function confirmBackgroundNavigation(): Promise<boolean> {
+  return new Promise((resolve) => {
+    Alert.alert(
+      "Navegación activa",
+      "Para que la ruta continúe si cambias de aplicación o apagas la pantalla, Turismo Vinculación necesita tu ubicación durante la navegación.",
+      [
+        {
+          onPress: () => resolve(false),
+          style: "cancel",
+          text: "Ahora no",
+        },
+        {
+          onPress: () => resolve(true),
+          text: "Continuar",
+        },
+      ],
+      { cancelable: false },
+    );
+  });
+}
+
 function navigationStatusLabel(status: NavigationSessionStatus): string {
   switch (status) {
     case "starting":
@@ -524,27 +551,14 @@ function navigationStatusLabel(status: NavigationSessionStatus): string {
 }
 
 const styles = StyleSheet.create({
-  content: {
+  screen: { flex: 1 },
+  mapPlaceholder: { flex: 1 },
+  panelContent: {
     gap: turismoSpacing.lg,
-    paddingVertical: turismoSpacing.md,
+    paddingHorizontal: turismoSpacing.md,
+    paddingTop: turismoSpacing.md,
     paddingBottom: turismoSpacing.xl,
   },
-  routeSummary: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-    padding: turismoSpacing.md,
-  },
-  routeIcon: {
-    alignItems: "center",
-    borderRadius: turismoRadii.md,
-    height: turismoMetrics.controlMd,
-    justifyContent: "center",
-    width: turismoMetrics.controlMd,
-  },
-  routeCopy: { flex: 1, gap: turismoSpacing.xxs },
-  routeTitle: { ...turismoTypography.heading },
-  routeMeta: { ...turismoTypography.caption },
   modeCard: { gap: turismoSpacing.md, padding: turismoSpacing.md },
   modeOptions: {
     flexDirection: "row",

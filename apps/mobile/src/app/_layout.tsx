@@ -10,6 +10,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useTurismoTheme, TurismoThemeProvider } from "@/core/ui/theme-context";
 import { TurismoPaperProvider } from "@/core/ui/turismo-paper-provider";
 import { getTurismoColors } from "@/core/ui/tokens";
+import "@/features/routing/infrastructure/navigation-background-task";
 
 function AppProviders({ children }: Readonly<{ children: ReactNode }>) {
   const [queryClient] = useState(

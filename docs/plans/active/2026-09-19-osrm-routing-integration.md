@@ -12,7 +12,11 @@ hasta un atractivo publicado.
 - Adaptador backend hacia `osrm-car`, `osrm-bicycle` y `osrm-foot`.
 - Respuesta normalizada con distancia, duración, geometría GeoJSON e indicaciones.
 - Pantalla móvil con selección de modo, solicitud puntual de ubicación, mapa de ruta y
-  estados de carga/error.
+  estados de carga/error. La pantalla muestra el mapa de navegación a pantalla completa y
+  una hoja inferior nativa para el resumen e indicaciones, sin un minimapa embebido; la
+  hoja permite expandir el detalle sin un botón intermedio y oculta el selector de modo
+  al comenzar la navegación. Al abrirla desde un atractivo publicado calcula
+  automáticamente la primera ruta.
 - Sin persistir coordenadas del turista ni enviarlas a proveedores externos desde el móvil.
 - Sin tráfico en tiempo real, navegación en segundo plano ni transporte público calculado.
 
@@ -42,6 +46,9 @@ hasta un atractivo publicado.
 - [x] Pruebas, typecheck y lint locales aprobados.
 - [x] Variables de rutas presentes en el servicio API en Dokploy.
 - [x] API y los tres servicios OSRM comparten `dokploy-network`.
+- [x] Pantalla móvil verificada con mapa de ruta a pantalla completa y panel inferior.
+- [x] La pantalla solicita ubicación y calcula automáticamente la ruta inicial; conserva
+      reintento e inicio de navegación explícito.
 - [ ] Redeploy de la corrección de inyección de `ConfigService` y smoke test de
       `POST /api/v1/routing/route` desde la API desplegada.
 - [ ] Validación visual en el Development Build Android.

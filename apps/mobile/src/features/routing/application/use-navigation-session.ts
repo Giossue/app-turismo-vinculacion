@@ -1,5 +1,6 @@
 import * as Location from "expo-location";
 import * as Speech from "expo-speech";
+import { AppState, Platform } from "react-native";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -8,7 +9,22 @@ import {
   getNavigationGuidance,
   type NavigationGuidance,
 } from "../domain/navigation-guidance";
-import type { CalculatedRoute, RouteCoordinate } from "../domain/routing";
+import type {
+  CalculatedRoute,
+  RouteCoordinate,
+  RouteMode,
+} from "../domain/routing";
+import {
+  clearNavigationSession,
+  readNavigationSession,
+  saveNavigationSession,
+  updateNavigationLocation,
+  type PersistedNavigationLocation,
+} from "../data/navigation-session-storage";
+import {
+  startNavigationLocationTask,
+  stopNavigationLocationTask,
+} from "../infrastructure/navigation-background-task";
 
 const arrivalThresholdMeters = 35;
 const offRouteThresholdMeters = 60;
@@ -29,8 +45,10 @@ type NavigationSessionOptions = Readonly<{
   active: boolean;
   destination: RouteCoordinate | null;
   isRecalculating: boolean;
+  mode: RouteMode;
   onArrive: () => void;
   onReroute: (origin: RouteCoordinate) => void;
+  origin: RouteCoordinate | null;
   route: CalculatedRoute | null;
   voiceEnabled: boolean;
 }>;
@@ -55,8 +73,10 @@ export function useNavigationSession({
   active,
   destination,
   isRecalculating,
+  mode,
   onArrive,
   onReroute,
+  origin,
   route,
   voiceEnabled,
 }: NavigationSessionOptions): NavigationSessionState {
@@ -64,22 +84,38 @@ export function useNavigationSession({
   const routeRef = useRef(route);
   const destinationRef = useRef(destination);
   const isRecalculatingRef = useRef(isRecalculating);
+  const modeRef = useRef(mode);
   const onArriveRef = useRef(onArrive);
   const onRerouteRef = useRef(onReroute);
+  const originRef = useRef(origin);
   const voiceEnabledRef = useRef(voiceEnabled);
   const lastRerouteAtRef = useRef(0);
   const routeKeyRef = useRef<string | null>(null);
   const announcedStepRef = useRef(-1);
   const arrivedRef = useRef(false);
+  const lastProcessedLocationAtRef = useRef(0);
+  const lastLocationRef = useRef<PersistedNavigationLocation | null>(null);
+  const ownsActiveSessionRef = useRef(false);
 
   useEffect(() => {
     routeRef.current = route;
     destinationRef.current = destination;
     isRecalculatingRef.current = isRecalculating;
+    modeRef.current = mode;
     onArriveRef.current = onArrive;
     onRerouteRef.current = onReroute;
+    originRef.current = origin;
     voiceEnabledRef.current = voiceEnabled;
-  }, [destination, isRecalculating, onArrive, onReroute, route, voiceEnabled]);
+  }, [
+    destination,
+    isRecalculating,
+    mode,
+    onArrive,
+    onReroute,
+    origin,
+    route,
+    voiceEnabled,
+  ]);
 
   useEffect(() => {
     if (!active || !route) return;
@@ -104,26 +140,63 @@ export function useNavigationSession({
   }, [active, route, voiceEnabled]);
 
   useEffect(() => {
+    if (!active || !route || !destination || !origin) return;
+
+    let disposed = false;
+    void readNavigationSession().then((current) => {
+      if (disposed) return;
+      void saveNavigationSession({
+        active: true,
+        destination,
+        lastAnnouncedStepIndex: announcedStepRef.current,
+        lastLocation: current?.lastLocation ?? lastLocationRef.current,
+        lastRerouteAt: lastRerouteAtRef.current,
+        mode,
+        origin,
+        route,
+        updatedAt: Date.now(),
+        version: 1,
+      });
+    });
+
+    return () => {
+      disposed = true;
+    };
+  }, [active, destination, mode, origin, route]);
+
+  useEffect(() => {
     if (!active) {
       void Speech.stop();
       lastRerouteAtRef.current = 0;
       routeKeyRef.current = null;
       announcedStepRef.current = -1;
       arrivedRef.current = false;
+      lastProcessedLocationAtRef.current = 0;
+      lastLocationRef.current = null;
+      if (ownsActiveSessionRef.current) {
+        ownsActiveSessionRef.current = false;
+        void stopNavigationLocationTask();
+        void clearNavigationSession();
+      }
       return;
     }
 
+    ownsActiveSessionRef.current = true;
     let disposed = false;
     let subscription: Location.LocationSubscription | null = null;
 
-    const handleLocation = (location: Location.LocationObject) => {
+    const processLocation = (
+      persistedLocation: PersistedNavigationLocation,
+    ) => {
       if (disposed) return;
+      if (persistedLocation.timestamp <= lastProcessedLocationAtRef.current) {
+        return;
+      }
+      lastProcessedLocationAtRef.current = persistedLocation.timestamp;
+      lastLocationRef.current = persistedLocation;
+      void updateNavigationLocation(persistedLocation);
 
-      const coordinate = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      } satisfies RouteCoordinate;
-      const accuracy = location.coords.accuracy;
+      const { accuracy, coordinate } = persistedLocation;
       const destinationCoordinate = destinationRef.current;
       const destinationDistance = destinationCoordinate
         ? getDistanceMeters(coordinate, destinationCoordinate)
@@ -198,6 +271,24 @@ export function useNavigationSession({
       }
     };
 
+    const handleLocation = (location: Location.LocationObject) => {
+      processLocation({
+        accuracy: location.coords.accuracy ?? null,
+        coordinate: {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        },
+        timestamp: location.timestamp,
+      });
+    };
+
+    const restoreLastLocation = async () => {
+      const snapshot = await readNavigationSession();
+      if (!disposed && snapshot?.active && snapshot.lastLocation) {
+        processLocation(snapshot.lastLocation);
+      }
+    };
+
     const handleLocationError = () => {
       if (disposed) return;
       setState((current) => ({
@@ -241,6 +332,44 @@ export function useNavigationSession({
           return;
         }
 
+        if (Platform.OS !== "web") {
+          const backgroundPermission =
+            await Location.getBackgroundPermissionsAsync();
+          if (!backgroundPermission.granted) {
+            if (!disposed) {
+              setState((current) => ({
+                ...current,
+                message:
+                  "Activa el permiso de ubicación en segundo plano para continuar al cambiar de aplicación.",
+                status: "denied",
+              }));
+            }
+            return;
+          }
+        }
+
+        const currentRoute = routeRef.current;
+        const destinationCoordinate = destinationRef.current;
+        if (!currentRoute || !destinationCoordinate || !originRef.current) {
+          throw new Error("La sesión de navegación no está lista.");
+        }
+
+        const currentSession = await readNavigationSession();
+        await saveNavigationSession({
+          active: true,
+          destination: destinationCoordinate,
+          lastAnnouncedStepIndex: announcedStepRef.current,
+          lastLocation: currentSession?.lastLocation ?? null,
+          lastRerouteAt: lastRerouteAtRef.current,
+          mode: modeRef.current,
+          origin: originRef.current,
+          route: currentRoute,
+          updatedAt: Date.now(),
+          version: 1,
+        });
+        await startNavigationLocationTask();
+        await restoreLastLocation();
+
         subscription = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.High,
@@ -256,21 +385,37 @@ export function useNavigationSession({
           return;
         }
         setState((current) => ({ ...current, status: "tracking" }));
-      } catch {
+      } catch (error) {
         if (!disposed) {
           setState((current) => ({
             ...current,
-            message: "No pudimos iniciar el seguimiento de ubicación.",
+            message:
+              error instanceof Error
+                ? error.message
+                : "No pudimos iniciar el seguimiento de ubicación.",
             status: "error",
           }));
         }
       }
     };
 
+    const appStateSubscription = AppState.addEventListener(
+      "change",
+      (nextState) => {
+        if (nextState === "active") void restoreLastLocation();
+      },
+    );
+
     void startTracking();
     return () => {
       disposed = true;
       subscription?.remove();
+      appStateSubscription.remove();
+      if (ownsActiveSessionRef.current) {
+        ownsActiveSessionRef.current = false;
+        void stopNavigationLocationTask();
+        void clearNavigationSession();
+      }
       void Speech.stop();
     };
   }, [active]);

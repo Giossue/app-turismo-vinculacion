@@ -137,9 +137,14 @@ editan en el móvil.
 - El mapa conserva búsqueda, filtros, fichas y navegación cuando el permiso se deniega,
   el GPS está apagado o la señal no está disponible; el control comunica el estado sin
   bloquear la exploración.
-- Solicitar segundo plano solo al activar navegación y explicar el beneficio.
-- Detener seguimiento al terminar/cancelar la ruta.
-- No conservar trazas precisas por defecto.
+- Solicitar segundo plano solo al activar navegación y explicar el beneficio. La navegación
+  visible combina el watcher de primer plano con una tarea `expo-location` registrada en
+  `expo-task-manager`; Android muestra el servicio foreground mientras la sesión está activa.
+- Persistir únicamente ruta, destino, modo y última posición para restaurar el estado al
+  volver a la app; no conservar trazas precisas por defecto.
+- Detener seguimiento, eliminar la sesión local y limpiar la tarea al terminar/cancelar la
+  ruta. El sistema puede limitar el segundo plano por batería, permisos o políticas del
+  fabricante.
 - Permitir origen manual cuando el permiso se niega.
 
 ## Estados obligatorios

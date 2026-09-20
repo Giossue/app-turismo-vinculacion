@@ -26,7 +26,8 @@ Decisiones cerradas para la primera versión de rutas online:
 - Quién mantiene y publica los datos de transporte: funcionarios, cooperativas o ambos.
 - Si las rutas registradas admitirán edición manual, importación GIS o ambos flujos.
 - Si habrá ubicación de unidades en tiempo real y cuál será su fuente.
-- Alcance de ubicación: solo en uso o también segundo plano durante navegación.
+- La ubicación en segundo plano queda limitada a una navegación activa, con consentimiento
+  específico, sin historial de trayectos y sujeta a las restricciones del sistema.
 - Alcance offline: ninguno, favoritos/catálogos o mapas/rutas descargables.
 - Frecuencia real de zonas sin conectividad.
 

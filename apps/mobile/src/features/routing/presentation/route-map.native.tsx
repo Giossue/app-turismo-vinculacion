@@ -22,6 +22,7 @@ import type { CalculatedRoute, RouteCoordinate } from "../domain/routing";
 export type RouteMapProps = Readonly<{
   currentLocation?: RouteCoordinate | null;
   destination: RouteCoordinate;
+  fullScreen?: boolean;
   origin: RouteCoordinate | null;
   route: CalculatedRoute | null;
 }>;
@@ -33,6 +34,7 @@ type EndpointProperties = Readonly<{
 export function RouteMap({
   currentLocation = null,
   destination,
+  fullScreen = false,
   origin,
   route,
 }: RouteMapProps) {
@@ -157,7 +159,12 @@ export function RouteMap({
   }, [bounds]);
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        fullScreen ? styles.fullScreenContainer : styles.cardContainer,
+      ]}
+    >
       <MapLibreMap
         accessibilityLabel="Mapa de la ruta calculada"
         attribution={false}
@@ -270,9 +277,10 @@ function getRouteBounds(
 const styles = StyleSheet.create({
   container: {
     borderRadius: 16,
-    height: 260,
     overflow: "hidden",
   },
+  cardContainer: { height: 260 },
+  fullScreenContainer: { flex: 1 },
   map: { flex: 1 },
   loading: {
     alignItems: "center",
