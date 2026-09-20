@@ -1,0 +1,31 @@
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +1
++
+Progress: resolved 1, reused 0, downloaded 1, added 1, done
+env: load .env
+env: export EXPO_PUBLIC_API_URL EXPO_PUBLIC_TILESERVER_STYLE_URL
+Running 21 checks on your project...
+20/21 checks passed. 1 checks failed. Possible issues detected:
+Use the --verbose flag to see more details about passed checks.
+
+✖ Check that packages match versions required by installed Expo SDK
+
+🔧 Patch version mismatches
+package         expected  found    
+@expo/ui        ~57.0.19  57.0.18  
+expo            ~57.0.24  57.0.23  
+expo-constants  ~57.0.19  57.0.18  
+expo-location   ~57.0.19  57.0.18  
+expo-router     ~57.0.22  57.0.21  
+
+Changelogs:
+- expo-constants → https://github.com/expo/expo/blob/sdk-57/packages/expo-constants/CHANGELOG.md
+- expo-location → https://github.com/expo/expo/blob/sdk-57/packages/expo-location/CHANGELOG.md
+- expo-router → https://github.com/expo/expo/blob/sdk-57/packages/expo-router/CHANGELOG.md
+
+5 packages out of date.
+Advice:
+Use 'npx expo install --check' to review and upgrade your dependencies.
+To ignore specific packages, add them to "expo.install.exclude" in package.json. Learn more: https://expo.fyi/dependency-validation
+
+1 check failed, indicating possible issues with the project.

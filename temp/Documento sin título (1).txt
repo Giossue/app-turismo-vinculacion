@@ -1,0 +1,1380 @@
+﻿Modelo relacional completo de la ficha del centro A. Tablas generales del sistema
+usuarios
+Contexto: cuentas que administran o consultan el sistema.
+id BIGINT (PK)
+nombre VARCHAR(150) NOT NULL
+email VARCHAR(254) NOT NULL UNIQUE
+genero VARCHAR(30) NULL
+fecha_nac DATE NULL
+password VARCHAR(255) NOT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+email_verified_at TIMESTAMPTZ NULL
+remember_token VARCHAR(100) NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+
+
+________________
+
+
+roles
+id BIGINT (PK)
+nombre_rol VARCHAR(80) NOT NULL UNIQUE
+usuarios_roles
+id BIGINT (PK)
+rol_id BIGINT (FK → roles.id) NOT NULL
+usuario_id BIGINT (FK → usuarios.id) NOT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+UNIQUE (rol_id, usuario_id)
+Cardinalidad: usuarios N:M roles.
+conversaciones_ia
+id BIGINT (PK)
+usuario_id BIGINT (FK → usuarios.id) NOT NULL
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+mensajes_ia
+id BIGINT (PK)
+conversacion_id BIGINT (FK → conversaciones_ia.id) NOT NULL
+rol_mensaje VARCHAR(20) NOT NULL
+contenido TEXT NOT NULL
+created_at TIMESTAMPTZ NOT NULL
+parametros_ia
+id BIGINT (PK)
+nombre VARCHAR(100) NOT NULL UNIQUE
+valor TEXT NOT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+Cardinalidades:
+usuarios 1:N conversaciones_ia
+centros_turisticos 1:N conversaciones_ia
+conversaciones_ia 1:N mensajes_ia
+________________
+
+
+B. Catálogos DPA y clasificación
+provincias
+Origen: hoja DPA.
+id BIGINT (PK)
+codigo_dpa CHAR(2) NOT NULL UNIQUE
+nombre VARCHAR(100) NOT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+cantones
+Origen: hoja DPA.
+id BIGINT (PK)
+provincia_id BIGINT (FK → provincias.id) NOT NULL
+codigo_cton CHAR(2) NOT NULL
+nombre VARCHAR(100) NOT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+UNIQUE (provincia_id, codigo_cton)
+parroquias
+Origen: hoja DPA. No se agrega tipo urbano/rural porque no está en la ficha.
+id BIGINT (PK)
+canton_id BIGINT (FK → cantones.id) NOT NULL
+codigo_pqa CHAR(2) NOT NULL
+nombre VARCHAR(150) NOT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+UNIQUE (canton_id, codigo_pqa)
+localidades
+Contexto: registra las ciudades o poblados que pueden ser utilizados como referencia territorial para un centro turístico.
+id BIGINT (PK)
+canton_id BIGINT (FK → cantones.id) NOT NULL
+nombre VARCHAR(150) NOT NULL
+tipo_localidad VARCHAR(20) NOT NULL
+latitud NUMERIC(9,6) NULL
+longitud NUMERIC(10,6) NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+CHECK (tipo_localidad IN ('CIUDAD', 'POBLADO'))
+UNIQUE (canton_id, nombre)
+
+
+zonas_turisticas
+Contexto: agrupa centros turísticos y puntos de interés dentro de un área turística perteneciente a una localidad.
+id BIGINT (PK)
+localidad_id BIGINT (FK → localidades.id) NOT NULL
+nombre VARCHAR(180) NOT NULL
+latitud NUMERIC(9,6) NULL
+longitud NUMERIC(10,6) NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+UNIQUE (localidad_id, nombre)
+
+
+puntos_interes
+Contexto: almacena los lugares de interés que pertenecen a una zona turística.
+id BIGINT (PK)
+zona_turistica_id BIGINT (FK → zonas_turisticas.id) NOT NULL
+nombre VARCHAR(180) NOT NULL
+latitud NUMERIC(9,6) NOT NULL
+longitud NUMERIC(10,6) NOT NULL
+descripcion TEXT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+establecimientos_turisticos
+Contexto: almacena los hoteles, hostales, restaurantes, cafeterías, agencias, operadoras y demás establecimientos provenientes del catastro turístico.
+id BIGINT (PK)
+localidad_id BIGINT (FK → localidades.id) NOT NULL
+numero_registro VARCHAR(40) NULL UNIQUE
+ruc VARCHAR(13) NULL
+nombre_comercial VARCHAR(180) NOT NULL
+razon_social VARCHAR(200) NULL
+actividad VARCHAR(180) NOT NULL
+clasificacion VARCHAR(120) NULL
+categoria VARCHAR(120) NULL
+direccion TEXT NULL
+telefono VARCHAR(25) NULL
+latitud NUMERIC(9,6) NULL
+longitud NUMERIC(10,6) NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+
+
+
+
+opiniones
+Contexto: registra la calificación, el comentario o ambos datos enviados por un turista sobre un centro turístico o punto de interés.
+id BIGINT (PK)
+usuario_id BIGINT (FK → usuarios.id) NOT NULL
+centro_turistico_id BIGINT
+(FK → centros_turisticos.id) NULL
+punto_interes_id BIGINT
+(FK → puntos_interes.id) NULL
+calificacion SMALLINT NULL
+comentario TEXT NULL
+estado_moderacion VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE'
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+
+
+CHECK (calificacion IS NULL OR calificacion BETWEEN 1 AND 5)
+
+
+CHECK (
+    (centro_turistico_id IS NOT NULL AND punto_interes_id IS NULL)
+    OR
+    (centro_turistico_id IS NULL AND punto_interes_id IS NOT NULL)
+)
+
+
+CHECK (
+    calificacion IS NOT NULL
+    OR comentario IS NOT NULL
+)
+Una opinión pertenece a un centro turístico o a un punto de interés. No puede pertenecer a ambos simultáneamente.
+moderaciones_opinion
+Contexto: conserva las decisiones tomadas por el administrador sobre una calificación o comentario.
+id BIGINT (PK)
+opinion_id BIGINT (FK → opiniones.id) NOT NULL
+moderador_id BIGINT (FK → usuarios.id) NOT NULL
+accion VARCHAR(20) NOT NULL
+motivo TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+
+
+CHECK (accion IN ('APROBAR', 'RECHAZAR', 'OCULTAR', 'RESTAURAR'))
+
+
+Cardinalidades:
+usuarios 1:N opiniones
+centros_turisticos 1:N opiniones
+puntos_interes 1:N opiniones
+opiniones 1:N moderaciones_opinion
+usuarios 1:N moderaciones_opinion
+
+
+favoritos_centros
+Contexto: relaciona a un turista con los centros turísticos que guardó como favoritos.
+id BIGINT (PK)
+usuario_id BIGINT (FK → usuarios.id) NOT NULL
+centro_turistico_id BIGINT
+(FK → centros_turisticos.id) NOT NULL
+created_at TIMESTAMPTZ NOT NULL
+UNIQUE (usuario_id, centro_turistico_id)
+Cardinalidad: usuarios N:M centros_turisticos.
+favoritos_puntos_interes
+Contexto: relaciona a un turista con los puntos de interés que guardó como favoritos.
+id BIGINT (PK)
+usuario_id BIGINT (FK → usuarios.id) NOT NULL
+punto_interes_id BIGINT
+(FK → puntos_interes.id) NOT NULL
+created_at TIMESTAMPTZ NOT NULL
+UNIQUE (usuario_id, punto_interes_id)
+Cardinalidad: usuarios N:M puntos_interes.
+
+
+
+
+
+
+revisiones_publicacion
+id BIGINT (PK)
+centro_turistico_id BIGINT
+(FK → centros_turisticos.id) NOT NULL
+solicitado_por BIGINT
+(FK → usuarios.id) NOT NULL
+revisado_por BIGINT
+(FK → usuarios.id) NULL
+estado_resenia_id BIGINT (FK → estados_resenia.id) NOT NULL
+observacion TEXT NULL
+fecha_solicitud TIMESTAMPTZ NOT NULL
+fecha_revision TIMESTAMPTZ NULL
+
+
+centros_turisticos 1:N revisiones_publicacion
+usuarios 1:N revisiones_publicacion como solicitante
+usuarios 1:N revisiones_publicacion como revisor
+estados_publicacion 1:N revisiones_publicacion
+categorias_atractivo
+id BIGINT (PK)
+codigo CHAR(2) NOT NULL UNIQUE
+nombre VARCHAR(120) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores: AN — Atractivos naturales, MC — Manifestaciones culturales.
+tipos_atractivo
+id BIGINT (PK)
+categoria_id BIGINT (FK → categorias_atractivo.id) NOT NULL
+codigo CHAR(2) NOT NULL
+nombre VARCHAR(150) NOT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+UNIQUE (categoria_id, codigo)
+subtipos_atractivo
+id BIGINT (PK)
+tipo_atractivo_id BIGINT (FK → tipos_atractivo.id) NOT NULL
+codigo CHAR(2) NOT NULL
+nombre VARCHAR(180) NOT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+UNIQUE (tipo_atractivo_id, codigo)
+Cardinalidades:
+cantones 1:N localidades
+localidades 1:N zonas_turisticas
+zonas_turisticas 1:N centros_turisticos
+zonas_turisticas 1:N puntos_interes
+centros_turisticos 1:1 centro_localidad_cercana
+localidades 1:N centro_localidad_cercana
+localidades 1:N establecimientos_turisticos
+________________
+
+
+1. Datos generales
+1.1–1.4 centros_turisticos
+Contexto: entidad principal. Una fila representa toda la ficha de un centro turístico.
+id BIGINT (PK)
+codigo_atractivo CHAR(17) NULL UNIQUE
+secuencial_atractivo SMALLINT NOT NULL
+nombre VARCHAR(180) NOT NULL
+subtipo_atractivo_id BIGINT (FK → subtipos_atractivo.id) NOT NULL
+zona_turistica_id BIGINT (FK → zonas_turisticas.id) NOT NULL
+parroquia_id BIGINT (FK → parroquias.id) NOT NULL
+linea_producto_id BIGINT (FK → lineas_producto.id) NOT NULL
+escenario_id BIGINT (FK → escenarios.id) NOT NULL
+jerarquia_id BIGINT (FK → rangos_jerarquia.id) NULL
+estado_resenia_id BIGINT (FK → estado_resenia.id) NOT NULL
+puntaje_total NUMERIC(5,2) NULL
+barrio_sector_comuna VARCHAR(180) NULL
+calle_principal VARCHAR(180) NULL
+numero_direccion VARCHAR(30) NULL
+calle_transversal VARCHAR(180) NULL
+latitud NUMERIC(9,6) NOT NULL
+longitud NUMERIC(10,6) NOT NULL
+altitud_msnm INTEGER NULL
+descripcion VARCHAR(500) NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+UNIQUE (parroquia_id, secuencial_atractivo)
+CHECK (secuencial_atractivo BETWEEN 1 AND 999)
+CHECK (puntaje_total IS NULL OR puntaje_total BETWEEN 0 AND 100)
+codigo_atractivo, jerarquia_id y puntaje_total se calculan automáticamente. El centro se vincula al subtipo; la categoría y el tipo se obtienen mediante sus relaciones y no se duplican en esta tabla.
+
+
+
+
+estados_resenia
+id BIGINT (PK)
+codigo VARCHAR(30) NOT NULL UNIQUE
+nombre VARCHAR(80) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+**Cardinalidad:** `estados_resenia 1:N centros_turisticos`.
+Observaciones de cada apartado
+observaciones_seccion_centro_turistico
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+seccion_codigo VARCHAR(20) NOT NULL
+contenido TEXT NOT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+UNIQUE (centro_turistico_id, seccion_codigo)
+seccion_codigo conserva el número exacto de la ficha, por ejemplo 2.11, 3.4, 4.1, 4.2_TERRESTRE, 4.2_ACUATICO, 4.2_AEREO, 4.3, 4.4, 4.5, hasta 12. Esta tabla garantiza que ninguna observación general se pierda aunque una sección no tenga opciones seleccionadas. Los campos observacion de las tablas de detalle se reservan para comentarios de una fila concreta.
+________________
+
+
+2. Ubicación del atractivo
+Los datos 2.1–2.10 se almacenan en centros_turisticos. Provincia y cantón se obtienen mediante parroquia_id; no se duplican como FK adicionales.
+2.11 administraciones_atractivo
+Origen: sección 2.11 Información del administrador.
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL UNIQUE
+tipo_administrador VARCHAR(30) NOT NULL
+institucion VARCHAR(180) NULL
+nombre_administrador VARCHAR(180) NOT NULL
+cargo VARCHAR(120) NULL
+num_celular VARCHAR(25) NULL
+email VARCHAR(254) NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+Cardinalidad: centros_turisticos 1:1 administraciones_atractivo.
+________________
+
+
+3. Características del atractivo
+3.1 Catálogo de clima
+catalogo_clima
+Contexto: normaliza nombres de clima y evita variantes de escritura.
+id BIGINT (PK)
+codigo VARCHAR(30) NOT NULL UNIQUE
+nombre VARCHAR(80) NOT NULL UNIQUE
+descripcion TEXT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+caracteristicas_climaticas
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL UNIQUE
+tipo_clima_id BIGINT (FK → catalogo_clima.id) NOT NULL
+temperatura_min_c NUMERIC(5,2) NULL
+temperatura_max_c NUMERIC(5,2) NULL
+precipitacion_min_mm NUMERIC(8,2) NULL
+precipitacion_max_mm NUMERIC(8,2) NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+CHECK (temperatura_max_c IS NULL OR temperatura_min_c IS NULL OR temperatura_max_c >= temperatura_min_c)
+CHECK (precipitacion_max_mm IS NULL OR precipitacion_min_mm IS NULL OR precipitacion_max_mm >= precipitacion_min_mm)
+Cardinalidad: centros_turisticos 1:1 caracteristicas_climaticas.
+3.2 Línea de producto
+lineas_producto
+id BIGINT (PK)
+codigo VARCHAR(20) NOT NULL UNIQUE
+nombre VARCHAR(60) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores: CULTURA, NATURALEZA, AVENTURA.
+La marca (U) indica selección única; linea_producto_id está en centros_turisticos.
+3.3 Escenario
+escenarios
+id BIGINT (PK)
+codigo VARCHAR(30) NOT NULL UNIQUE
+nombre VARCHAR(80) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores: prístino, primitivo, rústico natural, rural y urbano.
+La selección es única; escenario_id está en centros_turisticos.
+3.4 Ingreso al atractivo
+tipos_ingreso
+id BIGINT (PK)
+codigo VARCHAR(20) NOT NULL UNIQUE
+nombre VARCHAR(60) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores: libre, restringido y pagado.
+modalidades_atencion
+id BIGINT (PK)
+codigo VARCHAR(30) NOT NULL UNIQUE
+nombre VARCHAR(100) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores: todos los días, fines de semana y feriados, solo días hábiles y otro.
+ingresos_centro_turistico
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL UNIQUE
+tipo_ingreso_id BIGINT (FK → tipos_ingreso.id) NOT NULL
+modalidad_atencion_id BIGINT (FK → modalidades_atencion.id) NOT NULL
+hora_ingreso TIME NULL
+hora_salida TIME NULL
+atencion_otro VARCHAR(180) NULL
+maneja_reservas BOOLEAN NOT NULL DEFAULT FALSE
+precio_desde NUMERIC(10,2) NULL
+precio_hasta NUMERIC(10,2) NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+CHECK (precio_hasta IS NULL OR precio_desde IS NULL OR precio_hasta >= precio_desde)
+formas_pago
+id BIGINT (PK)
+codigo VARCHAR(30) NOT NULL UNIQUE
+nombre VARCHAR(100) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores: efectivo, dinero electrónico, depósito bancario, tarjeta de débito, tarjeta de crédito, transferencia bancaria y cheque.
+centro_formas_pago
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+forma_pago_id BIGINT (FK → formas_pago.id) NOT NULL
+UNIQUE (centro_turistico_id, forma_pago_id)
+meses
+id SMALLINT (PK)
+numero SMALLINT NOT NULL UNIQUE
+nombre VARCHAR(20) NOT NULL UNIQUE
+CHECK (numero BETWEEN 1 AND 12)
+centro_meses_recomendados
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+mes_id SMALLINT (FK → meses.id) NOT NULL
+motivo TEXT NULL
+UNIQUE (centro_turistico_id, mes_id)
+Cardinalidades:
+centros_turisticos 1:1 ingresos_centro_turistico
+centros_turisticos N:M formas_pago
+centros_turisticos N:M meses
+________________
+
+
+4. Accesibilidad y conectividad
+4.1 Ciudad o poblado más cercano
+centro_localidad_cercana
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+localidad_id BIGINT (FK → localidades.id) NOT NULL
+distancia_km NUMERIC(8,2) NULL
+tiempo_desplazamiento INTERVAL NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+UNIQUE (centro_turistico_id)
+
+
+4.2 Vías de acceso
+Catálogos
+estados_condicion:
+id (PK), codigo, nombre, activo
+Valores: BUENO, REGULAR, MALO.
+
+
+tipos_via_terrestre:
+id (PK), codigo, nombre, activo
+Valores: PRIMER_ORDEN, SEGUNDO_ORDEN, TERCER_ORDEN.
+
+
+materiales_via:
+id (PK), codigo, nombre, activo
+
+
+modalidades_acceso_acuatico:
+id (PK), codigo, nombre, activo
+Valores: MARITIMO, LACUSTRE, FLUVIAL.
+
+
+coberturas_acceso_aereo:
+id (PK), codigo, nombre, activo
+Valores: NACIONAL, INTERNACIONAL.
+vias_acceso_terrestre
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+tipo_via_terrestre_id BIGINT (FK → tipos_via_terrestre.id) NOT NULL
+latitud_inicio NUMERIC(9,6) NULL
+longitud_inicio NUMERIC(10,6) NULL
+latitud_fin NUMERIC(9,6) NULL
+longitud_fin NUMERIC(10,6) NULL
+distancia_km NUMERIC(8,2) NULL
+material_via_id BIGINT (FK → materiales_via.id) NULL
+estado_condicion_id BIGINT (FK → estados_condicion.id) NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+accesos_acuaticos
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+modalidad_acceso_acuatico_id BIGINT (FK → modalidades_acceso_acuatico.id) NOT NULL
+puerto_embarque VARCHAR(180) NULL
+estado_puerto_embarque_id BIGINT (FK → estados_condicion.id) NULL
+puerto_llegada VARCHAR(180) NULL
+estado_puerto_llegada_id BIGINT (FK → estados_condicion.id) NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+accesos_aereos
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+cobertura_acceso_aereo_id BIGINT (FK → coberturas_acceso_aereo.id) NOT NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+Cada fila representa una alternativa real de acceso. No se guardan columnas vacías para modalidades que no apliquen.
+4.3 Servicio de transporte
+tipos_transporte
+id BIGINT (PK)
+codigo VARCHAR(30) NOT NULL UNIQUE
+nombre VARCHAR(80) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores de la ficha: bus, buseta, vehículo 4x4, taxi, mototaxi, teleférico, lancha, bote, barco, canoa, avión, avioneta, helicóptero y otro.
+frecuencias_servicio
+id BIGINT (PK)
+codigo VARCHAR(20) NOT NULL UNIQUE
+nombre VARCHAR(40) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores: diario, semanal, mensual y eventual.
+transporte_centro
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL UNIQUE
+detalle_otro VARCHAR(180) NULL
+observacion TEXT NULL
+centro_tipos_transporte
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+tipo_transporte_id BIGINT (FK → tipos_transporte.id) NOT NULL
+UNIQUE (centro_turistico_id, tipo_transporte_id)
+detalles_transporte
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+operador_cooperativa VARCHAR(180) NOT NULL
+estacion_terminal VARCHAR(180) NULL
+frecuencia_servicio_id BIGINT (FK → frecuencias_servicio.id) NULL
+detalle_traslado TEXT NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+La ficha no relaciona cada cooperativa con una casilla concreta de tipo de transporte; por eso los tipos seleccionados y el detalle de operadores se almacenan por separado, sin inventar esa relación.
+cooperativas_transporte
+Contexto: registra las cooperativas o asociaciones que prestan servicios de transporte.
+id BIGINT (PK)
+nombre VARCHAR(180) NOT NULL
+ruc VARCHAR(13) NULL UNIQUE
+telefono VARCHAR(25) NULL
+email VARCHAR(254) NULL
+direccion TEXT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+rutas_transporte
+Contexto: registra los recorridos ofrecidos por una cooperativa y el tipo de transporte utilizado.
+id BIGINT (PK)
+cooperativa_id BIGINT
+(FK → cooperativas_transporte.id) NOT NULL
+tipo_transporte_id BIGINT
+(FK → tipos_transporte.id) NOT NULL
+nombre VARCHAR(180) NOT NULL
+origen VARCHAR(180) NOT NULL
+destino VARCHAR(180) NOT NULL
+precio NUMERIC(10,2) NULL
+duracion_estimada INTERVAL NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+paradas_transporte
+Contexto: almacena los lugares georreferenciados donde se detiene un servicio de transporte.
+id BIGINT (PK)
+nombre VARCHAR(180) NOT NULL
+latitud NUMERIC(9,6) NOT NULL
+longitud NUMERIC(10,6) NOT NULL
+direccion_referencia TEXT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+ruta_paradas
+Contexto: relaciona una ruta con sus paradas y conserva el orden en el que se recorren.
+id BIGINT (PK)
+ruta_transporte_id BIGINT
+(FK → rutas_transporte.id) NOT NULL
+parada_transporte_id BIGINT
+(FK → paradas_transporte.id) NOT NULL
+orden SMALLINT NOT NULL
+tiempo_estimado_desde_origen INTERVAL NULL
+UNIQUE (ruta_transporte_id, parada_transporte_id)
+UNIQUE (ruta_transporte_id, orden)
+horarios_ruta
+Contexto: registra los días y horas en los que opera una ruta de transporte.
+id BIGINT (PK)
+ruta_transporte_id BIGINT
+(FK → rutas_transporte.id) NOT NULL
+dia_semana SMALLINT NOT NULL
+hora_salida TIME NOT NULL
+hora_llegada TIME NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+CHECK (dia_semana BETWEEN 1 AND 7)
+Convención para dia_semana:
+1 = lunes
+2 = martes
+3 = miércoles
+4 = jueves
+5 = viernes
+6 = sábado
+7 = domingo
+centro_rutas_transporte
+Contexto: indica qué rutas permiten llegar a un centro turístico y cuál es la parada recomendada para el visitante.
+id BIGINT (PK)
+centro_turistico_id BIGINT
+(FK → centros_turisticos.id) NOT NULL
+ruta_transporte_id BIGINT
+(FK → rutas_transporte.id) NOT NULL
+parada_recomendada_id BIGINT
+(FK → paradas_transporte.id) NULL
+indicacion_llegada TEXT NULL
+UNIQUE (centro_turistico_id, ruta_transporte_id)
+Cardinalidades:
+cooperativas_transporte 1:N rutas_transporte
+tipos_transporte 1:N rutas_transporte
+rutas_transporte N:M paradas_transporte mediante ruta_paradas
+rutas_transporte 1:N horarios_ruta
+centros_turisticos N:M rutas_transporte mediante centro_rutas_transporte
+
+
+
+
+4.4 Condiciones de accesibilidad
+tipos_accesibilidad
+id BIGINT (PK)
+codigo VARCHAR(30) NOT NULL UNIQUE
+nombre VARCHAR(100) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores: general, física, visual, auditiva, intelectual/psicosocial y no accesible.
+centro_accesibilidad_resumen
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+tipo_accesibilidad_id BIGINT (FK → tipos_accesibilidad.id) NOT NULL
+aplica BOOLEAN NOT NULL
+observacion TEXT NULL
+UNIQUE (centro_turistico_id, tipo_accesibilidad_id)
+criterios_accesibilidad
+id BIGINT (PK)
+tipo_accesibilidad_id BIGINT (FK → tipos_accesibilidad.id) NOT NULL
+codigo VARCHAR(30) NOT NULL UNIQUE
+descripcion TEXT NOT NULL
+orden SMALLINT NOT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Los registros del catálogo son exactamente los criterios enumerados en la hoja ficha_Accesibilidad:
+* General: estacionamiento; estacionamiento para personas con discapacidad; rampas externas; gradas externas; vías peatonales; señalética informativa, direccional y preventiva; puertas automáticas; ascensor; recepción; puntos de concentración turística; baños comunales/sociales; indicador de baño libre/ocupado.
+* Discapacidad física: rampas; pasamanos; recepción adaptada; baños adaptados; espacio de maniobra de 1,50 m; barras de apoyo; sistema de asistencia; espejo; grifería accesible; lavabo sin pedestal; accesorios de limpieza a altura accesible; puntos de concentración accesibles; salvaescaleras; vías peatonales accesibles.
+* Discapacidad visual: recepción con braille/JAWS/formatos accesibles; sensores de voz o bucle magnético; rotulación braille, alto relieve o plano háptico; pasamanos; baños adaptados; espacio de maniobra; grifería accesible; bandas podotáctiles o contraste; sistema de asistencia; puntos con información autodescriptiva, braille o audio; maquetas táctiles; vías peatonales con bandas podotáctiles.
+* Discapacidad auditiva: recepción con registros ilustrados, lengua de señas, personal capacitado, pantallas o subtitulado; alarmas visuales; rotulación visual; baños adaptados; sistema de asistencia; puntos con información gráfica o audiovisual; vías peatonales con rotulación e ilustraciones.
+* Discapacidad intelectual o psicosocial: recepción con personal capacitado; accesibilidad cognitiva; sistema de asistencia en baño; puntos con información gráfica/audiovisual y guías capacitados.
+respuestas_accesibilidad
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+criterio_accesibilidad_id BIGINT (FK → criterios_accesibilidad.id) NOT NULL
+cumple BOOLEAN NULL
+detalle TEXT NULL
+observacion TEXT NULL
+UNIQUE (centro_turistico_id, criterio_accesibilidad_id)
+4.5 Señalización de aproximación
+senalizaciones_aproximacion
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL UNIQUE
+disponible BOOLEAN NOT NULL
+estado_condicion_id BIGINT (FK → estados_condicion.id) NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+
+
+Cardinalidades:
+centros_turisticos 1:1 centro_localidad_cercana
+localidades 1:N centro_localidad_cercana
+________________
+
+
+5. Planta turística y servicios complementarios
+5.1 Planta turística
+ambitos_ubicacion_servicio
+id BIGINT (PK)
+codigo VARCHAR(30) NOT NULL UNIQUE
+nombre VARCHAR(100) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores: EN_ATRACTIVO y EN_POBLADO_CERCANO.
+tipos_planta_turistica
+id BIGINT (PK)
+grupo VARCHAR(30) NOT NULL
+codigo VARCHAR(40) NOT NULL UNIQUE
+nombre VARCHAR(120) NOT NULL
+unidad_1 VARCHAR(30) NOT NULL
+unidad_2 VARCHAR(30) NULL
+unidad_3 VARCHAR(30) NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Grupos y tipos de la ficha:
+* Alojamiento: hotel, hostal, hostería, hacienda turística, lodge, resort, refugio, campamento turístico y casa de huéspedes; unidades establecimientos, habitaciones y plazas.
+* Alimentos y bebidas: restaurantes, cafeterías, bares y fuentes de soda; unidades establecimientos, mesas y plazas.
+* Agencias de viaje: mayorista, internacional y operadora; unidad establecimientos.
+* Guías: local, nacional, nacional especializado en cultura y nacional especializado en aventura; unidad personas.
+planta_turistica_centro
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+ambito_ubicacion_servicio_id BIGINT (FK → ambitos_ubicacion_servicio.id) NOT NULL
+tipo_planta_turistica_id BIGINT (FK → tipos_planta_turistica.id) NOT NULL
+cantidad_1 INTEGER NULL
+cantidad_2 INTEGER NULL
+cantidad_3 INTEGER NULL
+observacion TEXT NULL
+UNIQUE (centro_turistico_id, ambito_ubicacion_servicio_id, tipo_planta_turistica_id)
+5.2 Facilidades en el entorno
+categorias_facilidad
+id BIGINT (PK)
+codigo VARCHAR(30) NOT NULL UNIQUE
+nombre VARCHAR(100) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores: apoyo a la gestión, observación/vigilancia, recorrido/descanso, servicio y otros.
+tipos_facilidad
+id BIGINT (PK)
+categoria_facilidad_id BIGINT (FK → categorias_facilidad.id) NOT NULL
+codigo VARCHAR(40) NOT NULL UNIQUE
+nombre VARCHAR(140) NOT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores de la ficha: punto de información, I-Tur, centro de interpretación, centro de facilitación, centro de recepción de visitantes, garitas, miradores, torres de avistamiento de aves, torres de salvavidas, senderos, estaciones de sombra y descanso, áreas de acampar, refugio de montaña, baterías sanitarias, estacionamientos y otro.
+facilidades_centro
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+tipo_facilidad_id BIGINT (FK → tipos_facilidad.id) NOT NULL
+cantidad SMALLINT NOT NULL DEFAULT 1
+latitud NUMERIC(9,6) NULL
+longitud NUMERIC(10,6) NULL
+administrador VARCHAR(180) NULL
+accesibilidad_universal BOOLEAN NULL
+estado_condicion_id BIGINT (FK → estados_condicion.id) NULL
+detalle_otro VARCHAR(180) NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+5.3 Servicios complementarios
+tipos_servicio_complementario
+id BIGINT (PK)
+codigo VARCHAR(40) NOT NULL UNIQUE
+nombre VARCHAR(140) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores: alquiler/venta de equipos, venta de artesanías o mercancías, casa de cambio, cajero automático y otro.
+servicios_complementarios_centro
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+ambito_ubicacion_servicio_id BIGINT (FK → ambitos_ubicacion_servicio.id) NOT NULL
+tipo_servicio_complementario_id BIGINT (FK → tipos_servicio_complementario.id) NOT NULL
+especificacion VARCHAR(250) NULL
+observacion TEXT NULL
+UNIQUE (centro_turistico_id, ambito_ubicacion_servicio_id, tipo_servicio_complementario_id, especificacion)
+________________
+
+
+6. Estado de conservación e integración del atractivo y su entorno
+6.1–6.2 Evaluación del atractivo y del entorno
+estados_conservacion
+id BIGINT (PK)
+codigo VARCHAR(30) NOT NULL UNIQUE
+nombre VARCHAR(80) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores: conservado, alterado, en proceso de deterioro y deteriorado.
+componentes_conservacion
+id SMALLINT (PK)
+codigo VARCHAR(20) NOT NULL UNIQUE
+nombre VARCHAR(50) NOT NULL UNIQUE
+Valores: atractivo y entorno.
+evaluaciones_conservacion
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+componente_conservacion_id SMALLINT (FK → componentes_conservacion.id) NOT NULL
+estado_conservacion_id BIGINT (FK → estados_conservacion.id) NOT NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+UNIQUE (centro_turistico_id, componente_conservacion_id)
+factores_alteracion
+id BIGINT (PK)
+origen VARCHAR(20) NOT NULL
+codigo VARCHAR(50) NOT NULL UNIQUE
+nombre VARCHAR(180) NOT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+CHECK (origen IN ('NATURAL','ANTROPICO'))
+Factores naturales: erosión, humedad, desastres naturales, flora/fauna, clima y otro. Factores antrópicos: actividades agrícolas/ganaderas, forestales, industriales, negligencia/abandono, minería/extracción, huaquería, conflicto de tenencia, condiciones de uso/exposición, falta de mantenimiento, contaminación, generación de residuos, expansión urbana, conflicto político/social, desarrollo industrial/comercial, vandalismo y otro.
+evaluacion_factores_alteracion
+id BIGINT (PK)
+evaluacion_conservacion_id BIGINT (FK → evaluaciones_conservacion.id) NOT NULL
+factor_alteracion_id BIGINT (FK → factores_alteracion.id) NOT NULL
+presente BOOLEAN NOT NULL
+detalle_otro VARCHAR(180) NULL
+observacion TEXT NULL
+UNIQUE (evaluacion_conservacion_id, factor_alteracion_id)
+6.3 Declaratoria del espacio turístico
+declaratorias_turisticas
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+entidad_declarante VARCHAR(180) NOT NULL
+denominacion VARCHAR(250) NOT NULL
+fecha_declaratoria DATE NULL
+ambito VARCHAR(120) NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+________________
+
+
+7. Higiene y seguridad turística
+7.1 Servicios básicos
+categorias_servicio_basico
+id BIGINT (PK)
+codigo VARCHAR(30) NOT NULL UNIQUE
+nombre VARCHAR(80) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores: agua, energía eléctrica, saneamiento y disposición de desechos.
+tipos_servicio_basico
+id BIGINT (PK)
+categoria_servicio_basico_id BIGINT (FK → categorias_servicio_basico.id) NOT NULL
+codigo VARCHAR(40) NOT NULL UNIQUE
+nombre VARCHAR(120) NOT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+* Agua: potable, pozo, tanquero, entubada, río/vertiente, lluvia y otro.
+* Energía: red pública, panel solar, generador y otro.
+* Saneamiento: red pública, pozo séptico, pozo ciego, descarga directa, letrina y otro.
+* Desechos: carro recolector, terreno baldío/quebrada, quema, entierra, río/canal y otro.
+servicios_basicos_centro
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+ambito_ubicacion_servicio_id BIGINT (FK → ambitos_ubicacion_servicio.id) NOT NULL
+tipo_servicio_basico_id BIGINT (FK → tipos_servicio_basico.id) NOT NULL
+proveedor VARCHAR(180) NULL
+especificacion VARCHAR(250) NULL
+observacion TEXT NULL
+UNIQUE (centro_turistico_id, ambito_ubicacion_servicio_id, tipo_servicio_basico_id)
+7.2 Señalética en el atractivo
+tipos_senaletica
+id BIGINT (PK)
+ambiente VARCHAR(30) NOT NULL
+codigo VARCHAR(50) NOT NULL UNIQUE
+nombre VARCHAR(180) NOT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+ambiente conserva la agrupación de la ficha: urbana, natural, informativa y seguridad.
+Valores exactos del catálogo:
+* Áreas urbanas: pictograma de atractivos naturales, atractivos culturales, actividades turísticas, servicios de apoyo y restricción; tótem de atractivos turísticos, de sitio y direccional.
+* Áreas naturales: los cinco pictogramas anteriores; señales turísticas de aproximación; paneles de direccionamiento hacia atractivos; panel informativo de atractivos; panel informativo de direccionamiento hacia atractivos, servicios y actividades; mesas interpretativas; tótem de sitio y de direccionamiento.
+* Letreros informativos: información botánica y normativos de concienciación.
+* Señalética interna de seguridad: protección de los elementos del atractivo.
+* Otros: conserva su especificación en senaletica_centro.detalle.
+materiales_senaletica
+id BIGINT (PK)
+codigo VARCHAR(20) NOT NULL UNIQUE
+nombre VARCHAR(60) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores: madera, aluminio y otro.
+senaletica_centro
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+tipo_senaletica_id BIGINT (FK → tipos_senaletica.id) NOT NULL
+material_senaletica_id BIGINT (FK → materiales_senaletica.id) NULL
+cantidad SMALLINT NULL
+estado_condicion_id BIGINT (FK → estados_condicion.id) NULL
+detalle VARCHAR(250) NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+7.3 Salud
+tipos_servicio_salud
+id BIGINT (PK)
+codigo VARCHAR(30) NOT NULL UNIQUE
+nombre VARCHAR(100) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores: hospital/clínica, centro de salud, dispensario médico, botiquín de primeros auxilios y otro.
+servicios_salud_centro
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+ambito_ubicacion_servicio_id BIGINT (FK → ambitos_ubicacion_servicio.id) NOT NULL
+tipo_servicio_salud_id BIGINT (FK → tipos_servicio_salud.id) NOT NULL
+cantidad SMALLINT NULL
+detalle_otro VARCHAR(180) NULL
+observacion TEXT NULL
+7.4 Seguridad
+tipos_servicio_seguridad
+id BIGINT (PK)
+codigo VARCHAR(30) NOT NULL UNIQUE
+nombre VARCHAR(100) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores: seguridad privada, Policía Nacional, policía municipal/metropolitana y otro.
+servicios_seguridad_centro
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+tipo_servicio_seguridad_id BIGINT (FK → tipos_servicio_seguridad.id) NOT NULL
+detalle VARCHAR(250) NULL
+observacion TEXT NULL
+7.5 Comunicación de uso público
+tipos_comunicacion
+id BIGINT (PK)
+grupo VARCHAR(20) NOT NULL
+codigo VARCHAR(40) NOT NULL UNIQUE
+nombre VARCHAR(100) NOT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Telefonía: fija, móvil y satelital. Internet: línea fija, fibra óptica, satelital, red móvil e inalámbrica.
+comunicaciones_centro
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+ambito_ubicacion_servicio_id BIGINT (FK → ambitos_ubicacion_servicio.id) NOT NULL
+tipo_comunicacion_id BIGINT (FK → tipos_comunicacion.id) NOT NULL
+observacion TEXT NULL
+UNIQUE (centro_turistico_id, ambito_ubicacion_servicio_id, tipo_comunicacion_id)
+radios_portatiles_centro
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL UNIQUE
+disponible BOOLEAN NOT NULL
+uso_visitantes BOOLEAN NOT NULL DEFAULT FALSE
+uso_interno BOOLEAN NOT NULL DEFAULT FALSE
+uso_emergencias BOOLEAN NOT NULL DEFAULT FALSE
+cantidad SMALLINT NULL
+observacion TEXT NULL
+7.6 Multiamenazas
+tipos_amenaza
+id BIGINT (PK)
+codigo VARCHAR(30) NOT NULL UNIQUE
+nombre VARCHAR(100) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores exactos de la ficha: deslaves, sismos, erupciones volcánicas, incendios forestales, sequía, inundaciones, aguajes y tsunami.
+amenazas_centro
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+tipo_amenaza_id BIGINT (FK → tipos_amenaza.id) NOT NULL
+presente BOOLEAN NOT NULL
+observacion TEXT NULL
+UNIQUE (centro_turistico_id, tipo_amenaza_id)
+planes_contingencia
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+existe BOOLEAN NOT NULL
+institucion_responsable VARCHAR(180) NULL
+nombre_documento VARCHAR(250) NULL
+anio SMALLINT NULL
+archivo_id BIGINT (FK → archivos_centro_turistico.id) NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+________________
+
+
+8. Políticas y regulaciones
+preguntas_politica
+id BIGINT (PK)
+codigo VARCHAR(30) NOT NULL UNIQUE
+pregunta TEXT NOT NULL
+orden SMALLINT NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Las cuatro preguntas de la ficha se cargan como catálogo: plan de desarrollo turístico del GAD, inclusión del atractivo en la planificación territorial, regulaciones aplicables y ordenanzas aplicables.
+respuestas_politica_centro
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+pregunta_politica_id BIGINT (FK → preguntas_politica.id) NOT NULL
+respuesta BOOLEAN NOT NULL
+anio SMALLINT NULL
+especificacion TEXT NULL
+observacion TEXT NULL
+UNIQUE (centro_turistico_id, pregunta_politica_id)
+________________
+
+
+9. Actividades que se practican
+grupos_actividad
+id BIGINT (PK)
+categoria_atractivo_id BIGINT (FK → categorias_atractivo.id) NOT NULL
+codigo VARCHAR(30) NOT NULL UNIQUE
+nombre VARCHAR(100) NOT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Para atractivos naturales: agua, aire y tierra. Para manifestaciones culturales: actividades culturales.
+actividades_turisticas
+id BIGINT (PK)
+grupo_actividad_id BIGINT (FK → grupos_actividad.id) NOT NULL
+codigo VARCHAR(50) NOT NULL UNIQUE
+nombre VARCHAR(180) NOT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Catálogo natural de la ficha:
+* Agua: buceo, kayak de mar, kayak lacustre, kayak de río, surf, kite surf, rafting, snorkel, tubing, regata, paseo en panga, bote, lancha, moto acuática, parasailing, esquí acuático, banana, boya, pesca deportiva y otro.
+* Aire: ala delta, canopy, parapente y otro.
+* Tierra: montañismo, escalada, senderismo, cicloturismo, canyoning, exploración de cuevas, actividades recreativas, cabalgata, caminata, camping, picnic, observación de flora/fauna, observación de astros y otro.
+Catálogo cultural: recorridos guiados y autoguiados, visita/participación en talleres artísticos o artesanales, exposiciones, exhibición de piezas, actividades vivenciales/lúdicas, presentaciones en vivo, muestras audiovisuales, fotografía, degustación de platos tradicionales, participación en celebraciones, compra de artesanías, convivencia, medicina ancestral y otro.
+actividades_centro_turistico
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+actividad_turistica_id BIGINT (FK → actividades_turisticas.id) NOT NULL
+activo BOOLEAN NOT NULL
+detalle_otro VARCHAR(180) NULL
+observacion TEXT NULL
+UNIQUE (centro_turistico_id, actividad_turistica_id)
+La aplicación debe permitir únicamente actividades cuya categoría coincida con la categoría del centro.
+________________
+
+
+10. Promoción y comercialización
+promocion_centro_turistico
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL UNIQUE
+tiene_plan_promocion BOOLEAN NOT NULL
+nombre_plan VARCHAR(250) NULL
+incluido_en_plan BOOLEAN NULL
+forma_parte_paquete BOOLEAN NOT NULL
+detalle_paquete TEXT NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+tipos_medio_promocion
+id BIGINT (PK)
+codigo VARCHAR(40) NOT NULL UNIQUE
+nombre VARCHAR(140) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores: página web, red social, revista especializada, material POP, oficina de turismo, medio de comunicación, feria y otro.
+medios_promocion_centro_turistico
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+tipo_medio_promocion_id BIGINT (FK → tipos_medio_promocion.id) NOT NULL
+nombre VARCHAR(180) NULL
+url VARCHAR(500) NULL
+periodicidad VARCHAR(100) NULL
+detalle_otro VARCHAR(180) NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+________________
+
+
+11. Registro de visitantes y afluencia
+11.1 Registro y estadísticas
+registros_visitantes
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL UNIQUE
+existe_registro BOOLEAN NOT NULL
+tipo_registro VARCHAR(20) NULL
+anios_registro SMALLINT NULL
+genera_reportes BOOLEAN NOT NULL DEFAULT FALSE
+frecuencia_reporte VARCHAR(80) NULL
+observacion TEXT NULL
+CHECK (tipo_registro IS NULL OR tipo_registro IN ('DIGITAL','PAPEL'))
+temporadas_visitacion
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+tipo_temporada VARCHAR(10) NOT NULL
+cantidad_visitantes INTEGER NULL
+anio SMALLINT NULL
+observacion TEXT NULL
+CHECK (tipo_temporada IN ('ALTA','BAJA'))
+UNIQUE (centro_turistico_id, tipo_temporada, anio)
+temporada_meses
+id BIGINT (PK)
+temporada_visitacion_id BIGINT (FK → temporadas_visitacion.id) NOT NULL
+mes_id SMALLINT (FK → meses.id) NOT NULL
+UNIQUE (temporada_visitacion_id, mes_id)
+procedencias_visitantes
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+tipo_procedencia VARCHAR(15) NOT NULL
+lugar VARCHAR(150) NOT NULL
+mes_id SMALLINT (FK → meses.id) NULL
+anio SMALLINT NULL
+cantidad_visitantes INTEGER NULL
+observacion TEXT NULL
+CHECK (tipo_procedencia IN ('NACIONAL','EXTRANJERA'))
+Para procedencia nacional, lugar registra la ciudad; para la extranjera, el país.
+11.2 Informante clave y demanda
+informantes_clave
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+nombre VARCHAR(180) NOT NULL
+contacto VARCHAR(120) NULL
+observacion TEXT NULL
+afluencia_visitantes
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL UNIQUE
+cantidad_entre_semana INTEGER NULL
+cantidad_fin_semana INTEGER NULL
+cantidad_feriados INTEGER NULL
+frecuencia_demanda VARCHAR(20) NULL
+observacion TEXT NULL
+CHECK (frecuencia_demanda IS NULL OR frecuencia_demanda IN ('PERMANENTE','ESTACIONAL','ESPORADICA','INEXISTENTE'))
+________________
+
+
+12. Recurso humano
+resumen_recurso_humano
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL UNIQUE
+personas_administracion_operacion INTEGER NULL
+personal_especializado_turismo INTEGER NULL
+observacion TEXT NULL
+tipos_formacion_personal
+id BIGINT (PK)
+grupo VARCHAR(20) NOT NULL
+codigo VARCHAR(40) NOT NULL UNIQUE
+nombre VARCHAR(140) NOT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Grupos y opciones:
+* Educación: primaria, secundaria, tercer nivel, cuarto nivel y otro.
+* Capacitación: primeros auxilios, hospitalidad, atención al cliente, guianza, sensibilización sobre discapacidad y otro.
+* Idioma: inglés, alemán, francés, italiano, chino y otro.
+formacion_personal_centro
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+tipo_formacion_personal_id BIGINT (FK → tipos_formacion_personal.id) NOT NULL
+cantidad_personas INTEGER NOT NULL DEFAULT 0
+detalle_otro VARCHAR(180) NULL
+observacion TEXT NULL
+UNIQUE (centro_turistico_id, tipo_formacion_personal_id)
+________________
+
+
+13. Descripción del atractivo
+La descripción está en centros_turisticos.descripcion y conserva el límite de 500 caracteres de la validación del XLSM. No necesita una tabla independiente porque existe una sola descripción principal por centro.
+________________
+
+
+14. Anexos y responsables
+14.1 Archivos, fotografías y mapa
+tipos_archivo_centro_turistico
+id BIGINT (PK)
+codigo VARCHAR(30) NOT NULL UNIQUE
+nombre VARCHAR(80) NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Valores: fotografía, mapa, plan de contingencia y otro anexo.
+archivos_centro_turistico
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+tipo_archivo_centro_id BIGINT (FK → tipos_archivo_centro_turistico.id) NOT NULL
+nombre_original VARCHAR(255) NOT NULL
+ruta_archivo TEXT NOT NULL
+mime_type VARCHAR(100) NOT NULL
+tamano_bytes BIGINT NULL
+fuente_autor VARCHAR(250) NULL
+descripcion TEXT NULL
+latitud NUMERIC(9,6) NULL
+longitud NUMERIC(10,6) NULL
+orden SMALLINT NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+Las dos fotografías en alta resolución son dos filas con tipo FOTOGRAFIA; el mapa es una fila con tipo MAPA. Así no se limita el sistema a un número fijo de anexos.
+14.2 Elaboración, validación y aprobación
+tipos_responsabilidad_ficha
+id BIGINT (PK)
+codigo VARCHAR(20) NOT NULL UNIQUE
+nombre VARCHAR(60) NOT NULL UNIQUE
+Valores: elaboró, validó y aprobó.
+responsables_ficha
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+tipo_responsabilidad_ficha_id BIGINT (FK → tipos_responsabilidad_ficha.id) NOT NULL
+nombre VARCHAR(180) NOT NULL
+institucion VARCHAR(180) NULL
+cargo VARCHAR(140) NULL
+email VARCHAR(254) NULL
+telefono VARCHAR(25) NULL
+firma_archivo_id BIGINT (FK → archivos_centro_turistico.id) NULL
+fecha DATE NULL
+observacion TEXT NULL
+UNIQUE (centro_turistico_id, tipo_responsabilidad_ficha_id)
+14.3 Levantamiento de accesibilidad
+levantamientos_accesibilidad
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+fecha DATE NULL
+hora_inicio TIME NULL
+hora_fin TIME NULL
+responsable_nombre VARCHAR(180) NULL
+responsable_institucion VARCHAR(180) NULL
+firma_encuestado_archivo_id BIGINT (FK → archivos_centro_turistico.id) NULL
+firma_responsable_archivo_id BIGINT (FK → archivos_centro_turistico.id) NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+14.4 Validación del GAD
+validaciones_gad
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+nombre_validador VARCHAR(180) NOT NULL
+telefono VARCHAR(25) NULL
+email VARCHAR(254) NULL
+institucion VARCHAR(180) NOT NULL
+cargo VARCHAR(140) NULL
+fecha DATE NULL
+firma_archivo_id BIGINT (FK → archivos_centro_turistico.id) NULL
+acepta_publicacion BOOLEAN NULL
+observacion TEXT NULL
+created_at TIMESTAMPTZ NOT NULL
+updated_at TIMESTAMPTZ NOT NULL
+C. Valoración, jerarquía y fórmulas automáticas
+Estas tablas conservan el resultado y también el detalle que lo produjo. Esto permite recalcular la ficha y explicar a la IA de dónde salió cada puntaje.
+criterios_valoracion
+id BIGINT (PK)
+codigo CHAR(1) NOT NULL UNIQUE
+nombre VARCHAR(180) NOT NULL
+puntaje_maximo NUMERIC(5,2) NOT NULL
+orden SMALLINT NOT NULL UNIQUE
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Pesos encontrados en el XLSM:
+Código
+	Criterio
+	Máximo
+	A
+	Accesibilidad y conectividad
+	18
+	B
+	Planta turística y servicios
+	18
+	C
+	Estado de conservación e integración
+	14
+	D
+	Higiene y seguridad turística
+	14
+	E
+	Políticas y regulaciones
+	10
+	F
+	Actividades que se practican
+	9
+	G
+	Difusión, medios de promoción y comercialización
+	7
+	H
+	Registro de visitantes y afluencia
+	5
+	I
+	Recurso humano
+	5
+	
+
+	Total
+	100
+	indicadores_valoracion
+id BIGINT (PK)
+criterio_valoracion_id BIGINT (FK → criterios_valoracion.id) NOT NULL
+codigo VARCHAR(20) NOT NULL UNIQUE
+nombre TEXT NOT NULL
+puntaje_maximo NUMERIC(5,2) NOT NULL
+regla_calculo TEXT NOT NULL
+orden SMALLINT NOT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+regla_calculo documenta la regla trasladada desde las fórmulas de las hojas Jerarquia y Calculos; no debe ejecutarse como texto. La lógica ejecutable se implementa en el servicio o función SQL de cálculo.
+resultados_indicador
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+indicador_valoracion_id BIGINT (FK → indicadores_valoracion.id) NOT NULL
+valor_base NUMERIC(8,2) NULL
+puntaje_obtenido NUMERIC(5,2) NOT NULL
+detalle_calculo JSONB NULL
+observacion TEXT NULL
+calculado_at TIMESTAMPTZ NOT NULL
+UNIQUE (centro_turistico_id, indicador_valoracion_id)
+resultados_criterio
+id BIGINT (PK)
+centro_turistico_id BIGINT (FK → centros_turisticos.id) NOT NULL
+criterio_valoracion_id BIGINT (FK → criterios_valoracion.id) NOT NULL
+puntaje_obtenido NUMERIC(5,2) NOT NULL
+puntaje_maximo_aplicado NUMERIC(5,2) NOT NULL
+calculado_at TIMESTAMPTZ NOT NULL
+UNIQUE (centro_turistico_id, criterio_valoracion_id)
+CHECK (puntaje_obtenido BETWEEN 0 AND puntaje_maximo_aplicado)
+El puntaje del criterio es:
+LEAST(SUM(resultados_indicador.puntaje_obtenido), criterios_valoracion.puntaje_maximo)
+El puntaje_total del centro es la suma de A a I y nunca puede superar 100.
+rangos_jerarquia
+id BIGINT (PK)
+codigo CHAR(2) NOT NULL UNIQUE
+nombre VARCHAR(30) NOT NULL UNIQUE
+puntaje_minimo NUMERIC(5,2) NOT NULL
+puntaje_maximo NUMERIC(5,2) NOT NULL
+descripcion TEXT NULL
+activo BOOLEAN NOT NULL DEFAULT TRUE
+Código
+	Jerarquía
+	Puntaje
+	00
+	Recurso
+	0–10
+	01
+	I
+	mayor que 10 y hasta 35
+	02
+	II
+	mayor que 35 y hasta 60
+	03
+	III
+	mayor que 60 y hasta 85
+	04
+	IV
+	mayor que 85 y hasta 100
+	La jerarquia_id se selecciona automáticamente según puntaje_total.
+Regla particular de las vías de acceso
+La hoja Calculos convierte el estado de cada vía así:
+BUENO = 3
+REGULAR = 2
+MALO = 1
+Cada modalidad —terrestre, acuática o aérea— se normaliza a un máximo de 9. Si existen varias modalidades aplicables, la fórmula utiliza el promedio de sus resultados. El detalle debe guardarse en resultados_indicador.detalle_calculo para que sea auditable.
+Corrección necesaria al trasladar las fórmulas
+El XLSM permite que el criterio F sume hasta 18 aunque su máximo declarado es 9, y que H sume hasta 7 aunque su máximo es 5. Además, un total superior a 100 queda fuera de los rangos de jerarquía. En la base se conserva la intención de la ficha y se aplica el tope de cada criterio con LEAST(...); así el total siempre queda entre 0 y 100.
+En el archivo entregado, el total mostrado es 56,2. Aplicando el tope de F, el total corregido es 53,2; en ambos casos corresponde a jerarquía II (02).
+________________
+
+
+D. Generación automática del código del atractivo
+Estructura de 17 caracteres
+PP CC QQ CA TI ST JE NNN
+Parte
+	Longitud
+	Procedencia
+	PP
+	2
+	provincias.codigo_dpa
+	CC
+	2
+	cantones.codigo_cton
+	QQ
+	2
+	parroquias.codigo_pqa
+	CA
+	2
+	categorias_atractivo.codigo
+	TI
+	2
+	tipos_atractivo.codigo
+	ST
+	2
+	subtipos_atractivo.codigo
+	JE
+	2
+	rangos_jerarquia.codigo
+	NNN
+	3
+	centros_turisticos.secuencial_atractivo, rellenado con ceros
+	Fórmula lógica:
+codigo_atractivo =
+    codigo_provincia
+ || codigo_canton
+ || codigo_parroquia
+ || codigo_categoria
+ || codigo_tipo
+ || codigo_subtipo
+ || codigo_jerarquia
+ || LPAD(secuencial_atractivo, 3, '0')
+El código completo no es una entidad y no requiere una tabla propia: identifica exactamente a una fila de centros_turisticos, y todas sus partes ya proceden de relaciones normalizadas.
+Cómo se genera 001
+En el XLSM, los tres últimos caracteres aparecen escritos como 001; no existe una fórmula que busque el siguiente número. En el sistema sí deben generarse automáticamente:
+1. Al crear el centro, se toma un bloqueo transaccional para su parroquia.
+2. Se consulta el mayor secuencial_atractivo de esa parroquia.
+3. El nuevo valor es mayor + 1; si no existe otro centro, es 1.
+4. Se presenta con LPAD(..., 3, '0'): 1 → 001, 2 → 002, …, 999 → 999.
+5. La restricción UNIQUE (parroquia_id, secuencial_atractivo) evita duplicados.
+El usuario no escribe 001 a mano. secuencial_atractivo se almacena como número y los ceros se agregan únicamente al componer el código.
+La jerarquía depende de la valoración. Por eso el sistema genera o actualiza codigo_atractivo después de recalcular puntaje_total y jerarquia_id. Si cambia la clasificación, ubicación o jerarquía, el código se recompone, pero el id interno del centro no cambia.
+Para el archivo analizado:
+02 03 53 MC 01 01 02 001
+= 020353MC010102001
+Sobre “número de levantamiento”
+La ficha XLSM no contiene un campo independiente llamado numero_levantamiento. En el encabezado contiene Código del atractivo, y sus tres últimos caracteres corresponden al consecutivo del atractivo. Por eso el modelo usa secuencial_atractivo; no agrega un segundo número que duplicaría el mismo dato.
+________________
+
+
+E. Relaciones y reglas comunes
+Relación principal
+centros_turisticos 1:N cada tabla de detalle operativo
+centros_turisticos 1:1 cada tabla de resumen que tenga UNIQUE (centro_turistico_id)
+catálogos 1:N tablas operativas
+Reglas de integridad
+* Las tablas de detalle nunca utilizan ficha_id; todas apuntan a centros_turisticos.id.
+* En las FK que forman parte histórica de una ficha se usa ON DELETE RESTRICT para los catálogos.
+* En los detalles exclusivos del centro se usa ON DELETE CASCADE si se autoriza borrar el centro.
+* Los catálogos se desactivan con activo = FALSE; no se eliminan si ya fueron utilizados.
+* Los campos “otro” conservan su especificación en detalle_otro o especificacion.
+* Una respuesta negativa también se almacena cuando la ficha necesita distinguir “No” de “sin información”.
+* Las observaciones son TEXT, pertenecen al mismo centro y deben incluirse al preparar el contexto para la IA.
+* Los valores calculados se actualizan dentro de una transacción después de guardar toda la ficha.
+Orden de guardado recomendado
+1. Catálogos DPA, clasificación y catálogos de opciones.
+2. centros_turisticos con el consecutivo automático; el código puede permanecer temporalmente nulo.
+3. Secciones 2 a 14 y sus observaciones.
+4. resultados_indicador y resultados_criterio.
+5. puntaje_total y jerarquia_id.
+6. codigo_atractivo definitivo de 17 caracteres.
+Este orden evita calcular la jerarquía o el código con una ficha incompleta.

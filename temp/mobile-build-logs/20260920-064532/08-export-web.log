@@ -1,0 +1,46 @@
+env: load .env
+env: export EXPO_PUBLIC_API_URL EXPO_PUBLIC_TILESERVER_STYLE_URL
+Using src/app as the root directory for Expo Router.
+React Compiler enabled
+Expo Autolinking module resolution enabled
+Starting Metro Bundler
+
+Static rendering is enabled. Learn more: https://docs.expo.dev/router/web/static-rendering/
+| (node:3697522) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:3697522) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:3697522) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:3697522) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:3697522) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:3697522) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:3697522) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:3697522) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:3697522) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:3697522) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+λ Bundled 29619ms node_modules/.pnpm/@expo+router-server@57.0.10_@expo+metro-runtime@57.0.15_expo-constants@57.0.18_expo-fon_cf5c207e2152a16b8ff1e16bdfeff963/node_modules/@expo/router-server/node/render.js (3652 modules)
+Web Bundled 30504ms node_modules/.pnpm/expo-router@57.0.21_ab28edf1090c04c6826cce78268de9f8/node_modules/expo-router/entry.js (3623 modules)
+
+› web bundles (1):
+_expo/static/js/web/entry-bee29eff1aab10901942706ecb01965b.js (5.8MB)
+
+› Static routes (8):
+/route (24KB)
+/ (index) (37KB)
+/offline (29KB)
+/settings (27KB)
+/_sitemap (24KB)
+/+not-found (24KB)
+/(tabs) (37KB)
+/centers/[code] (25KB)
+
+Exported: /home/giossue/Documentos/app-turismo-vinculacion/temp/mobile-build-logs/20260920-064532/export-web
+Something prevented Expo from exiting, forcefully exiting now.

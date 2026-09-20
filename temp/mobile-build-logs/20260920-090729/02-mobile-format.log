@@ -1,0 +1,7 @@
+$ prettier --check --ignore-path ../../.prettierignore .
+Checking formatting...
+[warn] package.json
+[warn] Code style issues found in the above file. Run Prettier with --write to fix.
+/home/giossue/Documentos/app-turismo-vinculacion/apps/mobile:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @turismo/mobile@1.0.0 format: `prettier --check --ignore-path ../../.prettierignore .`
+Exit status 1

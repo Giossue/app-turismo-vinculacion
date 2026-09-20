@@ -1,0 +1,26 @@
+env: load .env
+env: export EXPO_PUBLIC_API_URL EXPO_PUBLIC_TILESERVER_STYLE_URL
+Using src/app as the root directory for Expo Router.
+React Compiler enabled
+Expo Autolinking module resolution enabled
+Starting Metro Bundler
+
+Static rendering is enabled. Learn more: https://docs.expo.dev/router/web/static-rendering/
+λ Bundled 2119ms node_modules/.pnpm/@expo+router-server@57.0.10_@expo+metro-runtime@57.0.16_expo-constants@57.0.19_expo-fon_513d319fafba25b67d638060e614d7c2/node_modules/@expo/router-server/node/render.js (3447 modules)
+Web Bundled 2679ms node_modules/.pnpm/expo-router@57.0.22_4361dec1075e6872f30956ecbdfb5f67/node_modules/expo-router/entry.js (3600 modules)
+
+› web bundles (1):
+_expo/static/js/web/entry-4f9385276b3209a388ad4548444a22be.js (5.7MB)
+
+› Static routes (8):
+/route (24KB)
+/ (index) (37KB)
+/offline (29KB)
+/settings (27KB)
+/_sitemap (24KB)
+/+not-found (24KB)
+/(tabs) (37KB)
+/centers/[code] (25KB)
+
+Exported: /home/giossue/Documentos/app-turismo-vinculacion/temp/mobile-build-logs/20260920-090933/export-web
+Something prevented Expo from exiting, forcefully exiting now.

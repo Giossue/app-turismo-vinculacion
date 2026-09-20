@@ -1,0 +1,10 @@
+$ vitest run
+
+ RUN  v5.0.1 /home/giossue/Documentos/app-turismo-vinculacion/apps/mobile
+
+
+ Test Files  7 passed (7)
+      Tests  21 passed (21)
+   Start at  09:07:38
+   Duration  299ms (import 47%, transform 43%, tests 6%, worker 3%)
+

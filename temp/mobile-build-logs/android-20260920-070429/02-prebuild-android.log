@@ -1,0 +1,10 @@
+env: load .env
+env: export EXPO_PUBLIC_API_URL EXPO_PUBLIC_TILESERVER_STYLE_URL
+- Clearing android
+✔ Cleared android code
+- Creating native directory (./android)
+✔ Created native directory
+- Updating package.json
+✔ Updated package.json | no changes
+- Running prebuild
+✔ Finished prebuild

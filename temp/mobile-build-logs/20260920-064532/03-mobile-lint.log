@@ -1,0 +1,13 @@
+$ expo lint
+env: load .env
+env: export EXPO_PUBLIC_API_URL EXPO_PUBLIC_TILESERVER_STYLE_URL
+
+/home/giossue/Documentos/app-turismo-vinculacion/apps/mobile/src/app/offline.tsx
+  29:37  error  Unable to resolve path to module '@/features/offline/application/offline-download'  import/no-unresolved
+  31:41  error  Unable to resolve path to module '@/features/offline/data/offline-storage'          import/no-unresolved
+
+✖ 2 problems (2 errors, 0 warnings)
+
+/home/giossue/Documentos/app-turismo-vinculacion/apps/mobile:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @turismo/mobile@1.0.0 lint: `expo lint`
+Exit status 1

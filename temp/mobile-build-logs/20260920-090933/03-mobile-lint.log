@@ -1,0 +1,3 @@
+$ expo lint
+env: load .env
+env: export EXPO_PUBLIC_API_URL EXPO_PUBLIC_TILESERVER_STYLE_URL

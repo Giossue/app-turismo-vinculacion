@@ -1,0 +1,39 @@
+env: load .env
+env: export EXPO_PUBLIC_API_URL EXPO_PUBLIC_TILESERVER_STYLE_URL
+Using src/app as the root directory for Expo Router.
+React Compiler enabled
+Expo Autolinking module resolution enabled
+Starting Metro Bundler
+
+Android Bundled 30305ms node_modules/.pnpm/expo-router@57.0.22_4361dec1075e6872f30956ecbdfb5f67/node_modules/expo-router/entry.js (4118 modules)
+
+› Assets (35):
+../../node_modules/.pnpm/@expo-google-fonts+material-symbols@0.4.48/node_modules/@expo-google-fonts/material-symbols/400Regular/MaterialSymbols_400Regular.ttf (967KB)
+../../node_modules/.pnpm/@expo+vector-icons@15.1.1_expo-font@57.0.4_react-native@0.86.3_@babel+core@7.29.7_suppo_72d53a68ff4246710564480afcbc4081/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf (1.3MB)
+../../node_modules/.pnpm/@maplibre+maplibre-react-native@11.3.10_patch_hash=3aa55f658c632845fb769437f74451261fe5_9cb0e8e2cb842ca59363bd43574e36bb/node_modules/@maplibre/maplibre-react-native/lib/module/assets/heading.png (3 variations | 450B)
+../../node_modules/.pnpm/expo-router@57.0.22_4361dec1075e6872f30956ecbdfb5f67/node_modules/expo-router/assets/arrow_down.png (9.5KB)
+../../node_modules/.pnpm/expo-router@57.0.22_4361dec1075e6872f30956ecbdfb5f67/node_modules/expo-router/assets/arrow_right.xml (307B)
+../../node_modules/.pnpm/expo-router@57.0.22_4361dec1075e6872f30956ecbdfb5f67/node_modules/expo-router/assets/checkmark.xml (312B)
+../../node_modules/.pnpm/expo-router@57.0.22_4361dec1075e6872f30956ecbdfb5f67/node_modules/expo-router/assets/error.png (469B)
+../../node_modules/.pnpm/expo-router@57.0.22_4361dec1075e6872f30956ecbdfb5f67/node_modules/expo-router/assets/file.png (138B)
+../../node_modules/.pnpm/expo-router@57.0.22_4361dec1075e6872f30956ecbdfb5f67/node_modules/expo-router/assets/forward.png (188B)
+../../node_modules/.pnpm/expo-router@57.0.22_4361dec1075e6872f30956ecbdfb5f67/node_modules/expo-router/assets/pkg.png (364B)
+../../node_modules/.pnpm/expo-router@57.0.22_4361dec1075e6872f30956ecbdfb5f67/node_modules/expo-router/assets/react-navigation/elements/back-icon-mask.png (653B)
+../../node_modules/.pnpm/expo-router@57.0.22_4361dec1075e6872f30956ecbdfb5f67/node_modules/expo-router/assets/react-navigation/elements/back-icon.png (4 variations | 152B)
+../../node_modules/.pnpm/expo-router@57.0.22_4361dec1075e6872f30956ecbdfb5f67/node_modules/expo-router/assets/react-navigation/elements/clear-icon.png (4 variations | 425B)
+../../node_modules/.pnpm/expo-router@57.0.22_4361dec1075e6872f30956ecbdfb5f67/node_modules/expo-router/assets/react-navigation/elements/close-icon.png (4 variations | 235B)
+../../node_modules/.pnpm/expo-router@57.0.22_4361dec1075e6872f30956ecbdfb5f67/node_modules/expo-router/assets/react-navigation/elements/search-icon.png (4 variations | 599B)
+../../node_modules/.pnpm/expo-router@57.0.22_4361dec1075e6872f30956ecbdfb5f67/node_modules/expo-router/assets/sitemap.png (465B)
+../../node_modules/.pnpm/expo-router@57.0.22_4361dec1075e6872f30956ecbdfb5f67/node_modules/expo-router/assets/unmatched.png (4.8KB)
+assets/images/tourism-pin-dark.png (1.1KB)
+assets/images/tourism-pin-light.png (1.1KB)
+assets/images/tourism-pin-selected-dark.png (1.1KB)
+assets/images/tourism-pin-selected-light.png (1.1KB)
+
+› android bundles (1):
+_expo/static/js/android/entry-abede7f33df6bcca2c89f0612007ee17.hbc (7.9MB)
+
+› Files (1):
+metadata.json (2.4KB)
+
+Exported: /home/giossue/Documentos/app-turismo-vinculacion/temp/mobile-build-logs/20260920-090729/export-android
