@@ -57,7 +57,8 @@ implementados, formularios normalizados y valoración pendientes.
   validados; no expone esos datos en la superficie pública.
 - El motor tipado de valoración ya conserva máximos A–I, topes de F/H, total máximo de 100 y
   rangos de jerarquía; la regresión del libro reproduce el total cacheado `48,7` y jerarquía
-  `02`. Aún falta mapear cada indicador a sus respuestas normalizadas y persistir resultados.
+  `02`. `temp/db.md` todavía documenta `56,2/53,2`, por lo que falta aprobar un fixture
+  recalculado y resolver esa discrepancia antes de persistir resultados.
 - La sección 4 ya captura localidad cercana y distancia desde el catálogo administrativo,
   además de sus filas de vías, transporte y accesibilidad, con validación de cantidades y
   distancia no negativa.
