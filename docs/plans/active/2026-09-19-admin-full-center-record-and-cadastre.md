@@ -40,6 +40,8 @@ normalizados y valoración pendientes.
   distancia no negativa.
 - La sección 3 ya captura tipo de clima, temperaturas y precipitaciones con rangos validados;
   estos datos permanecen en el snapshot hasta implementar su adaptador normalizado.
+- Las facilidades del núcleo ya permiten cantidad y observación por opción seleccionada;
+  dejan de guardar siempre la cantidad fija `1`.
 
 ## Objetivo
 

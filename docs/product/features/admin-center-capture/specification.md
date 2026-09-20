@@ -30,6 +30,8 @@ explícita.
   separadas de la localidad oficial del centro y validadas contra el contrato de captura.
 - La sección de características conserva el tipo de clima y sus rangos de temperatura y
   precipitación, distinguiendo valores ausentes de cero.
+- Las facilidades seleccionadas conservan cantidad y observación por opción, en lugar de
+  imponer siempre una cantidad fija.
 
 El snapshot se puede consultar en `GET /admin/centers/:code/sections` y actualizar por
 sección con `PATCH /admin/centers/:code/sections/:sectionCode`. Durante la transición, el
