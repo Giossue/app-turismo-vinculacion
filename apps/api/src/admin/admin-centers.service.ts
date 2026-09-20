@@ -2484,6 +2484,80 @@ export class AdminCentersService {
     });
   }
 
+  async valuation(code: string) {
+    return this.dataSource.transaction(async (manager) => {
+      const rows = (await manager.query(
+        `SELECT c.id, c.jerarquia_id AS "hierarchyId",
+                rj.codigo AS "hierarchyCode"
+           FROM centros_turisticos c
+           LEFT JOIN rangos_jerarquia rj ON rj.id = c.jerarquia_id
+          WHERE TRIM(c.codigo_atractivo) = TRIM($1)`,
+        [code],
+      )) as Array<{
+        id: string;
+        hierarchyId: number | null;
+        hierarchyCode: string | null;
+      }>;
+      const center = rows[0];
+      if (!center)
+        throw new NotFoundException("No se encontró la ficha turística.");
+
+      const [indicatorRows, criterionRows, totalRows] = await Promise.all([
+        manager.query(
+          `SELECT COUNT(*)::int AS count
+             FROM indicadores_valoracion
+            WHERE activo = TRUE`,
+        ),
+        manager.query(
+          `SELECT cv.codigo AS code, cv.nombre AS name,
+                  cv.puntaje_maximo AS maximum,
+                  rc.puntaje_obtenido AS score,
+                  rc.puntaje_maximo_aplicado AS "appliedMaximum"
+             FROM criterios_valoracion cv
+             LEFT JOIN resultados_criterio rc
+               ON rc.criterio_valoracion_id = cv.id
+              AND rc.centro_turistico_id = $1
+            WHERE cv.activo = TRUE
+            ORDER BY cv.orden`,
+          [center.id],
+        ),
+        manager.query(
+          `SELECT SUM(rc.puntaje_obtenido)::numeric AS total
+             FROM resultados_criterio rc
+            WHERE rc.centro_turistico_id = $1`,
+          [center.id],
+        ),
+      ]);
+      const configured = Number(indicatorRows[0]?.count ?? 0) > 0;
+      const totalValue = totalRows[0]?.total;
+      return {
+        configured,
+        total:
+          totalValue === null || totalValue === undefined
+            ? null
+            : Number(totalValue),
+        hierarchyCode: center.hierarchyCode ?? "00",
+        hierarchyId:
+          center.hierarchyId === null ? null : Number(center.hierarchyId),
+        criteria: (criterionRows as Array<Record<string, unknown>>).map(
+          (item) => ({
+            code: String(item.code).trim(),
+            name: item.name,
+            maximum: Number(item.maximum),
+            score:
+              item.score === null || item.score === undefined
+                ? null
+                : Number(item.score),
+            appliedMaximum:
+              item.appliedMaximum === null || item.appliedMaximum === undefined
+                ? null
+                : Number(item.appliedMaximum),
+          }),
+        ),
+      };
+    });
+  }
+
   async saveSection(
     code: string,
     sectionCode: AdminCenterSectionCode,

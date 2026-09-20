@@ -66,6 +66,12 @@ export class AdminController {
     return { data: await this.centers.sections(code) };
   }
 
+  @Get("centers/:code/valuation")
+  @Roles("ADMINISTRADOR")
+  async valuation(@Param("code") code: string) {
+    return { data: await this.centers.valuation(code) };
+  }
+
   @Patch("centers/:code/sections/:sectionCode")
   @Roles("ADMINISTRADOR")
   async saveSection(

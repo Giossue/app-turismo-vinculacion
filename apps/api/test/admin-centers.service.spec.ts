@@ -3,6 +3,61 @@ import { describe, expect, it, vi } from "vitest";
 import { AdminCentersService } from "../src/admin/admin-centers.service";
 
 describe("AdminCentersService", () => {
+  it("exposes persisted valuation status without recalculating the ficha", async () => {
+    const managerQuery = vi
+      .fn()
+      .mockResolvedValueOnce([
+        { id: "10", hierarchyId: 2, hierarchyCode: "02" },
+      ])
+      .mockResolvedValueOnce([{ count: "3" }])
+      .mockResolvedValueOnce([
+        {
+          code: "A",
+          name: "Ubicación",
+          maximum: "20",
+          score: "18.5",
+          appliedMaximum: "20",
+        },
+      ])
+      .mockResolvedValueOnce([{ total: "48.7" }]);
+    const manager = { query: managerQuery };
+    const service = new AdminCentersService({
+      transaction: vi.fn(async (callback: (value: typeof manager) => unknown) =>
+        callback(manager),
+      ),
+    } as never);
+
+    await expect(service.valuation("EC-001")).resolves.toEqual({
+      configured: true,
+      total: 48.7,
+      hierarchyCode: "02",
+      hierarchyId: 2,
+      criteria: [
+        {
+          code: "A",
+          name: "Ubicación",
+          maximum: 20,
+          score: 18.5,
+          appliedMaximum: 20,
+        },
+      ],
+    });
+    expect(managerQuery).toHaveBeenCalledTimes(4);
+  });
+
+  it("rejects valuation status for an unknown ficha", async () => {
+    const manager = { query: vi.fn().mockResolvedValue([]) };
+    const service = new AdminCentersService({
+      transaction: vi.fn(async (callback: (value: typeof manager) => unknown) =>
+        callback(manager),
+      ),
+    } as never);
+
+    await expect(service.valuation("UNKNOWN")).rejects.toThrow(
+      "No se encontró la ficha turística.",
+    );
+  });
+
   it("returns inventory summary counts grouped by review state", async () => {
     const dataSource = {
       query: vi.fn().mockResolvedValue([

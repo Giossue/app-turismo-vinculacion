@@ -51,7 +51,8 @@ La sección de planta conserva también los ámbitos del atractivo/poblado, cant
 facilidades con ubicación y responsables, y servicios complementarios en el mismo snapshot;
 ninguna de esas relaciones crea un centro turístico nuevo.
 Las facilidades seleccionadas conservan cantidad y observación por opción. El panel consulta
-`/admin/summary`, `/admin/centers`, `/admin/catalogs` y `/admin/centers/:code`; las
+`/admin/summary`, `/admin/centers`, `/admin/catalogs`,
+`/admin/centers/:code/valuation` y `/admin/centers/:code`; las
 mutaciones de borrador, revisión, aprobación, publicación, desactivación y reactivación
 se realizan exclusivamente mediante la API. Los borradores se mantienen aislados de la
 versión pública hasta publicar y cada mutación genera auditoría. Catastro consulta el

@@ -62,6 +62,9 @@ completa pendientes.
   recalculado y resolver esa discrepancia antes de persistir resultados. La base desplegada
   mantiene `criterios_valoracion`, pero no tiene filas en `indicadores_valoracion`, por lo
   que el servidor conserva la jerarquía provisional `00` y no inventa puntajes.
+- El panel consulta `GET /admin/centers/:code/valuation` y muestra si la jerarquía/código son
+  provisionales; el endpoint solo expone resultados persistidos y no calcula cuando faltan
+  indicadores activos.
 - La sección 4 ya captura localidad cercana y distancia desde el catálogo administrativo,
   además de vías terrestres (coordenadas, distancia, material y estado), accesos acuáticos
   y aéreos, tipos y operadores de transporte, los criterios detallados de la hoja

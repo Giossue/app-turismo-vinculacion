@@ -26,6 +26,8 @@ explícita.
   la sección elegida dentro del snapshot versionado.
 - El código institucional se muestra por componentes y la jerarquía es de solo lectura. Si
   la valoración aún no está calculada, el servidor usa provisionalmente la jerarquía `00`.
+- El panel consulta el estado de valoración por ficha; distingue resultados persistidos de la
+  jerarquía provisional y no presenta un puntaje cuando faltan indicadores activos.
 - La sección de accesibilidad conserva la localidad cercana y su distancia aproximada,
   separadas de la localidad oficial del centro. También captura vías terrestres con sus
   coordenadas, distancia, material y estado; accesos acuáticos y aéreos; tipos y operadores
