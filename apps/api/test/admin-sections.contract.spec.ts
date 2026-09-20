@@ -256,6 +256,40 @@ describe("admin section contract", () => {
     ).toContain("repetido");
   });
 
+  it("validates promotion decisions and media URLs", () => {
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        promotion: {
+          hasPlan: "SI",
+          planName: "Plan de promoción anual",
+          includedInPlan: "SI",
+          partOfPackage: "NO",
+          media: [
+            {
+              response: "SI",
+              name: "Página web institucional",
+              url: "https://turismo.gob.ec/ficha",
+            },
+          ],
+        },
+      }),
+    ).toBeNull();
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        promotion: {
+          hasPlan: "SI",
+          includedInPlan: "SI",
+          partOfPackage: "NO",
+          media: [{ response: "SI", url: "javascript:alert(1)" }],
+        },
+      }),
+    ).toContain("HTTP o HTTPS");
+  });
+
   it("derives core progress and explicit no aplica states", () => {
     const progress = buildAdminSectionProgress({
       name: "Centro de prueba",

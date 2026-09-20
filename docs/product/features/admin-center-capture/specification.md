@@ -39,6 +39,8 @@ explícita.
 - La sección de políticas y regulaciones presenta las cuatro preguntas institucionales con
   respuesta explícita, año, especificación y observación, conservando `SIN INFORMACIÓN` y
   `NO APLICA` como estados distintos.
+- La sección de promoción y comercialización separa el plan institucional, los paquetes y
+  los medios de difusión, con nombre, periodicidad, URL y observación validados.
 - Las facilidades seleccionadas conservan cantidad y observación por opción, en lugar de
   imponer siempre una cantidad fija.
 - Durante la revisión, el editor compara la versión publicada con la propuesta por cada

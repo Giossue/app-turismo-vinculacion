@@ -157,6 +157,7 @@ const POLICY_CODES = new Set([
   "REGULACIONES_APLICABLES",
   "ORDENANZAS_APLICABLES",
 ]);
+const PROMOTION_MEDIA_RESPONSE_VALUES = SECTION_RESPONSE_VALUES;
 
 /**
  * Validates the transitional JSON contract used by the web section editor.
@@ -285,6 +286,10 @@ export function validateAdminSectionContent(content: unknown): string | null {
   if (content.policies !== undefined) {
     const policiesError = validatePolicyBlock(content.policies);
     if (policiesError) return policiesError;
+  }
+  if (content.promotion !== undefined) {
+    const promotionError = validatePromotionBlock(content.promotion);
+    if (promotionError) return promotionError;
   }
   if (content.rows !== undefined) {
     if (!Array.isArray(content.rows) || content.rows.length > 200) {
@@ -627,6 +632,64 @@ function validatePolicyBlock(value: unknown): string | null {
         (typeof field !== "string" || field.length > 1_000)
       ) {
         return "Los detalles de política superan los límites permitidos.";
+      }
+    }
+  }
+  return null;
+}
+
+function validatePromotionBlock(value: unknown): string | null {
+  if (!isJsonRecord(value)) return "El bloque de promoción no es válido.";
+  for (const key of ["hasPlan", "includedInPlan", "partOfPackage"]) {
+    if (!isSectionResponse(value[key])) {
+      return "Cada decisión de promoción requiere una respuesta válida.";
+    }
+  }
+  for (const key of ["planName", "packageDetail", "observation"]) {
+    const field = value[key];
+    if (
+      field !== undefined &&
+      field !== null &&
+      (typeof field !== "string" || field.length > (key === "planName" ? 250 : 1_000))
+    ) {
+      return "Los detalles de promoción superan los límites permitidos.";
+    }
+  }
+  if (value.media !== undefined) {
+    if (!Array.isArray(value.media) || value.media.length > 100) {
+      return "Los medios de promoción no son válidos.";
+    }
+    for (const medium of value.media) {
+      if (!isJsonRecord(medium)) return "Un medio de promoción no es válido.";
+      if (!PROMOTION_MEDIA_RESPONSE_VALUES.has(String(medium.response))) {
+        return "Cada medio de promoción requiere una respuesta válida.";
+      }
+      for (const key of ["name", "periodicity", "detailOther", "observation"]) {
+        const field = medium[key];
+        if (
+          field !== undefined &&
+          field !== null &&
+          (typeof field !== "string" || field.length > (key === "observation" ? 1_000 : 180))
+        ) {
+          return "Los datos del medio de promoción superan los límites permitidos.";
+        }
+      }
+      if (
+        medium.url !== undefined &&
+        medium.url !== null &&
+        (typeof medium.url !== "string" || medium.url.length > 500)
+      ) {
+        return "La URL del medio de promoción supera el límite permitido.";
+      }
+      if (typeof medium.url === "string" && medium.url.trim()) {
+        try {
+          const url = new URL(medium.url);
+          if (!['http:', 'https:'].includes(url.protocol)) {
+            return "La URL del medio de promoción debe usar HTTP o HTTPS.";
+          }
+        } catch {
+          return "La URL del medio de promoción no es válida.";
+        }
       }
     }
   }

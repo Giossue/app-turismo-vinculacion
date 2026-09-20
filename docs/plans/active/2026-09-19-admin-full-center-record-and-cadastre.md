@@ -44,6 +44,8 @@ implementados, formularios normalizados y valoración pendientes.
 - La sección 8 ahora presenta las cuatro preguntas institucionales de políticas y
   regulaciones con respuesta de cuatro estados, año, especificación y observación, y rechaza
   códigos repetidos o fuera del catálogo contractual.
+- La sección 10 ahora conserva por separado el plan de promoción, su inclusión institucional,
+  paquetes y medios utilizados, validando respuestas, textos y URLs HTTP/HTTPS.
 - La sección 4 ya captura localidad cercana y distancia desde el catálogo administrativo,
   además de sus filas de vías, transporte y accesibilidad, con validación de cantidades y
   distancia no negativa.
