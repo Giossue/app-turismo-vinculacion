@@ -57,7 +57,9 @@ explícita.
   `NO APLICA` como estados distintos. Al publicar, las respuestas se vinculan con las
   preguntas activas del catálogo y los estados no binarios mantienen la propuesta en revisión.
 - La sección de promoción y comercialización separa el plan institucional, los paquetes y
-  los medios de difusión, con nombre, periodicidad, URL y observación validados.
+  los medios de difusión, con nombre, periodicidad, URL y observación validados. El plan se
+  publica en su relación normalizada; los medios requieren un tipo activo del catálogo antes
+  de publicarse.
 - La sección de visitantes y afluencia separa registros, temporadas, procedencias,
   informantes y cantidades habituales, conservando meses, años y cero como datos explícitos.
   Al publicar, reemplaza sus relaciones normalizadas; los meses se validan contra el catálogo

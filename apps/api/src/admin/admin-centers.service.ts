@@ -2671,11 +2671,13 @@ export class AdminCentersService {
       publishedPlant,
       publishedVisitors,
       publishedPolicies,
+      publishedPromotion,
     ] = await Promise.all([
       this.readPublishedAccessibilitySection(manager, center.id),
       this.readPublishedPlantSection(manager, center.id),
       this.readPublishedVisitorsSection(manager, center.id),
       this.readPublishedPoliciesSection(manager, center.id),
+      this.readPublishedPromotionSection(manager, center.id),
     ]);
     const publishedSections: Record<string, unknown> = {};
     if (publishedAccessibility)
@@ -2683,6 +2685,7 @@ export class AdminCentersService {
     if (publishedPlant) publishedSections.planta = publishedPlant;
     if (publishedVisitors) publishedSections.visitantes = publishedVisitors;
     if (publishedPolicies) publishedSections.politicas = publishedPolicies;
+    if (publishedPromotion) publishedSections.promocion = publishedPromotion;
     published.sections = publishedSections;
     return {
       code: center.code,
@@ -3001,6 +3004,10 @@ export class AdminCentersService {
     if (policiesSection) {
       await this.applyPoliciesSection(manager, center.id, policiesSection);
     }
+    const promotionSection = getAdminSectionRecord(draft, "promocion");
+    if (promotionSection) {
+      await this.applyPromotionSection(manager, center.id, promotionSection);
+    }
     const accessibilitySection = getAdminSectionRecord(draft, "accesibilidad");
     if (accessibilitySection) {
       await this.applyAccessibilitySection(
@@ -3316,6 +3323,57 @@ export class AdminCentersService {
           policy.specification ?? null,
           policy.observation ?? null,
         ],
+      );
+    }
+  }
+
+  private async applyPromotionSection(
+    manager: EntityManager,
+    centerId: string,
+    section: JsonRecord,
+  ) {
+    if (section.response === "NO_APLICA") {
+      await manager.query(
+        `DELETE FROM medios_promocion_centro WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      await manager.query(
+        `DELETE FROM promocion_centro_turistico WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      return;
+    }
+    const promotion = isJsonRecord(section.promotion)
+      ? section.promotion
+      : null;
+    if (!promotion) return;
+    await manager.query(
+      `INSERT INTO promocion_centro_turistico
+         (centro_turistico_id, tiene_plan_promocion, nombre_plan,
+          incluido_en_plan, forma_parte_paquete, detalle_paquete, observacion)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT (centro_turistico_id) DO UPDATE SET
+         tiene_plan_promocion = EXCLUDED.tiene_plan_promocion,
+         nombre_plan = EXCLUDED.nombre_plan,
+         incluido_en_plan = EXCLUDED.incluido_en_plan,
+         forma_parte_paquete = EXCLUDED.forma_parte_paquete,
+         detalle_paquete = EXCLUDED.detalle_paquete,
+         observacion = EXCLUDED.observacion,
+         updated_at = CURRENT_TIMESTAMP`,
+      [
+        centerId,
+        sectionResponseToBoolean(promotion.hasPlan) ?? false,
+        promotion.planName ?? null,
+        sectionResponseToBoolean(promotion.includedInPlan),
+        sectionResponseToBoolean(promotion.partOfPackage) ?? false,
+        promotion.packageDetail ?? null,
+        promotion.observation ?? section.observation ?? null,
+      ],
+    );
+    if (Array.isArray(promotion.media) && promotion.media.length === 0) {
+      await manager.query(
+        `DELETE FROM medios_promocion_centro WHERE centro_turistico_id = $1`,
+        [centerId],
       );
     }
   }
@@ -3999,6 +4057,65 @@ export class AdminCentersService {
     };
   }
 
+  private async readPublishedPromotionSection(
+    manager: EntityManager,
+    centerId: string,
+  ): Promise<Record<string, unknown> | null> {
+    const [promotionRows, mediaRows] = (await Promise.all([
+      manager.query(
+        `SELECT json_build_object(
+                  'hasPlan', CASE WHEN tiene_plan_promocion THEN 'SI' ELSE 'NO' END,
+                  'planName', nombre_plan,
+                  'includedInPlan', CASE
+                    WHEN incluido_en_plan IS TRUE THEN 'SI'
+                    WHEN incluido_en_plan IS FALSE THEN 'NO'
+                    ELSE 'SIN_INFORMACION'
+                  END,
+                  'partOfPackage', CASE WHEN forma_parte_paquete THEN 'SI' ELSE 'NO' END,
+                  'packageDetail', detalle_paquete,
+                  'observation', observacion
+                ) AS data
+           FROM promocion_centro_turistico
+          WHERE centro_turistico_id = $1`,
+        [centerId],
+      ),
+      manager.query(
+        `SELECT COALESCE(json_agg(json_build_object(
+                  'typeId', mpc.tipo_medio_promocion_id,
+                  'name', mpc.nombre,
+                  'url', mpc.url,
+                  'periodicity', mpc.periodicidad,
+                  'detailOther', mpc.detalle_otro,
+                  'observation', mpc.observacion
+                ) ORDER BY mpc.id), '[]'::json) AS data
+           FROM medios_promocion_centro mpc
+          WHERE mpc.centro_turistico_id = $1`,
+        [centerId],
+      ),
+    ])) as Array<Array<{ data: unknown }>>;
+    const promotion = promotionRows[0]?.data;
+    const media = mediaRows[0]?.data;
+    if (
+      promotion === undefined &&
+      (!Array.isArray(media) || media.length === 0)
+    ) {
+      return null;
+    }
+    return {
+      schemaVersion: 1,
+      response: "SI",
+      promotion: promotion ?? {
+        hasPlan: "SIN_INFORMACION",
+        planName: "",
+        includedInPlan: "SIN_INFORMACION",
+        partOfPackage: "SIN_INFORMACION",
+        packageDetail: "",
+        observation: "",
+      },
+      media: media ?? [],
+    };
+  }
+
   private centerToDraft(center: CenterRow): CenterDraft {
     return {
       name: center.name,
@@ -4210,6 +4327,7 @@ export class AdminCentersService {
       await this.validateAccessibilitySectionReferences(manager, draft);
       await this.validateVisitorsSectionReferences(manager, draft);
       await this.validatePoliciesSectionReferences(manager, draft);
+      await this.validatePromotionSectionReferences(manager, draft);
     }
     await this.validateCharacteristicsSectionReferences(
       manager,
@@ -4331,6 +4449,40 @@ export class AdminCentersService {
     if (rows.length !== new Set(codes).size) {
       throw new ConflictException(
         "Una pregunta de política ya no está disponible en el catálogo.",
+      );
+    }
+  }
+
+  private async validatePromotionSectionReferences(
+    _manager: EntityManager,
+    draft: CenterDraft,
+  ) {
+    const section = getAdminSectionRecord(draft, "promocion");
+    if (!section || section.response === "NO_APLICA") return;
+    const promotion = isJsonRecord(section.promotion)
+      ? section.promotion
+      : null;
+    if (!promotion) return;
+    for (const key of ["hasPlan", "partOfPackage"]) {
+      if (!isBinarySectionResponse(promotion[key])) {
+        throw new ConflictException(
+          "La sección promoción requiere respuestas SI o NO para publicar el plan.",
+        );
+      }
+    }
+    if (
+      promotion.includedInPlan !== undefined &&
+      promotion.includedInPlan !== null
+    ) {
+      if (!isBinarySectionResponse(promotion.includedInPlan)) {
+        throw new ConflictException(
+          "La inclusión en un plan debe responderse como SI o NO antes de publicar.",
+        );
+      }
+    }
+    if (Array.isArray(promotion.media) && promotion.media.length > 0) {
+      throw new ConflictException(
+        "Los medios de promoción requieren un tipo activo del catálogo antes de publicar.",
       );
     }
   }

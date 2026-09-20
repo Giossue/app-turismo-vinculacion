@@ -81,6 +81,37 @@ describe("AdminCentersService", () => {
     );
   });
 
+  it("publishes the institutional promotion plan", async () => {
+    const managerQuery = vi.fn().mockResolvedValue([]);
+    const manager = { query: managerQuery };
+    const service = new AdminCentersService({} as never);
+    const applyPromotionSection = (
+      service as unknown as {
+        applyPromotionSection: (
+          value: typeof manager,
+          centerId: string,
+          section: Record<string, unknown>,
+        ) => Promise<void>;
+      }
+    ).applyPromotionSection;
+
+    await applyPromotionSection.call(service, manager, "10", {
+      response: "SI",
+      promotion: {
+        hasPlan: "SI",
+        planName: "Plan anual",
+        includedInPlan: "NO",
+        partOfPackage: "SI",
+        packageDetail: "Ruta cultural",
+      },
+    });
+
+    expect(managerQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO promocion_centro_turistico"),
+      expect.arrayContaining(["10", true, "Plan anual", false, true]),
+    );
+  });
+
   it("exposes persisted valuation status without recalculating the ficha", async () => {
     const managerQuery = vi
       .fn()

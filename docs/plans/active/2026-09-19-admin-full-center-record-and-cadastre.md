@@ -89,6 +89,9 @@ completa pendientes.
 - La sección 8 ya reemplaza las respuestas de políticas mediante sus preguntas activas de
   catálogo; las respuestas `SIN_INFORMACION` y `NO_APLICA` no se convierten en falsos y el
   despliegue debe tener sembradas las cuatro preguntas antes de publicar.
+- La sección 10 ya publica el plan institucional y sus decisiones en la relación normalizada;
+  los medios siguen en el snapshot y bloquean la publicación hasta que el formulario capture
+  un tipo activo del catálogo de medios.
 - Las facilidades del núcleo ya permiten cantidad y observación por opción seleccionada;
   dejan de guardar siempre la cantidad fija `1`.
 - La ficha ahora compara, por sección, la versión publicada con la propuesta y muestra

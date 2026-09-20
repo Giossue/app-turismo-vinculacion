@@ -56,6 +56,8 @@ La sección de visitantes publica registros, temporadas, procedencias, informant
 con sus meses normalizados, sin convertir un estado desconocido en una respuesta negativa.
 Las políticas se publican contra preguntas activas del catálogo y se leen de vuelta para la
 comparación; mientras falten esas preguntas, el borrador no puede publicarse.
+El plan de promoción se normaliza de forma independiente; los medios sin tipo catalogado se
+conservan en el borrador y detienen la publicación.
 Las facilidades seleccionadas conservan cantidad y observación por opción. El panel consulta
 `/admin/summary`, `/admin/centers`, `/admin/catalogs`,
 `/admin/centers/:code/valuation` y `/admin/centers/:code`; las
