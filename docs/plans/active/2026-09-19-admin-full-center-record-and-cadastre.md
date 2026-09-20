@@ -52,6 +52,9 @@ implementados, formularios normalizados y valoración pendientes.
   informantes y afluencia entre semana, fin de semana y feriados sin mezclar sus fuentes.
 - La sección 12 ahora captura el resumen de administración/operación y personal especializado,
   además de formación, capacitación e idiomas con cantidades y detalle de “otro”.
+- La sección 14 ahora captura anexos con visibilidad pública/administrativa/restringida,
+  responsables, levantamiento de accesibilidad y validación del GAD con contactos y fechas
+  validados; no expone esos datos en la superficie pública.
 - La sección 4 ya captura localidad cercana y distancia desde el catálogo administrativo,
   además de sus filas de vías, transporte y accesibilidad, con validación de cantidades y
   distancia no negativa.

@@ -47,6 +47,9 @@ explícita.
   ciudad nacional de país extranjero antes de publicar la ficha.
 - La sección de recurso humano conserva cantidades del resumen y registros de educación,
   capacitación e idiomas sin crear un centro separado.
+- La sección de anexos conserva tipo, fuente, autor, descripción y visibilidad controlada,
+  junto con responsables, levantamiento de accesibilidad y validación del GAD; contactos,
+  firmas y documentos internos permanecen administrativos o restringidos.
 - Las facilidades seleccionadas conservan cantidad y observación por opción, en lugar de
   imponer siempre una cantidad fija.
 - Durante la revisión, el editor compara la versión publicada con la propuesta por cada

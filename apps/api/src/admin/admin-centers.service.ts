@@ -168,6 +168,7 @@ const VISITOR_FREQUENCIES = new Set([
   "INEXISTENTE",
 ]);
 const TRAINING_GROUPS = new Set(["EDUCACION", "CAPACITACION", "IDIOMA"]);
+const ANNEX_VISIBILITIES = new Set(["PUBLICA", "ADMINISTRATIVA", "RESTRINGIDA"]);
 
 /**
  * Validates the transitional JSON contract used by the web section editor.
@@ -308,6 +309,10 @@ export function validateAdminSectionContent(content: unknown): string | null {
   if (content.humanResources !== undefined) {
     const humanResourcesError = validateHumanResourcesBlock(content.humanResources);
     if (humanResourcesError) return humanResourcesError;
+  }
+  if (content.annexes !== undefined) {
+    const annexesError = validateAnnexesBlock(content.annexes);
+    if (annexesError) return annexesError;
   }
   if (content.rows !== undefined) {
     if (!Array.isArray(content.rows) || content.rows.length > 200) {
@@ -972,6 +977,131 @@ function validateHumanResourcesBlock(value: unknown): string | null {
     }
   }
   return null;
+}
+
+function validateAnnexesBlock(value: unknown): string | null {
+  if (!isJsonRecord(value)) return "El bloque de anexos no es válido.";
+  if (value.documents !== undefined) {
+    if (!Array.isArray(value.documents) || value.documents.length > 100) {
+      return "Los anexos documentales no son válidos.";
+    }
+    for (const document of value.documents) {
+      if (!isJsonRecord(document)) return "Un anexo documental no es válido.";
+      for (const key of ["type", "source", "author", "description"]) {
+        const field = document[key];
+        if (
+          field !== undefined &&
+          field !== null &&
+          (typeof field !== "string" || field.length > (key === "description" ? 1_000 : 180))
+        ) {
+          return "Los datos del anexo superan los límites permitidos.";
+        }
+      }
+      if (!ANNEX_VISIBILITIES.has(String(document.visibility))) {
+        return "La visibilidad del anexo no es válida.";
+      }
+      if (
+        document.observation !== undefined &&
+        document.observation !== null &&
+        (typeof document.observation !== "string" || document.observation.length > 1_000)
+      ) {
+        return "La observación del anexo supera el límite permitido.";
+      }
+    }
+  }
+  if (value.responsibles !== undefined) {
+    if (!Array.isArray(value.responsibles) || value.responsibles.length > 50) {
+      return "Los responsables de la ficha no son válidos.";
+    }
+    for (const responsible of value.responsibles) {
+      if (
+        !isJsonRecord(responsible) ||
+        typeof responsible.name !== "string" ||
+        responsible.name.trim().length === 0 ||
+        responsible.name.length > 180
+      ) {
+        return "Cada responsable requiere un nombre de hasta 180 caracteres.";
+      }
+      for (const key of ["role", "institution", "phone", "email", "observation"]) {
+        const field = responsible[key];
+        const maxLength = key === "observation" ? 1_000 : key === "email" ? 254 : 180;
+        if (
+          field !== undefined &&
+          field !== null &&
+          (typeof field !== "string" || field.length > maxLength)
+        ) {
+          return "Los datos del responsable superan los límites permitidos.";
+        }
+        if (key === "email" && typeof field === "string" && field.trim()) {
+          if (!isReasonableEmail(field)) return "El correo del responsable no es válido.";
+        }
+      }
+    }
+  }
+  if (value.accessibilitySurvey !== undefined) {
+    const surveyError = validateSurveyBlock(value.accessibilitySurvey);
+    if (surveyError) return surveyError;
+  }
+  if (value.gadValidation !== undefined) {
+    const gadError = validateGadValidationBlock(value.gadValidation);
+    if (gadError) return gadError;
+  }
+  return null;
+}
+
+function validateSurveyBlock(value: unknown): string | null {
+  if (!isJsonRecord(value)) return "El levantamiento de accesibilidad no es válido.";
+  for (const key of ["responsible", "scope", "observation"]) {
+    const field = value[key];
+    if (
+      field !== undefined &&
+      field !== null &&
+      (typeof field !== "string" || field.length > (key === "observation" ? 1_000 : 250))
+    ) {
+      return "Los datos del levantamiento de accesibilidad superan los límites permitidos.";
+    }
+  }
+  if (value.date !== undefined && value.date !== null && !isIsoDate(value.date)) {
+    return "La fecha del levantamiento de accesibilidad no es válida.";
+  }
+  return null;
+}
+
+function validateGadValidationBlock(value: unknown): string | null {
+  if (!isJsonRecord(value)) return "La validación del GAD no es válida.";
+  if (!isSectionResponse(value.acceptance)) {
+    return "La aceptación de publicación del GAD requiere una respuesta válida.";
+  }
+  for (const key of ["name", "institution", "position", "phone", "email", "observation"]) {
+    const field = value[key];
+    const maxLength = key === "observation" ? 1_000 : key === "email" ? 254 : 180;
+    if (
+      field !== undefined &&
+      field !== null &&
+      (typeof field !== "string" || field.length > maxLength)
+    ) {
+      return "Los datos de validación del GAD superan los límites permitidos.";
+    }
+    if (key === "email" && typeof field === "string" && field.trim()) {
+      if (!isReasonableEmail(field)) return "El correo del validador no es válido.";
+    }
+  }
+  if (value.date !== undefined && value.date !== null && !isIsoDate(value.date)) {
+    return "La fecha de validación del GAD no es válida.";
+  }
+  return null;
+}
+
+function isIsoDate(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    !Number.isNaN(Date.parse(`${value}T00:00:00Z`))
+  );
+}
+
+function isReasonableEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 export function buildAdminSectionProgress(

@@ -371,6 +371,54 @@ describe("admin section contract", () => {
     ).toContain("grupo de formación");
   });
 
+  it("validates annex visibility, responsible contacts and GAD validation", () => {
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        annexes: {
+          documents: [
+            {
+              type: "Acta",
+              source: "GAD",
+              author: "Equipo técnico",
+              description: "Acta de visita",
+              visibility: "ADMINISTRATIVA",
+            },
+          ],
+          responsibles: [
+            {
+              name: "María López",
+              role: "Técnica",
+              email: "maria@example.com",
+            },
+          ],
+          accessibilitySurvey: {
+            date: "2025-01-20",
+            responsible: "Equipo de campo",
+          },
+          gadValidation: {
+            acceptance: "SI",
+            name: "Juan Pérez",
+            institution: "GAD",
+            date: "2025-01-21",
+          },
+        },
+      }),
+    ).toBeNull();
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        annexes: {
+          documents: [
+            { visibility: "PUBLICA_INTERNA", description: "Documento" },
+          ],
+        },
+      }),
+    ).toContain("visibilidad");
+  });
+
   it("derives core progress and explicit no aplica states", () => {
     const progress = buildAdminSectionProgress({
       name: "Centro de prueba",
