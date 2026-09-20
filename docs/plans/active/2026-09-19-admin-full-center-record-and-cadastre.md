@@ -1,9 +1,9 @@
 # Refactor administrativo: ficha integral y catastro por localidad
 
 Fecha: 2026-09-19
-Estado: en curso; catastro inicial, navegación integral, revisión por diferencias y captura
-estructurada implementados; adaptadores normalizados, valoración persistida y publicación
-completa pendientes.
+Estado: en curso; catastro inicial, navegación integral, revisión por diferencias, captura
+estructurada y varios adaptadores normalizados implementados; valoración persistida,
+catálogos faltantes y publicación completa pendientes.
 
 ## Avance de esta ejecución
 
@@ -29,7 +29,7 @@ completa pendientes.
   navegación accesible y estado de cada apartado; las respuestas, observaciones y filas
   repetibles se guardan por sección en el snapshot JSONB con control de versión.
 - Las secciones que todavía usan tablas normalizadas enlazan al formulario núcleo existente;
-  la captura adicional no publica datos hasta que se implementen sus adaptadores.
+  los subbloques sin catálogo/archivo activo permanecen en el snapshot y bloquean publicación.
 - El endpoint de secciones devuelve el progreso de cada apartado (`SIN_INICIAR`,
   `INCOMPLETA`, `COMPLETA`, `CON_ERRORES` o `NO_APLICA`) y el API valida el contrato de
   respuestas, observaciones, cantidades y filas antes de versionar el borrador.
@@ -509,8 +509,9 @@ Salida: especificación y criterios de aceptación actualizados, sin código de 
 
 La API ya expone lectura y guardado por sección sobre el borrador JSONB, con lista blanca de
 14 claves, control de versión, progreso calculado y auditoría. El contrato transitorio de
-respuestas, observaciones y filas repetibles ya se valida en el límite HTTP; falta
-normalizar el contenido de cada sección antes de publicarlo.
+respuestas, observaciones y filas repetibles se valida en el límite HTTP; los adaptadores de
+clima, conectividad, planta, conservación, higiene parcial, políticas, promoción parcial,
+visitantes, recurso humano parcial y anexos parciales ya publican sus relaciones existentes.
 
 Salida: API capaz de guardar toda la propuesta sin publicarla todavía.
 
@@ -524,6 +525,10 @@ Salida: API capaz de guardar toda la propuesta sin publicarla todavía.
 
 Salida: jerarquía y código calculados, reproducibles y auditables.
 
+El motor tipado y la regresión del XLSM ya están implementados. La persistencia queda
+deliberadamente pendiente hasta que `indicadores_valoracion` tenga reglas activas y se apruebe
+el fixture que resuelve la discrepancia de totales del libro.
+
 ### Fase 3 — Publicación normalizada completa
 
 - Implementar los adaptadores de persistencia de las secciones 1–14.
@@ -531,7 +536,13 @@ Salida: jerarquía y código calculados, reproducibles y auditables.
 - Ejecutar valoración, publicación, multimedia y auditoría en una transacción.
 - Probar rollback ante fallo intermedio.
 
-Salida: una ficha aprobada se publica completa sin exponer parcialmente la propuesta.
+Los adaptadores de clima, accesibilidad, planta, conservación, controles de higiene, políticas,
+visitantes, plan de promoción, resumen de recurso humano y metadatos de anexos ya operan dentro
+de la transacción. Siguen pendientes las filas que necesitan catálogos/archivos aún vacíos y la
+integración de valoración antes de poder declarar publicación completa.
+
+Salida: una ficha aprobada publica cada bloque soportado o rechaza atómicamente el bloque que
+no tiene referencias institucionales válidas.
 
 ### Fase 4 — Editor web de 14 secciones (iniciada)
 
@@ -547,7 +558,8 @@ campos núcleo existentes se mantienen operativos y cada sección ofrece un enla
 su formulario normalizado. Ya tienen captura específica las secciones 3, 4, 6, 7, 8, 10,
 11, 12 y 14; las secciones 4 y 5 ya cuentan con captura estructurada de conectividad,
 accesibilidad detallada, planta y complementarios, con adaptadores de publicación catalogada;
-aún faltan la valoración persistida y la división física del componente monolítico.
+aún faltan la valoración persistida, el llenado de catálogos y la división física del componente
+monolítico.
 
 Salida prevista: el administrador puede capturar la ficha completa sin navegar una sola
 página monolítica.
@@ -559,8 +571,9 @@ página monolítica.
 - Mantener la revisión como lectura administrativa antes de aprobar o publicar.
 
 La comparación por secciones ya está disponible en el editor web; la aprobación y la
-publicación siguen usando las acciones protegidas existentes. Falta cubrir diferencias de
-los adaptadores normalizados cuando se implemente la publicación completa.
+publicación siguen usando las acciones protegidas existentes. Las secciones con adaptador
+normalizado ya se leen de vuelta para comparar; faltan las filas que aún dependen de catálogos
+o archivos pendientes.
 
 Salida: revisión operativa con trazabilidad visual de la propuesta.
 
