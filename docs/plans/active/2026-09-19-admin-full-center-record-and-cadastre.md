@@ -55,6 +55,9 @@ implementados, formularios normalizados y valoración pendientes.
 - La sección 14 ahora captura anexos con visibilidad pública/administrativa/restringida,
   responsables, levantamiento de accesibilidad y validación del GAD con contactos y fechas
   validados; no expone esos datos en la superficie pública.
+- El motor tipado de valoración ya conserva máximos A–I, topes de F/H, total máximo de 100 y
+  rangos de jerarquía; la regresión del libro reproduce el total cacheado `48,7` y jerarquía
+  `02`. Aún falta mapear cada indicador a sus respuestas normalizadas y persistir resultados.
 - La sección 4 ya captura localidad cercana y distancia desde el catálogo administrativo,
   además de sus filas de vías, transporte y accesibilidad, con validación de cantidades y
   distancia no negativa.
