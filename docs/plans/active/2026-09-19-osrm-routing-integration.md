@@ -47,6 +47,8 @@ hasta un atractivo publicado.
 - [ ] Validación visual en el Development Build Android.
 
 Durante el smoke test remoto se confirmó que OSRM responde `200` desde el contenedor de la
-API, pero la API devolvía `500` porque `OsrmRoutingClient` no estaba decorado con
-`@Injectable()` y Nest recibía `ConfigService` como `undefined`. La corrección está aplicada
-localmente y verificada; requiere un nuevo despliegue de la API.
+API, pero la API devolvía `500` porque `OsrmRoutingClient` no estaba correctamente registrado
+para la inyección de dependencias. Primero faltaba `@Injectable()` y, después de añadirlo,
+Nest intentó resolver el `fetch` opcional del constructor como una dependencia `Object`.
+El proveedor ahora usa una factory explícita que inyecta únicamente `ConfigService`; está
+aplicado localmente y verificado, y requiere un nuevo despliegue de la API.
