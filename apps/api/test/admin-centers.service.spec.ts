@@ -43,6 +43,44 @@ describe("AdminCentersService", () => {
     );
   });
 
+  it("publishes policy answers through the active policy catalog", async () => {
+    const managerQuery = vi.fn(async (sql: string) =>
+      sql.includes("SELECT id, codigo")
+        ? [{ id: "71", codigo: "PLAN_DESARROLLO_GAD" }]
+        : [],
+    );
+    const manager = { query: managerQuery };
+    const service = new AdminCentersService({} as never);
+    const applyPoliciesSection = (
+      service as unknown as {
+        applyPoliciesSection: (
+          value: typeof manager,
+          centerId: string,
+          section: Record<string, unknown>,
+        ) => Promise<void>;
+      }
+    ).applyPoliciesSection;
+
+    await applyPoliciesSection.call(service, manager, "10", {
+      response: "SI",
+      policies: [
+        {
+          code: "PLAN_DESARROLLO_GAD",
+          response: "SI",
+          year: 2025,
+          specification: "Incluido",
+        },
+      ],
+    });
+
+    expect(managerQuery.mock.calls.map(([sql]) => sql)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("SELECT id, codigo FROM preguntas_politica"),
+        expect.stringContaining("INSERT INTO respuestas_politica_centro"),
+      ]),
+    );
+  });
+
   it("exposes persisted valuation status without recalculating the ficha", async () => {
     const managerQuery = vi
       .fn()

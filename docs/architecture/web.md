@@ -54,6 +54,8 @@ La sección de características publica sus rangos de clima en la relación norm
 y puede retirar el registro cuando se marca como no aplicable.
 La sección de visitantes publica registros, temporadas, procedencias, informantes y afluencia
 con sus meses normalizados, sin convertir un estado desconocido en una respuesta negativa.
+Las políticas se publican contra preguntas activas del catálogo y se leen de vuelta para la
+comparación; mientras falten esas preguntas, el borrador no puede publicarse.
 Las facilidades seleccionadas conservan cantidad y observación por opción. El panel consulta
 `/admin/summary`, `/admin/centers`, `/admin/catalogs`,
 `/admin/centers/:code/valuation` y `/admin/centers/:code`; las

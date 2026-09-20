@@ -2666,17 +2666,23 @@ export class AdminCentersService {
           ? { code: draft.stateCode, name: draft.stateName }
           : { code: center.statusCode, name: center.statusName };
     const published = this.centerToDraft(center);
-    const [publishedAccessibility, publishedPlant, publishedVisitors] =
-      await Promise.all([
-        this.readPublishedAccessibilitySection(manager, center.id),
-        this.readPublishedPlantSection(manager, center.id),
-        this.readPublishedVisitorsSection(manager, center.id),
-      ]);
+    const [
+      publishedAccessibility,
+      publishedPlant,
+      publishedVisitors,
+      publishedPolicies,
+    ] = await Promise.all([
+      this.readPublishedAccessibilitySection(manager, center.id),
+      this.readPublishedPlantSection(manager, center.id),
+      this.readPublishedVisitorsSection(manager, center.id),
+      this.readPublishedPoliciesSection(manager, center.id),
+    ]);
     const publishedSections: Record<string, unknown> = {};
     if (publishedAccessibility)
       publishedSections.accesibilidad = publishedAccessibility;
     if (publishedPlant) publishedSections.planta = publishedPlant;
     if (publishedVisitors) publishedSections.visitantes = publishedVisitors;
+    if (publishedPolicies) publishedSections.politicas = publishedPolicies;
     published.sections = publishedSections;
     return {
       code: center.code,
@@ -2991,6 +2997,10 @@ export class AdminCentersService {
     if (visitorsSection) {
       await this.applyVisitorsSection(manager, center.id, visitorsSection);
     }
+    const policiesSection = getAdminSectionRecord(draft, "politicas");
+    if (policiesSection) {
+      await this.applyPoliciesSection(manager, center.id, policiesSection);
+    }
     const accessibilitySection = getAdminSectionRecord(draft, "accesibilidad");
     if (accessibilitySection) {
       await this.applyAccessibilitySection(
@@ -3257,6 +3267,56 @@ export class AdminCentersService {
           ],
         );
       }
+    }
+  }
+
+  private async applyPoliciesSection(
+    manager: EntityManager,
+    centerId: string,
+    section: JsonRecord,
+  ) {
+    if (section.response === "NO_APLICA") {
+      await manager.query(
+        `DELETE FROM respuestas_politica_centro WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      return;
+    }
+    if (!Array.isArray(section.policies)) return;
+    const policies = section.policies as JsonRecord[];
+    const codes = policies.map((policy) => String(policy.code));
+    const rows = (await manager.query(
+      `SELECT id, codigo FROM preguntas_politica
+        WHERE activo = TRUE AND codigo = ANY($1::text[])`,
+      [codes],
+    )) as Array<{ id: string; codigo: string }>;
+    const byCode = new Map(rows.map((row) => [row.codigo, row.id]));
+    if (rows.length !== new Set(codes).size) {
+      throw new ConflictException(
+        "Una pregunta de política ya no está disponible en el catálogo.",
+      );
+    }
+    await manager.query(
+      `DELETE FROM respuestas_politica_centro WHERE centro_turistico_id = $1`,
+      [centerId],
+    );
+    for (const policy of policies) {
+      const questionId = byCode.get(String(policy.code));
+      if (!questionId) continue;
+      await manager.query(
+        `INSERT INTO respuestas_politica_centro
+           (centro_turistico_id, pregunta_politica_id, respuesta, anio,
+            especificacion, observacion)
+         VALUES ($1,$2,$3,$4,$5,$6)`,
+        [
+          centerId,
+          questionId,
+          sectionResponseToBoolean(policy.response) ?? false,
+          policy.year ?? null,
+          policy.specification ?? null,
+          policy.observation ?? null,
+        ],
+      );
     }
   }
 
@@ -3912,6 +3972,33 @@ export class AdminCentersService {
     };
   }
 
+  private async readPublishedPoliciesSection(
+    manager: EntityManager,
+    centerId: string,
+  ): Promise<Record<string, unknown> | null> {
+    const rows = (await manager.query(
+      `SELECT COALESCE(json_agg(json_build_object(
+                'code', qp.codigo,
+                'question', qp.pregunta,
+                'response', CASE WHEN rpc.respuesta THEN 'SI' ELSE 'NO' END,
+                'year', rpc.anio,
+                'specification', rpc.especificacion,
+                'observation', rpc.observacion
+              ) ORDER BY qp.orden), '[]'::json) AS data
+         FROM respuestas_politica_centro rpc
+         JOIN preguntas_politica qp ON qp.id = rpc.pregunta_politica_id
+        WHERE rpc.centro_turistico_id = $1`,
+      [centerId],
+    )) as Array<{ data: unknown }>;
+    const policies = rows[0]?.data;
+    if (!Array.isArray(policies) || policies.length === 0) return null;
+    return {
+      schemaVersion: 1,
+      response: "SI",
+      policies,
+    };
+  }
+
   private centerToDraft(center: CenterRow): CenterDraft {
     return {
       name: center.name,
@@ -4122,6 +4209,7 @@ export class AdminCentersService {
       await this.validatePlantSectionReferences(manager, draft);
       await this.validateAccessibilitySectionReferences(manager, draft);
       await this.validateVisitorsSectionReferences(manager, draft);
+      await this.validatePoliciesSectionReferences(manager, draft);
     }
     await this.validateCharacteristicsSectionReferences(
       manager,
@@ -4215,6 +4303,34 @@ export class AdminCentersService {
     if (rows.length !== uniqueMonthIds.length) {
       throw new ConflictException(
         "Un mes de visitantes ya no está disponible en el catálogo.",
+      );
+    }
+  }
+
+  private async validatePoliciesSectionReferences(
+    manager: EntityManager,
+    draft: CenterDraft,
+  ) {
+    const section = getAdminSectionRecord(draft, "politicas");
+    if (!section || section.response === "NO_APLICA") return;
+    if (!Array.isArray(section.policies)) return;
+    const policies = section.policies as JsonRecord[];
+    for (const policy of policies) {
+      if (!isBinarySectionResponse(policy.response)) {
+        throw new ConflictException(
+          "La sección políticas requiere respuestas SI o NO para publicar.",
+        );
+      }
+    }
+    const codes = policies.map((policy) => String(policy.code));
+    const rows = (await manager.query(
+      `SELECT codigo FROM preguntas_politica
+        WHERE activo = TRUE AND codigo = ANY($1::text[])`,
+      [codes],
+    )) as Array<{ codigo: string }>;
+    if (rows.length !== new Set(codes).size) {
+      throw new ConflictException(
+        "Una pregunta de política ya no está disponible en el catálogo.",
       );
     }
   }

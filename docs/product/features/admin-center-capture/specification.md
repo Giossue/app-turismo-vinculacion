@@ -54,7 +54,8 @@ explícita.
   cantidades y observaciones.
 - La sección de políticas y regulaciones presenta las cuatro preguntas institucionales con
   respuesta explícita, año, especificación y observación, conservando `SIN INFORMACIÓN` y
-  `NO APLICA` como estados distintos.
+  `NO APLICA` como estados distintos. Al publicar, las respuestas se vinculan con las
+  preguntas activas del catálogo y los estados no binarios mantienen la propuesta en revisión.
 - La sección de promoción y comercialización separa el plan institucional, los paquetes y
   los medios de difusión, con nombre, periodicidad, URL y observación validados.
 - La sección de visitantes y afluencia separa registros, temporadas, procedencias,
