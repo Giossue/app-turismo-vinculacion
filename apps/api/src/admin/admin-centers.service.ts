@@ -5062,6 +5062,15 @@ export class AdminCentersService {
     if (!section || section.response === "NO_APLICA") return;
     if (!Array.isArray(section.policies)) return;
     const policies = section.policies as JsonRecord[];
+    if (
+      section.response === "SI" &&
+      new Set(policies.map((policy) => String(policy.code))).size !==
+        POLICY_CODES.size
+    ) {
+      throw new ConflictException(
+        "La sección políticas requiere las cuatro preguntas antes de publicar.",
+      );
+    }
     for (const policy of policies) {
       if (!isBinarySectionResponse(policy.response)) {
         throw new ConflictException(
