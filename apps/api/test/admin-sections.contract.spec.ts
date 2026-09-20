@@ -340,6 +340,37 @@ describe("admin section contract", () => {
     ).toContain("mes de procedencia");
   });
 
+  it("validates human resources summary and training", () => {
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        humanResources: {
+          summary: {
+            administrationOperation: 4,
+            specializedTourism: 2,
+          },
+          training: [
+            {
+              group: "CAPACITACION",
+              name: "Primeros auxilios",
+              quantity: 3,
+            },
+          ],
+        },
+      }),
+    ).toBeNull();
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        humanResources: {
+          training: [{ group: "OTRO", name: "Curso", quantity: 1 }],
+        },
+      }),
+    ).toContain("grupo de formación");
+  });
+
   it("derives core progress and explicit no aplica states", () => {
     const progress = buildAdminSectionProgress({
       name: "Centro de prueba",

@@ -167,6 +167,7 @@ const VISITOR_FREQUENCIES = new Set([
   "ESPORADICA",
   "INEXISTENTE",
 ]);
+const TRAINING_GROUPS = new Set(["EDUCACION", "CAPACITACION", "IDIOMA"]);
 
 /**
  * Validates the transitional JSON contract used by the web section editor.
@@ -303,6 +304,10 @@ export function validateAdminSectionContent(content: unknown): string | null {
   if (content.visitors !== undefined) {
     const visitorsError = validateVisitorsBlock(content.visitors);
     if (visitorsError) return visitorsError;
+  }
+  if (content.humanResources !== undefined) {
+    const humanResourcesError = validateHumanResourcesBlock(content.humanResources);
+    if (humanResourcesError) return humanResourcesError;
   }
   if (content.rows !== undefined) {
     if (!Array.isArray(content.rows) || content.rows.length > 200) {
@@ -900,6 +905,71 @@ function validateMonths(value: unknown): string | null {
     }
     if (seen.has(Number(month))) return "Los meses de temporada no pueden repetirse.";
     seen.add(Number(month));
+  }
+  return null;
+}
+
+function validateHumanResourcesBlock(value: unknown): string | null {
+  if (!isJsonRecord(value)) return "El bloque de recurso humano no es válido.";
+  if (value.summary !== undefined) {
+    if (!isJsonRecord(value.summary)) return "El resumen de recurso humano no es válido.";
+    for (const key of ["administrationOperation", "specializedTourism"]) {
+      const quantity = value.summary[key];
+      if (
+        quantity !== undefined &&
+        quantity !== null &&
+        (!Number.isInteger(quantity) || Number(quantity) < 0)
+      ) {
+        return "Las cantidades de recurso humano deben ser enteros no negativos.";
+      }
+    }
+    if (
+      value.summary.observation !== undefined &&
+      value.summary.observation !== null &&
+      (typeof value.summary.observation !== "string" ||
+        value.summary.observation.length > 1_000)
+    ) {
+      return "La observación de recurso humano supera el límite permitido.";
+    }
+  }
+  if (value.training !== undefined) {
+    if (!Array.isArray(value.training) || value.training.length > 100) {
+      return "La formación del personal no es válida.";
+    }
+    for (const training of value.training) {
+      if (!isJsonRecord(training)) return "Un registro de formación no es válido.";
+      if (!TRAINING_GROUPS.has(String(training.group))) {
+        return "El grupo de formación no es válido.";
+      }
+      if (
+        typeof training.name !== "string" ||
+        training.name.trim().length === 0 ||
+        training.name.length > 140
+      ) {
+        return "Cada formación requiere un nombre de hasta 140 caracteres.";
+      }
+      if (
+        training.quantity !== undefined &&
+        training.quantity !== null &&
+        (!Number.isInteger(training.quantity) || Number(training.quantity) < 0)
+      ) {
+        return "La cantidad de personas formadas debe ser un entero no negativo.";
+      }
+      if (
+        training.detailOther !== undefined &&
+        training.detailOther !== null &&
+        (typeof training.detailOther !== "string" || training.detailOther.length > 180)
+      ) {
+        return "El detalle de otra formación supera el límite permitido.";
+      }
+      if (
+        training.observation !== undefined &&
+        training.observation !== null &&
+        (typeof training.observation !== "string" || training.observation.length > 1_000)
+      ) {
+        return "La observación de formación supera el límite permitido.";
+      }
+    }
   }
   return null;
 }
