@@ -329,6 +329,56 @@ describe("AdminCentersService", () => {
     );
   });
 
+  it("requires uploaded document references before publishing annexes", async () => {
+    const service = new AdminCentersService({} as never);
+    const validateAnnexes = (
+      service as unknown as {
+        validateAnnexesSectionReferences: (
+          manager: { query: ReturnType<typeof vi.fn> },
+          draft: Record<string, unknown>,
+          centerId: string,
+        ) => Promise<void>;
+      }
+    ).validateAnnexesSectionReferences;
+    const manager = { query: vi.fn().mockResolvedValue([]) };
+
+    await expect(
+      validateAnnexes.call(
+        service,
+        manager,
+        {
+          sections: {
+            anexos: {
+              response: "SI",
+              annexes: { documents: [{ type: "MAPA" }] },
+            },
+          },
+        },
+        "10",
+      ),
+    ).rejects.toThrow("requiere seleccionar un archivo");
+
+    await expect(
+      validateAnnexes.call(
+        service,
+        manager,
+        {
+          sections: {
+            anexos: {
+              response: "SI",
+              annexes: { documents: [{ fileId: 22, type: "MAPA" }] },
+            },
+          },
+        },
+        "10",
+      ),
+    ).rejects.toThrow("no está disponible");
+    expect(manager.query).toHaveBeenCalledWith(
+      expect.stringContaining("archivos_centro_turistico"),
+      ["10", [22]],
+    );
+  });
+
   it("publishes portable radios and the contingency plan", async () => {
     const managerQuery = vi.fn().mockResolvedValue([]);
     const manager = { query: managerQuery };

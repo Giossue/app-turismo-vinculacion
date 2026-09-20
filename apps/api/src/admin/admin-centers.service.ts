@@ -1585,6 +1585,11 @@ function validateAnnexesBlock(value: unknown): string | null {
     }
     for (const document of value.documents) {
       if (!isJsonRecord(document)) return "Un anexo documental no es válido.";
+      const fileIdError = validateOptionalPositiveInteger(
+        document.fileId,
+        "archivo de anexo",
+      );
+      if (fileIdError) return fileIdError;
       for (const key of ["type", "source", "author", "description"]) {
         const field = document[key];
         if (
@@ -2582,7 +2587,7 @@ export class AdminCentersService {
         );
       }
       const complete = this.requireComplete(draft.data);
-      await this.validateReferences(manager, complete, true);
+      await this.validateReferences(manager, complete, true, center.id);
       await this.applyDraft(manager, center, complete);
       const published = await this.stateId(manager, "PUBLICADO");
       await manager.query(
@@ -5265,9 +5270,10 @@ export class AdminCentersService {
     manager: EntityManager,
     centerId: string,
   ): Promise<Record<string, unknown> | null> {
-    const [surveyRows, gadRows, responsibleRows] = (await Promise.all([
-      manager.query(
-        `SELECT json_build_object(
+    const [surveyRows, gadRows, responsibleRows, documentRows] =
+      (await Promise.all([
+        manager.query(
+          `SELECT json_build_object(
                   'date', fecha,
                   'responsible', responsable_nombre,
                   'scope', responsable_institucion,
@@ -5276,10 +5282,10 @@ export class AdminCentersService {
            FROM levantamientos_accesibilidad
           WHERE centro_turistico_id = $1
           ORDER BY id DESC LIMIT 1`,
-        [centerId],
-      ),
-      manager.query(
-        `SELECT json_build_object(
+          [centerId],
+        ),
+        manager.query(
+          `SELECT json_build_object(
                   'acceptance', CASE
                     WHEN acepta_publicacion IS TRUE THEN 'SI'
                     WHEN acepta_publicacion IS FALSE THEN 'NO'
@@ -5296,10 +5302,10 @@ export class AdminCentersService {
            FROM validaciones_gad
           WHERE centro_turistico_id = $1
           ORDER BY id DESC LIMIT 1`,
-        [centerId],
-      ),
-      manager.query(
-        `SELECT COALESCE(json_agg(json_build_object(
+          [centerId],
+        ),
+        manager.query(
+          `SELECT COALESCE(json_agg(json_build_object(
                   'typeId', rf.tipo_responsabilidad_ficha_id,
                   'name', rf.nombre,
                   'institution', rf.institucion,
@@ -5311,16 +5317,36 @@ export class AdminCentersService {
                 ) ORDER BY rf.id), '[]'::json) AS data
            FROM responsables_ficha rf
           WHERE rf.centro_turistico_id = $1`,
-        [centerId],
-      ),
-    ])) as Array<Array<{ data: unknown }>>;
+          [centerId],
+        ),
+        manager.query(
+          `SELECT COALESCE(json_agg(json_build_object(
+                  'fileId', a.id,
+                  'type', t.codigo,
+                  'source', a.fuente_autor,
+                  'author', NULL,
+                  'description', a.descripcion,
+                  'visibility', 'ADMINISTRATIVA',
+                  'observation', a.observacion
+                ) ORDER BY a.orden NULLS LAST, a.id), '[]'::json) AS data
+           FROM archivos_centro_turistico a
+           JOIN tipos_archivo_centro_turistico t
+             ON t.id = a.tipo_archivo_centro_id
+          WHERE a.centro_turistico_id = $1
+            AND a.estado = 'PUBLICADO'
+            AND t.codigo IN ('MAPA', 'PLAN_CONTINGENCIA', 'OTRO')`,
+          [centerId],
+        ),
+      ])) as Array<Array<{ data: unknown }>>;
     const survey = surveyRows[0]?.data;
     const gadValidation = gadRows[0]?.data;
     const responsibles = responsibleRows[0]?.data;
+    const documents = documentRows[0]?.data;
     if (
       survey === undefined &&
       gadValidation === undefined &&
-      (!Array.isArray(responsibles) || responsibles.length === 0)
+      (!Array.isArray(responsibles) || responsibles.length === 0) &&
+      (!Array.isArray(documents) || documents.length === 0)
     ) {
       return null;
     }
@@ -5328,7 +5354,7 @@ export class AdminCentersService {
       schemaVersion: 1,
       response: "SI",
       annexes: {
-        documents: [],
+        documents: documents ?? [],
         responsibles: responsibles ?? [],
         accessibilitySurvey: survey ?? {
           date: null,
@@ -5428,6 +5454,7 @@ export class AdminCentersService {
     manager: EntityManager,
     draft: CenterDraft,
     forPublication = false,
+    centerId?: string,
   ) {
     this.validateSectionMap(draft.sections);
     const references: Array<[string, number, string]> = [
@@ -5469,7 +5496,12 @@ export class AdminCentersService {
         "modalidad de atención",
       );
     }
-    await this.validateTechnicalSections(manager, draft, forPublication);
+    await this.validateTechnicalSections(
+      manager,
+      draft,
+      forPublication,
+      centerId,
+    );
   }
 
   private validateSectionMap(sections: Record<string, unknown> | undefined) {
@@ -5504,6 +5536,7 @@ export class AdminCentersService {
     manager: EntityManager,
     draft: CenterDraft,
     forPublication = false,
+    centerId?: string,
   ) {
     const unique = (values: number[], label: string) => {
       if (new Set(values).size !== values.length) {
@@ -5565,7 +5598,7 @@ export class AdminCentersService {
       await this.validateHumanResourcesSectionReferences(manager, draft);
       await this.validateConservationSectionReferences(manager, draft);
       await this.validateHygieneSectionReferences(manager, draft);
-      await this.validateAnnexesSectionReferences(manager, draft);
+      await this.validateAnnexesSectionReferences(manager, draft, centerId);
     }
     await this.validateCharacteristicsSectionReferences(
       manager,
@@ -6084,15 +6117,51 @@ export class AdminCentersService {
   private async validateAnnexesSectionReferences(
     manager: EntityManager,
     draft: CenterDraft,
+    centerId?: string,
   ) {
     const section = getAdminSectionRecord(draft, "anexos");
     if (!section || section.response === "NO_APLICA") return;
     const annexes = isJsonRecord(section.annexes) ? section.annexes : null;
     if (!annexes) return;
     if (Array.isArray(annexes.documents) && annexes.documents.length > 0) {
-      throw new ConflictException(
-        "Los anexos documentales requieren un archivo publicado y un tipo activo antes de publicar.",
-      );
+      if (!centerId) {
+        throw new ConflictException(
+          "Los anexos documentales requieren una ficha persistida antes de publicar.",
+        );
+      }
+      const fileIds = annexes.documents.map((document) => document.fileId);
+      if (
+        fileIds.some(
+          (fileId) => !Number.isInteger(fileId) || Number(fileId) < 1,
+        )
+      ) {
+        throw new ConflictException(
+          "Cada anexo documental requiere seleccionar un archivo cargado.",
+        );
+      }
+      const uniqueFileIds = [...new Set(fileIds as number[])];
+      if (uniqueFileIds.length !== fileIds.length) {
+        throw new ConflictException(
+          "No repitas el mismo archivo en los anexos documentales.",
+        );
+      }
+      const rows = (await manager.query(
+        `SELECT a.id
+           FROM archivos_centro_turistico a
+           JOIN tipos_archivo_centro_turistico t
+             ON t.id = a.tipo_archivo_centro_id
+          WHERE a.centro_turistico_id = $1
+            AND a.id = ANY($2::bigint[])
+            AND a.estado <> 'ELIMINADO'
+            AND t.activo = TRUE
+            AND t.codigo IN ('MAPA', 'PLAN_CONTINGENCIA', 'OTRO')`,
+        [centerId, uniqueFileIds],
+      )) as Array<{ id: string }>;
+      if (rows.length !== uniqueFileIds.length) {
+        throw new ConflictException(
+          "Un archivo de anexo no está disponible o no corresponde a un tipo documental activo.",
+        );
+      }
     }
     if (
       Array.isArray(annexes.responsibles) &&

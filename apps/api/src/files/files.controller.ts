@@ -17,7 +17,7 @@ import { CurrentUser, Roles } from "../auth/auth.decorators";
 import { AuthGuard } from "../auth/auth.guard";
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { RolesGuard } from "../auth/roles.guard";
-import { MediaService } from "./media.service";
+import { MediaService, type CenterFileTypeCode } from "./media.service";
 
 @ApiTags("admin-media")
 @ApiBearerAuth()
@@ -41,26 +41,23 @@ export class FilesController {
   ) {
     const part = await request.file();
     if (!part) {
-      throw new BadRequestException("Debes seleccionar un archivo multimedia.");
+      throw new BadRequestException("Debes seleccionar un archivo.");
     }
     let buffer: Buffer;
     try {
       buffer = await part.toBuffer();
     } catch {
-      throw new BadRequestException(
-        "La fotografía supera el límite permitido.",
-      );
+      throw new BadRequestException("El archivo supera el límite permitido.");
     }
     if (part.file.truncated) {
-      throw new BadRequestException(
-        "La fotografía supera el límite permitido.",
-      );
+      throw new BadRequestException("El archivo supera el límite permitido.");
     }
     return {
       data: await this.media.upload(user.id, code, {
         originalName: part.filename,
         mimeType: part.mimetype,
         buffer,
+        typeCode: parseTypeCode(fieldText(part.fields?.typeCode)),
         description: fieldText(part.fields?.description),
         sourceAuthor: fieldText(part.fields?.sourceAuthor),
       }),
@@ -112,4 +109,20 @@ function fieldText(field: unknown): string | undefined {
   if (typeof raw !== "string") return undefined;
   const value = raw.trim();
   return value.length ? value : undefined;
+}
+
+function parseTypeCode(
+  value: string | undefined,
+): CenterFileTypeCode | undefined {
+  if (
+    value === "FOTOGRAFIA" ||
+    value === "VIDEO" ||
+    value === "AUDIO" ||
+    value === "MAPA" ||
+    value === "PLAN_CONTINGENCIA" ||
+    value === "OTRO"
+  ) {
+    return value;
+  }
+  return undefined;
 }

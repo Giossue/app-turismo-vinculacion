@@ -101,8 +101,9 @@ que exista su adaptador transaccional. La lectura devuelve el progreso por secci
 rechaza respuestas, cantidades o filas que no cumplan el contrato de captura.
 
 El administrador puede renombrar y activar/desactivar opciones de los catálogos técnicos;
-cada cambio queda auditado. El panel acepta fotos, video y audio; documentos, importaciones y
-procesamiento avanzado quedan para una fase posterior.
+cada cambio queda auditado. El panel acepta fotos, video, audio y anexos PDF/imágenes tipados
+como mapa, plan de contingencia u otro documento; los anexos quedan pendientes hasta publicar
+la ficha. Importaciones y procesamiento avanzado quedan para una fase posterior.
 
 ## Reglas
 

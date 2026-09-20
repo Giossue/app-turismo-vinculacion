@@ -65,8 +65,8 @@ existentes; los factores sin identificador catalogado, componente o respuesta bi
 en el borrador y detienen la publicación.
 Higiene normaliza radios y planes de contingencia; sus filas de servicios y amenazas sin
 referencia de catálogo se conservan en el borrador y detienen la publicación.
-Anexos normaliza el levantamiento de accesibilidad y la validación del GAD; documentos y
-responsables no se publican sin archivo/tipo institucional validado.
+Anexos normaliza documentos tipados, el levantamiento de accesibilidad y la validación del GAD;
+los documentos y responsables no se publican sin archivo/tipo institucional validado.
 Las facilidades seleccionadas conservan cantidad y observación por opción. El panel consulta
 `/admin/summary`, `/admin/centers`, `/admin/catalogs`,
 `/admin/centers/:code/valuation` y `/admin/centers/:code`; las

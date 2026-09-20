@@ -542,9 +542,10 @@ el fixture que resuelve la discrepancia de totales del libro.
 - Probar rollback ante fallo intermedio.
 
 Los adaptadores de clima, accesibilidad, planta, conservación, controles de higiene, políticas,
-visitantes, plan de promoción, resumen de recurso humano y metadatos de anexos ya operan dentro
-de la transacción. Siguen pendientes las filas que necesitan catálogos/archivos aún vacíos y la
-integración de valoración antes de poder declarar publicación completa.
+visitantes, plan de promoción, resumen de recurso humano y anexos ya operan dentro de la
+transacción. Los documentos se cargan con un tipo institucional y se validan por ficha antes
+de publicar; sigue pendiente la integración de valoración antes de poder declarar publicación
+completa.
 
 Salida: una ficha aprobada publica cada bloque soportado o rechaza atómicamente el bloque que
 no tiene referencias institucionales válidas.

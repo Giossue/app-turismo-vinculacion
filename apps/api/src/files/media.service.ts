@@ -13,21 +13,28 @@ import type { DataSource, EntityManager } from "typeorm";
 import { MediaStorageService } from "./media-storage.service";
 
 const MEDIA_TYPES = new Map([
-  ["image/jpeg", { catalogCode: "FOTOGRAFIA", extension: ".jpg" }],
-  ["image/png", { catalogCode: "FOTOGRAFIA", extension: ".png" }],
-  ["image/webp", { catalogCode: "FOTOGRAFIA", extension: ".webp" }],
-  ["video/mp4", { catalogCode: "VIDEO", extension: ".mp4" }],
-  ["video/webm", { catalogCode: "VIDEO", extension: ".webm" }],
-  ["audio/mpeg", { catalogCode: "AUDIO", extension: ".mp3" }],
-  ["audio/mp4", { catalogCode: "AUDIO", extension: ".m4a" }],
-  ["audio/wav", { catalogCode: "AUDIO", extension: ".wav" }],
-  ["audio/ogg", { catalogCode: "AUDIO", extension: ".ogg" }],
+  ["image/jpeg", { kind: "image", extension: ".jpg" }],
+  ["image/png", { kind: "image", extension: ".png" }],
+  ["image/webp", { kind: "image", extension: ".webp" }],
+  ["video/mp4", { kind: "video", extension: ".mp4" }],
+  ["video/webm", { kind: "video", extension: ".webm" }],
+  ["audio/mpeg", { kind: "audio", extension: ".mp3" }],
+  ["audio/mp4", { kind: "audio", extension: ".m4a" }],
+  ["audio/wav", { kind: "audio", extension: ".wav" }],
+  ["audio/ogg", { kind: "audio", extension: ".ogg" }],
+  ["application/pdf", { kind: "document", extension: ".pdf" }],
 ]);
+
+const MEDIA_CATALOG_CODES = new Set(["FOTOGRAFIA", "VIDEO", "AUDIO"]);
+const DOCUMENT_CATALOG_CODES = new Set(["MAPA", "PLAN_CONTINGENCIA", "OTRO"]);
+export type CenterFileTypeCode =
+  "FOTOGRAFIA" | "VIDEO" | "AUDIO" | "MAPA" | "PLAN_CONTINGENCIA" | "OTRO";
 
 export type MediaUploadInput = {
   originalName: string;
   mimeType: string;
   buffer: Buffer;
+  typeCode?: CenterFileTypeCode;
   description?: string;
   sourceAuthor?: string;
 };
@@ -36,7 +43,7 @@ type MediaRow = {
   id: string;
   code: string;
   name: string;
-  typeCode: string;
+  typeCode: CenterFileTypeCode;
   typeName: string;
   originalName: string;
   mimeType: string;
@@ -68,7 +75,7 @@ export class MediaService {
          JOIN centros_turisticos c ON c.id = a.centro_turistico_id
          JOIN tipos_archivo_centro_turistico t ON t.id = a.tipo_archivo_centro_id
         WHERE TRIM(c.codigo_atractivo) = TRIM($1)
-          AND a.estado <> 'ELIMINADO' AND t.codigo IN ('FOTOGRAFIA', 'VIDEO', 'AUDIO')
+          AND a.estado <> 'ELIMINADO'
         ORDER BY a.orden NULLS LAST, a.created_at DESC, a.id DESC`,
       [code],
     )) as MediaRow[];
@@ -87,7 +94,9 @@ export class MediaService {
         state: row.state,
         createdAt: row.createdAt,
         downloadUrl:
-          row.state === "PUBLICADO" ? `/api/v1/media/${row.id}` : null,
+          row.state === "PUBLICADO" && MEDIA_CATALOG_CODES.has(row.typeCode)
+            ? `/api/v1/media/${row.id}`
+            : null,
       })),
     };
   }
@@ -107,17 +116,22 @@ export class MediaService {
     }
     const mimeType = input.mimeType.trim().toLowerCase();
     const definition = MEDIA_TYPES.get(mimeType);
-    if (!definition || !hasMediaSignature(input.buffer, mimeType)) {
-      throw new BadRequestException(
-        "Solo se aceptan imágenes, videos MP4/WebM y audios MP3/WAV/OGG válidos.",
-      );
-    }
+    const typeCode = input.typeCode ?? defaultTypeCode(definition?.kind);
     if (
-      definition.catalogCode === "FOTOGRAFIA" &&
-      input.buffer.length > maxImageBytes
+      !definition ||
+      !typeCode ||
+      !isAllowedType(typeCode, definition.kind) ||
+      !hasMediaSignature(input.buffer, mimeType)
     ) {
       throw new BadRequestException(
-        `La fotografía debe pesar como máximo ${Math.floor(maxImageBytes / (1024 * 1024))} MB.`,
+        "El archivo no es válido para el tipo institucional seleccionado. " +
+          "Solo se aceptan imágenes, videos MP4/WebM y audios MP3/WAV/OGG válidos. " +
+          "Los anexos también pueden ser PDF.",
+      );
+    }
+    if (definition.kind === "image" && input.buffer.length > maxImageBytes) {
+      throw new BadRequestException(
+        `La imagen debe pesar como máximo ${Math.floor(maxImageBytes / (1024 * 1024))} MB.`,
       );
     }
     const originalName = sanitizeOriginalName(input.originalName);
@@ -125,19 +139,19 @@ export class MediaService {
     const sourceAuthor = input.sourceAuthor?.trim() || null;
     if (description && description.length > 2000) {
       throw new BadRequestException(
-        "La descripción de la fotografía es demasiado larga.",
+        "La descripción del archivo es demasiado larga.",
       );
     }
     if (sourceAuthor && sourceAuthor.length > 250) {
       throw new BadRequestException(
-        "La fuente o autor de la fotografía es demasiado larga.",
+        "La fuente o autor del archivo es demasiado larga.",
       );
     }
     const prepared = await this.dataSource.transaction(async (manager) => {
       const center = await this.center(manager, code);
       const typeRows = (await manager.query(
         `SELECT id FROM tipos_archivo_centro_turistico WHERE codigo = $1 AND activo LIMIT 1`,
-        [definition.catalogCode],
+        [typeCode],
       )) as Array<{ id: string }>;
       const fileType = typeRows[0];
       if (!fileType)
@@ -154,7 +168,12 @@ export class MediaService {
         order: orderRows[0]?.next ?? 1,
       };
     });
-    const folder = definition.catalogCode === "FOTOGRAFIA" ? "photos" : "media";
+    const folder =
+      typeCode === "FOTOGRAFIA"
+        ? "photos"
+        : MEDIA_CATALOG_CODES.has(typeCode)
+          ? "media"
+          : "documents";
     const objectKey = `centers/${prepared.centerId}/${folder}/${randomUUID()}${definition.extension}`;
     await this.storage.put(objectKey, input.buffer, mimeType);
     try {
@@ -192,7 +211,7 @@ export class MediaService {
         )) as Array<{ id: string }>;
         const file = inserted[0];
         if (!file)
-          throw new ConflictException("No se pudo registrar la fotografía.");
+          throw new ConflictException("No se pudo registrar el archivo.");
         await this.audit(
           manager,
           prepared.centerId,
@@ -201,6 +220,7 @@ export class MediaService {
           {
             mediaId: Number(file.id),
             originalName,
+            typeCode,
             mimeType,
             sizeBytes: input.buffer.length,
           },
@@ -211,6 +231,7 @@ export class MediaService {
           mimeType,
           sizeBytes: input.buffer.length,
           state: "PENDIENTE",
+          typeCode,
           downloadUrl: null,
         };
       });
@@ -317,6 +338,27 @@ function sanitizeOriginalName(value: string): string {
   return normalized.slice(0, 255) || "fotografia";
 }
 
+function defaultTypeCode(kind: string | undefined): CenterFileTypeCode | null {
+  if (kind === "image") return "FOTOGRAFIA";
+  if (kind === "video") return "VIDEO";
+  if (kind === "audio") return "AUDIO";
+  return kind === "document" ? "OTRO" : null;
+}
+
+function isAllowedType(typeCode: CenterFileTypeCode, kind: string): boolean {
+  if (MEDIA_CATALOG_CODES.has(typeCode)) {
+    return (
+      (typeCode === "FOTOGRAFIA" && kind === "image") ||
+      (typeCode === "VIDEO" && kind === "video") ||
+      (typeCode === "AUDIO" && kind === "audio")
+    );
+  }
+  return (
+    DOCUMENT_CATALOG_CODES.has(typeCode) &&
+    (kind === "document" || kind === "image")
+  );
+}
+
 function hasMediaSignature(buffer: Buffer, mimeType: string): boolean {
   if (mimeType === "image/jpeg")
     return buffer.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]));
@@ -347,6 +389,9 @@ function hasMediaSignature(buffer: Buffer, mimeType: string): boolean {
       buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
       buffer.subarray(8, 12).toString("ascii") === "WAVE"
     );
+  }
+  if (mimeType === "application/pdf") {
+    return buffer.subarray(0, 5).toString("ascii") === "%PDF-";
   }
   return buffer.subarray(0, 4).toString("ascii") === "OggS";
 }
