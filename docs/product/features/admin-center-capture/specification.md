@@ -65,7 +65,8 @@ explícita.
   firmas y documentos internos permanecen administrativos o restringidos.
 - La valoración usa un motor tipado con topes por criterio y jerarquía reproducible; la
   publicación todavía debe conectar cada indicador con sus tablas normalizadas y guardar el
-  detalle auditable.
+  detalle auditable. Mientras `indicadores_valoracion` no tenga reglas activas, el servidor
+  conserva la jerarquía provisional `00` y no calcula puntajes inventados.
 - Las facilidades seleccionadas conservan cantidad y observación por opción, en lugar de
   imponer siempre una cantidad fija.
 - Durante la revisión, el editor compara la versión publicada con la propuesta por cada

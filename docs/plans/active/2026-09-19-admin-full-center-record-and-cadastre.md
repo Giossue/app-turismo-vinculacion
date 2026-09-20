@@ -59,7 +59,9 @@ completa pendientes.
 - El motor tipado de valoración ya conserva máximos A–I, topes de F/H, total máximo de 100 y
   rangos de jerarquía; la regresión del libro reproduce el total cacheado `48,7` y jerarquía
   `02`. `temp/db.md` todavía documenta `56,2/53,2`, por lo que falta aprobar un fixture
-  recalculado y resolver esa discrepancia antes de persistir resultados.
+  recalculado y resolver esa discrepancia antes de persistir resultados. La base desplegada
+  mantiene `criterios_valoracion`, pero no tiene filas en `indicadores_valoracion`, por lo
+  que el servidor conserva la jerarquía provisional `00` y no inventa puntajes.
 - La sección 4 ya captura localidad cercana y distancia desde el catálogo administrativo,
   además de vías terrestres (coordenadas, distancia, material y estado), accesos acuáticos
   y aéreos, tipos y operadores de transporte, los criterios detallados de la hoja
