@@ -8,7 +8,7 @@ export default function TabsLayout() {
   return (
     <TourismMenuProvider
       onOfflineMaps={() => router.push("/offline" as never)}
-      onSaved={() => undefined}
+      onSaved={() => router.push("/saved" as never)}
       onSettings={() => router.push("/settings" as never)}
     >
       <PrimaryTabs />

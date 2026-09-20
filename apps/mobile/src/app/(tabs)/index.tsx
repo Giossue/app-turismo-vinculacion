@@ -71,6 +71,10 @@ import {
 } from "@/features/centers/presentation/discovery-filters";
 import { SearchResultsSheet } from "@/features/centers/presentation/search-results-sheet";
 import { usePublishedCenter } from "@/features/centers/application/use-published-center";
+import {
+  useSavedCenterMutation,
+  useSavedCenters,
+} from "@/features/favorites/application/use-saved-centers";
 import { CenterMap } from "@/features/map/presentation/center-map";
 import { MapAttributionButton } from "@/features/map/presentation/map-attribution-button";
 import { AgentChatContent } from "@/features/agent/presentation/agent-chat-content";
@@ -804,7 +808,8 @@ function PlaceSheet({
 }>) {
   const colors = useTurismoPalette();
   const [activeTab, setActiveTab] = useState<PlaceTab>("information");
-  const [saved, setSaved] = useState(false);
+  const savedCenters = useSavedCenters();
+  const savedMutation = useSavedCenterMutation();
   const pagerRef = useRef<ScrollView>(null);
   const [pagerWidth, setPagerWidth] = useState(0);
   const [visitedTabs, setVisitedTabs] = useState<ReadonlySet<PlaceTab>>(
@@ -813,6 +818,10 @@ function PlaceSheet({
   const heroPhoto = detail?.photos[0];
   const location =
     detail?.address ?? detail?.touristZone ?? "Ubicación no registrada";
+  const saved =
+    savedCenters.data?.some(
+      (savedCenter) => savedCenter.code === center.code,
+    ) ?? false;
   const markTabVisited = useCallback((tab: PlaceTab) => {
     setActiveTab(tab);
     setVisitedTabs((current) => {
@@ -937,7 +946,7 @@ function PlaceSheet({
           accessibilityRole="button"
           accessibilityState={{ selected: saved }}
           hitSlop={4}
-          onPress={() => setSaved((value) => !value)}
+          onPress={() => savedMutation.mutate({ center, saved })}
           style={({ pressed }) => [
             styles.placeAction,
             pressed && styles.placeActionPressed,

@@ -94,6 +94,7 @@ function AppNavigation() {
         <Stack.Screen name="route" />
         <Stack.Screen name="offline" />
         <Stack.Screen name="settings" />
+        <Stack.Screen name="saved" />
       </Stack>
     </>
   );

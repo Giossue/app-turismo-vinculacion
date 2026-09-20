@@ -77,6 +77,11 @@ Referencias: [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/), [Expo Locat
   cuando se especifique su política de retención.
 - Nunca guardar claves maestras de proveedores.
 
+La primera pantalla de `Guardados` conserva el resumen público de los centros en el
+dispositivo y comparte ese estado entre el mapa, las fichas y el menú. La sincronización
+con `favoritos_centros`/`favoritos_puntos_interes` queda condicionada a incorporar la
+sesión turística; el móvil no asigna favoritos anónimos a un `usuario_id` ficticio.
+
 ### UI declarativa y overlays
 
 La interfaz sigue el patrón state-driven UI / single source of truth de React Native: lo
