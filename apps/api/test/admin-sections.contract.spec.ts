@@ -13,6 +13,8 @@ describe("admin section contract", () => {
         schemaVersion: 1,
         response: "SI",
         observation: "Verificado en visita de campo.",
+        localityId: 3,
+        distanceKm: 4.5,
         rows: [
           {
             label: "Vía terrestre",
@@ -40,6 +42,15 @@ describe("admin section contract", () => {
         rows: [{ label: "Vía", response: "SI", quantity: 1.5 }],
       }),
     ).toContain("enteros");
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        localityId: 0,
+        distanceKm: -1,
+        rows: [],
+      }),
+    ).toContain("localidad");
   });
 
   it("keeps legacy section objects readable while marking them incomplete", () => {

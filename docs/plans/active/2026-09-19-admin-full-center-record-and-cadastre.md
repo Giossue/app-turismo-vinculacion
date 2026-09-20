@@ -35,6 +35,9 @@ normalizados y valoración pendientes.
 - La interfaz muestra el código institucional canónico por partes y dejó de permitir editar
   la jerarquía; una alta sin valoración usa provisionalmente el rango `00` de recurso hasta
   que la Fase 2 calcule el resultado A–I.
+- La sección 4 ya captura localidad cercana y distancia desde el catálogo administrativo,
+  además de sus filas de vías, transporte y accesibilidad, con validación de cantidades y
+  distancia no negativa.
 
 ## Objetivo
 

@@ -164,6 +164,22 @@ export function validateAdminSectionContent(content: unknown): string | null {
   ) {
     return "La observación de la sección supera el límite permitido.";
   }
+  if (
+    content.localityId !== undefined &&
+    content.localityId !== null &&
+    (!Number.isInteger(content.localityId) || Number(content.localityId) < 1)
+  ) {
+    return "La localidad cercana no es válida.";
+  }
+  if (
+    content.distanceKm !== undefined &&
+    content.distanceKm !== null &&
+    (typeof content.distanceKm !== "number" ||
+      !Number.isFinite(content.distanceKm) ||
+      content.distanceKm < 0)
+  ) {
+    return "La distancia debe ser un número mayor o igual que cero.";
+  }
   if (content.rows !== undefined) {
     if (!Array.isArray(content.rows) || content.rows.length > 200) {
       return "Las filas de la sección no son válidas.";

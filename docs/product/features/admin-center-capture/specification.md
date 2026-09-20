@@ -26,6 +26,8 @@ explícita.
   la sección elegida dentro del snapshot versionado.
 - El código institucional se muestra por componentes y la jerarquía es de solo lectura. Si
   la valoración aún no está calculada, el servidor usa provisionalmente la jerarquía `00`.
+- La sección de accesibilidad conserva la localidad cercana y su distancia aproximada,
+  separadas de la localidad oficial del centro y validadas contra el contrato de captura.
 
 El snapshot se puede consultar en `GET /admin/centers/:code/sections` y actualizar por
 sección con `PATCH /admin/centers/:code/sections/:sectionCode`. Durante la transición, el
