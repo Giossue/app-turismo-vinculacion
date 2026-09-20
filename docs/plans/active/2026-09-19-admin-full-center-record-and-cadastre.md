@@ -69,7 +69,8 @@ completa pendientes.
 - La sección 5 ya captura planta turística por ámbito con sus tres cantidades, facilidades
   detalladas con coordenadas, administrador, accesibilidad y estado, y servicios
   complementarios. Sus catálogos se consultan por API y aceptan descripción manual mientras
-  estén vacíos; todo permanece en el snapshot hasta implementar el adaptador normalizado.
+  estén vacíos; el adaptador de publicación ya reemplaza transaccionalmente las relaciones
+  catalogadas y conserva las filas manuales en borrador hasta que exista un catálogo válido.
 - La sección 3 ya captura tipo de clima, temperaturas y precipitaciones con rangos validados;
   estos datos permanecen en el snapshot hasta implementar su adaptador normalizado.
 - Las facilidades del núcleo ya permiten cantidad y observación por opción seleccionada;
@@ -139,8 +140,8 @@ se conviertan en catálogos o reglas y no en pantallas literales.
 - Los checkboxes binarios confunden `NO`, `SIN INFORMACIÓN`, `NO APLICA` y ausencia de
   captura.
 - Las facilidades del núcleo ya no fuerzan cantidad `1`; el detalle de coordenadas,
-  administrador, accesibilidad y estado ahora se captura en la sección 5, aunque todavía
-  espera su adaptador normalizado de publicación.
+  administrador, accesibilidad y estado ahora se captura en la sección 5 y se publica cuando
+  usa IDs activos del catálogo.
 - La hoja de accesibilidad detallada ya se captura en el borrador, pero aún falta el adaptador
   transaccional hacia `respuestas_accesibilidad` y las demás tablas normalizadas de la sección.
 - La revisión no compara publicado contra propuesto por sección.
@@ -514,9 +515,9 @@ de cuatro estados, observaciones y filas repetibles con guardado independiente. 
 campos núcleo existentes se mantienen operativos y cada sección ofrece un enlace directo a
 su formulario normalizado. Ya tienen captura específica las secciones 3, 4, 6, 7, 8, 10,
 11, 12 y 14; las secciones 4 y 5 ya cuentan con captura estructurada de conectividad,
-accesibilidad detallada, planta y complementarios; aún faltan los adaptadores de publicación
-para esas estructuras, el detalle
-normalizado completo de la sección 5 y la división física del componente monolítico.
+accesibilidad detallada, planta y complementarios; la sección 5 ya tiene adaptador de
+publicación catalogada; aún faltan los adaptadores de la sección 4, la valoración persistida
+y la división física del componente monolítico.
 
 Salida prevista: el administrador puede capturar la ficha completa sin navegar una sola
 página monolítica.

@@ -411,6 +411,20 @@ function isJsonRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function getAdminSectionRecord(
+  draft: CenterDraft,
+  code: AdminCenterSectionCode,
+): JsonRecord | null {
+  const value = draft.sections?.[code];
+  return isJsonRecord(value) ? value : null;
+}
+
+function sectionResponseToBoolean(value: unknown): boolean | null {
+  if (value === "SI") return true;
+  if (value === "NO") return false;
+  return null;
+}
+
 function validateAccessibilityDetailsBlock(value: unknown): string | null {
   if (!isJsonRecord(value)) return "El detalle de accesibilidad no es válido.";
 
@@ -2353,7 +2367,7 @@ export class AdminCentersService {
         );
       }
       const complete = this.requireComplete(draft.data);
-      await this.validateReferences(manager, complete);
+      await this.validateReferences(manager, complete, true);
       await this.applyDraft(manager, center, complete);
       const published = await this.stateId(manager, "PUBLICADO");
       await manager.query(
@@ -2562,6 +2576,11 @@ export class AdminCentersService {
         : hasPendingDraft
           ? { code: draft.stateCode, name: draft.stateName }
           : { code: center.statusCode, name: center.statusName };
+    const published = this.centerToDraft(center);
+    published.sections = await this.readPublishedPlantSection(
+      manager,
+      center.id,
+    );
     return {
       code: center.code,
       status: effectiveStatus,
@@ -2569,7 +2588,7 @@ export class AdminCentersService {
       active: center.active,
       publishedAt: center.publishedAt ?? null,
       version: draft?.version ?? 0,
-      published: this.centerToDraft(center),
+      published,
       draft: hasPendingDraft ? draft.data : null,
       review: revision
         ? {
@@ -2856,7 +2875,11 @@ export class AdminCentersService {
         );
       }
     }
-    if (draft.facilities) {
+    const plantSection = getAdminSectionRecord(draft, "planta");
+    const detailedFacilities =
+      Array.isArray(plantSection?.facilitiesDetails) &&
+      plantSection.facilitiesDetails.length > 0;
+    if (draft.facilities && !detailedFacilities) {
       await manager.query(
         `DELETE FROM facilidades_centro WHERE centro_turistico_id = $1`,
         [center.id],
@@ -2876,6 +2899,169 @@ export class AdminCentersService {
         );
       }
     }
+    if (plantSection) {
+      await this.applyPlantSection(manager, center.id, plantSection);
+    }
+  }
+
+  private async applyPlantSection(
+    manager: EntityManager,
+    centerId: string,
+    section: JsonRecord,
+  ) {
+    const scopes = (await manager.query(
+      `SELECT id, codigo AS code FROM ambitos_ubicacion_servicio WHERE activo = TRUE`,
+    )) as Array<{ id: string; code: string }>;
+    const scopeId = (code: unknown) => {
+      const row = scopes.find((item) => item.code === code);
+      if (!row) {
+        throw new ConflictException(
+          "El ámbito de ubicación ya no está disponible para publicar.",
+        );
+      }
+      return row.id;
+    };
+
+    if (section.plant !== undefined) {
+      await manager.query(
+        `DELETE FROM planta_turistica_centro WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      for (const item of section.plant as JsonRecord[]) {
+        await manager.query(
+          `INSERT INTO planta_turistica_centro
+             (centro_turistico_id, ambito_ubicacion_servicio_id, tipo_planta_turistica_id,
+              cantidad_1, cantidad_2, cantidad_3, observacion)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [
+            centerId,
+            scopeId(item.scope),
+            item.typeId,
+            item.quantity1 ?? null,
+            item.quantity2 ?? null,
+            item.quantity3 ?? null,
+            item.observation ?? null,
+          ],
+        );
+      }
+    }
+
+    if (
+      Array.isArray(section.facilitiesDetails) &&
+      section.facilitiesDetails.length > 0
+    ) {
+      await manager.query(
+        `DELETE FROM facilidades_centro WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      for (const item of section.facilitiesDetails as JsonRecord[]) {
+        await manager.query(
+          `INSERT INTO facilidades_centro
+             (centro_turistico_id, tipo_facilidad_id, cantidad, latitud, longitud,
+              administrador, accesibilidad_universal, estado_condicion_id, detalle_otro, observacion)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+          [
+            centerId,
+            item.typeId,
+            item.quantity,
+            item.latitude ?? null,
+            item.longitude ?? null,
+            item.administrator ?? null,
+            sectionResponseToBoolean(item.universalAccessibility),
+            item.conditionId ?? null,
+            item.detailOther ?? null,
+            item.observation ?? null,
+          ],
+        );
+      }
+    }
+
+    if (section.complementaryServices !== undefined) {
+      await manager.query(
+        `DELETE FROM servicios_complementarios_centro WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      for (const item of section.complementaryServices as JsonRecord[]) {
+        await manager.query(
+          `INSERT INTO servicios_complementarios_centro
+             (centro_turistico_id, ambito_ubicacion_servicio_id,
+              tipo_servicio_complementario_id, especificacion, observacion)
+           VALUES ($1,$2,$3,$4,$5)`,
+          [
+            centerId,
+            scopeId(item.scope),
+            item.typeId,
+            item.specification ?? null,
+            item.observation ?? null,
+          ],
+        );
+      }
+    }
+  }
+
+  private async readPublishedPlantSection(
+    manager: EntityManager,
+    centerId: string,
+  ): Promise<Record<string, unknown>> {
+    const [plantRows, facilityRows, complementaryRows] = (await Promise.all([
+      manager.query(
+        `SELECT COALESCE(json_agg(json_build_object(
+                  'scope', aus.codigo,
+                  'typeId', ptc.tipo_planta_turistica_id,
+                  'quantity1', ptc.cantidad_1,
+                  'quantity2', ptc.cantidad_2,
+                  'quantity3', ptc.cantidad_3,
+                  'observation', ptc.observacion
+                ) ORDER BY aus.codigo, ptc.tipo_planta_turistica_id), '[]'::json) AS data
+           FROM planta_turistica_centro ptc
+           JOIN ambitos_ubicacion_servicio aus
+             ON aus.id = ptc.ambito_ubicacion_servicio_id
+          WHERE ptc.centro_turistico_id = $1`,
+        [centerId],
+      ),
+      manager.query(
+        `SELECT COALESCE(json_agg(json_build_object(
+                  'categoryId', tf.categoria_facilidad_id,
+                  'typeId', fc.tipo_facilidad_id,
+                  'quantity', fc.cantidad,
+                  'latitude', fc.latitud,
+                  'longitude', fc.longitud,
+                  'administrator', fc.administrador,
+                  'universalAccessibility', CASE
+                    WHEN fc.accesibilidad_universal IS TRUE THEN 'SI'
+                    WHEN fc.accesibilidad_universal IS FALSE THEN 'NO'
+                    ELSE 'SIN_INFORMACION'
+                  END,
+                  'conditionId', fc.estado_condicion_id,
+                  'detailOther', fc.detalle_otro,
+                  'observation', fc.observacion
+                ) ORDER BY fc.tipo_facilidad_id), '[]'::json) AS data
+           FROM facilidades_centro fc
+           JOIN tipos_facilidad tf ON tf.id = fc.tipo_facilidad_id
+          WHERE fc.centro_turistico_id = $1`,
+        [centerId],
+      ),
+      manager.query(
+        `SELECT COALESCE(json_agg(json_build_object(
+                  'scope', aus.codigo,
+                  'typeId', scc.tipo_servicio_complementario_id,
+                  'specification', scc.especificacion,
+                  'observation', scc.observacion
+                ) ORDER BY aus.codigo, scc.tipo_servicio_complementario_id), '[]'::json) AS data
+           FROM servicios_complementarios_centro scc
+           JOIN ambitos_ubicacion_servicio aus
+             ON aus.id = scc.ambito_ubicacion_servicio_id
+          WHERE scc.centro_turistico_id = $1`,
+        [centerId],
+      ),
+    ])) as Array<Array<{ data: unknown }>>;
+    return {
+      schemaVersion: 1,
+      response: "SI",
+      plant: plantRows[0]?.data ?? [],
+      facilitiesDetails: facilityRows[0]?.data ?? [],
+      complementaryServices: complementaryRows[0]?.data ?? [],
+    };
   }
 
   private centerToDraft(center: CenterRow): CenterDraft {
@@ -2952,7 +3138,11 @@ export class AdminCentersService {
     return { ...value, hierarchyId: Number(provisional.id) };
   }
 
-  private async validateReferences(manager: EntityManager, draft: CenterDraft) {
+  private async validateReferences(
+    manager: EntityManager,
+    draft: CenterDraft,
+    forPublication = false,
+  ) {
     this.validateSectionMap(draft.sections);
     const references: Array<[string, number, string]> = [
       ["subtipos_atractivo", draft.subtypeId, "subtipo"],
@@ -2993,7 +3183,7 @@ export class AdminCentersService {
         "modalidad de atención",
       );
     }
-    await this.validateTechnicalSections(manager, draft);
+    await this.validateTechnicalSections(manager, draft, forPublication);
   }
 
   private validateSectionMap(sections: Record<string, unknown> | undefined) {
@@ -3027,6 +3217,7 @@ export class AdminCentersService {
   private async validateTechnicalSections(
     manager: EntityManager,
     draft: CenterDraft,
+    forPublication = false,
   ) {
     const unique = (values: number[], label: string) => {
       if (new Set(values).size !== values.length) {
@@ -3079,6 +3270,150 @@ export class AdminCentersService {
         "facilidad",
       );
     }
+    if (forPublication) {
+      await this.validatePlantSectionReferences(manager, draft);
+    }
+  }
+
+  private async validatePlantSectionReferences(
+    manager: EntityManager,
+    draft: CenterDraft,
+  ) {
+    const section = getAdminSectionRecord(draft, "planta");
+    if (!section) return;
+
+    const requireCatalogId = (
+      item: JsonRecord,
+      idKey: string,
+      label: string,
+    ): number => {
+      const id = item[idKey];
+      if (!Number.isInteger(id) || Number(id) < 1) {
+        throw new ConflictException(
+          `La sección planta requiere seleccionar un ${label} del catálogo antes de publicar.`,
+        );
+      }
+      return Number(id);
+    };
+    const ensureScope = async (value: unknown) => {
+      if (typeof value !== "string") {
+        throw new ConflictException(
+          "La sección planta requiere un ámbito de ubicación válido.",
+        );
+      }
+      await this.ensureCodeReference(
+        manager,
+        "ambitos_ubicacion_servicio",
+        value,
+        "ámbito de ubicación",
+      );
+    };
+
+    if (section.plant !== undefined) {
+      if (!Array.isArray(section.plant)) {
+        throw new ConflictException("La planta turística no es válida.");
+      }
+      const seenPlant = new Set<string>();
+      for (const item of section.plant) {
+        if (!isJsonRecord(item)) {
+          throw new ConflictException(
+            "Un registro de planta turística no es válido.",
+          );
+        }
+        await ensureScope(item.scope);
+        const typeId = requireCatalogId(
+          item,
+          "typeId",
+          "tipo de planta turística",
+        );
+        const plantKey = `${item.scope}:${typeId}`;
+        if (seenPlant.has(plantKey)) {
+          throw new ConflictException(
+            "No repitas el mismo tipo de planta dentro del mismo ámbito.",
+          );
+        }
+        seenPlant.add(plantKey);
+        await this.ensureReference(
+          manager,
+          "tipos_planta_turistica",
+          typeId,
+          "tipo de planta turística",
+        );
+      }
+    }
+
+    if (section.facilitiesDetails !== undefined) {
+      if (!Array.isArray(section.facilitiesDetails)) {
+        throw new ConflictException(
+          "Las facilidades del entorno no son válidas.",
+        );
+      }
+      for (const item of section.facilitiesDetails) {
+        if (!isJsonRecord(item)) {
+          throw new ConflictException(
+            "Una facilidad del entorno no es válida.",
+          );
+        }
+        const typeId = requireCatalogId(item, "typeId", "tipo de facilidad");
+        await this.ensureReference(
+          manager,
+          "tipos_facilidad",
+          typeId,
+          "facilidad",
+        );
+        if (item.categoryId !== undefined && item.categoryId !== null) {
+          await this.ensureReference(
+            manager,
+            "categorias_facilidad",
+            requireCatalogId(item, "categoryId", "categoría de facilidad"),
+            "categoría de facilidad",
+          );
+        }
+        if (item.conditionId !== undefined && item.conditionId !== null) {
+          await this.ensureReference(
+            manager,
+            "estados_condicion",
+            requireCatalogId(item, "conditionId", "estado de facilidad"),
+            "estado de facilidad",
+          );
+        }
+      }
+    }
+
+    if (section.complementaryServices !== undefined) {
+      if (!Array.isArray(section.complementaryServices)) {
+        throw new ConflictException(
+          "Los servicios complementarios no son válidos.",
+        );
+      }
+      const seenComplementary = new Set<string>();
+      for (const item of section.complementaryServices) {
+        if (!isJsonRecord(item)) {
+          throw new ConflictException(
+            "Un servicio complementario no es válido.",
+          );
+        }
+        await ensureScope(item.scope);
+        const typeId = requireCatalogId(
+          item,
+          "typeId",
+          "tipo de servicio complementario",
+        );
+        const complementaryKey = `${item.scope}:${typeId}:${String(item.specification ?? "")}`;
+        if (seenComplementary.has(complementaryKey)) {
+          throw new ConflictException(
+            "No repitas el mismo servicio complementario dentro del mismo ámbito.",
+          );
+        }
+        seenComplementary.add(complementaryKey);
+        await this.ensureReference(
+          manager,
+          "tipos_servicio_complementario",
+          typeId,
+          "tipo de servicio complementario",
+        );
+      }
+    }
   }
 
   private async ensureReferences(
@@ -3113,6 +3448,23 @@ export class AdminCentersService {
       throw new ConflictException(
         `El ${label} seleccionado no está disponible.`,
       );
+  }
+
+  private async ensureCodeReference(
+    manager: EntityManager,
+    table: string,
+    code: string,
+    label: string,
+  ) {
+    const rows = await manager.query(
+      `SELECT 1 FROM ${table} WHERE codigo = $1 AND activo = TRUE LIMIT 1`,
+      [code],
+    );
+    if (!rows[0]) {
+      throw new ConflictException(
+        `El ${label} seleccionado no está disponible para publicar.`,
+      );
+    }
   }
 
   private async nextSequence(

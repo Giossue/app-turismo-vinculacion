@@ -45,8 +45,9 @@ queda pendiente; no se considera publicado mientras no exista.
 
 La sección 5 usa los bloques `plant`, `facilitiesDetails` y `complementaryServices` en el
 snapshot para conservar el ámbito y las cantidades de planta, el detalle de facilidades y
-los servicios complementarios. Sus adaptadores a las tablas existentes también quedan
-pendientes de publicación.
+los servicios complementarios. El adaptador transaccional ya publica filas con IDs activos;
+una fila manual sin catálogo se conserva en el borrador y bloquea su publicación para no
+inventar una relación normalizada.
 
 ## Reglas de captura
 
