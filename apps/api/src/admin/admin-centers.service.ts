@@ -2673,6 +2673,7 @@ export class AdminCentersService {
       publishedPolicies,
       publishedPromotion,
       publishedHumanResources,
+      publishedConservation,
     ] = await Promise.all([
       this.readPublishedAccessibilitySection(manager, center.id),
       this.readPublishedPlantSection(manager, center.id),
@@ -2680,6 +2681,7 @@ export class AdminCentersService {
       this.readPublishedPoliciesSection(manager, center.id),
       this.readPublishedPromotionSection(manager, center.id),
       this.readPublishedHumanResourcesSection(manager, center.id),
+      this.readPublishedConservationSection(manager, center.id),
     ]);
     const publishedSections: Record<string, unknown> = {};
     if (publishedAccessibility)
@@ -2690,6 +2692,8 @@ export class AdminCentersService {
     if (publishedPromotion) publishedSections.promocion = publishedPromotion;
     if (publishedHumanResources)
       publishedSections["recurso-humano"] = publishedHumanResources;
+    if (publishedConservation)
+      publishedSections.conservacion = publishedConservation;
     published.sections = publishedSections;
     return {
       code: center.code,
@@ -3021,6 +3025,14 @@ export class AdminCentersService {
         manager,
         center.id,
         humanResourcesSection,
+      );
+    }
+    const conservationSection = getAdminSectionRecord(draft, "conservacion");
+    if (conservationSection) {
+      await this.applyConservationSection(
+        manager,
+        center.id,
+        conservationSection,
       );
     }
     const accessibilitySection = getAdminSectionRecord(draft, "accesibilidad");
@@ -3438,6 +3450,107 @@ export class AdminCentersService {
         `DELETE FROM formacion_personal_centro WHERE centro_turistico_id = $1`,
         [centerId],
       );
+    }
+  }
+
+  private async applyConservationSection(
+    manager: EntityManager,
+    centerId: string,
+    section: JsonRecord,
+  ) {
+    await manager.query(
+      `DELETE FROM evaluacion_factores_alteracion
+        WHERE evaluacion_conservacion_id IN (
+          SELECT id FROM evaluaciones_conservacion WHERE centro_turistico_id = $1
+        )`,
+      [centerId],
+    );
+    await manager.query(
+      `DELETE FROM evaluaciones_conservacion WHERE centro_turistico_id = $1`,
+      [centerId],
+    );
+    await manager.query(
+      `DELETE FROM declaratorias_turisticas WHERE centro_turistico_id = $1`,
+      [centerId],
+    );
+    if (section.response === "NO_APLICA") return;
+
+    const conservation = isJsonRecord(section.conservation)
+      ? section.conservation
+      : null;
+    if (conservation) {
+      const entries = [
+        ["ATRACTIVO", conservation.attraction],
+        ["ENTORNO", conservation.environment],
+      ] as const;
+      const states: Array<{
+        componentCode: "ATRACTIVO" | "ENTORNO";
+        value: JsonRecord;
+      }> = [];
+      for (const [componentCode, value] of entries) {
+        if (
+          isJsonRecord(value) &&
+          typeof value.state === "string" &&
+          value.state.trim().length > 0
+        ) {
+          states.push({ componentCode, value });
+        }
+      }
+      if (states.length > 0) {
+        const stateCodes = states.map((entry) => String(entry.value.state));
+        const stateRows = (await manager.query(
+          `SELECT id, codigo FROM estados_conservacion
+            WHERE activo = TRUE AND codigo = ANY($1::text[])`,
+          [stateCodes],
+        )) as Array<{ id: string; codigo: string }>;
+        const stateByCode = new Map(
+          stateRows.map((row) => [row.codigo, row.id]),
+        );
+        const componentRows = (await manager.query(
+          `SELECT id, codigo FROM componentes_conservacion
+            WHERE codigo = ANY($1::text[])`,
+          [states.map((entry) => entry.componentCode)],
+        )) as Array<{ id: string; codigo: string }>;
+        const componentByCode = new Map(
+          componentRows.map((row) => [row.codigo, row.id]),
+        );
+        for (const entry of states) {
+          const stateId = stateByCode.get(String(entry.value.state));
+          const componentId = componentByCode.get(entry.componentCode);
+          if (!stateId || !componentId) continue;
+          await manager.query(
+            `INSERT INTO evaluaciones_conservacion
+               (centro_turistico_id, componente_conservacion_id,
+                estado_conservacion_id, observacion)
+             VALUES ($1,$2,$3,$4)`,
+            [
+              centerId,
+              componentId,
+              stateId,
+              entry.value.observation ?? section.observation ?? null,
+            ],
+          );
+        }
+      }
+    }
+
+    if (Array.isArray(section.declarations)) {
+      for (const declaration of section.declarations as JsonRecord[]) {
+        await manager.query(
+          `INSERT INTO declaratorias_turisticas
+             (centro_turistico_id, entidad_declarante, denominacion,
+              fecha_declaratoria, ambito, observacion)
+           VALUES ($1,$2,$3,$4::date,$5,$6)`,
+          [
+            centerId,
+            declaration.entity,
+            declaration.denomination,
+            declaration.date ?? null,
+            declaration.scope ?? null,
+            declaration.observation ?? null,
+          ],
+        );
+      }
     }
   }
 
@@ -4228,6 +4341,61 @@ export class AdminCentersService {
     };
   }
 
+  private async readPublishedConservationSection(
+    manager: EntityManager,
+    centerId: string,
+  ): Promise<Record<string, unknown> | null> {
+    const [evaluationRows, declarationRows] = (await Promise.all([
+      manager.query(
+        `SELECT COALESCE(json_agg(json_build_object(
+                  'component', cc.codigo,
+                  'state', ec.codigo,
+                  'observation', ev.observacion
+                ) ORDER BY cc.codigo), '[]'::json) AS data
+           FROM evaluaciones_conservacion ev
+           JOIN componentes_conservacion cc ON cc.id = ev.componente_conservacion_id
+           JOIN estados_conservacion ec ON ec.id = ev.estado_conservacion_id
+          WHERE ev.centro_turistico_id = $1`,
+        [centerId],
+      ),
+      manager.query(
+        `SELECT COALESCE(json_agg(json_build_object(
+                  'entity', entidad_declarante,
+                  'denomination', denominacion,
+                  'date', fecha_declaratoria,
+                  'scope', ambito,
+                  'observation', observacion
+                ) ORDER BY id), '[]'::json) AS data
+           FROM declaratorias_turisticas
+          WHERE centro_turistico_id = $1`,
+        [centerId],
+      ),
+    ])) as Array<Array<{ data: unknown }>>;
+    const evaluations = evaluationRows[0]?.data;
+    const declarations = declarationRows[0]?.data;
+    const hasEvaluations = Array.isArray(evaluations) && evaluations.length > 0;
+    const hasDeclarations =
+      Array.isArray(declarations) && declarations.length > 0;
+    if (!hasEvaluations && !hasDeclarations) return null;
+    const conservation: JsonRecord = {
+      attraction: { state: null, observation: "" },
+      environment: { state: null, observation: "" },
+      factors: [],
+    };
+    if (hasEvaluations) {
+      for (const item of evaluations as JsonRecord[]) {
+        if (item.component === "ATRACTIVO") conservation.attraction = item;
+        if (item.component === "ENTORNO") conservation.environment = item;
+      }
+    }
+    return {
+      schemaVersion: 1,
+      response: "SI",
+      conservation,
+      declarations: declarations ?? [],
+    };
+  }
+
   private centerToDraft(center: CenterRow): CenterDraft {
     return {
       name: center.name,
@@ -4441,6 +4609,7 @@ export class AdminCentersService {
       await this.validatePoliciesSectionReferences(manager, draft);
       await this.validatePromotionSectionReferences(manager, draft);
       await this.validateHumanResourcesSectionReferences(manager, draft);
+      await this.validateConservationSectionReferences(manager, draft);
     }
     await this.validateCharacteristicsSectionReferences(
       manager,
@@ -4614,6 +4783,51 @@ export class AdminCentersService {
       throw new ConflictException(
         "La formación del personal requiere un tipo activo del catálogo antes de publicar.",
       );
+    }
+  }
+
+  private async validateConservationSectionReferences(
+    manager: EntityManager,
+    draft: CenterDraft,
+  ) {
+    const section = getAdminSectionRecord(draft, "conservacion");
+    if (!section || section.response === "NO_APLICA") return;
+    const conservation = isJsonRecord(section.conservation)
+      ? section.conservation
+      : null;
+    if (!conservation) return;
+    const stateCodes: string[] = [];
+    for (const component of ["attraction", "environment"]) {
+      const entry = isJsonRecord(conservation[component])
+        ? conservation[component]
+        : null;
+      if (entry?.state !== undefined && entry.state !== null) {
+        stateCodes.push(String(entry.state));
+      }
+    }
+    if (section.response === "SI" && stateCodes.length !== 2) {
+      throw new ConflictException(
+        "La sección conservación requiere el estado del atractivo y del entorno antes de publicar.",
+      );
+    }
+    if (stateCodes.length > 0) {
+      const rows = (await manager.query(
+        `SELECT codigo FROM estados_conservacion
+          WHERE activo = TRUE AND codigo = ANY($1::text[])`,
+        [stateCodes],
+      )) as Array<{ codigo: string }>;
+      if (rows.length !== new Set(stateCodes).size) {
+        throw new ConflictException(
+          "Un estado de conservación ya no está disponible en el catálogo.",
+        );
+      }
+    }
+    if (isJsonRecord(conservation) && Array.isArray(conservation.factors)) {
+      if (conservation.factors.length > 0) {
+        throw new ConflictException(
+          "Los factores de alteración requieren un factor activo del catálogo antes de publicar.",
+        );
+      }
     }
   }
 

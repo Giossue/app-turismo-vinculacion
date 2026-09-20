@@ -60,6 +60,8 @@ El plan de promoción se normaliza de forma independiente; los medios sin tipo c
 conservan en el borrador y detienen la publicación.
 El resumen de recurso humano se normaliza sin separar el centro; educación, capacitación e
 idiomas requieren un tipo de formación catalogado para poder publicarse.
+Conservación publica evaluaciones y declaratorias en las tablas existentes; los factores sin
+identificador catalogado permanecen en el borrador y detienen la publicación.
 Las facilidades seleccionadas conservan cantidad y observación por opción. El panel consulta
 `/admin/summary`, `/admin/centers`, `/admin/catalogs`,
 `/admin/centers/:code/valuation` y `/admin/centers/:code`; las

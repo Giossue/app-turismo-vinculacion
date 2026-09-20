@@ -95,6 +95,9 @@ completa pendientes.
 - La sección 12 ya publica el resumen de administración/operación y personal especializado;
   los registros de educación, capacitación e idiomas quedan en el borrador hasta enlazarse
   con tipos activos de formación.
+- La sección 6 ya reemplaza evaluaciones y declaratorias en sus tablas existentes; los estados
+  dependen del catálogo activo y los factores de alteración siguen bloqueando publicación
+  hasta que el formulario conserve su identificador de factor.
 - Las facilidades del núcleo ya permiten cantidad y observación por opción seleccionada;
   dejan de guardar siempre la cantidad fija `1`.
 - La ficha ahora compara, por sección, la versión publicada con la propuesta y muestra

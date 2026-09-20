@@ -144,6 +144,59 @@ describe("AdminCentersService", () => {
     );
   });
 
+  it("publishes conservation states and declarations through existing tables", async () => {
+    const managerQuery = vi.fn(async (sql: string) => {
+      if (sql.includes("FROM estados_conservacion")) {
+        return [
+          { id: "81", codigo: "CONSERVADO" },
+          { id: "82", codigo: "ALTERADO" },
+        ];
+      }
+      if (sql.includes("FROM componentes_conservacion")) {
+        return [
+          { id: "1", codigo: "ATRACTIVO" },
+          { id: "2", codigo: "ENTORNO" },
+        ];
+      }
+      return [];
+    });
+    const manager = { query: managerQuery };
+    const service = new AdminCentersService({} as never);
+    const applyConservationSection = (
+      service as unknown as {
+        applyConservationSection: (
+          value: typeof manager,
+          centerId: string,
+          section: Record<string, unknown>,
+        ) => Promise<void>;
+      }
+    ).applyConservationSection;
+
+    await applyConservationSection.call(service, manager, "10", {
+      response: "SI",
+      conservation: {
+        attraction: { state: "CONSERVADO", observation: "Estable" },
+        environment: { state: "ALTERADO", observation: "Presión de uso" },
+        factors: [],
+      },
+      declarations: [
+        {
+          entity: "GAD",
+          denomination: "Patrimonio local",
+          date: "2024-05-01",
+        },
+      ],
+    });
+
+    const statements = managerQuery.mock.calls.map(([sql]) => sql);
+    expect(statements).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("INSERT INTO evaluaciones_conservacion"),
+        expect.stringContaining("INSERT INTO declaratorias_turisticas"),
+      ]),
+    );
+  });
+
   it("exposes persisted valuation status without recalculating the ficha", async () => {
     const managerQuery = vi
       .fn()
