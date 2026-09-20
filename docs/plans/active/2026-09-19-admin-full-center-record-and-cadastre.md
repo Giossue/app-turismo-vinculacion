@@ -29,6 +29,9 @@ normalizados y valoración pendientes.
   repetibles se guardan por sección en el snapshot JSONB con control de versión.
 - Las secciones que todavía usan tablas normalizadas enlazan al formulario núcleo existente;
   la captura adicional no publica datos hasta que se implementen sus adaptadores.
+- El endpoint de secciones devuelve el progreso de cada apartado (`SIN_INICIAR`,
+  `INCOMPLETA`, `COMPLETA`, `CON_ERRORES` o `NO_APLICA`) y el API valida el contrato de
+  respuestas, observaciones, cantidades y filas antes de versionar el borrador.
 
 ## Objetivo
 
@@ -426,8 +429,9 @@ Salida: especificación y criterios de aceptación actualizados, sin código de 
 - Conservar compatibilidad temporal con el editor actual.
 
 La API ya expone lectura y guardado por sección sobre el borrador JSONB, con lista blanca de
-14 claves, control de versión y auditoría. Falta validar y normalizar el contenido de cada
-sección antes de publicarlo.
+14 claves, control de versión, progreso calculado y auditoría. El contrato transitorio de
+respuestas, observaciones y filas repetibles ya se valida en el límite HTTP; falta
+normalizar el contenido de cada sección antes de publicarlo.
 
 Salida: API capaz de guardar toda la propuesta sin publicarla todavía.
 

@@ -47,6 +47,22 @@ export const ADMIN_CENTER_SECTION_CODES = [
 export type AdminCenterSectionCode =
   (typeof ADMIN_CENTER_SECTION_CODES)[number];
 
+export const ADMIN_CENTER_SECTION_PROGRESS_STATUSES = [
+  "SIN_INICIAR",
+  "INCOMPLETA",
+  "COMPLETA",
+  "CON_ERRORES",
+  "NO_APLICA",
+] as const;
+
+export type AdminCenterSectionProgressStatus =
+  (typeof ADMIN_CENTER_SECTION_PROGRESS_STATUSES)[number];
+
+export type AdminCenterSectionProgress = {
+  code: AdminCenterSectionCode;
+  status: AdminCenterSectionProgressStatus;
+};
+
 export class AdminCentersQueryDto {
   @IsOptional()
   @IsString()

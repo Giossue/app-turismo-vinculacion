@@ -28,7 +28,8 @@ explícita.
 El snapshot se puede consultar en `GET /admin/centers/:code/sections` y actualizar por
 sección con `PATCH /admin/centers/:code/sections/:sectionCode`. Durante la transición, el
 contenido aún no normalizado permanece en el borrador JSONB y no se considera publicado hasta
-que exista su adaptador transaccional.
+que exista su adaptador transaccional. La lectura devuelve el progreso por sección y el API
+rechaza respuestas, cantidades o filas que no cumplan el contrato de captura.
 
 El administrador puede renombrar y activar/desactivar opciones de los catálogos técnicos;
 cada cambio queda auditado. El panel acepta fotos, video y audio; documentos, importaciones y

@@ -17,6 +17,8 @@ import type {
   AdminCatalogsQueryDto,
   AdminCatalogUpdateDto,
   AdminCenterSectionCode,
+  AdminCenterSectionProgress,
+  AdminCenterSectionProgressStatus,
   AdminClimateDto,
   AdminFacilityDto,
   ReviewCenterDto,
@@ -126,6 +128,132 @@ interface CenterListRow {
 }
 
 const EDITABLE_DRAFT_STATES = new Set(["BORRADOR", "RECHAZADO"]);
+const SECTION_RESPONSE_VALUES = new Set([
+  "SI",
+  "NO",
+  "SIN_INFORMACION",
+  "NO_APLICA",
+]);
+
+/**
+ * Validates the transitional JSON contract used by the web section editor.
+ * Legacy section payloads without the new fields remain readable while the
+ * normalized publication adapters are being implemented.
+ */
+export function validateAdminSectionContent(content: unknown): string | null {
+  if (!isJsonRecord(content))
+    return "El contenido de la sección debe ser un objeto.";
+  const usesStructuredContract = [
+    "schemaVersion",
+    "response",
+    "observation",
+    "rows",
+  ].some((key) => key in content);
+  if (!usesStructuredContract) return null;
+  if (content.schemaVersion !== undefined && content.schemaVersion !== 1) {
+    return "La versión de la sección no es compatible.";
+  }
+  if (!("response" in content) || !isSectionResponse(content.response)) {
+    return "La sección requiere una respuesta válida.";
+  }
+  if (
+    content.observation !== undefined &&
+    content.observation !== null &&
+    (typeof content.observation !== "string" ||
+      content.observation.length > 2_000)
+  ) {
+    return "La observación de la sección supera el límite permitido.";
+  }
+  if (content.rows !== undefined) {
+    if (!Array.isArray(content.rows) || content.rows.length > 200) {
+      return "Las filas de la sección no son válidas.";
+    }
+    for (const row of content.rows) {
+      if (!isJsonRecord(row)) return "Una fila de la sección no es válida.";
+      if (
+        typeof row.label !== "string" ||
+        row.label.trim().length === 0 ||
+        row.label.length > 180
+      ) {
+        return "Cada fila debe tener un elemento de hasta 180 caracteres.";
+      }
+      if (!isSectionResponse(row.response)) {
+        return "Cada fila requiere una respuesta válida.";
+      }
+      if (
+        row.quantity !== undefined &&
+        row.quantity !== null &&
+        (!Number.isInteger(row.quantity) || Number(row.quantity) < 0)
+      ) {
+        return "Las cantidades deben ser enteros mayores o iguales que cero.";
+      }
+      if (
+        row.observation !== undefined &&
+        row.observation !== null &&
+        (typeof row.observation !== "string" || row.observation.length > 1_000)
+      ) {
+        return "La observación de una fila supera el límite permitido.";
+      }
+    }
+  }
+  return null;
+}
+
+export function getAdminSectionProgress(
+  content: unknown,
+  coreComplete = false,
+): AdminCenterSectionProgressStatus {
+  if (content === undefined || content === null) {
+    return coreComplete ? "COMPLETA" : "SIN_INICIAR";
+  }
+  if (!isJsonRecord(content)) return "CON_ERRORES";
+  const validationError = validateAdminSectionContent(content);
+  if (validationError) return "CON_ERRORES";
+  if (!("response" in content)) return "INCOMPLETA";
+  return content.response === "NO_APLICA" ? "NO_APLICA" : "COMPLETA";
+}
+
+function isSectionResponse(value: unknown): boolean {
+  return typeof value === "string" && SECTION_RESPONSE_VALUES.has(value);
+}
+
+function isJsonRecord(value: unknown): value is JsonRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function buildAdminSectionProgress(
+  draft?: CenterDraft,
+): AdminCenterSectionProgress[] {
+  const sections = draft?.sections ?? {};
+  const core = getCoreSectionCompletion(draft);
+  return ADMIN_CENTER_SECTION_CODES.map((code) => ({
+    code,
+    status: getAdminSectionProgress(sections[code], core[code] ?? false),
+  }));
+}
+
+function getCoreSectionCompletion(
+  draft?: CenterDraft,
+): Partial<Record<AdminCenterSectionCode, boolean>> {
+  if (!draft) return {};
+  return {
+    identificacion: Boolean(
+      draft.name &&
+      draft.subtypeId &&
+      draft.touristZoneId &&
+      draft.parishId &&
+      draft.productLineId &&
+      draft.scenarioId,
+    ),
+    "ubicacion-admin":
+      Number.isFinite(draft.latitude) && Number.isFinite(draft.longitude),
+    caracteristicas: Boolean(draft.productLineId && draft.scenarioId),
+    accesibilidad: Array.isArray(draft.accessibility),
+    planta: Array.isArray(draft.facilities),
+    actividades: Array.isArray(draft.activities),
+    descripcion: Boolean(draft.description?.trim()),
+  };
+}
 
 @Injectable()
 export class AdminCentersService {
@@ -770,6 +898,7 @@ export class AdminCentersService {
         code: center.code ?? code,
         version: draft?.version ?? 0,
         sections: draft?.data.sections ?? {},
+        progress: buildAdminSectionProgress(draft?.data),
       };
     });
   }
@@ -1300,6 +1429,14 @@ export class AdminCentersService {
       throw new ConflictException(
         `La sección de ficha no está disponible: ${invalid[0]}.`,
       );
+    }
+    for (const [code, content] of Object.entries(sections)) {
+      const error = validateAdminSectionContent(content);
+      if (error) {
+        throw new ConflictException(
+          `La sección ${code} no es válida: ${error}`,
+        );
+      }
     }
     if (JSON.stringify(sections).length > 300_000) {
       throw new ConflictException(
