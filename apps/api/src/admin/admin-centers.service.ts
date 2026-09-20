@@ -141,6 +141,16 @@ const CONSERVATION_STATE_VALUES = new Set([
   "DETERIORADO",
 ]);
 const CONSERVATION_ORIGIN_VALUES = new Set(["NATURAL", "ANTROPICO"]);
+const HYGIENE_ENTRY_KINDS = new Set([
+  "BASIC_SERVICE",
+  "SIGNAGE",
+  "HEALTH",
+  "SECURITY",
+  "COMMUNICATION",
+  "THREAT",
+]);
+const SERVICE_SCOPE_VALUES = new Set(["EN_ATRACTIVO", "EN_POBLADO_CERCANO"]);
+const SIGNAGE_CONDITION_VALUES = new Set(["BUENO", "REGULAR", "MALO"]);
 
 /**
  * Validates the transitional JSON contract used by the web section editor.
@@ -261,6 +271,10 @@ export function validateAdminSectionContent(content: unknown): string | null {
       content.declarations,
     );
     if (declarationsError) return declarationsError;
+  }
+  if (content.hygieneSafety !== undefined) {
+    const hygieneError = validateHygieneSafetyBlock(content.hygieneSafety);
+    if (hygieneError) return hygieneError;
   }
   if (content.rows !== undefined) {
     if (!Array.isArray(content.rows) || content.rows.length > 200) {
@@ -448,6 +462,117 @@ function isConservationBlockComplete(value: unknown): boolean {
     }
   }
   return true;
+}
+
+function validateHygieneSafetyBlock(value: unknown): string | null {
+  if (!isJsonRecord(value)) return "El bloque de higiene y seguridad no es válido.";
+  if (value.entries !== undefined) {
+    if (!Array.isArray(value.entries) || value.entries.length > 300) {
+      return "Los registros de higiene y seguridad no son válidos.";
+    }
+    for (const entry of value.entries) {
+      if (!isJsonRecord(entry)) return "Un registro de higiene y seguridad no es válido.";
+      if (!HYGIENE_ENTRY_KINDS.has(String(entry.kind))) {
+        return "El tipo de registro de higiene y seguridad no es válido.";
+      }
+      if (
+        typeof entry.name !== "string" ||
+        entry.name.trim().length === 0 ||
+        entry.name.length > 180
+      ) {
+        return "Cada registro de higiene y seguridad requiere un nombre de hasta 180 caracteres.";
+      }
+      if (
+        entry.scope !== undefined &&
+        entry.scope !== null &&
+        !SERVICE_SCOPE_VALUES.has(String(entry.scope))
+      ) {
+        return "El ámbito del registro de higiene y seguridad no es válido.";
+      }
+      if (!isSectionResponse(entry.response)) {
+        return "Cada registro de higiene y seguridad requiere una respuesta válida.";
+      }
+      if (
+        entry.quantity !== undefined &&
+        entry.quantity !== null &&
+        (!Number.isInteger(entry.quantity) || Number(entry.quantity) < 0)
+      ) {
+        return "Las cantidades de higiene y seguridad deben ser enteros no negativos.";
+      }
+      if (
+        entry.secondary !== undefined &&
+        entry.secondary !== null &&
+        (typeof entry.secondary !== "string" || entry.secondary.length > 250)
+      ) {
+        return "El detalle secundario de higiene y seguridad supera el límite permitido.";
+      }
+      if (
+        entry.condition !== undefined &&
+        entry.condition !== null &&
+        !SIGNAGE_CONDITION_VALUES.has(String(entry.condition))
+      ) {
+        return "El estado de la señalética no es válido.";
+      }
+      if (
+        entry.observation !== undefined &&
+        entry.observation !== null &&
+        (typeof entry.observation !== "string" || entry.observation.length > 1_000)
+      ) {
+        return "La observación de higiene y seguridad supera el límite permitido.";
+      }
+    }
+  }
+  if (value.radios !== undefined) {
+    if (!isJsonRecord(value.radios)) return "El bloque de radios no es válido.";
+    for (const key of ["available", "visitorUse", "internalUse", "emergencyUse"]) {
+      if (!isSectionResponse(value.radios[key])) {
+        return "Cada uso de radios requiere una respuesta válida.";
+      }
+    }
+    if (
+      value.radios.quantity !== undefined &&
+      value.radios.quantity !== null &&
+      (!Number.isInteger(value.radios.quantity) || Number(value.radios.quantity) < 0)
+    ) {
+      return "La cantidad de radios debe ser un entero no negativo.";
+    }
+    if (
+      value.radios.observation !== undefined &&
+      value.radios.observation !== null &&
+      (typeof value.radios.observation !== "string" ||
+        value.radios.observation.length > 1_000)
+    ) {
+      return "La observación de radios supera el límite permitido.";
+    }
+  }
+  if (value.contingency !== undefined) {
+    if (!isJsonRecord(value.contingency)) {
+      return "El bloque de contingencia no es válido.";
+    }
+    if (!isSectionResponse(value.contingency.exists)) {
+      return "La existencia del plan de contingencia requiere una respuesta válida.";
+    }
+    for (const key of ["institution", "document", "observation"]) {
+      const field = value.contingency[key];
+      if (
+        field !== undefined &&
+        field !== null &&
+        (typeof field !== "string" || field.length > (key === "document" ? 250 : 1_000))
+      ) {
+        return "Los datos del plan de contingencia superan los límites permitidos.";
+      }
+    }
+    if (
+      value.contingency.year !== undefined &&
+      value.contingency.year !== null &&
+      (!Number.isInteger(value.contingency.year) ||
+        Number(value.contingency.year) < 1900 ||
+        Number(value.contingency.year) > 2200)
+    ) {
+      return "El año del plan de contingencia no es válido.";
+    }
+  }
+  return null;
 }
 
 export function buildAdminSectionProgress(

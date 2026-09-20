@@ -155,6 +155,75 @@ describe("admin section contract", () => {
     ).toBe("INCOMPLETA");
   });
 
+  it("validates hygiene, safety and contingency records", () => {
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        hygieneSafety: {
+          entries: [
+            {
+              kind: "BASIC_SERVICE",
+              scope: "EN_ATRACTIVO",
+              name: "Agua potable",
+              response: "SI",
+              quantity: 1,
+            },
+            {
+              kind: "SIGNAGE",
+              name: "Panel informativo",
+              response: "SI",
+              condition: "BUENO",
+              quantity: 2,
+            },
+          ],
+          radios: {
+            available: "NO",
+            visitorUse: "NO_APLICA",
+            internalUse: "NO",
+            emergencyUse: "NO",
+            quantity: 0,
+          },
+          contingency: {
+            exists: "SI",
+            institution: "GAD Municipal",
+            document: "Plan anual",
+            year: 2025,
+          },
+        },
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects invalid hygiene entry kind and radio quantity", () => {
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        hygieneSafety: {
+          entries: [
+            { kind: "UNKNOWN", name: "Registro", response: "SI" },
+          ],
+        },
+      }),
+    ).toContain("tipo de registro");
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        hygieneSafety: {
+          radios: {
+            available: "SI",
+            visitorUse: "SI",
+            internalUse: "SI",
+            emergencyUse: "SI",
+            quantity: -1,
+          },
+        },
+      }),
+    ).toContain("cantidad de radios");
+  });
+
   it("derives core progress and explicit no aplica states", () => {
     const progress = buildAdminSectionProgress({
       name: "Centro de prueba",

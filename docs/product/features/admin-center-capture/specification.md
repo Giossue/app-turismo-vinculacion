@@ -33,6 +33,9 @@ explícita.
 - La sección de conservación distingue el estado del atractivo y del entorno, factores de
   alteración naturales/antrópicos y declaratorias con fecha, ámbito y observación dentro del
   mismo centro turístico.
+- La sección de higiene y seguridad separa servicios básicos, señalética, salud, seguridad,
+  comunicación y amenazas, y conserva controles de radios y contingencia con sus respuestas,
+  cantidades y observaciones.
 - Las facilidades seleccionadas conservan cantidad y observación por opción, en lugar de
   imponer siempre una cantidad fija.
 - Durante la revisión, el editor compara la versión publicada con la propuesta por cada
