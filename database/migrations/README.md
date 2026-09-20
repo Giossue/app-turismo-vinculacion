@@ -89,6 +89,12 @@ tabla inmutable existente `auditoria_catalogos` para registrar mutaciones de
 `establecimientos_turisticos` con el discriminador `ESTABLISHMENT`. No crea tablas ni
 columnas nuevas; conserva el trigger de inmutabilidad y los JSONB de antes/después.
 
+La migración `20260920_seed_guaranda_zone.sql` crea o reactiva una única zona de
+demostración (`Entorno de Guaranda`) en la localidad `Guaranda` y dos puntos de interés
+con coordenadas y descripciones referenciales. Es idempotente, utiliza solo las tablas
+territoriales existentes y no registra fotografías porque el esquema actual relaciona
+los metadatos multimedia exclusivamente con `centros_turisticos`.
+
 `database/seeds/003_xlsm_valuation_indicators.sql` es un seed de datos manual, no una
 migración de esquema. Carga de forma idempotente los 56 indicadores A-I derivados de
 `Jerarquia` y `Calculos`; debe ejecutarse solo cuando los nueve criterios de
