@@ -5377,6 +5377,11 @@ export class AdminCentersService {
         );
       }
       const uniqueTypeIds = [...new Set(typeIds as number[])];
+      if (uniqueTypeIds.length !== typeIds.length) {
+        throw new ConflictException(
+          "No repitas tipos de formación en la misma ficha.",
+        );
+      }
       const rows = (await manager.query(
         `SELECT id FROM tipos_medio_promocion
           WHERE activo = TRUE AND id = ANY($1::bigint[])`,
@@ -5412,6 +5417,11 @@ export class AdminCentersService {
         );
       }
       const uniqueTypeIds = [...new Set(typeIds as number[])];
+      if (uniqueTypeIds.length !== typeIds.length) {
+        throw new ConflictException(
+          "No repitas tipos de responsabilidad en la misma ficha.",
+        );
+      }
       const rows = (await manager.query(
         `SELECT id FROM tipos_formacion_personal
           WHERE activo = TRUE AND id = ANY($1::bigint[])`,
