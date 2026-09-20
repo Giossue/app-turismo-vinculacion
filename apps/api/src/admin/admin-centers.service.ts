@@ -180,6 +180,71 @@ export function validateAdminSectionContent(content: unknown): string | null {
   ) {
     return "La distancia debe ser un número mayor o igual que cero.";
   }
+  if (content.climate !== undefined) {
+    if (!isJsonRecord(content.climate))
+      return "El bloque de clima no es válido.";
+    if (
+      content.climate.climateId !== null &&
+      (!Number.isInteger(content.climate.climateId) ||
+        Number(content.climate.climateId) < 1)
+    ) {
+      return "El tipo de clima no es válido.";
+    }
+    const climateValues = [
+      content.climate.minTemperature,
+      content.climate.maxTemperature,
+      content.climate.minRainfall,
+      content.climate.maxRainfall,
+    ];
+    if (
+      climateValues.some(
+        (value) =>
+          value !== undefined &&
+          value !== null &&
+          (typeof value !== "number" || !Number.isFinite(value)),
+      )
+    ) {
+      return "Los rangos de clima deben ser números válidos.";
+    }
+    if (
+      content.climate.minRainfall !== undefined &&
+      content.climate.minRainfall !== null &&
+      typeof content.climate.minRainfall === "number" &&
+      content.climate.minRainfall < 0
+    ) {
+      return "La precipitación mínima no puede ser negativa.";
+    }
+    if (
+      content.climate.maxRainfall !== undefined &&
+      content.climate.maxRainfall !== null &&
+      typeof content.climate.maxRainfall === "number" &&
+      content.climate.maxRainfall < 0
+    ) {
+      return "La precipitación máxima no puede ser negativa.";
+    }
+    if (
+      content.climate.minTemperature !== null &&
+      content.climate.maxTemperature !== null &&
+      content.climate.minTemperature !== undefined &&
+      content.climate.maxTemperature !== undefined &&
+      typeof content.climate.minTemperature === "number" &&
+      typeof content.climate.maxTemperature === "number" &&
+      content.climate.minTemperature > content.climate.maxTemperature
+    ) {
+      return "La temperatura mínima no puede superar la máxima.";
+    }
+    if (
+      content.climate.minRainfall !== null &&
+      content.climate.maxRainfall !== null &&
+      content.climate.minRainfall !== undefined &&
+      content.climate.maxRainfall !== undefined &&
+      typeof content.climate.minRainfall === "number" &&
+      typeof content.climate.maxRainfall === "number" &&
+      content.climate.minRainfall > content.climate.maxRainfall
+    ) {
+      return "La precipitación mínima no puede superar la máxima.";
+    }
+  }
   if (content.rows !== undefined) {
     if (!Array.isArray(content.rows) || content.rows.length > 200) {
       return "Las filas de la sección no son válidas.";

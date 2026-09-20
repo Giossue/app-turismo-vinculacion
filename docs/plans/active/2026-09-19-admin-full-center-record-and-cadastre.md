@@ -38,6 +38,8 @@ normalizados y valoración pendientes.
 - La sección 4 ya captura localidad cercana y distancia desde el catálogo administrativo,
   además de sus filas de vías, transporte y accesibilidad, con validación de cantidades y
   distancia no negativa.
+- La sección 3 ya captura tipo de clima, temperaturas y precipitaciones con rangos validados;
+  estos datos permanecen en el snapshot hasta implementar su adaptador normalizado.
 
 ## Objetivo
 

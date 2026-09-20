@@ -43,7 +43,8 @@ y captura adicional por sección (respuesta, observaciones y filas repetibles), 
 actividades, accesibilidad y facilidades normalizadas. El código institucional se muestra
 por componentes y la jerarquía se mantiene de solo lectura; la sección de accesibilidad
 selecciona la localidad cercana desde el catálogo y conserva su distancia aproximada. El
-panel consulta
+panel captura también el catálogo de clima y rangos medibles antes de guardar el snapshot.
+El panel consulta
 `/admin/summary`, `/admin/centers`, `/admin/catalogs` y `/admin/centers/:code`; las
 mutaciones de borrador, revisión, aprobación, publicación, desactivación y reactivación
 se realizan exclusivamente mediante la API. Los borradores se mantienen aislados de la

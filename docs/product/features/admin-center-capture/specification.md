@@ -28,6 +28,8 @@ explícita.
   la valoración aún no está calculada, el servidor usa provisionalmente la jerarquía `00`.
 - La sección de accesibilidad conserva la localidad cercana y su distancia aproximada,
   separadas de la localidad oficial del centro y validadas contra el contrato de captura.
+- La sección de características conserva el tipo de clima y sus rangos de temperatura y
+  precipitación, distinguiendo valores ausentes de cero.
 
 El snapshot se puede consultar en `GET /admin/centers/:code/sections` y actualizar por
 sección con `PATCH /admin/centers/:code/sections/:sectionCode`. Durante la transición, el

@@ -15,6 +15,13 @@ describe("admin section contract", () => {
         observation: "Verificado en visita de campo.",
         localityId: 3,
         distanceKm: 4.5,
+        climate: {
+          climateId: 2,
+          minTemperature: 8,
+          maxTemperature: 22,
+          minRainfall: 100,
+          maxRainfall: 600,
+        },
         rows: [
           {
             label: "Vía terrestre",
@@ -51,6 +58,18 @@ describe("admin section contract", () => {
         rows: [],
       }),
     ).toContain("localidad");
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        climate: {
+          climateId: 2,
+          minTemperature: 24,
+          maxTemperature: 10,
+        },
+        rows: [],
+      }),
+    ).toContain("temperatura mínima");
   });
 
   it("keeps legacy section objects readable while marking them incomplete", () => {
