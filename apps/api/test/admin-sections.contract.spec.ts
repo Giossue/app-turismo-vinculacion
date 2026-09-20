@@ -172,6 +172,70 @@ describe("admin section contract", () => {
     ).toContain("estado de señalización");
   });
 
+  it("validates plant, facility and complementary service detail", () => {
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        plant: [
+          {
+            scope: "EN_ATRACTIVO",
+            typeId: 3,
+            quantity1: 1,
+            quantity2: 4,
+            quantity3: 12,
+          },
+          {
+            scope: "EN_POBLADO_CERCANO",
+            typeLabel: "Guías locales",
+            quantity1: 3,
+          },
+        ],
+        facilitiesDetails: [
+          {
+            typeId: 10,
+            quantity: 2,
+            latitude: -1.5883,
+            longitude: -79.00685,
+            universalAccessibility: "SI",
+            conditionId: 1,
+          },
+        ],
+        complementaryServices: [
+          {
+            scope: "EN_POBLADO_CERCANO",
+            typeLabel: "Cajero automático",
+            specification: "Disponible 24 horas",
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects invalid plant scope, facility quantity and service type", () => {
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        plant: [{ scope: "OTRO", typeLabel: "Hotel" }],
+      }),
+    ).toContain("ámbito de la planta");
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        facilitiesDetails: [{ typeLabel: "Mirador", quantity: -1 }],
+      }),
+    ).toContain("cantidad de facilidad");
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        complementaryServices: [{ scope: "EN_ATRACTIVO" }],
+      }),
+    ).toContain("servicio complementario requiere un tipo");
+  });
+
   it("keeps legacy section objects readable while marking them incomplete", () => {
     const legacy = { localidadCercana: { localidadId: 3 } };
 

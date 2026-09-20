@@ -66,6 +66,10 @@ completa pendientes.
   `ficha_Accesibilidad` y señalización de aproximación. El API valida catálogos opcionales,
   coordenadas, respuestas, cantidades y textos sin tocar el esquema; mientras los catálogos
   desplegados estén vacíos se conserva también una descripción manual para no inventar datos.
+- La sección 5 ya captura planta turística por ámbito con sus tres cantidades, facilidades
+  detalladas con coordenadas, administrador, accesibilidad y estado, y servicios
+  complementarios. Sus catálogos se consultan por API y aceptan descripción manual mientras
+  estén vacíos; todo permanece en el snapshot hasta implementar el adaptador normalizado.
 - La sección 3 ya captura tipo de clima, temperaturas y precipitaciones con rangos validados;
   estos datos permanecen en el snapshot hasta implementar su adaptador normalizado.
 - Las facilidades del núcleo ya permiten cantidad y observación por opción seleccionada;
@@ -134,8 +138,9 @@ se conviertan en catálogos o reglas y no en pantallas literales.
 - La jerarquía es un campo requerido y editable en el panel.
 - Los checkboxes binarios confunden `NO`, `SIN INFORMACIÓN`, `NO APLICA` y ausencia de
   captura.
-- Las facilidades seleccionadas se guardan con cantidad fija `1` y pierden detalle,
-  coordenadas, administrador, accesibilidad y estado.
+- Las facilidades del núcleo ya no fuerzan cantidad `1`; el detalle de coordenadas,
+  administrador, accesibilidad y estado ahora se captura en la sección 5, aunque todavía
+  espera su adaptador normalizado de publicación.
 - La hoja de accesibilidad detallada ya se captura en el borrador, pero aún falta el adaptador
   transaccional hacia `respuestas_accesibilidad` y las demás tablas normalizadas de la sección.
 - La revisión no compara publicado contra propuesto por sección.
@@ -508,8 +513,9 @@ El primer corte ya entrega la navegación y el progreso de las 14 secciones, res
 de cuatro estados, observaciones y filas repetibles con guardado independiente. Los
 campos núcleo existentes se mantienen operativos y cada sección ofrece un enlace directo a
 su formulario normalizado. Ya tienen captura específica las secciones 3, 4, 6, 7, 8, 10,
-11, 12 y 14; la sección 4 ya cuenta con captura estructurada de conectividad y accesibilidad
-detallada; aún faltan los adaptadores de publicación para esas estructuras, el detalle
+11, 12 y 14; las secciones 4 y 5 ya cuentan con captura estructurada de conectividad,
+accesibilidad detallada, planta y complementarios; aún faltan los adaptadores de publicación
+para esas estructuras, el detalle
 normalizado completo de la sección 5 y la división física del componente monolítico.
 
 Salida prevista: el administrador puede capturar la ficha completa sin navegar una sola

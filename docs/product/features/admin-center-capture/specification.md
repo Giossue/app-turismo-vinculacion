@@ -34,6 +34,11 @@ explícita.
   despliegue, se permite una descripción manual que queda pendiente de normalización.
 - La sección de características conserva el tipo de clima y sus rangos de temperatura y
   precipitación, distinguiendo valores ausentes de cero.
+- La sección de planta turística conserva registros de alojamiento, alimentos y bebidas,
+  agencias y guías por ámbito, junto con sus tres cantidades; las facilidades conservan
+  cantidad, coordenadas, administrador, accesibilidad universal y estado; y los servicios
+  complementarios conservan ámbito, tipo y especificación. Los tipos se consultan por API y
+  admiten descripción manual durante la transición de catálogos vacíos.
 - La sección de conservación distingue el estado del atractivo y del entorno, factores de
   alteración naturales/antrópicos y declaratorias con fecha, ámbito y observación dentro del
   mismo centro turístico.
@@ -65,8 +70,8 @@ explícita.
 
 El snapshot se puede consultar en `GET /admin/centers/:code/sections` y actualizar por
 sección con `PATCH /admin/centers/:code/sections/:sectionCode`. Durante la transición, el
-contenido aún no normalizado (incluida la conectividad y accesibilidad detallada de la sección
-4) permanece en el borrador JSONB y no se considera publicado hasta
+contenido aún no normalizado (incluidas la conectividad de la sección 4 y la planta de la
+sección 5) permanece en el borrador JSONB y no se considera publicado hasta
 que exista su adaptador transaccional. La lectura devuelve el progreso por sección y el API
 rechaza respuestas, cantidades o filas que no cumplan el contrato de captura.
 

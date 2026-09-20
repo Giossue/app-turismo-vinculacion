@@ -189,6 +189,9 @@ export function validateAdminSectionContent(content: unknown): string | null {
     "observation",
     "rows",
     "accessibilityDetails",
+    "plant",
+    "facilitiesDetails",
+    "complementaryServices",
   ].some((key) => key in content);
   if (!usesStructuredContract) return null;
   if (content.schemaVersion !== undefined && content.schemaVersion !== 1) {
@@ -291,6 +294,22 @@ export function validateAdminSectionContent(content: unknown): string | null {
       content.accessibilityDetails,
     );
     if (accessibilityError) return accessibilityError;
+  }
+  if (content.plant !== undefined) {
+    const plantError = validatePlantBlock(content.plant);
+    if (plantError) return plantError;
+  }
+  if (content.facilitiesDetails !== undefined) {
+    const facilitiesError = validateFacilityDetailsBlock(
+      content.facilitiesDetails,
+    );
+    if (facilitiesError) return facilitiesError;
+  }
+  if (content.complementaryServices !== undefined) {
+    const complementaryError = validateComplementaryServicesBlock(
+      content.complementaryServices,
+    );
+    if (complementaryError) return complementaryError;
   }
   if (content.conservation !== undefined) {
     const conservationError = validateConservationBlock(content.conservation);
@@ -698,6 +717,143 @@ function validateAccessibilityTextFields(
     ) {
       return "Los textos del detalle de accesibilidad superan los límites permitidos.";
     }
+  }
+  return null;
+}
+
+function validatePlantBlock(value: unknown): string | null {
+  if (!Array.isArray(value) || value.length > 300) {
+    return "Los registros de planta turística no son válidos.";
+  }
+  for (const item of value) {
+    if (!isJsonRecord(item))
+      return "Un registro de planta turística no es válido.";
+    if (!SERVICE_SCOPE_VALUES.has(String(item.scope))) {
+      return "El ámbito de la planta turística no es válido.";
+    }
+    const typeError = validateOptionalPositiveInteger(
+      item.typeId,
+      "tipo de planta turística",
+    );
+    if (typeError) return typeError;
+    if (
+      !item.typeId &&
+      (typeof item.typeLabel !== "string" || item.typeLabel.trim().length === 0)
+    ) {
+      return "Cada registro de planta turística requiere un tipo.";
+    }
+    for (const key of ["quantity1", "quantity2", "quantity3"] as const) {
+      const quantity = item[key];
+      if (
+        quantity !== undefined &&
+        quantity !== null &&
+        (!Number.isInteger(quantity) || Number(quantity) < 0)
+      ) {
+        return "Las cantidades de planta turística deben ser enteros no negativos.";
+      }
+    }
+    const textError = validateAccessibilityTextFields(item, [
+      ["typeLabel", 180],
+      ["group", 80],
+      ["observation", 1_000],
+    ]);
+    if (textError) return textError;
+  }
+  return null;
+}
+
+function validateFacilityDetailsBlock(value: unknown): string | null {
+  if (!Array.isArray(value) || value.length > 300) {
+    return "Las facilidades del entorno no son válidas.";
+  }
+  for (const item of value) {
+    if (!isJsonRecord(item)) return "Una facilidad del entorno no es válida.";
+    const typeError = validateOptionalPositiveInteger(
+      item.typeId,
+      "tipo de facilidad",
+    );
+    if (typeError) return typeError;
+    if (
+      !item.typeId &&
+      (typeof item.typeLabel !== "string" || item.typeLabel.trim().length === 0)
+    ) {
+      return "Cada facilidad del entorno requiere un tipo.";
+    }
+    if (item.categoryId !== undefined && item.categoryId !== null) {
+      const categoryError = validateOptionalPositiveInteger(
+        item.categoryId,
+        "categoría de facilidad",
+      );
+      if (categoryError) return categoryError;
+    }
+    if (!Number.isInteger(item.quantity) || Number(item.quantity) < 0) {
+      return "La cantidad de facilidad debe ser un entero no negativo.";
+    }
+    for (const [key, label, min, max] of [
+      ["latitude", "latitud de facilidad", -90, 90],
+      ["longitude", "longitud de facilidad", -180, 180],
+    ] as const) {
+      const coordinate = item[key];
+      if (
+        coordinate !== undefined &&
+        coordinate !== null &&
+        (typeof coordinate !== "number" ||
+          !Number.isFinite(coordinate) ||
+          coordinate < min ||
+          coordinate > max)
+      ) {
+        return `La ${label} no es válida.`;
+      }
+    }
+    if (
+      item.universalAccessibility !== undefined &&
+      item.universalAccessibility !== null &&
+      !isSectionResponse(item.universalAccessibility)
+    ) {
+      return "La accesibilidad universal de la facilidad requiere una respuesta válida.";
+    }
+    const conditionError = validateOptionalPositiveInteger(
+      item.conditionId,
+      "estado de facilidad",
+    );
+    if (conditionError) return conditionError;
+    const textError = validateAccessibilityTextFields(item, [
+      ["typeLabel", 180],
+      ["administrator", 180],
+      ["detailOther", 180],
+      ["observation", 1_000],
+    ]);
+    if (textError) return textError;
+  }
+  return null;
+}
+
+function validateComplementaryServicesBlock(value: unknown): string | null {
+  if (!Array.isArray(value) || value.length > 300) {
+    return "Los servicios complementarios no son válidos.";
+  }
+  for (const item of value) {
+    if (!isJsonRecord(item)) return "Un servicio complementario no es válido.";
+    if (!SERVICE_SCOPE_VALUES.has(String(item.scope))) {
+      return "El ámbito del servicio complementario no es válido.";
+    }
+    const typeError = validateOptionalPositiveInteger(
+      item.typeId,
+      "tipo de servicio complementario",
+    );
+    if (typeError) return typeError;
+    if (
+      !item.typeId &&
+      (typeof item.typeLabel !== "string" || item.typeLabel.trim().length === 0)
+    ) {
+      return "Cada servicio complementario requiere un tipo.";
+    }
+    const textError = validateAccessibilityTextFields(item, [
+      ["typeLabel", 180],
+      ["specification", 250],
+      ["observation", 1_000],
+    ]);
+    if (textError) return textError;
   }
   return null;
 }
@@ -1697,6 +1853,9 @@ export class AdminCentersService {
       aerialAccessCoverages,
       transportTypes,
       serviceFrequencies,
+      serviceScopes,
+      plantTypes,
+      complementaryServiceTypes,
       activityGroups,
       activities,
       facilityCategories,
@@ -1822,6 +1981,29 @@ export class AdminCentersService {
         [like],
       ),
       this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, activo AS active
+           FROM ambitos_ubicacion_servicio
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, grupo AS "group",
+                unidad_1 AS "unit1", unidad_2 AS "unit2", unidad_3 AS "unit3",
+                activo AS active
+           FROM tipos_planta_turistica
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY grupo, nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, activo AS active
+           FROM tipos_servicio_complementario
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
         `SELECT id, codigo AS code, nombre AS name, activo AS active, categoria_atractivo_id AS "categoryId" FROM grupos_actividad WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1) ORDER BY nombre`,
         [like],
       ),
@@ -1872,6 +2054,9 @@ export class AdminCentersService {
       aerialAccessCoverages,
       transportTypes,
       serviceFrequencies,
+      serviceScopes,
+      plantTypes,
+      complementaryServiceTypes,
       activityGroups,
       activities,
       facilityCategories,

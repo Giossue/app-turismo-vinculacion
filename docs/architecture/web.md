@@ -47,6 +47,9 @@ panel captura también vías terrestres, accesos acuáticos/aéreos, operadores 
 criterios detallados de accesibilidad y señalización de aproximación antes de guardar el
 snapshot. Los catálogos de conectividad se entregan por la API y admiten texto manual cuando
 el despliegue aún no tiene una opción sembrada.
+La sección de planta conserva también los ámbitos del atractivo/poblado, cantidades de planta,
+facilidades con ubicación y responsables, y servicios complementarios en el mismo snapshot;
+ninguna de esas relaciones crea un centro turístico nuevo.
 Las facilidades seleccionadas conservan cantidad y observación por opción. El panel consulta
 `/admin/summary`, `/admin/centers`, `/admin/catalogs` y `/admin/centers/:code`; las
 mutaciones de borrador, revisión, aprobación, publicación, desactivación y reactivación

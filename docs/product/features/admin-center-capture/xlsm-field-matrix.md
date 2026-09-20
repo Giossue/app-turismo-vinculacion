@@ -43,6 +43,11 @@ accesos acuáticos y aéreos, tipos y operadores de transporte, criterios detall
 `ficha_Accesibilidad` y señalización. El adaptador transaccional a las tablas anteriores
 queda pendiente; no se considera publicado mientras no exista.
 
+La sección 5 usa los bloques `plant`, `facilitiesDetails` y `complementaryServices` en el
+snapshot para conservar el ámbito y las cantidades de planta, el detalle de facilidades y
+los servicios complementarios. Sus adaptadores a las tablas existentes también quedan
+pendientes de publicación.
+
 ## Reglas de captura
 
 - Cada fila repetible se guarda como una relación del mismo `centro_turistico_id`; nunca se
