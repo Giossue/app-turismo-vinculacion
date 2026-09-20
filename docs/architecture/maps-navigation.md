@@ -70,9 +70,9 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   una sesión activa, `expo-location` mantiene una tarea de ubicación en segundo plano con
   el servicio foreground de Android. La tarea conserva únicamente la última posición en
   almacenamiento local; al volver a la app se restaura y se reevalúan indicaciones y
-  desvíos. El permiso de segundo plano se solicita solo al iniciar la navegación. En Android
-  13 o posterior también se solicita `POST_NOTIFICATIONS` para mostrar el servicio en el
-  cajón de notificaciones.
+  desvíos. El permiso de segundo plano se solicita al iniciar una función que lo necesita y
+  después de explicar su finalidad. En Android 13 o posterior también se solicita
+  `POST_NOTIFICATIONS` para mostrar el servicio en el cajón de notificaciones.
 - Al detenerla, llegar al destino o cancelar, se eliminan el watcher, la tarea del sistema,
   la sesión persistida, la notificación foreground y la voz. La tarea también comprueba la
   distancia al destino cuando recibe una ubicación en segundo plano, para cerrar la sesión
@@ -84,7 +84,7 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   ubicación y lo vuelve a publicar si el sistema lo retiró. Esto no impide el botón del Task
   Manager que detiene toda la aplicación.
   En Android, el cambio de texto de un servicio ya registrado usa un parche fijado para
-  `expo-location` 57.0.18: permite actualizar sus opciones mientras la actividad está
+  `expo-location` 57.0.19: permite actualizar sus opciones mientras la actividad está
   pausada, pero mantiene bloqueado el inicio de un servicio nuevo desde segundo plano.
   No se guarda un historial de coordenadas ni se reinicia automáticamente una navegación
   después de forzar el cierre de la app.
@@ -101,7 +101,7 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   guarda un historial de coordenadas.
 - Advertir que horarios/precios de transporte registrado son informativos.
 - No prometer rutas accesibles sin datos verificables.
-- Segundo plano únicamente durante una sesión activa y con consentimiento específico.
+- Segundo plano únicamente durante una función activa y con consentimiento específico.
 - La navegación debe tolerar pérdida de señal y ubicación antigua; una posición guardada
   se usa como último estado conocido, no como una ubicación actual garantizada.
 
@@ -132,18 +132,27 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 - La selección es estado de la pantalla: el toque primero centra la cámara en el atractivo
   con el zoom de detalle predeterminado y luego presenta la ficha; una capa de símbolo
   separada pinta el pin seleccionado con el color de énfasis.
-- La ubicación del turista se obtiene bajo demanda con permiso `while in use`; el botón
-  de ubicación centra la cámara con zoom 15 y dibuja un punto azul en una fuente GeoJSON
-  separada. No se inicia seguimiento en segundo plano desde Explorar.
+- Al abrir la pantalla principal, la aplicación solicita el permiso `while in use`; si la
+  persona lo concede, obtiene una posición reciente, centra la cámara con zoom 15 y
+  dibuja un punto azul en una fuente GeoJSON separada. Una única sesión global mantiene
+  `Location.watchPositionAsync` mientras la app está en primer plano, comparte la
+  posición entre Explorar, fichas y rutas, y vuelve a suscribirse al regresar desde otra
+  pantalla o aplicación. Cuando la cámara queda centrada en la persona, el control de
+  ubicación se oculta; una interacción que aleja el mapa lo vuelve a mostrar y al
+  pulsarlo recentra con zoom 15. Si el GPS o el servicio de ubicación del dispositivo está
+  apagado, el mismo control muestra una línea gris sobre el icono. Abrir Explorar por sí
+  solo no inicia seguimiento en segundo plano: una función explícitamente habilitada debe
+  solicitar el permiso y activar el servicio conforme a la plataforma.
 - La brújula visual es un control reutilizable de la app: aparece al girar el mapa, se ubica
   encima del botón de ubicación y al pulsarla anima la cámara de vuelta al norte. El rumbo
   se mantiene como estado efímero de Explorar; no se persiste ni entra en el historial.
 - Explorar mantiene el desplazamiento con un dedo y el giro táctil con dos dedos. El
   wrapper nativo de MapLibre prioriza el giro frente al pinch-zoom y reserva la inclinación
   para un gesto vertical de tres dedos, evitando que los gestos compitan entre sí.
-- La disponibilidad del permiso y del proveedor se vuelve a comprobar mientras Explorar
-  está visible y al regresar de Ajustes; al desactivarse se limpia la posición local para
-  no presentar una ubicación obsoleta.
+- La disponibilidad del permiso y del proveedor se vuelve a comprobar mientras la sesión
+  foreground está activa y al regresar de Ajustes u otra aplicación. Al desactivarse se
+  detiene el watcher y se limpia la posición para no presentar una ubicación obsoleta;
+  al volver a primer plano se intenta recuperar una posición reciente antes de reanudarlo.
 
 ## Paquetes offline por ciudad
 

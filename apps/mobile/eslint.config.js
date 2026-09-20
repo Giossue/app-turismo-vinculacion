@@ -11,7 +11,15 @@ module.exports = defineConfig([
       // eslint-config-expo no reconoce este par de extensiones.
       "import/no-unresolved": [
         "error",
-        { ignore: ["^@/features/map/presentation/center-map$"] },
+        {
+          // TypeScript/Metro select the platform file (.native/.web), while
+          // eslint-plugin-import has no platform-aware resolver by default.
+          ignore: [
+            "^@/features/map/presentation/center-map$",
+            "^@/features/offline/application/offline-download$",
+            "^@/features/offline/data/offline-storage$",
+          ],
+        },
       ],
     },
   },

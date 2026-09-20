@@ -14,7 +14,7 @@ src/
     api/ auth/ location/ storage/ telemetry/ ui/
   features/
     map/ discovery/ centers/ pois/ establishments/
-    navigation/ transport/ favorites/ itineraries/ ai/
+    navigation/ transport/ favorites/ ai/
     field_capture/ profile/
 ```
 
@@ -22,9 +22,10 @@ Cada feature separa `domain`, `application`, `data` y `presentation` cuando la c
 lo amerita. Evitar capas ceremoniales para componentes triviales.
 
 La navegación turística está organizada alrededor del mapa: `Explorar` muestra MapLibre y
-una ficha rápida nativa; `Agente` se presenta como una conversación tipo chat con el
-compositor fijo al pie; `Itinerario` es una vista secundaria con la misma barra inferior;
-`Cómo llegar` representa la ruta activa sin solicitar GPS en la vista previa.
+una ficha rápida nativa; el `Agente` se abre como un botón flotante sobre el mapa y una
+sheet nativa de conversación; `Cómo llegar` representa la ruta activa sin solicitar GPS
+en la vista previa. El planificador de itinerarios queda fuera de la app móvil hasta que
+exista un modelo persistente y un contrato público.
 Los datos de ejemplo se identifican visualmente como demostración y se sustituyen por
 consultas de la API cuando esos módulos se conecten.
 
@@ -35,7 +36,7 @@ El cambio no crea una ruta adicional ni altera el historial de navegación.
 
 ## Compatibilidad y referencias de plataforma
 
-El cliente se mantiene alineado con Expo SDK `~57.0.23`, Expo Router `~57.0.21`, React
+El cliente se mantiene alineado con Expo SDK `~57.0.24`, Expo Router `~57.0.22`, React
 Native `0.86.3` y React `19.2.3`. Las dependencias Expo se instalan con
 `corepack pnpm expo install` para conservar las versiones compatibles del SDK. Los cambios
 de configuración nativa y permisos requieren regenerar/reconstruir el binario; no se
@@ -47,15 +48,15 @@ React Native Paper es el único kit externo de componentes del móvil. Los compo
 la web se desarrollará en un repositorio separado.
 
 Las pantallas secundarias usan `TourismScreenFrame` como shell compartido. Este componente
-centraliza safe areas, encabezado, ancho máximo de contenido y márgenes horizontales. Las
-vistas principales viven en un `Tabs` real de Expo Router con `detachInactiveScreens={false}`:
-la barra inferior visual (`TourismTabBar`) se inyecta como `tabBar` personalizado y el mapa
-queda montado al cambiar a Agente o Itinerario.
+centraliza safe areas, encabezado, ancho máximo de contenido y márgenes horizontales. La
+pantalla principal vive en un `Tabs` de Expo Router para conservar la estructura de rutas,
+pero el shell del mapa no renderiza barra inferior: el mapa ocupa toda la pantalla y sus
+acciones efímeras no crean entradas de navegación. El chat del agente se monta dentro de
+una sheet nativa sobre el mapa.
 
-El acceso al menú lateral se presenta como el cuarto elemento de `TourismTabBar` en las
-vistas principales (`Explorar`, `Agente` e `Itinerario`). Un `TourismMenuProvider` posee un
-único drawer para esas pestañas; las pantallas secundarias que no montan esa barra conservan
-el mismo botón en el encabezado con un drawer local.
+El acceso al menú lateral se presenta en la fila superior, junto al buscador del mapa. Un
+`TourismMenuProvider` posee un único drawer para el shell principal; las pantallas
+secundarias conservan el mismo botón en el encabezado con un drawer local.
 
 Las decisiones de layout siguen las primitivas oficiales de React Native: dimensiones en
 puntos independientes de densidad, Flexbox y `useWindowDimensions` para adaptación,
@@ -98,10 +99,9 @@ El stack de Expo Router representa pantallas, no snapshots de la UI. Zoom, paneo
 filtros, texto y selección local son estado efímero: no crean entradas en el historial ni
 se deshacen con el botón Atrás. En Android, cada pantalla enfocada usa un único back
 handler que cierra primero sus overlays y después retira exactamente una pantalla; en la
-raíz, el evento sale de la aplicación. Las pestañas (`Explorar`, `Agente` e `Itinerario`)
-se cambian con el router nativo de Tabs, que conserva una instancia por pestaña y no apila
-copias de la misma navegación. Las fichas y rutas se abren con `push` porque sí representan
-una pantalla que puede cerrarse.
+raíz, el evento sale de la aplicación. El mapa es la única pestaña visible del shell
+principal; el agente es estado efímero de una sheet y no una pestaña. Las fichas y rutas se
+abren con `push` porque sí representan una pantalla que puede cerrarse.
 
 ## Caché y funcionamiento sin conexión
 
@@ -121,27 +121,33 @@ editan en el móvil.
 
 ## Ubicación
 
-- Explorar no requiere GPS.
-- Solicitar `while in use` al pulsar “mi ubicación”, cercanía o iniciar ruta.
-- El control “mi ubicación” solicita el permiso de primer plano de forma explícita,
-  comprueba que el GPS esté activo, aprovecha una posición reciente y centra la cámara
-  en un nivel de zoom estable. La posición se representa con un punto azul nativo de
-  MapLibre y no se sigue automáticamente después del centrado.
+- Explorar solicita `while in use` al abrirse; el mapa y el resto del catálogo siguen
+  disponibles si la persona lo deniega.
+- El control “mi ubicación”, la cercanía y el inicio de ruta reutilizan la misma sesión.
+  La sesión comprueba que el GPS esté activo, aprovecha una posición reciente y centra la
+  cámara en un nivel de zoom estable. La posición se representa con un punto azul nativo
+  de MapLibre y la sesión global inicia un watcher foreground equilibrado mientras la app
+  permanece activa. Al quedar centrado, el botón se oculta; si la persona mueve el mapa,
+  reaparece para recentrar con zoom 15. Cuando el GPS o el servicio de ubicación del
+  dispositivo está apagado muestra una línea gris sobre el icono en vez de un aviso flotante.
 - Si el permiso ya fue concedido pero el proveedor está apagado, el botón solicita activar
   el servicio con el diálogo del sistema en Android; en iOS dirige a los ajustes de la
   aplicación. Rechazarlo conserva el mapa disponible y muestra el estado correspondiente.
 - Mientras la posición está activa, la app sincroniza periódicamente el permiso y el
   estado del proveedor al volver a primer plano y durante la sesión visible. Si el turista
-  desactiva la ubicación o el GPS desde el sistema, el punto se elimina y la interfaz pasa
-  automáticamente al estado correspondiente.
+  cambia de pantalla, la sesión no se reinicia; si desactiva la ubicación o el GPS desde
+  el sistema, el watcher se detiene, el punto se elimina y la interfaz pasa
+  automáticamente al estado correspondiente. Al volver a activar el proveedor, se intenta
+  recuperar la posición y reanudar el watcher sin pedir de nuevo el permiso.
 - El mapa conserva búsqueda, filtros, fichas y navegación cuando el permiso se deniega,
   el GPS está apagado o la señal no está disponible; el control comunica el estado sin
   bloquear la exploración.
-- Solicitar segundo plano solo al activar navegación y explicar el beneficio. La navegación
-  visible combina el watcher de primer plano con una tarea `expo-location` registrada en
-  `expo-task-manager`; el servicio foreground se registra desde la acción de inicio y Android
-  muestra una notificación persistente mientras la sesión está activa. En Android 13 o
-  posterior se solicita también `POST_NOTIFICATIONS` para hacer visible esa notificación.
+- Solicitar segundo plano solo al activar explícitamente una función que lo requiere y
+  explicar el beneficio. La navegación visible combina el watcher de primer plano con una
+  tarea `expo-location` registrada en `expo-task-manager`; el servicio foreground se registra
+  desde la acción de inicio y Android muestra una notificación persistente mientras la sesión
+  está activa. En Android 13 o posterior se solicita también `POST_NOTIFICATIONS` para hacer
+  visible esa notificación.
 - Persistir únicamente ruta, destino, modo y última posición para restaurar el estado al
   volver a la app; no conservar trazas precisas por defecto.
 - Detener seguimiento, eliminar la sesión local y limpiar la tarea y su notificación al
@@ -152,7 +158,7 @@ editan en el móvil.
   usuario la descarte, así que el servicio vuelve a publicar el mismo registro en la siguiente
   actualización de ubicación mientras la navegación siga activa; el Task Manager puede detener
   toda la aplicación. El sistema también puede limitar el segundo plano por batería, permisos
-  o políticas del fabricante. El móvil fija `expo-location` 57.0.18 con
+  o políticas del fabricante. El móvil fija `expo-location` 57.0.19 con
   un parche nativo para actualizar las opciones de un servicio foreground ya iniciado cuando
   la actividad está pausada; cualquier actualización futura de Expo debe revisar ese parche.
 - Permitir origen manual cuando el permiso se niega.

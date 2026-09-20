@@ -2,9 +2,9 @@
 
 ## Objetivo
 
-Simplificar la vista móvil de Agente para que se comporte y se perciba como una
-conversación tipo ChatGPT, sin cambiar el contrato de la API ni la navegación hacia las
-fichas turísticas.
+Simplificar el chat del Agente para que se comporte y se perciba como una conversación tipo
+ChatGPT dentro de una sheet nativa, sin cambiar el contrato de la API ni la navegación hacia
+las fichas turísticas.
 
 ## Resultado
 
@@ -16,9 +16,7 @@ fichas turísticas.
 - Se eliminó la línea de fuentes de la interfaz y se conservó la navegación a fichas.
 - El compositor quedó fijo al pie, con entrada multilinea y acción de enviar por icono.
 - La conversación se desplaza automáticamente al último mensaje cuando cambia su contenido.
-- El compositor usa un `KeyboardAvoidingView` independiente del listado, con posicionamiento
-  y offset para que el cuadro completo quede por encima del teclado en Android edge-to-edge
-  sin desplazar los mensajes.
+- El compositor usa `BottomSheetTextInput` para coordinar el teclado con la sheet nativa.
 - Se mantuvieron el envío, el estado de consulta, el teclado, la accesibilidad y la API
   existentes.
 
@@ -30,7 +28,7 @@ fichas turísticas.
 
 ## Archivos
 
-- `apps/mobile/src/app/(tabs)/agent.tsx`
+- `apps/mobile/src/features/agent/presentation/agent-chat-content.tsx`
 - `docs/architecture/mobile.md`
 
 ## Verificación

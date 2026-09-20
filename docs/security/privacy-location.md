@@ -2,8 +2,10 @@
 
 ## Principios
 
-- No pedir ubicación en el registro.
-- Pedirla al usar “mi ubicación”, cercanía o navegación.
+- La creación de cuenta no sustituye el permiso de ubicación; pedirlo cuando la persona
+  active la función que lo necesita.
+- Pedirla al abrir el mapa o al usar cercanía/navegación; el mapa continúa disponible si
+  se deniega.
 - Explicar finalidad antes del diálogo del sistema.
 - Permitir explorar, buscar y usar origen manual sin permiso.
 - No convertir permiso del sistema en consentimiento para analítica o personalización.
@@ -13,11 +15,17 @@
 ### En uso
 
 Posición actual, cercanía y cálculo de ruta. Preferencia por precisión mínima suficiente.
+Después de que la persona activa “mi ubicación”, la app puede mantener un watcher de
+primer plano mientras permanece abierta para actualizar el punto del mapa y conservar la
+sesión al cambiar de pantalla. Al pasar a segundo plano se detiene ese watcher; una tarea
+persistente solo puede iniciarse desde una función que la persona haya habilitado de forma
+explícita y bajo las condiciones de plataforma.
 
 ### Segundo plano
 
-Solo durante navegación activa. Mostrar indicador, permitir detener y finalizar al cerrar
-la sesión de navegación según comportamiento documentado de plataforma.
+Solo cuando la persona activa explícitamente una función que lo necesita. Explicar la
+finalidad, solicitar el permiso específico, mostrar el indicador/notificación requerido por
+la plataforma, permitir detenerlo y finalizarlo cuando la función termine.
 
 ### Historial
 

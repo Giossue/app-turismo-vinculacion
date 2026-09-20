@@ -13,7 +13,8 @@ the matching official API/troubleshooting section before changing the implementa
 
 Model denied permissions, GPS off, stale location, network loss and cancellation as
 normal states. Keep browsing usable without location. Request background access only for
-active navigation and release tracking/resources when it ends.
+an explicitly enabled feature, explain its purpose, and release tracking/resources when it
+ends.
 
 Use repositories behind TanStack Query, generated API models, local cache only for declared
 cached or draft state, and Expo SecureStore only for minimal credentials. MapLibre requires

@@ -75,6 +75,7 @@ export default function RouteScreen() {
   const {
     message: locationMessage,
     requestLocation,
+    setForegroundTrackingSuspended,
     status: locationStatus,
   } = useUserLocation();
 
@@ -83,6 +84,16 @@ export default function RouteScreen() {
       parseDestination(params.destinationLatitude, params.destinationLongitude),
     [params.destinationLatitude, params.destinationLongitude],
   );
+
+  useEffect(() => {
+    setForegroundTrackingSuspended(navigationActive);
+  }, [navigationActive, setForegroundTrackingSuspended]);
+
+  useEffect(
+    () => () => setForegroundTrackingSuspended(false),
+    [setForegroundTrackingSuspended],
+  );
+
   const request = useMemo<RouteRequest | null>(() => {
     if (!routeRequested || !origin || !destination) return null;
     return { destination, mode, origin };

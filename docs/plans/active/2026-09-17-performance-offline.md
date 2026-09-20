@@ -6,8 +6,9 @@ queda pendiente de importar límites oficiales y conectar el flujo administrativ
 
 ## Decisiones aprobadas
 
-- `Explorar`, `Agente` e `Itinerario` son pestañas reales de Expo Router.
-- Explorar permanece montada al cambiar de pestaña.
+- El mapa es la única pestaña visible de Expo Router; el Agente se abre como sheet nativa y
+  el planificador de itinerarios queda pendiente de un modelo persistente.
+- El mapa permanece montado mientras se abre y cierra el sheet del agente.
 - La caché pública dura 24 horas; centros publicados se consideran frescos durante 10 minutos.
 - Los mapas offline se descargan por ciudad, empezando por Guaranda y sin limitar el modelo a
   una sola ciudad.
@@ -18,15 +19,15 @@ queda pendiente de importar límites oficiales y conectar el flujo administrativ
 
 ## Entregado en esta unidad
 
-1. Tabs reales con `detachInactiveScreens={false}` y barra visual personalizada.
-2. Drawer único para las tres pestañas, conservando el drawer local en pantallas secundarias.
-3. Persistencia TanStack Query + AsyncStorage y TTL explícito para catálogo/centros.
-4. Caché de estilos ArcGIS en memoria, deduplicación de solicitudes y eventos de carga MapLibre.
-5. Migración PostgreSQL/PostGIS para límites oficiales, versiones de rutas y paquetes de ciudad.
-6. API pública:
+1. Shell principal de mapa en Expo Router sin barra inferior y drawer único, conservando el
+   drawer local en pantallas secundarias.
+2. Persistencia TanStack Query + AsyncStorage y TTL explícito para catálogo/centros.
+3. Caché de estilos ArcGIS en memoria, deduplicación de solicitudes y eventos de carga MapLibre.
+4. Migración PostgreSQL/PostGIS para límites oficiales, versiones de rutas y paquetes de ciudad.
+5. API pública:
    - `GET /api/v1/offline/cities`
    - `GET /api/v1/offline/cities/:slug/manifest`
-7. Pantalla `Mapas sin conexión`, Expo SQLite para manifiestos y `OfflineManager` para tiles.
+6. Pantalla `Mapas sin conexión`, Expo SQLite para manifiestos y `OfflineManager` para tiles.
 
 ## Pendiente institucional
 

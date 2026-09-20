@@ -1,0 +1,8 @@
+diff --git a/android/src/main/AndroidManifest.xml b/android/src/main/AndroidManifest.xml
+--- a/android/src/main/AndroidManifest.xml
++++ b/android/src/main/AndroidManifest.xml
+@@ -9,3 +9,3 @@
+             android:name="com.facebook.soloader.enabled"
+             android:value="true"
+-            tools:replace="android:value" />
++            />

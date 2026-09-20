@@ -813,6 +813,17 @@ describe("AdminCentersService", () => {
     );
   });
 
+  it("keeps DPA and classification catalogs outside the editable whitelist", async () => {
+    const service = new AdminCentersService({} as never);
+
+    await expect(
+      service.updateCatalog(7, "PROVINCE", 1, { name: "Bolívar" }),
+    ).rejects.toThrow("El catálogo no está disponible.");
+    await expect(
+      service.updateCatalog(7, "SUBTYPE", 1, { active: false }),
+    ).rejects.toThrow("El catálogo no está disponible.");
+  });
+
   it("exposes the institutional catalogs used by the structured sections", async () => {
     const dataSource = {
       query: vi.fn(async (sql: string) => {

@@ -1,0 +1,316 @@
+const fs = require("node:fs/promises");
+const path = require("node:path");
+
+const {
+  withAndroidManifest,
+  withAndroidStyles,
+  withAppBuildGradle,
+  withFinalizedMod,
+  withGradleProperties,
+} = require("expo/config-plugins");
+
+const TOOLS_NAMESPACE = "http://schemas.android.com/tools";
+const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+const LAUNCHER_ASSET_NAMES = [
+  "ic_launcher",
+  "ic_launcher_round",
+  "ic_launcher_background",
+  "ic_launcher_foreground",
+  "ic_launcher_monochrome",
+];
+
+function ensureToolsNamespace(resources) {
+  resources.$ = {
+    ...(resources.$ ?? {}),
+    "xmlns:tools": resources.$?.["xmlns:tools"] ?? TOOLS_NAMESPACE,
+  };
+}
+
+function withSplashApiAnnotation(config) {
+  return withAndroidStyles(config, (mod) => {
+    const resources = mod.modResults.resources;
+    ensureToolsNamespace(resources);
+
+    const splashStyle = resources.style?.find(
+      (style) => style.$?.name === "Theme.App.SplashScreen",
+    );
+    const splashBehavior = splashStyle?.item?.find(
+      (item) => item.$?.name === "android:windowSplashScreenBehavior",
+    );
+
+    if (splashBehavior) {
+      splashBehavior.$ = {
+        ...(splashBehavior.$ ?? {}),
+        "tools:targetApi": "33",
+      };
+    }
+
+    return mod;
+  });
+}
+
+function withManifestApiAnnotations(config) {
+  return withAndroidManifest(config, (mod) => {
+    const application = mod.modResults.manifest.application?.[0];
+    if (!application) {
+      return mod;
+    }
+
+    application.$ = {
+      ...(application.$ ?? {}),
+      "tools:targetApi": "33",
+    };
+
+    const metadata = application["meta-data"] ?? [];
+    const soloaderMetadata = metadata.find(
+      (item) => item.$?.["android:name"] === "com.facebook.soloader.enabled",
+    );
+    if (soloaderMetadata) {
+      soloaderMetadata.$ = {
+        ...(soloaderMetadata.$ ?? {}),
+        "android:value": "true",
+        "tools:replace": "android:value",
+      };
+    } else {
+      metadata.push({
+        $: {
+          "android:name": "com.facebook.soloader.enabled",
+          "android:value": "true",
+          "tools:replace": "android:value",
+        },
+      });
+      application["meta-data"] = metadata;
+    }
+
+    const mainActivity = application.activity?.find(
+      (activity) => activity.$?.["android:name"] === ".MainActivity",
+    );
+    if (mainActivity?.$) {
+      // The platform default is unspecified. Removing the explicit value avoids
+      // a DiscouragedApi warning without changing the app's orientation policy.
+      delete mainActivity.$["android:screenOrientation"];
+    }
+
+    return mod;
+  });
+}
+
+function withLintCompatibility(config) {
+  return withGradleProperties(config, (mod) => {
+    const properties = mod.modResults;
+    const k2Property = properties.find(
+      (item) =>
+        item.type === "property" && item.key === "android.lint.useK2Uast",
+    );
+    if (!k2Property) {
+      properties.push({
+        type: "property",
+        key: "android.lint.useK2Uast",
+        value: "false",
+      });
+    } else {
+      k2Property.value = "false";
+    }
+
+    const suppressionProperty = properties.find(
+      (item) =>
+        item.type === "property" &&
+        item.key === "android.suppressUnsupportedOptionWarnings",
+    );
+    if (!suppressionProperty) {
+      properties.push({
+        type: "property",
+        key: "android.suppressUnsupportedOptionWarnings",
+        value:
+          "android.lint.useK2Uast,android.suppressUnsupportedOptionWarnings",
+      });
+    } else {
+      const values = suppressionProperty.value
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+      if (!values.includes("android.lint.useK2Uast")) {
+        values.push("android.lint.useK2Uast");
+      }
+      if (!values.includes("android.suppressUnsupportedOptionWarnings")) {
+        values.push("android.suppressUnsupportedOptionWarnings");
+      }
+      suppressionProperty.value = values.join(",");
+    }
+
+    return mod;
+  });
+}
+
+function withAppLintPolicy(config) {
+  return withAppBuildGradle(config, (mod) => {
+    const propertyNames = [
+      "ndkVersion",
+      "buildToolsVersion",
+      "compileSdk",
+      "namespace",
+      "applicationId",
+      "minSdkVersion",
+      "targetSdkVersion",
+      "versionCode",
+      "versionName",
+      "signingConfig",
+      "shrinkResources",
+      "minifyEnabled",
+      "crunchPngs",
+      "useLegacyPackaging",
+      "ignoreAssetsPattern",
+    ];
+    const propertyPattern = new RegExp(
+      `^(\\s*)(${propertyNames.join("|")})\\s+(?!=)`,
+      "gm",
+    );
+    let contents = mod.modResults.contents.replace(propertyPattern, "$1$2 = ");
+    const marker = 'disable += ["NewerVersionAvailable"';
+
+    if (!contents.includes(marker)) {
+      contents = contents.replace(
+        /^android \{\n/m,
+        [
+          "android {",
+          "    lint {",
+          "        // These findings are generated by Expo/RN resources or pinned",
+          "        // dependency versions, not by application code.",
+          "        disable += [",
+          '            "NewerVersionAvailable",',
+          '            "PrivateResource",',
+          '            "UnusedResources",',
+          '            "IconLauncherShape",',
+          "        ]",
+          "    }",
+          "",
+        ].join("\n"),
+      );
+    }
+
+    mod.modResults.contents = contents;
+    return mod;
+  });
+}
+
+async function replaceText(filePath, replacements) {
+  let contents;
+  try {
+    contents = await fs.readFile(filePath, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return;
+    }
+    throw error;
+  }
+
+  let updated = contents;
+  for (const [from, to] of replacements) {
+    updated = updated.split(from).join(to);
+  }
+  if (updated !== contents) {
+    await fs.writeFile(filePath, updated);
+  }
+}
+
+async function normalizeLauncherAssets(resDirectory) {
+  const variants = ["mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"];
+
+  for (const variant of variants) {
+    const directory = path.join(resDirectory, `mipmap-${variant}`);
+    for (const assetName of LAUNCHER_ASSET_NAMES) {
+      const webpPath = path.join(directory, `${assetName}.webp`);
+      const pngPath = path.join(directory, `${assetName}.png`);
+
+      let bytes;
+      try {
+        bytes = await fs.readFile(webpPath);
+      } catch (error) {
+        if (error.code === "ENOENT") {
+          continue;
+        }
+        throw error;
+      }
+
+      // Expo prebuild currently emits PNG bytes with a .webp suffix. Rename
+      // only when the signature proves that this is the generated PNG asset.
+      if (!bytes.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE)) {
+        continue;
+      }
+
+      try {
+        await fs.access(pngPath);
+        await fs.rm(webpPath);
+      } catch (error) {
+        if (error.code !== "ENOENT") {
+          throw error;
+        }
+        await fs.rename(webpPath, pngPath);
+      }
+    }
+  }
+}
+
+async function applyFinalAndroidCleanups(mod) {
+  if (mod.modRequest.introspect) {
+    return mod;
+  }
+
+  const androidRoot = mod.modRequest.platformProjectRoot;
+  const appRoot = path.join(androidRoot, "app");
+  const resDirectory = path.join(appRoot, "src", "main", "res");
+
+  await replaceText(path.join(androidRoot, "build.gradle"), [
+    [
+      "maven { url 'https://www.jitpack.io' }",
+      "maven { url = 'https://www.jitpack.io' }",
+    ],
+  ]);
+
+  await replaceText(path.join(resDirectory, "values", "styles.xml"), [
+    [
+      '<item name="android:windowSplashScreenBehavior">',
+      '<item name="android:windowSplashScreenBehavior" tools:targetApi="33">',
+    ],
+  ]);
+
+  await replaceText(path.join(appRoot, "src", "main", "AndroidManifest.xml"), [
+    [
+      '  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove"/>\n',
+      "",
+    ],
+    [
+      '  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove"/>\n',
+      "",
+    ],
+  ]);
+
+  for (const variant of ["debug", "debugOptimized"]) {
+    await replaceText(
+      path.join(appRoot, "src", variant, "AndroidManifest.xml"),
+      [[' tools:replace="android:usesCleartextTraffic"', ""]],
+    );
+  }
+
+  // This drawable is emitted by expo-splash-screen for a legacy splash path,
+  // but the configured splash style uses splashscreen_logo instead.
+  await fs.rm(
+    path.join(resDirectory, "drawable", "ic_launcher_background.xml"),
+    {
+      force: true,
+    },
+  );
+  await normalizeLauncherAssets(resDirectory);
+
+  return mod;
+}
+
+function withAndroidBuildCleanups(config) {
+  config = withSplashApiAnnotation(config);
+  config = withManifestApiAnnotations(config);
+  config = withLintCompatibility(config);
+  config = withAppLintPolicy(config);
+  return withFinalizedMod(config, ["android", applyFinalAndroidCleanups]);
+}
+
+module.exports = withAndroidBuildCleanups;

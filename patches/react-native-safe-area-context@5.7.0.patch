@@ -1,0 +1,13 @@
+diff --git a/android/src/main/AndroidManifest.xml b/android/src/main/AndroidManifest.xml
+--- a/android/src/main/AndroidManifest.xml
++++ b/android/src/main/AndroidManifest.xml
+@@ -4,1 +4,1 @@
+-  package="com.th3rdwave.safeareacontext">
++  >
+diff --git a/android/build.gradle b/android/build.gradle
+--- a/android/build.gradle
++++ b/android/build.gradle
+@@ -43,2 +43,2 @@
+     if (agpVersion.tokenize('.')[0].toInteger() >= 7) {
+-        namespace "com.th3rdwave.safeareacontext"
++        namespace = "com.th3rdwave.safeareacontext"

@@ -3,14 +3,15 @@
 ## Resultado
 
 Una persona turista puede abrir la aplicación móvil, conocer que explora atractivos
-publicados y ver su listado sin iniciar sesión ni conceder ubicación. Si necesita
-orientarse en el mapa, puede solicitar su posición de forma explícita.
+publicados y ver su listado sin iniciar sesión. Al abrir el mapa, la aplicación solicita
+ubicación foreground para mostrar su posición; si la deniega, puede seguir explorando.
 
 ## Actores y permisos
 
 - Visitante: consulta centros públicos.
-- La ubicación se solicita únicamente al activar “mi ubicación” o “Servicios cercanos”;
-  explorar atractivos no requiere permisos del dispositivo.
+- La ubicación se solicita al abrir Explorar o al activar “Servicios cercanos” o una ruta;
+  explorar atractivos continúa disponible aunque se deniegue el permiso. La sesión
+  foreground se conserva entre pantallas mientras la app está abierta.
 
 ## Flujo principal
 
@@ -18,8 +19,10 @@ orientarse en el mapa, puede solicitar su posición de forma explícita.
 2. Muestra una lista accesible de fichas resumidas.
 3. Si falla la red, explica el error y permite reintentar.
 4. El mapa MapLibre muestra los centros publicados como marcadores.
-5. Al pulsar “mi ubicación”, la aplicación valida permiso y GPS, centra la cámara y
-   muestra un punto azul mientras el proveedor esté disponible.
+5. Al abrir el mapa, la aplicación valida permiso y GPS, centra la cámara y muestra un
+   punto azul mientras el proveedor esté disponible; el watcher foreground actualiza la
+   posición mientras la app está activa y se reanuda al volver a ella. El botón “mi
+   ubicación” permite reintentar o recentrar manualmente.
 6. La persona puede cambiar a `Servicios cercanos`, escribir una actividad (por ejemplo,
    alimentación) y enviarla desde el teclado; la API devuelve establecimientos activos y,
    si la localidad actual no tiene resultados, informa la ciudad más cercana con resultados.

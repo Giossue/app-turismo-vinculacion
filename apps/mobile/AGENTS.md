@@ -7,7 +7,7 @@ changing the implementation or trying another workaround.
 
 ## Versiones y reglas de plataforma
 
-Este paquete usa Expo `~57.0.23`, Expo Router `~57.0.21`, React Native `0.86.3` y React
+Este paquete usa Expo `~57.0.24`, Expo Router `~57.0.22`, React Native `0.86.3` y React
 `19.2.3`. Instala dependencias Expo con `corepack pnpm expo install` y verifica siempre la
 compatibilidad en la documentación versionada antes de actualizar. Los cambios de
 `app.json`/`app.config.*` o config plugins solo llegan al dispositivo después de regenerar
@@ -34,8 +34,9 @@ elemento y `Text` tiene herencia limitada. Mantén objetivos táctiles de 44dp o
 `hitSlop` sin salir de los límites del padre y configura ripple/feedback por plataforma.
 
 Solicita permisos de ubicación solo al activar la función; foreground antes de background,
-y background únicamente durante navegación activa con consentimiento. Si cambias la
-configuración nativa de permisos, reconstruye la app. Todo control no textual necesita
+y background solo después de habilitar explícitamente la función correspondiente, con
+consentimiento y permiso del sistema. Si cambias la configuración nativa de permisos,
+reconstruye la app. Todo control no textual necesita
 `accessibilityLabel`/estado; prueba TalkBack y VoiceOver.
 
 Fuentes: [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/), [Expo Location](https://docs.expo.dev/versions/v57.0.0/sdk/location/), [Expo Router](https://docs.expo.dev/router/introduction/), [Style RN 0.86](https://reactnative.dev/docs/0.86/style), [dimensiones](https://reactnative.dev/docs/0.86/height-and-width), [useWindowDimensions](https://reactnative.dev/docs/0.86/usewindowdimensions), [PixelRatio](https://reactnative.dev/docs/0.86/pixelratio), [Text](https://reactnative.dev/docs/0.86/text), [Pressable](https://reactnative.dev/docs/0.86/pressable), [BackHandler](https://reactnative.dev/docs/0.86/backhandler) y [accesibilidad](https://reactnative.dev/docs/0.86/accessibility).

@@ -10,6 +10,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useTurismoTheme, TurismoThemeProvider } from "@/core/ui/theme-context";
 import { TurismoPaperProvider } from "@/core/ui/turismo-paper-provider";
 import { getTurismoColors } from "@/core/ui/tokens";
+import { UserLocationProvider } from "@/core/location/use-user-location";
 import "@/features/routing/infrastructure/navigation-background-task";
 
 function AppProviders({ children }: Readonly<{ children: ReactNode }>) {
@@ -41,7 +42,9 @@ function AppProviders({ children }: Readonly<{ children: ReactNode }>) {
       }}
     >
       <TurismoThemeProvider>
-        <TurismoPaperProvider>{children}</TurismoPaperProvider>
+        <TurismoPaperProvider>
+          <UserLocationProvider>{children}</UserLocationProvider>
+        </TurismoPaperProvider>
       </TurismoThemeProvider>
     </PersistQueryClientProvider>
   );

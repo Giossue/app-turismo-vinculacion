@@ -1,5 +1,6 @@
 import ExpoBottomSheet, {
   BottomSheetScrollView,
+  BottomSheetView,
 } from "@expo/ui/community/bottom-sheet";
 import {
   useCallback,
@@ -18,7 +19,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { Stack, useNavigation, useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
@@ -30,7 +31,10 @@ import {
   TourismSearchField,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
-import { useTourismMenu } from "@/core/ui/tourism-navigation";
+import {
+  TourismMenuButton as NavigationMenuButton,
+  useTourismMenu,
+} from "@/core/ui/tourism-navigation";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
@@ -56,23 +60,22 @@ import { SearchResultsSheet } from "@/features/centers/presentation/search-resul
 import { usePublishedCenter } from "@/features/centers/application/use-published-center";
 import { CenterMap } from "@/features/map/presentation/center-map";
 import { MapAttributionButton } from "@/features/map/presentation/map-attribution-button";
+import { AgentChatContent } from "@/features/agent/presentation/agent-chat-content";
 import { useUserLocation } from "@/core/location/use-user-location";
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
-
-type ExploreTabNavigation = {
-  addListener: (event: "tabPress", callback: () => void) => () => void;
-};
 
 type ExploreSearchMode = "CENTERS" | "ESTABLISHMENTS";
 
 export default function HomeScreen() {
   const router = useRouter();
-  const navigation = useNavigation<ExploreTabNavigation>();
   const colors = useTurismoPalette();
-  const { closeMenu, menuVisible } = useTourismMenu();
+  const { closeMenu, menuVisible, openMenu } = useTourismMenu();
   const { height, width } = useWindowDimensions();
   const isLandscape = width > height;
   const sheetRef = useRef<ExpoBottomSheet>(null);
+  const agentSheetRef = useRef<ExpoBottomSheet>(null);
+  const searchSheetOpenRef = useRef(false);
+  const agentSheetOpenRef = useRef(false);
   const mapAttributionHandlerRef = useRef<(() => void) | null>(null);
   const [text, setText] = useState("");
   const [submittedText, setSubmittedText] = useState("");
@@ -85,13 +88,35 @@ export default function HomeScreen() {
   const [selectedCenterCode, setSelectedCenterCode] = useState<string | null>(
     null,
   );
+  const [agentOpen, setAgentOpen] = useState(false);
   const [focusLocationKey, setFocusLocationKey] = useState(0);
+  const [locationFocused, setLocationFocused] = useState(false);
+  const locationFocusInitializedRef = useRef(false);
   const {
     coordinate: userLocation,
     requestLocation,
     status: locationStatus,
-    message: locationMessage,
   } = useUserLocation();
+
+  useEffect(() => {
+    if (locationStatus !== "idle") return;
+
+    locationFocusInitializedRef.current = false;
+    void requestLocation();
+  }, [locationStatus, requestLocation]);
+
+  useEffect(() => {
+    if (locationStatus !== "ready") {
+      locationFocusInitializedRef.current = false;
+      return;
+    }
+    if (!userLocation || locationFocusInitializedRef.current) return;
+
+    locationFocusInitializedRef.current = true;
+    setLocationFocused(true);
+    setFocusLocationKey((value) => value + 1);
+  }, [locationStatus, userLocation]);
+
   const [filters, setFilters] = useState<DiscoveryFilterValues>({});
   const handleAttributionChange = useCallback(
     (handler: (() => void) | null) => {
@@ -145,6 +170,24 @@ export default function HomeScreen() {
     Boolean(submittedQuery) ||
     searchMode === "ESTABLISHMENTS";
 
+  const presentSearchSheet = useCallback(() => {
+    searchSheetOpenRef.current = true;
+    sheetRef.current?.present();
+  }, []);
+
+  const dismissSearchSheet = useCallback(() => {
+    if (!searchSheetOpenRef.current) return;
+    searchSheetOpenRef.current = false;
+    sheetRef.current?.dismiss();
+  }, []);
+
+  const closeAgent = useCallback(() => {
+    setAgentOpen(false);
+    if (!agentSheetOpenRef.current) return;
+    agentSheetOpenRef.current = false;
+    agentSheetRef.current?.dismiss();
+  }, []);
+
   const clearSearch = useCallback(() => {
     setText("");
     setSubmittedText("");
@@ -153,8 +196,8 @@ export default function HomeScreen() {
     setShowFilters(false);
     setNearbyOnly(false);
     setSelectedCenterCode(null);
-    sheetRef.current?.dismiss();
-  }, []);
+    dismissSearchSheet();
+  }, [dismissSearchSheet]);
   const {
     data: selectedCenterDetail,
     error: selectedCenterDetailError,
@@ -167,12 +210,16 @@ export default function HomeScreen() {
       closeMenu();
       return true;
     }
+    if (agentOpen) {
+      closeAgent();
+      return true;
+    }
     if (showFilters) {
       setShowFilters(false);
       return true;
     }
     if (selectedCenterCode) {
-      sheetRef.current?.dismiss();
+      dismissSearchSheet();
       if (submittedQuery) clearSearch();
       else setSelectedCenterCode(null);
       return true;
@@ -188,8 +235,11 @@ export default function HomeScreen() {
     return false;
   }, [
     clearSearch,
+    closeAgent,
     closeMenu,
+    dismissSearchSheet,
     menuVisible,
+    agentOpen,
     selectedCenterCode,
     searchMode,
     submittedQuery,
@@ -200,28 +250,35 @@ export default function HomeScreen() {
   useScreenBackHandler(handleBeforeBack);
 
   useEffect(() => {
-    return navigation.addListener("tabPress", () => {
-      sheetRef.current?.dismiss();
-      setSelectedCenterCode(null);
-      void refetch();
-    });
-  }, [navigation, refetch]);
-
-  useEffect(() => {
-    if (!submittedQuery) return;
-    sheetRef.current?.present();
-  }, [submittedQuery]);
-
-  useEffect(() => {
-    if (submittedQuery) return;
-    if (!selectedCenter) {
-      sheetRef.current?.dismiss();
+    if (agentOpen) {
+      agentSheetOpenRef.current = true;
+      agentSheetRef.current?.present();
       return;
     }
-    sheetRef.current?.present();
-  }, [selectedCenter, submittedQuery]);
+  }, [agentOpen]);
+
+  useEffect(() => {
+    if (agentOpen || !submittedQuery) return;
+    presentSearchSheet();
+  }, [agentOpen, presentSearchSheet, submittedQuery]);
+
+  useEffect(() => {
+    if (agentOpen || submittedQuery) return;
+    if (!selectedCenter) {
+      dismissSearchSheet();
+      return;
+    }
+    presentSearchSheet();
+  }, [
+    agentOpen,
+    dismissSearchSheet,
+    presentSearchSheet,
+    selectedCenter,
+    submittedQuery,
+  ]);
 
   const handleViewportChange = useCallback(() => {
+    setLocationFocused(false);
     // El catálogo ya cargado no se reemplaza durante pan/zoom. Así MapLibre
     // conserva los símbolos y el usuario no ve parpadeos ni pines que se
     // pierden mientras termina una consulta por viewport. La consulta acotada
@@ -233,7 +290,7 @@ export default function HomeScreen() {
 
     // La ficha es un overlay transitorio del mapa: debe desaparecer antes de
     // cambiar de pantalla para no quedar montada sobre la ruta.
-    sheetRef.current?.dismiss();
+    dismissSearchSheet();
     setSelectedCenterCode(null);
     router.push({
       pathname: "/route",
@@ -246,9 +303,31 @@ export default function HomeScreen() {
   };
 
   const handleLocateUser = useCallback(async () => {
-    const coordinate = await requestLocation();
-    if (coordinate) setFocusLocationKey((value) => value + 1);
+    await requestLocation();
   }, [requestLocation]);
+
+  const openAgent = useCallback(() => {
+    dismissSearchSheet();
+    setAgentOpen(true);
+    setText("");
+    setSubmittedText("");
+    setSearchMode("CENTERS");
+    setSearchFocused(false);
+    setShowFilters(false);
+    setNearbyOnly(false);
+    setSelectedCenterCode(null);
+  }, [dismissSearchSheet]);
+
+  const openAgentCenter = useCallback(
+    (code: string) => {
+      closeAgent();
+      router.push({
+        pathname: "/centers/[code]",
+        params: { code },
+      });
+    },
+    [closeAgent, router],
+  );
 
   const handleSubmitSearch = useCallback(() => {
     const nextQuery = text.trim();
@@ -271,13 +350,11 @@ export default function HomeScreen() {
 
   const locationButtonLabel =
     locationStatus === "ready"
-      ? "Centrar mapa en mi ubicación"
-      : "Usar mi ubicación";
-  const locationNoticeText =
-    locationMessage ??
-    (locationStatus === "requesting"
-      ? "Buscando tu ubicación…"
-      : "Activa el GPS para encontrar tu posición.");
+      ? "Volver a centrar el mapa en mi ubicación"
+      : locationStatus === "requesting"
+        ? "Obteniendo tu ubicación"
+        : "Activar ubicación";
+  const showLocationAction = locationStatus !== "ready" || !locationFocused;
   const retryCenters = useCallback(() => {
     void refetch();
   }, [refetch]);
@@ -313,20 +390,23 @@ export default function HomeScreen() {
           ]}
         >
           <View style={styles.searchRow}>
-            <TourismSearchField
-              accessibilityLabel={
-                searchMode === "ESTABLISHMENTS"
-                  ? "Buscar servicios cercanos"
-                  : "Buscar atractivos"
-              }
-              onBlur={() => setSearchFocused(false)}
-              onChangeText={setText}
-              onClear={clearSearch}
-              onFocus={() => setSearchFocused(true)}
-              onSubmitEditing={handleSubmitSearch}
-              placeholder="Buscar aquí"
-              value={text}
-            />
+            <View style={styles.searchFieldWrap}>
+              <TourismSearchField
+                accessibilityLabel={
+                  searchMode === "ESTABLISHMENTS"
+                    ? "Buscar servicios cercanos"
+                    : "Buscar atractivos"
+                }
+                onBlur={() => setSearchFocused(false)}
+                onChangeText={setText}
+                onClear={clearSearch}
+                onFocus={() => setSearchFocused(true)}
+                onSubmitEditing={handleSubmitSearch}
+                placeholder="Buscar aquí"
+                value={text}
+              />
+            </View>
+            <NavigationMenuButton onPress={openMenu} />
           </View>
           {isSearchMode ? (
             <View style={styles.searchModeRow}>
@@ -336,7 +416,7 @@ export default function HomeScreen() {
                   setSearchMode("CENTERS");
                   setSubmittedText("");
                   setSelectedCenterCode(null);
-                  sheetRef.current?.dismiss();
+                  dismissSearchSheet();
                 }}
                 selected={searchMode === "CENTERS"}
               />
@@ -346,7 +426,7 @@ export default function HomeScreen() {
                   setSearchMode("ESTABLISHMENTS");
                   setSubmittedText("");
                   setSelectedCenterCode(null);
-                  sheetRef.current?.dismiss();
+                  dismissSearchSheet();
                   if (!userLocation) void requestLocation();
                 }}
                 selected={searchMode === "ESTABLISHMENTS"}
@@ -412,31 +492,6 @@ export default function HomeScreen() {
           isLandscape && styles.mapActionLayerLandscape,
         ]}
       >
-        {locationStatus !== "ready" ? (
-          <View
-            pointerEvents="auto"
-            style={[
-              styles.locationNotice,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-          >
-            {locationStatus === "requesting" ? (
-              <ActivityIndicator color={colors.primaryStrong} size="small" />
-            ) : (
-              <TurismoIcon
-                color={colors.primaryStrong}
-                name="locate"
-                size={turismoIconSizes.sm}
-              />
-            )}
-            <Text
-              numberOfLines={1}
-              style={[styles.locationNoticeText, { color: colors.textMuted }]}
-            >
-              {locationNoticeText}
-            </Text>
-          </View>
-        ) : null}
         <View style={styles.mapActionColumn}>
           {Math.abs(mapBearing) > 1 ? (
             <TourismCompassAction
@@ -447,13 +502,23 @@ export default function HomeScreen() {
             />
           ) : null}
           <TourismIconAction
-            accessibilityLabel={locationButtonLabel}
-            disabled={locationStatus === "requesting"}
-            icon="locate"
-            onPress={() => void handleLocateUser()}
-            selected={locationStatus === "ready"}
+            accessibilityLabel="Abrir agente turístico"
+            icon="bot"
+            onPress={openAgent}
+            selected={agentOpen}
             style={styles.locationAction}
           />
+          {showLocationAction ? (
+            <TourismIconAction
+              accessibilityLabel={locationButtonLabel}
+              disabled={locationStatus === "requesting"}
+              icon="locate"
+              onPress={() => void handleLocateUser()}
+              selected={false}
+              slashed={locationStatus === "disabled"}
+              style={styles.locationAction}
+            />
+          ) : null}
         </View>
       </View>
       <View pointerEvents="box-none" style={styles.attributionLayer}>
@@ -468,6 +533,7 @@ export default function HomeScreen() {
         enablePanDownToClose
         index={-1}
         onClose={() => {
+          searchSheetOpenRef.current = false;
           if (selectedCenterCode) setSelectedCenterCode(null);
           else clearSearch();
         }}
@@ -545,6 +611,25 @@ export default function HomeScreen() {
             />
           </BottomSheetScrollView>
         ) : null}
+      </ExpoBottomSheet>
+      <ExpoBottomSheet
+        backgroundStyle={{ backgroundColor: colors.surface }}
+        enablePanDownToClose={false}
+        handleComponent={null}
+        index={-1}
+        onClose={() => {
+          agentSheetOpenRef.current = false;
+          setAgentOpen(false);
+        }}
+        ref={agentSheetRef}
+        snapPoints={["100%"]}
+      >
+        <BottomSheetView style={styles.agentSheetView}>
+          <AgentChatContent
+            onClose={closeAgent}
+            onOpenCenter={openAgentCenter}
+          />
+        </BottomSheetView>
       </ExpoBottomSheet>
     </View>
   );
@@ -904,6 +989,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: turismoSpacing.xs,
   },
+  searchFieldWrap: { flex: 1 },
   searchModeRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -948,23 +1034,18 @@ const styles = StyleSheet.create({
     height: turismoMetrics.controlLg,
     width: turismoMetrics.controlLg,
   },
-  locationNotice: {
-    alignItems: "center",
-    borderRadius: turismoRadii.pill,
-    borderWidth: turismoMetrics.borderWidth,
-    flexDirection: "row",
-    flexShrink: 1,
-    gap: turismoSpacing.xs,
-    paddingHorizontal: turismoSpacing.md,
-    paddingVertical: turismoSpacing.xs,
-  },
-  locationNoticeText: { ...turismoTypography.caption, flexShrink: 1 },
   sheetView: {
     alignSelf: "center",
     padding: turismoSpacing.lg,
     width: "100%",
   },
   sheetViewLandscape: { maxWidth: turismoMetrics.sheetMaxWidth },
+  agentSheetView: {
+    flex: 1,
+    minHeight: 360,
+    paddingHorizontal: turismoSpacing.md,
+    paddingTop: turismoSpacing.sm,
+  },
   placeSheet: { gap: turismoSpacing.md, paddingBottom: turismoSpacing.xl },
   placeHeader: {
     flexDirection: "row",

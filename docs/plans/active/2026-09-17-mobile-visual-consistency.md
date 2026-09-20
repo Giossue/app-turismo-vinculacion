@@ -11,9 +11,9 @@ orientación vertical y horizontal.
 - Tokens de color, tipografía, espaciado, radios, iconos, elevación y alturas.
 - Tema Paper claro/oscuro y componentes `Tourism*` reutilizables.
 - Chips de categorías con altura/padding normalizados y acción de filtros separada con icono.
-- Pantallas Explorar, Agente, Itinerario, Ruta, Ficha y Configuración.
-- Shell compartido para encabezado, safe area, márgenes, superficies y navegación inferior.
-- Menú lateral global en lugar del botón de perfil, con Guardados, Mi itinerario y
+- Pantalla Explorar como mapa principal, chat del Agente en sheet nativa, Ruta, Ficha y Configuración.
+- Shell compartido para encabezado, safe area, márgenes y superficies; el mapa no usa navegación inferior.
+- Menú lateral global en lugar del botón de perfil, con Guardados, Mapas sin conexión y
   Configuración.
 - Retiro de NativeWind/Tailwind únicamente de `apps/mobile`.
 - Documentación de arquitectura y reglas del móvil.
@@ -31,10 +31,9 @@ La aplicación web y su futuro repositorio quedan fuera de alcance.
   usan los verdes de la web y mantienen recursos separados para claro, oscuro y selección.
 - Fuente del sistema y escala tipográfica única, compacta para móvil: display 28/36,
   title 22/28, heading 18/24, body 16/24, label 14/20 y caption 12/16.
-- El acceso transversal se realiza mediante un botón `menu` y `TourismMenuDrawer`; en las
-  vistas principales el botón ocupa el cuarto elemento de la barra inferior, mientras que
-  las pantallas sin barra conservan el acceso en su encabezado. El perfil deja de ser el
-  control de navegación principal.
+- El acceso transversal se realiza mediante un botón `menu` y `TourismMenuDrawer`; en el
+  mapa el botón queda junto al buscador. El Agente se abre desde un botón flotante y no
+  ocupa una pestaña inferior. El perfil deja de ser el control de navegación principal.
 - Expo permitirá orientación vertical y horizontal mediante layouts con `useWindowDimensions`.
 - No se usan maquetas externas como fuente de diseño.
 

@@ -30,7 +30,7 @@ pantalla, y restaurar la última ubicación al volver a primer plano.
   Android 13 o posterior puede permitir descartarla, por lo que el servicio comprueba el mismo
   registro en cada actualización de ubicación y lo vuelve a publicar si falta. Esto no evita
   que el Task Manager detenga toda la aplicación.
-- En Android, `expo-location` 57.0.18 queda fijado con un parche pequeño que permite actualizar
+- En Android, `expo-location` 57.0.19 queda fijado con un parche pequeño que permite actualizar
   las opciones de un servicio foreground ya iniciado mientras la actividad está pausada. El
   parche no permite iniciar servicios nuevos desde segundo plano.
 - Una limpieza por desmontaje de pantalla no cancela la tarea: minimizar o destruir

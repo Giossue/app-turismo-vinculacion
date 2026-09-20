@@ -1,0 +1,14 @@
+diff --git a/android/src/main/AndroidManifest.xml b/android/src/main/AndroidManifest.xml
+--- a/android/src/main/AndroidManifest.xml
++++ b/android/src/main/AndroidManifest.xml
+@@ -2,2 +2,2 @@
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-          package="com.reactnativecommunity.asyncstorage">
++          >
+diff --git a/android/build.gradle b/android/build.gradle
+--- a/android/build.gradle
++++ b/android/build.gradle
+@@ -41,2 +41,2 @@
+     if (agpVersion.tokenize('.')[0].toInteger() >= 7) {
+-        namespace "com.reactnativecommunity.asyncstorage"
++        namespace = "com.reactnativecommunity.asyncstorage"

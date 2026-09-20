@@ -22,8 +22,8 @@ Decisiones cerradas para la primera versión de rutas online:
 - El transporte público se representa primero con rutas, paradas y horarios administrados;
   GTFS/OTP queda para una fase posterior.
 - No se ofrece tráfico en tiempo real ni seguimiento de unidades en esta fase.
-- La ubicación en segundo plano se limita a una navegación activa, con consentimiento
-  específico, sin historial de trayectos y sujeta a las restricciones del sistema.
+- La ubicación en segundo plano se habilita mediante una función explícita, con consentimiento
+  específico, sin historial de trayectos por defecto y sujeta a las restricciones del sistema.
 
 - Quién mantiene y publica los datos de transporte: funcionarios, cooperativas o ambos.
 - Si las rutas registradas admitirán edición manual, importación GIS o ambos flujos.

@@ -34,8 +34,6 @@ import {
   turismoTypography,
 } from "./tokens";
 
-export type TurismoTab = "explore" | "agent" | "itinerary";
-
 type TourismMenuContextValue = Readonly<{
   closeMenu: () => void;
   menuVisible: boolean;
@@ -51,13 +49,11 @@ const TourismMenuContext = createContext<TourismMenuContextValue | null>(null);
  */
 export function TourismMenuProvider({
   children,
-  onItinerary,
   onOfflineMaps,
   onSaved,
   onSettings,
 }: Readonly<{
   children: ReactNode;
-  onItinerary: () => void;
   onOfflineMaps: () => void;
   onSaved: () => void;
   onSettings: () => void;
@@ -71,10 +67,6 @@ export function TourismMenuProvider({
       {children}
       <TourismMenuDrawer
         onClose={closeMenu}
-        onItinerary={() => {
-          closeMenu();
-          onItinerary();
-        }}
         onOfflineMaps={() => {
           closeMenu();
           onOfflineMaps();
@@ -99,95 +91,6 @@ export function useTourismMenu(): TourismMenuContextValue {
     throw new Error("useTourismMenu debe usarse dentro de TourismMenuProvider");
   }
   return context;
-}
-
-export function TourismTabBar({
-  active,
-  onChange,
-  onMenu,
-}: Readonly<{
-  active: TurismoTab;
-  onChange: (tab: TurismoTab) => void;
-  onMenu?: () => void;
-}>) {
-  const colors = useTurismoPalette();
-  const tabs: readonly {
-    key: TurismoTab;
-    label: string;
-    icon: "bot" | "compass" | "calendar";
-  }[] = [
-    { key: "explore", label: "Explorar", icon: "compass" },
-    { key: "agent", label: "Agente", icon: "bot" },
-    { key: "itinerary", label: "Itinerario", icon: "calendar" },
-  ];
-  return (
-    <SafeAreaView
-      edges={["bottom"]}
-      style={[styles.tabBarSafeArea, { backgroundColor: colors.surface }]}
-    >
-      <View
-        style={[
-          styles.tabBar,
-          { backgroundColor: colors.surface, borderColor: colors.border },
-        ]}
-      >
-        {tabs.map((tab) => {
-          const selected = active === tab.key;
-          return (
-            <Pressable
-              accessibilityLabel={tab.label}
-              accessibilityRole="tab"
-              accessibilityState={{ selected }}
-              key={tab.key}
-              onPress={() => onChange(tab.key)}
-              style={({ pressed }) => [
-                styles.tab,
-                { opacity: pressed ? 0.7 : 1 },
-              ]}
-            >
-              <View style={styles.tabIcon}>
-                <TurismoIcon
-                  color={selected ? colors.primaryStrong : colors.textMuted}
-                  name={tab.icon}
-                  size={turismoIconSizes.md}
-                />
-              </View>
-              <Text
-                style={[
-                  styles.tabLabel,
-                  { color: selected ? colors.primaryStrong : colors.textMuted },
-                ]}
-              >
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-        {onMenu ? (
-          <Pressable
-            accessibilityLabel="Abrir menú"
-            accessibilityRole="button"
-            onPress={onMenu}
-            style={({ pressed }) => [
-              styles.tab,
-              { opacity: pressed ? 0.7 : 1 },
-            ]}
-          >
-            <View style={styles.tabIcon}>
-              <TurismoIcon
-                color={colors.textMuted}
-                name="menu"
-                size={turismoIconSizes.md}
-              />
-            </View>
-            <Text style={[styles.tabLabel, { color: colors.textMuted }]}>
-              Menú
-            </Text>
-          </Pressable>
-        ) : null}
-      </View>
-    </SafeAreaView>
-  );
 }
 
 export function TourismMenuButton({
@@ -261,14 +164,12 @@ export function TourismHeader({
 
 export function TourismMenuDrawer({
   onClose,
-  onItinerary,
   onOfflineMaps,
   onSettings,
   onSaved,
   visible,
 }: Readonly<{
   onClose: () => void;
-  onItinerary: () => void;
   onOfflineMaps: () => void;
   onSettings: () => void;
   onSaved: () => void;
@@ -353,11 +254,6 @@ export function TourismMenuDrawer({
                     onPress={() => closeDrawer(onSaved)}
                   />
                   <DrawerAction
-                    icon="calendar"
-                    label="Mi itinerario"
-                    onPress={() => closeDrawer(onItinerary)}
-                  />
-                  <DrawerAction
                     icon="download"
                     label="Mapas sin conexión"
                     onPress={() => closeDrawer(onOfflineMaps)}
@@ -414,40 +310,6 @@ function DrawerAction({
 }
 
 const styles = StyleSheet.create({
-  tabBarSafeArea: {
-    alignSelf: "stretch",
-    width: "100%",
-  },
-  tabBar: {
-    alignSelf: "stretch",
-    alignItems: "center",
-    borderTopWidth: 1,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    minHeight: turismoMetrics.tabBar,
-    paddingHorizontal: turismoSpacing.xs,
-    paddingVertical: turismoSpacing.xxs,
-    borderRadius: 0,
-    width: "100%",
-  },
-  tab: {
-    alignItems: "center",
-    borderRadius: turismoRadii.pill,
-    flex: 1,
-    gap: turismoSpacing.xxs,
-    overflow: "hidden",
-    minHeight: turismoMetrics.touchTarget,
-  },
-  tabIcon: {
-    alignItems: "center",
-    borderRadius: turismoRadii.pill,
-    justifyContent: "center",
-    overflow: "hidden",
-    minHeight: 28,
-    minWidth: 46,
-    paddingHorizontal: turismoSpacing.sm,
-  },
-  tabLabel: { ...turismoTypography.caption },
   menuButton: {
     alignItems: "center",
     borderRadius: turismoRadii.pill,

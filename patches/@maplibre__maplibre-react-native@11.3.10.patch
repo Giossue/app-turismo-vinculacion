@@ -104,6 +104,13 @@ index b088909a48c4265219e4e95c529f6c0a63ae7e11..f94dff4bdba9f60cfb6f30b99016ff2e
          if (tintColor != null) {
              uiSettings.setAttributionTintColor(tintColor!!)
          }
+diff --git a/android/build.gradle b/android/build.gradle
+--- a/android/build.gradle
++++ b/android/build.gradle
+@@ -47,2 +47,2 @@
+ android {
+-    namespace "org.maplibre.reactnative"
++    namespace = "org.maplibre.reactnative"
 diff --git a/ios/components/map-view/MLRNMapView.m b/ios/components/map-view/MLRNMapView.m
 index 22212748b1f1ca2eb73b5a1688ddb848b5c8ab0c..dfd9fa3d56c7e74f835a23f3339a7784811942c7 100644
 --- a/ios/components/map-view/MLRNMapView.m

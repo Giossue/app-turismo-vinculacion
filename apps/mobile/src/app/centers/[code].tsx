@@ -204,10 +204,6 @@ export default function CenterDetailScreen() {
       </ScrollView>
       <TourismMenuDrawer
         onClose={() => setMenuVisible(false)}
-        onItinerary={() => {
-          setMenuVisible(false);
-          router.replace("/itinerary" as never);
-        }}
         onOfflineMaps={() => {
           setMenuVisible(false);
           router.push("/offline" as never);

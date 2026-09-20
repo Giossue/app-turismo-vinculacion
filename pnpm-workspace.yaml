@@ -12,4 +12,8 @@ allowBuilds:
 
 patchedDependencies:
   '@maplibre/maplibre-react-native@11.3.10': patches/@maplibre__maplibre-react-native@11.3.10.patch
-  expo-location@57.0.18: patches/expo-location@57.0.18.patch
+  '@react-native-async-storage/async-storage@2.2.0': patches/@react-native-async-storage__async-storage@2.2.0.patch
+  expo-modules-core@57.0.18: patches/expo-modules-core@57.0.18.patch
+  expo-file-system@57.0.7: patches/expo-file-system@57.0.7.patch
+  expo-location@57.0.19: patches/expo-location@57.0.19.patch
+  react-native-safe-area-context@5.7.0: patches/react-native-safe-area-context@5.7.0.patch

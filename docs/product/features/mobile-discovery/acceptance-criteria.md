@@ -3,8 +3,9 @@
 - [x] La aplicación se analiza y prueba con TypeScript local.
 - [x] El listado solo representa el contrato público de la API.
 - [x] Carga, vacío, error y reintento son distinguibles y accesibles.
-- [x] Al abrir Explorar no se solicita ubicación; el control “mi ubicación” la pide de
-      forma explícita y no persiste coordenadas históricas.
+- [x] Al abrir Explorar se solicita ubicación foreground; si se deniega, el mapa sigue
+      disponible. La sesión mantiene un watcher mientras la app está activa y no persiste
+      coordenadas históricas.
 - [x] MapLibre recibe exclusivamente marcadores publicados desde la API.
 - [x] La búsqueda se ejecuta únicamente al enviar desde el teclado y no antes de dos
       caracteres.

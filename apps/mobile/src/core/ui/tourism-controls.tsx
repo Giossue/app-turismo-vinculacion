@@ -83,7 +83,7 @@ export function TourismSearchField({
       ]}
     >
       <TurismoIcon
-        color={colors.primary}
+        color={colors.mapSearchIcon}
         name="search"
         size={turismoIconSizes.md}
       />
@@ -124,6 +124,7 @@ export function TourismIconAction({
   icon,
   onPress,
   selected = false,
+  slashed = false,
   style,
 }: Readonly<{
   accessibilityLabel: string;
@@ -131,6 +132,7 @@ export function TourismIconAction({
   icon: TurismoIconName;
   onPress: () => void;
   selected?: boolean;
+  slashed?: boolean;
   style?: StyleProp<ViewStyle>;
 }>) {
   const colors = useTurismoPalette();
@@ -140,7 +142,18 @@ export function TourismIconAction({
       containerColor={selected ? colors.primary : colors.surface}
       disabled={disabled}
       icon={({ color, size }) => (
-        <TurismoIcon color={color} name={icon} size={size} />
+        <View style={[styles.iconGraphic, { height: size, width: size }]}>
+          <TurismoIcon color={color} name={icon} size={size} />
+          {slashed ? (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.iconSlash,
+                { backgroundColor: colors.textMuted, width: size * 1.4 },
+              ]}
+            />
+          ) : null}
+        </View>
       )}
       iconColor={selected ? colors.onPrimary : colors.text}
       mode={selected ? "contained" : "outlined"}
@@ -385,6 +398,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     margin: 0,
     width: turismoMetrics.controlMd,
+  },
+  iconGraphic: { alignItems: "center", justifyContent: "center" },
+  iconSlash: {
+    borderRadius: turismoRadii.pill,
+    height: turismoMetrics.borderWidthStrong,
+    position: "absolute",
+    transform: [{ rotate: "-45deg" }],
   },
   compassAction: {
     alignItems: "center",

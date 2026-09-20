@@ -90,8 +90,10 @@ corepack pnpm --filter @turismo/mobile test
 - La IA consulta datos mediante herramientas controladas de la API y solo usa contenido aprobado/publicado.
 - No enviar a la IA contraseñas, tokens, ubicación histórica ni datos personales innecesarios.
 - Autorización por rol, acción y registro en el backend; ocultar un botón no constituye seguridad.
-- Solicitar ubicación cuando la función la necesita, no durante el registro.
-- Ubicación en segundo plano solo durante navegación activa, con consentimiento específico.
+- Solicitar ubicación cuando la función la necesita y explicar su finalidad antes del diálogo
+  del sistema.
+- La ubicación en segundo plano requiere una función explícitamente activada por la persona,
+  el permiso correspondiente, consentimiento informado y controles de revocación.
 - Usar eliminación lógica para centros y usuarios; preservar auditoría e identificadores históricos.
 - Archivos en MinIO/S3; en PostgreSQL solo metadatos y claves de objeto.
 - No exponer IDs internos, buckets, rutas físicas, proveedores o detalles técnicos en la UI.
@@ -121,7 +123,7 @@ secundarias reales, como una ficha o una ruta, deben usar `push`.
 
 ### Plataforma móvil y documentación oficial
 
-- El móvil queda fijado a Expo `~57.0.23`, Expo Router `~57.0.21`, React Native `0.86.3`
+- El móvil queda fijado a Expo `~57.0.24`, Expo Router `~57.0.22`, React Native `0.86.3`
   y React `19.2.3`. Expo SDK 57 debe mantenerse alineado con React Native 0.86; antes de
   actualizar una versión hay que comprobar la matriz oficial de compatibilidad.
 - React Native Paper es el único kit externo de componentes del móvil. Los componentes
@@ -140,8 +142,8 @@ secundarias reales, como una ficha o una ruta, deben usar `push`.
   (permisos, tareas de segundo plano, etc.) requieren regenerar y reconstruir el binario
   (prebuild/dev build); Fast Refresh no los aplica.
 - Solicitar permisos justo cuando la función los necesita: ubicación foreground primero;
-  segundo plano únicamente durante navegación activa, con consentimiento explícito y
-  configuración nativa verificada.
+  segundo plano solo después de habilitar la función correspondiente, con consentimiento
+  explícito, permiso y configuración nativa verificada.
 - En React Native las dimensiones son puntos independientes de densidad, no píxeles
   físicos. Usar Flexbox, porcentajes y `useWindowDimensions`; respetar `fontScale` y una
   escala de tokens compartida para que la UI se adapte a pantallas y texto ampliado. Usar

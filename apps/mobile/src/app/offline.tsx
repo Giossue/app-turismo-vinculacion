@@ -173,10 +173,6 @@ export default function OfflineMapsScreen() {
       </ScrollView>
       <TourismMenuDrawer
         onClose={() => setMenuVisible(false)}
-        onItinerary={() => {
-          setMenuVisible(false);
-          router.push("/itinerary" as never);
-        }}
         onOfflineMaps={() => setMenuVisible(false)}
         onSaved={() => setMenuVisible(false)}
         onSettings={() => {

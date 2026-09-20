@@ -14,7 +14,7 @@
 | Ruta calculada | Trayecto generado por el motor de navegación para un origen y destino. |
 | Itinerario | Plan de viaje con jornadas y visitas ordenadas. |
 | Ubicación en uso | Acceso al GPS mientras la app se encuentra activa. |
-| Ubicación en segundo plano | Acceso temporal al GPS durante navegación activa fuera de primer plano. |
+| Ubicación en segundo plano | Acceso al GPS fuera de primer plano mientras una función explícitamente habilitada está activa. |
 
 Usar lenguaje turístico en la UI. Ocultar IDs, nombres de tablas, proveedores, buckets y
 detalles de implementación salvo necesidad operativa documentada.
