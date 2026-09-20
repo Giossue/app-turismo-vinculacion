@@ -141,6 +141,7 @@ const CONSERVATION_STATE_VALUES = new Set([
   "DETERIORADO",
 ]);
 const CONSERVATION_ORIGIN_VALUES = new Set(["NATURAL", "ANTROPICO"]);
+const CONSERVATION_COMPONENT_VALUES = new Set(["ATRACTIVO", "ENTORNO"]);
 const HYGIENE_ENTRY_KINDS = new Set([
   "BASIC_SERVICE",
   "SIGNAGE",
@@ -917,12 +918,29 @@ function validateConservationBlock(value: unknown): string | null {
     }
     for (const factor of value.factors) {
       if (!isJsonRecord(factor)) return "Un factor de alteración no es válido.";
+      const factorIdError = validateOptionalPositiveInteger(
+        factor.factorId,
+        "factor de alteración",
+      );
+      if (factorIdError) return factorIdError;
       if (
-        typeof factor.name !== "string" ||
-        factor.name.trim().length === 0 ||
-        factor.name.length > 180
+        factor.component !== undefined &&
+        !CONSERVATION_COMPONENT_VALUES.has(String(factor.component))
       ) {
-        return "Cada factor de alteración requiere un nombre de hasta 180 caracteres.";
+        return "El componente del factor de alteración no es válido.";
+      }
+      if (
+        !factor.factorId &&
+        (typeof factor.name !== "string" || factor.name.trim().length === 0)
+      ) {
+        return "Cada factor requiere un tipo catalogado o un nombre de hasta 180 caracteres.";
+      }
+      if (
+        factor.name !== undefined &&
+        factor.name !== null &&
+        (typeof factor.name !== "string" || factor.name.length > 180)
+      ) {
+        return "El nombre del factor de alteración supera 180 caracteres.";
       }
       if (!CONSERVATION_ORIGIN_VALUES.has(String(factor.origin))) {
         return "El origen del factor de alteración no es válido.";
@@ -3773,6 +3791,52 @@ export class AdminCentersService {
           );
         }
       }
+      if (
+        Array.isArray(conservation.factors) &&
+        conservation.factors.length > 0
+      ) {
+        const evaluationRows = (await manager.query(
+          `SELECT ev.id, cc.codigo
+             FROM evaluaciones_conservacion ev
+             JOIN componentes_conservacion cc
+               ON cc.id = ev.componente_conservacion_id
+            WHERE ev.centro_turistico_id = $1`,
+          [centerId],
+        )) as Array<{ id: string; codigo: string }>;
+        const evaluationByComponent = new Map(
+          evaluationRows.map((row) => [row.codigo, row.id]),
+        );
+        for (const factor of conservation.factors as JsonRecord[]) {
+          const component = String(factor.component || "ATRACTIVO");
+          const evaluationId = evaluationByComponent.get(component);
+          if (!evaluationId) {
+            throw new ConflictException(
+              "Cada factor requiere una evaluación de conservación para su componente.",
+            );
+          }
+          if (
+            !Number.isInteger(factor.factorId) ||
+            Number(factor.factorId) < 1
+          ) {
+            throw new ConflictException(
+              "Cada factor requiere un factor activo del catálogo.",
+            );
+          }
+          await manager.query(
+            `INSERT INTO evaluacion_factores_alteracion
+               (evaluacion_conservacion_id, factor_alteracion_id,
+                presente, detalle_otro, observacion)
+             VALUES ($1,$2,$3,$4,$5)`,
+            [
+              evaluationId,
+              factor.factorId,
+              sectionResponseToBoolean(factor.response) ?? false,
+              factor.detailOther ?? null,
+              factor.observation ?? null,
+            ],
+          );
+        }
+      }
     }
 
     if (Array.isArray(section.declarations)) {
@@ -4946,7 +5010,7 @@ export class AdminCentersService {
     manager: EntityManager,
     centerId: string,
   ): Promise<Record<string, unknown> | null> {
-    const [evaluationRows, declarationRows] = (await Promise.all([
+    const [evaluationRows, factorRows, declarationRows] = (await Promise.all([
       manager.query(
         `SELECT COALESCE(json_agg(json_build_object(
                   'component', cc.codigo,
@@ -4956,6 +5020,26 @@ export class AdminCentersService {
            FROM evaluaciones_conservacion ev
            JOIN componentes_conservacion cc ON cc.id = ev.componente_conservacion_id
            JOIN estados_conservacion ec ON ec.id = ev.estado_conservacion_id
+          WHERE ev.centro_turistico_id = $1`,
+        [centerId],
+      ),
+      manager.query(
+        `SELECT COALESCE(json_agg(json_build_object(
+                  'component', cc.codigo,
+                  'factorId', fa.id,
+                  'origin', fa.origen,
+                  'name', fa.nombre,
+                  'response', CASE WHEN efa.presente THEN 'SI' ELSE 'NO' END,
+                  'detailOther', efa.detalle_otro,
+                  'observation', efa.observacion
+                ) ORDER BY efa.id), '[]'::json) AS data
+           FROM evaluacion_factores_alteracion efa
+           JOIN evaluaciones_conservacion ev
+             ON ev.id = efa.evaluacion_conservacion_id
+           JOIN componentes_conservacion cc
+             ON cc.id = ev.componente_conservacion_id
+           JOIN factores_alteracion fa
+             ON fa.id = efa.factor_alteracion_id
           WHERE ev.centro_turistico_id = $1`,
         [centerId],
       ),
@@ -4973,15 +5057,17 @@ export class AdminCentersService {
       ),
     ])) as Array<Array<{ data: unknown }>>;
     const evaluations = evaluationRows[0]?.data;
+    const factors = factorRows[0]?.data;
     const declarations = declarationRows[0]?.data;
     const hasEvaluations = Array.isArray(evaluations) && evaluations.length > 0;
+    const hasFactors = Array.isArray(factors) && factors.length > 0;
     const hasDeclarations =
       Array.isArray(declarations) && declarations.length > 0;
-    if (!hasEvaluations && !hasDeclarations) return null;
+    if (!hasEvaluations && !hasFactors && !hasDeclarations) return null;
     const conservation: JsonRecord = {
       attraction: { state: null, observation: "" },
       environment: { state: null, observation: "" },
-      factors: [],
+      factors: factors ?? [],
     };
     if (hasEvaluations) {
       for (const item of evaluations as JsonRecord[]) {
@@ -5757,10 +5843,76 @@ export class AdminCentersService {
       }
     }
     if (isJsonRecord(conservation) && Array.isArray(conservation.factors)) {
-      if (conservation.factors.length > 0) {
+      const factors = conservation.factors as JsonRecord[];
+      if (factors.length === 0) return;
+      const stateByComponent = new Map<string, string>();
+      for (const [component, key] of [
+        ["ATRACTIVO", "attraction"],
+        ["ENTORNO", "environment"],
+      ] as const) {
+        const entry = isJsonRecord(conservation[key])
+          ? conservation[key]
+          : null;
+        if (typeof entry?.state === "string" && entry.state.trim().length > 0) {
+          stateByComponent.set(component, entry.state);
+        }
+      }
+      const factorIds: number[] = [];
+      const uniqueFactors = new Set<string>();
+      for (const factor of factors) {
+        if (!isBinarySectionResponse(factor.response)) {
+          throw new ConflictException(
+            "Cada factor de alteración requiere una respuesta SI o NO antes de publicar.",
+          );
+        }
+        const component = String(factor.component ?? "");
+        if (!CONSERVATION_COMPONENT_VALUES.has(component)) {
+          throw new ConflictException(
+            "Cada factor de alteración requiere un componente válido antes de publicar.",
+          );
+        }
+        const factorId = factor.factorId;
+        if (!Number.isInteger(factorId) || Number(factorId) < 1) {
+          throw new ConflictException(
+            "Cada factor de alteración requiere un factor activo del catálogo antes de publicar.",
+          );
+        }
+        if (!stateByComponent.has(component)) {
+          throw new ConflictException(
+            "Cada factor de alteración requiere el estado de conservación de su componente.",
+          );
+        }
+        const uniqueKey = `${component}:${factorId}`;
+        if (uniqueFactors.has(uniqueKey)) {
+          throw new ConflictException(
+            "No repitas el mismo factor para un componente de conservación.",
+          );
+        }
+        uniqueFactors.add(uniqueKey);
+        factorIds.push(Number(factorId));
+      }
+      const rows = (await manager.query(
+        `SELECT id, origen FROM factores_alteracion
+          WHERE activo = TRUE AND id = ANY($1::bigint[])`,
+        [[...new Set(factorIds)]],
+      )) as Array<{ id: string; origen: string }>;
+      const factorById = new Map(rows.map((row) => [String(row.id), row]));
+      if (factorById.size !== new Set(factorIds).size) {
         throw new ConflictException(
-          "Los factores de alteración requieren un factor activo del catálogo antes de publicar.",
+          "Un factor de alteración ya no está disponible en el catálogo.",
         );
+      }
+      for (const factor of factors) {
+        const catalogFactor = factorById.get(String(factor.factorId));
+        if (!catalogFactor) continue;
+        if (
+          factor.origin !== undefined &&
+          String(factor.origin) !== catalogFactor.origen
+        ) {
+          throw new ConflictException(
+            "El origen del factor de alteración no coincide con su catálogo.",
+          );
+        }
       }
     }
   }

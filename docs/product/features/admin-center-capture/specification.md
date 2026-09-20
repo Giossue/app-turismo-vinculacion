@@ -52,8 +52,8 @@ explícita.
   publican hasta que se incorpore su opción al catálogo.
 - La sección de conservación distingue el estado del atractivo y del entorno, factores de
   alteración naturales/antrópicos y declaratorias con fecha, ámbito y observación dentro del
-  mismo centro turístico. Los estados y declaratorias se publican en sus relaciones existentes;
-  los factores requieren un identificador activo del catálogo.
+  mismo centro turístico. Los estados, factores y declaratorias se publican en sus relaciones
+  existentes; cada factor requiere un identificador activo, componente y respuesta binaria.
 - La sección de higiene y seguridad separa servicios básicos, señalética, salud, seguridad,
   comunicación y amenazas, y conserva controles de radios y contingencia con sus respuestas,
   cantidades y observaciones. Radios, contingencia y filas con referencias activas de catálogo

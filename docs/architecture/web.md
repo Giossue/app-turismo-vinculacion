@@ -60,8 +60,9 @@ El plan de promoción se normaliza de forma independiente; los medios sin tipo c
 conservan en el borrador y detienen la publicación.
 El resumen de recurso humano se normaliza sin separar el centro; educación, capacitación e
 idiomas requieren un tipo de formación catalogado para poder publicarse.
-Conservación publica evaluaciones y declaratorias en las tablas existentes; los factores sin
-identificador catalogado permanecen en el borrador y detienen la publicación.
+Conservación publica evaluaciones, factores de alteración y declaratorias en las tablas
+existentes; los factores sin identificador catalogado, componente o respuesta binaria permanecen
+en el borrador y detienen la publicación.
 Higiene normaliza radios y planes de contingencia; sus filas de servicios y amenazas sin
 referencia de catálogo se conservan en el borrador y detienen la publicación.
 Anexos normaliza el levantamiento de accesibilidad y la validación del GAD; documentos y

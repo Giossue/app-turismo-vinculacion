@@ -100,9 +100,9 @@ catálogos faltantes y publicación completa pendientes.
 - La sección 12 ya publica el resumen de administración/operación y personal especializado;
   los registros de educación, capacitación e idiomas también se reemplazan cuando tienen un
   tipo activo de formación.
-- La sección 6 ya reemplaza evaluaciones y declaratorias en sus tablas existentes; los estados
-  dependen del catálogo activo y los factores de alteración siguen bloqueando publicación
-  hasta que el formulario conserve su identificador de factor.
+- La sección 6 ya reemplaza evaluaciones, factores de alteración y declaratorias en sus tablas
+  existentes; los estados y factores dependen de catálogos activos, y cada factor conserva su
+  componente, origen, respuesta y observaciones.
 - La sección 7 ya publica radios portátiles, planes de contingencia y filas tipadas de servicios
   básicos, señalética, salud, seguridad, comunicación y amenazas; las respuestas negativas de
   servicios no crean relaciones y las amenazas conservan explícitamente su presencia.

@@ -269,6 +269,66 @@ describe("AdminCentersService", () => {
     );
   });
 
+  it("publishes conservation factors through their typed catalog relation", async () => {
+    const managerQuery = vi.fn(async (sql: string) => {
+      if (sql.includes("FROM estados_conservacion")) {
+        return [
+          { id: "81", codigo: "CONSERVADO" },
+          { id: "82", codigo: "ALTERADO" },
+        ];
+      }
+      if (
+        sql.includes("FROM componentes_conservacion") &&
+        sql.includes("WHERE codigo = ANY")
+      ) {
+        return [
+          { id: "1", codigo: "ATRACTIVO" },
+          { id: "2", codigo: "ENTORNO" },
+        ];
+      }
+      if (sql.includes("FROM evaluaciones_conservacion ev")) {
+        return [
+          { id: "91", codigo: "ATRACTIVO" },
+          { id: "92", codigo: "ENTORNO" },
+        ];
+      }
+      return [];
+    });
+    const manager = { query: managerQuery };
+    const service = new AdminCentersService({} as never);
+    const applyConservationSection = (
+      service as unknown as {
+        applyConservationSection: (
+          value: typeof manager,
+          centerId: string,
+          section: Record<string, unknown>,
+        ) => Promise<void>;
+      }
+    ).applyConservationSection;
+
+    await applyConservationSection.call(service, manager, "10", {
+      response: "SI",
+      conservation: {
+        attraction: { state: "CONSERVADO" },
+        environment: { state: "ALTERADO" },
+        factors: [
+          {
+            component: "ATRACTIVO",
+            factorId: 44,
+            origin: "NATURAL",
+            response: "SI",
+            detailOther: "Humedad permanente",
+          },
+        ],
+      },
+    });
+
+    expect(managerQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO evaluacion_factores_alteracion"),
+      ["91", 44, true, "Humedad permanente", null],
+    );
+  });
+
   it("publishes portable radios and the contingency plan", async () => {
     const managerQuery = vi.fn().mockResolvedValue([]);
     const manager = { query: managerQuery };
