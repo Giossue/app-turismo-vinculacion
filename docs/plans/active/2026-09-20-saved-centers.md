@@ -14,14 +14,17 @@ desde `Menú > Guardados`.
   `Guardados`.
 - Abrir la ficha completa desde cada elemento guardado y permitir quitarlo.
 - Mantener el orden más reciente primero y soportar el estado vacío.
+- Añadir sesión móvil con access token en memoria y refresh token en SecureStore.
+- Sincronizar guardados con `favoritos_centros` cuando exista una sesión autenticada,
+  conservando una degradación local si la API no está disponible.
 
 ## Límite actual
 
 El esquema PostgreSQL ya contiene `favoritos_centros` y
-`favoritos_puntos_interes`, pero el móvil todavía no tiene registro ni sesión
-turística. Esta primera unidad no inventa un `usuario_id`: los guardados son locales
-al dispositivo. La sincronización con las tablas remotas se implementará junto con
-la cuenta turística y su contrato de sesión.
+`favoritos_puntos_interes`. La app móvil usa ahora el contrato separado
+`/auth/mobile/*`; no reutiliza la cookie de la sesión institucional. Si todavía no
+existe una cuenta turística, la pantalla conserva el funcionamiento local y ofrece
+iniciar sesión para sincronizarla.
 
 ## Datos y privacidad
 
@@ -38,4 +41,4 @@ la cuenta turística y su contrato de sesión.
 
 ## Estado
 
-Implementado y verificado con TypeScript, lint, 24 pruebas móviles y exportación web.
+Implementado y verificado con TypeScript, lint, pruebas móviles/API y exportación web.

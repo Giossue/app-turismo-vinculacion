@@ -8,7 +8,7 @@ import type {
   PublicCenterDetail,
 } from "../domain/public-center";
 
-const centerSchema = z.object({
+export const publicCenterSchema = z.object({
   code: z.string().min(1),
   name: z.string().min(1),
   description: z.string().nullable(),
@@ -26,6 +26,7 @@ const centerSchema = z.object({
   parishCode: z.string().min(1),
   hierarchyCode: z.string().nullable(),
 });
+const centerSchema = publicCenterSchema;
 const detailSchema = centerSchema.extend({
   touristZone: z.string().min(1),
   address: z.string().nullable(),

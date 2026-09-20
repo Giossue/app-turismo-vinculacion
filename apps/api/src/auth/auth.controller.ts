@@ -15,7 +15,7 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { IsEmail, IsString, MinLength } from "class-validator";
 
-import { AuthService } from "./auth.service";
+import { AuthService, type AuthResult } from "./auth.service";
 import { CurrentUser } from "./auth.decorators";
 import { AuthGuard } from "./auth.guard";
 import type { AuthenticatedUser } from "./auth.types";
@@ -27,6 +27,12 @@ class LoginDto {
   @IsString()
   @MinLength(8)
   password!: string;
+}
+
+class MobileRefreshDto {
+  @IsString()
+  @MinLength(32)
+  refreshToken!: string;
 }
 
 @ApiTags("auth")
@@ -50,6 +56,27 @@ export class AuthController {
       this.setRefreshCookie(response, result.refreshToken);
     }
     return { data: { accessToken: result.accessToken, user: result.user } };
+  }
+
+  @Post("mobile/login")
+  @HttpCode(200)
+  async mobileLogin(@Body() body: LoginDto) {
+    const result = await this.auth.login(body.email, body.password);
+    return this.mobileSession(result);
+  }
+
+  @Post("mobile/refresh")
+  @HttpCode(200)
+  async mobileRefresh(@Body() body: MobileRefreshDto) {
+    const result = await this.auth.refresh(body.refreshToken);
+    return this.mobileSession(result);
+  }
+
+  @Post("mobile/logout")
+  @HttpCode(200)
+  async mobileLogout(@Body() body: MobileRefreshDto) {
+    await this.auth.logout(body.refreshToken);
+    return { data: { loggedOut: true } };
   }
 
   @Post("refresh")
@@ -95,6 +122,19 @@ export class AuthController {
 
   private cookieName(): string {
     return this.config.getOrThrow<string>("AUTH_REFRESH_COOKIE_NAME");
+  }
+
+  private mobileSession(result: AuthResult) {
+    if (!result.refreshToken) {
+      throw new UnauthorizedException("No se pudo crear la sesión móvil.");
+    }
+    return {
+      data: {
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        user: result.user,
+      },
+    };
   }
 
   private setRefreshCookie(response: FastifyReply, value: string): void {

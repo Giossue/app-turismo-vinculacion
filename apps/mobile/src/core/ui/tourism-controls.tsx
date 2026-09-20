@@ -160,6 +160,7 @@ export function TourismIconAction({
       onPress={onPress}
       selected={selected}
       size={turismoIconSizes.md}
+      contentStyle={styles.iconActionContent}
       style={[
         styles.iconAction,
         { borderColor: selected ? colors.primary : colors.border },
@@ -398,6 +399,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     margin: 0,
     width: turismoMetrics.controlMd,
+  },
+  iconActionContent: {
+    borderRadius: turismoRadii.pill,
   },
   iconGraphic: { alignItems: "center", justifyContent: "center" },
   iconSlash: {

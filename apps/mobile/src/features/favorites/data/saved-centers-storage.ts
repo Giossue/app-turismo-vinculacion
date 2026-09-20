@@ -31,6 +31,12 @@ export async function removeSavedCenter(code: string): Promise<void> {
   );
 }
 
+export async function replaceSavedCenters(
+  centers: readonly PublicCenter[],
+): Promise<void> {
+  await AsyncStorage.setItem(storageKey, JSON.stringify(centers));
+}
+
 function isPublicCenter(value: unknown): value is PublicCenter {
   if (!value || typeof value !== "object") return false;
   const center = value as Partial<PublicCenter>;

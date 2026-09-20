@@ -10,6 +10,7 @@ import {
 import { useRouter } from "expo-router";
 
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
+import { useAuth } from "@/features/auth/application/auth-context";
 import {
   TourismActionButton,
   TourismIconAction,
@@ -33,6 +34,7 @@ import type { SavedCenter } from "@/features/favorites/domain/saved-center";
 export default function SavedScreen() {
   const router = useRouter();
   const colors = useTurismoPalette();
+  const auth = useAuth();
   const savedCenters = useSavedCenters();
   const savedMutation = useSavedCenterMutation();
 
@@ -77,8 +79,50 @@ export default function SavedScreen() {
               Tus lugares
             </Text>
             <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-              Guardados en este dispositivo para volver a encontrarlos rápido.
+              {auth.status === "authenticated"
+                ? "Sincronizados con tu cuenta turística."
+                : "Guardados en este dispositivo para volver a encontrarlos rápido."}
             </Text>
+          </View>
+
+          <View
+            style={[
+              styles.sessionBanner,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            <TurismoIcon
+              color={colors.primaryStrong}
+              name={auth.status === "authenticated" ? "check" : "user"}
+              size={turismoIconSizes.md}
+            />
+            <View style={styles.sessionCopy}>
+              <Text style={[styles.sessionTitle, { color: colors.text }]}>
+                {auth.status === "authenticated"
+                  ? `Sesión activa · ${auth.user?.name ?? "Turista"}`
+                  : "Sin sesión turística"}
+              </Text>
+              <Text style={[styles.sessionText, { color: colors.textMuted }]}>
+                {auth.status === "authenticated"
+                  ? "Tus guardados se conservan en tu cuenta."
+                  : "Inicia sesión para sincronizarlos entre dispositivos."}
+              </Text>
+            </View>
+            {auth.status === "authenticated" ? (
+              <TourismActionButton
+                compact
+                label="Salir"
+                mode="outlined"
+                onPress={() => void auth.logout()}
+              />
+            ) : auth.status === "anonymous" ? (
+              <TourismActionButton
+                compact
+                icon="user"
+                label="Iniciar sesión"
+                onPress={() => router.push("/login" as never)}
+              />
+            ) : null}
           </View>
 
           {savedCenters.data.length > 0 ? (
@@ -201,6 +245,17 @@ const styles = StyleSheet.create({
   intro: { gap: turismoSpacing.xs },
   title: { ...turismoTypography.title },
   subtitle: { ...turismoTypography.body },
+  sessionBanner: {
+    alignItems: "center",
+    borderRadius: turismoRadii.md,
+    borderWidth: turismoMetrics.borderWidth,
+    flexDirection: "row",
+    gap: turismoSpacing.sm,
+    padding: turismoSpacing.sm,
+  },
+  sessionCopy: { flex: 1, gap: turismoSpacing.xxs },
+  sessionTitle: { ...turismoTypography.label },
+  sessionText: { ...turismoTypography.caption },
   list: { gap: turismoSpacing.sm },
   row: {
     alignItems: "center",

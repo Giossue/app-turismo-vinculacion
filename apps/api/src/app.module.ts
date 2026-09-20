@@ -12,6 +12,7 @@ import { AdminModule } from "./admin/admin.module";
 import { FilesModule } from "./files/files.module";
 import { RoutingModule } from "./routing/routing.module";
 import { EstablishmentsModule } from "./establishments/establishments.module";
+import { FavoritesModule } from "./favorites/favorites.module";
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { EstablishmentsModule } from "./establishments/establishments.module";
     FilesModule,
     RoutingModule,
     EstablishmentsModule,
+    FavoritesModule,
   ],
 })
 export class AppModule {}

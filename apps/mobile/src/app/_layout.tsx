@@ -11,6 +11,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useTurismoTheme, TurismoThemeProvider } from "@/core/ui/theme-context";
 import { TurismoPaperProvider } from "@/core/ui/turismo-paper-provider";
 import { getTurismoColors } from "@/core/ui/tokens";
+import { AuthProvider } from "@/features/auth/application/auth-context";
 import { UserLocationProvider } from "@/core/location/use-user-location";
 import "@/features/routing/infrastructure/navigation-background-task";
 
@@ -53,7 +54,9 @@ function AppProviders({ children }: Readonly<{ children: ReactNode }>) {
     >
       <TurismoThemeProvider>
         <TurismoPaperProvider>
-          <UserLocationProvider>{children}</UserLocationProvider>
+          <AuthProvider>
+            <UserLocationProvider>{children}</UserLocationProvider>
+          </AuthProvider>
         </TurismoPaperProvider>
       </TurismoThemeProvider>
     </PersistQueryClientProvider>
@@ -95,6 +98,7 @@ function AppNavigation() {
         <Stack.Screen name="offline" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="saved" />
+        <Stack.Screen name="login" />
       </Stack>
     </>
   );
