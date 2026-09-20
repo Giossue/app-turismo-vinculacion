@@ -50,6 +50,8 @@ el despliegue aún no tiene una opción sembrada.
 La sección de planta conserva también los ámbitos del atractivo/poblado, cantidades de planta,
 facilidades con ubicación y responsables, y servicios complementarios en el mismo snapshot;
 ninguna de esas relaciones crea un centro turístico nuevo.
+La sección de características publica sus rangos de clima en la relación normalizada existente
+y puede retirar el registro cuando se marca como no aplicable.
 Las facilidades seleccionadas conservan cantidad y observación por opción. El panel consulta
 `/admin/summary`, `/admin/centers`, `/admin/catalogs`,
 `/admin/centers/:code/valuation` y `/admin/centers/:code`; las

@@ -2815,6 +2815,10 @@ export class AdminCentersService {
     center: CenterRow,
     draft: CenterDraft,
   ) {
+    const characteristicsSection = getAdminSectionRecord(
+      draft,
+      "caracteristicas",
+    );
     let sequence: number | null = null;
     if (Number(center.parishId) !== Number(draft.parishId)) {
       sequence = await this.nextSequence(manager, draft.parishId);
@@ -2875,7 +2879,11 @@ export class AdminCentersService {
         ],
       );
     }
-    if (draft.climate) {
+    if (
+      draft.climate &&
+      !characteristicsSection?.climate &&
+      characteristicsSection?.response !== "NO_APLICA"
+    ) {
       await manager.query(
         `INSERT INTO caracteristicas_climaticas
           (centro_turistico_id, tipo_clima_id, temperatura_min_c, temperatura_max_c, precipitacion_min_mm, precipitacion_max_mm, observacion)
@@ -2965,6 +2973,13 @@ export class AdminCentersService {
         );
       }
     }
+    if (characteristicsSection) {
+      await this.applyCharacteristicsSection(
+        manager,
+        center.id,
+        characteristicsSection,
+      );
+    }
     const accessibilitySection = getAdminSectionRecord(draft, "accesibilidad");
     if (accessibilitySection) {
       await this.applyAccessibilitySection(
@@ -3000,6 +3015,49 @@ export class AdminCentersService {
     if (plantSection) {
       await this.applyPlantSection(manager, center.id, plantSection);
     }
+  }
+
+  private async applyCharacteristicsSection(
+    manager: EntityManager,
+    centerId: string,
+    section: JsonRecord,
+  ) {
+    if (section.response === "NO_APLICA") {
+      await manager.query(
+        `DELETE FROM caracteristicas_climaticas WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      return;
+    }
+
+    if (!isJsonRecord(section.climate)) return;
+    const climate = section.climate;
+    const climateId = climate.climateId;
+    if (!Number.isInteger(climateId) || Number(climateId) < 1) return;
+
+    await manager.query(
+      `INSERT INTO caracteristicas_climaticas
+        (centro_turistico_id, tipo_clima_id, temperatura_min_c, temperatura_max_c,
+         precipitacion_min_mm, precipitacion_max_mm, observacion)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT (centro_turistico_id) DO UPDATE SET
+        tipo_clima_id = EXCLUDED.tipo_clima_id,
+        temperatura_min_c = EXCLUDED.temperatura_min_c,
+        temperatura_max_c = EXCLUDED.temperatura_max_c,
+        precipitacion_min_mm = EXCLUDED.precipitacion_min_mm,
+        precipitacion_max_mm = EXCLUDED.precipitacion_max_mm,
+        observacion = EXCLUDED.observacion,
+        updated_at = CURRENT_TIMESTAMP`,
+      [
+        centerId,
+        Number(climateId),
+        climate.minTemperature ?? null,
+        climate.maxTemperature ?? null,
+        climate.minRainfall ?? null,
+        climate.maxRainfall ?? null,
+        climate.observation ?? section.observation ?? null,
+      ],
+    );
   }
 
   private async applyAccessibilitySection(
@@ -3753,6 +3811,40 @@ export class AdminCentersService {
     if (forPublication) {
       await this.validatePlantSectionReferences(manager, draft);
       await this.validateAccessibilitySectionReferences(manager, draft);
+    }
+    await this.validateCharacteristicsSectionReferences(
+      manager,
+      draft,
+      forPublication,
+    );
+  }
+
+  private async validateCharacteristicsSectionReferences(
+    manager: EntityManager,
+    draft: CenterDraft,
+    forPublication: boolean,
+  ) {
+    const section = getAdminSectionRecord(draft, "caracteristicas");
+    const climate = isJsonRecord(section?.climate) ? section.climate : null;
+    if (!section || !climate) return;
+
+    const climateId = climate.climateId;
+    if (
+      forPublication &&
+      section.response === "SI" &&
+      (!Number.isInteger(climateId) || Number(climateId) < 1)
+    ) {
+      throw new ConflictException(
+        "La sección características requiere seleccionar un clima del catálogo antes de publicar.",
+      );
+    }
+    if (Number.isInteger(climateId) && Number(climateId) > 0) {
+      await this.ensureReference(
+        manager,
+        "catalogo_clima",
+        Number(climateId),
+        "clima",
+      );
     }
   }
 

@@ -37,7 +37,8 @@ explícita.
   publicación transaccional reemplaza las tablas de la sección cuando las filas usan IDs
   activos; una fila manual bloquea la publicación sin perderse del borrador.
 - La sección de características conserva el tipo de clima y sus rangos de temperatura y
-  precipitación, distinguiendo valores ausentes de cero.
+  precipitación, distinguiendo valores ausentes de cero. Al publicar, esos valores reemplazan
+  la relación normalizada de clima; marcar la sección como `NO APLICA` retira esa relación.
 - La sección de planta turística conserva registros de alojamiento, alimentos y bebidas,
   agencias y guías por ámbito, junto con sus tres cantidades; las facilidades conservan
   cantidad, coordenadas, administrador, accesibilidad universal y estado; y los servicios
