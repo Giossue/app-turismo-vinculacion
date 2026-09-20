@@ -2674,6 +2674,7 @@ export class AdminCentersService {
       publishedPromotion,
       publishedHumanResources,
       publishedConservation,
+      publishedHygiene,
     ] = await Promise.all([
       this.readPublishedAccessibilitySection(manager, center.id),
       this.readPublishedPlantSection(manager, center.id),
@@ -2682,6 +2683,7 @@ export class AdminCentersService {
       this.readPublishedPromotionSection(manager, center.id),
       this.readPublishedHumanResourcesSection(manager, center.id),
       this.readPublishedConservationSection(manager, center.id),
+      this.readPublishedHygieneSection(manager, center.id),
     ]);
     const publishedSections: Record<string, unknown> = {};
     if (publishedAccessibility)
@@ -2694,6 +2696,8 @@ export class AdminCentersService {
       publishedSections["recurso-humano"] = publishedHumanResources;
     if (publishedConservation)
       publishedSections.conservacion = publishedConservation;
+    if (publishedHygiene)
+      publishedSections["higiene-seguridad"] = publishedHygiene;
     published.sections = publishedSections;
     return {
       code: center.code,
@@ -3034,6 +3038,10 @@ export class AdminCentersService {
         center.id,
         conservationSection,
       );
+    }
+    const hygieneSection = getAdminSectionRecord(draft, "higiene-seguridad");
+    if (hygieneSection) {
+      await this.applyHygieneSection(manager, center.id, hygieneSection);
     }
     const accessibilitySection = getAdminSectionRecord(draft, "accesibilidad");
     if (accessibilitySection) {
@@ -3551,6 +3559,110 @@ export class AdminCentersService {
           ],
         );
       }
+    }
+  }
+
+  private async applyHygieneSection(
+    manager: EntityManager,
+    centerId: string,
+    section: JsonRecord,
+  ) {
+    const hygiene = isJsonRecord(section.hygieneSafety)
+      ? section.hygieneSafety
+      : null;
+    const clearEntries = async () => {
+      await manager.query(
+        `DELETE FROM servicios_basicos_centro WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      await manager.query(
+        `DELETE FROM senaletica_centro WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      await manager.query(
+        `DELETE FROM servicios_salud_centro WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      await manager.query(
+        `DELETE FROM servicios_seguridad_centro WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      await manager.query(
+        `DELETE FROM comunicaciones_centro WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      await manager.query(
+        `DELETE FROM amenazas_centro WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+    };
+    if (section.response === "NO_APLICA") {
+      await clearEntries();
+      await manager.query(
+        `DELETE FROM radios_portatiles_centro WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      await manager.query(
+        `DELETE FROM planes_contingencia WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      return;
+    }
+    if (!hygiene) return;
+    if (Array.isArray(hygiene.entries) && hygiene.entries.length === 0) {
+      await clearEntries();
+    }
+    const radios = isJsonRecord(hygiene.radios) ? hygiene.radios : null;
+    if (radios) {
+      await manager.query(
+        `INSERT INTO radios_portatiles_centro
+           (centro_turistico_id, disponible, uso_visitantes, uso_interno,
+            uso_emergencias, cantidad, observacion)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)
+         ON CONFLICT (centro_turistico_id) DO UPDATE SET
+           disponible = EXCLUDED.disponible,
+           uso_visitantes = EXCLUDED.uso_visitantes,
+           uso_interno = EXCLUDED.uso_interno,
+           uso_emergencias = EXCLUDED.uso_emergencias,
+           cantidad = EXCLUDED.cantidad,
+           observacion = EXCLUDED.observacion,
+           updated_at = CURRENT_TIMESTAMP`,
+        [
+          centerId,
+          sectionResponseToBoolean(radios.available) ?? false,
+          sectionResponseToBoolean(radios.visitorUse) ?? false,
+          sectionResponseToBoolean(radios.internalUse) ?? false,
+          sectionResponseToBoolean(radios.emergencyUse) ?? false,
+          radios.quantity ?? null,
+          radios.observation ?? section.observation ?? null,
+        ],
+      );
+    }
+    const contingency = isJsonRecord(hygiene.contingency)
+      ? hygiene.contingency
+      : null;
+    if (contingency) {
+      await manager.query(
+        `INSERT INTO planes_contingencia
+           (centro_turistico_id, existe, institucion_responsable,
+            nombre_documento, anio, observacion)
+         VALUES ($1,$2,$3,$4,$5,$6)
+         ON CONFLICT (centro_turistico_id) DO UPDATE SET
+           existe = EXCLUDED.existe,
+           institucion_responsable = EXCLUDED.institucion_responsable,
+           nombre_documento = EXCLUDED.nombre_documento,
+           anio = EXCLUDED.anio,
+           observacion = EXCLUDED.observacion,
+           updated_at = CURRENT_TIMESTAMP`,
+        [
+          centerId,
+          sectionResponseToBoolean(contingency.exists) ?? false,
+          contingency.institution ?? null,
+          contingency.document ?? null,
+          contingency.year ?? null,
+          contingency.observation ?? section.observation ?? null,
+        ],
+      );
     }
   }
 
@@ -4396,6 +4508,64 @@ export class AdminCentersService {
     };
   }
 
+  private async readPublishedHygieneSection(
+    manager: EntityManager,
+    centerId: string,
+  ): Promise<Record<string, unknown> | null> {
+    const [radioRows, contingencyRows] = (await Promise.all([
+      manager.query(
+        `SELECT json_build_object(
+                  'available', CASE WHEN disponible THEN 'SI' ELSE 'NO' END,
+                  'visitorUse', CASE WHEN uso_visitantes THEN 'SI' ELSE 'NO' END,
+                  'internalUse', CASE WHEN uso_interno THEN 'SI' ELSE 'NO' END,
+                  'emergencyUse', CASE WHEN uso_emergencias THEN 'SI' ELSE 'NO' END,
+                  'quantity', cantidad,
+                  'observation', observacion
+                ) AS data
+           FROM radios_portatiles_centro
+          WHERE centro_turistico_id = $1`,
+        [centerId],
+      ),
+      manager.query(
+        `SELECT json_build_object(
+                  'exists', CASE WHEN existe THEN 'SI' ELSE 'NO' END,
+                  'institution', institucion_responsable,
+                  'document', nombre_documento,
+                  'year', anio,
+                  'observation', observacion
+                ) AS data
+           FROM planes_contingencia
+          WHERE centro_turistico_id = $1`,
+        [centerId],
+      ),
+    ])) as Array<Array<{ data: unknown }>>;
+    const radios = radioRows[0]?.data;
+    const contingency = contingencyRows[0]?.data;
+    if (radios === undefined && contingency === undefined) return null;
+    return {
+      schemaVersion: 1,
+      response: "SI",
+      hygieneSafety: {
+        entries: [],
+        radios: radios ?? {
+          available: "SIN_INFORMACION",
+          visitorUse: "SIN_INFORMACION",
+          internalUse: "SIN_INFORMACION",
+          emergencyUse: "SIN_INFORMACION",
+          quantity: null,
+          observation: "",
+        },
+        contingency: contingency ?? {
+          exists: "SIN_INFORMACION",
+          institution: "",
+          document: "",
+          year: null,
+          observation: "",
+        },
+      },
+    };
+  }
+
   private centerToDraft(center: CenterRow): CenterDraft {
     return {
       name: center.name,
@@ -4610,6 +4780,7 @@ export class AdminCentersService {
       await this.validatePromotionSectionReferences(manager, draft);
       await this.validateHumanResourcesSectionReferences(manager, draft);
       await this.validateConservationSectionReferences(manager, draft);
+      await this.validateHygieneSectionReferences(manager, draft);
     }
     await this.validateCharacteristicsSectionReferences(
       manager,
@@ -4828,6 +4999,46 @@ export class AdminCentersService {
           "Los factores de alteración requieren un factor activo del catálogo antes de publicar.",
         );
       }
+    }
+  }
+
+  private async validateHygieneSectionReferences(
+    _manager: EntityManager,
+    draft: CenterDraft,
+  ) {
+    const section = getAdminSectionRecord(draft, "higiene-seguridad");
+    if (!section || section.response === "NO_APLICA") return;
+    const hygiene = isJsonRecord(section.hygieneSafety)
+      ? section.hygieneSafety
+      : null;
+    if (!hygiene) return;
+    const radios = isJsonRecord(hygiene.radios) ? hygiene.radios : null;
+    if (radios) {
+      for (const key of [
+        "available",
+        "visitorUse",
+        "internalUse",
+        "emergencyUse",
+      ]) {
+        if (!isBinarySectionResponse(radios[key])) {
+          throw new ConflictException(
+            "La sección higiene requiere respuestas SI o NO para publicar las radios.",
+          );
+        }
+      }
+    }
+    const contingency = isJsonRecord(hygiene.contingency)
+      ? hygiene.contingency
+      : null;
+    if (contingency && !isBinarySectionResponse(contingency.exists)) {
+      throw new ConflictException(
+        "El plan de contingencia requiere una respuesta SI o NO antes de publicar.",
+      );
+    }
+    if (Array.isArray(hygiene.entries) && hygiene.entries.length > 0) {
+      throw new ConflictException(
+        "Los registros de higiene requieren tipos activos de catálogo antes de publicar.",
+      );
     }
   }
 

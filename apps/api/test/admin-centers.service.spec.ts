@@ -197,6 +197,49 @@ describe("AdminCentersService", () => {
     );
   });
 
+  it("publishes portable radios and the contingency plan", async () => {
+    const managerQuery = vi.fn().mockResolvedValue([]);
+    const manager = { query: managerQuery };
+    const service = new AdminCentersService({} as never);
+    const applyHygieneSection = (
+      service as unknown as {
+        applyHygieneSection: (
+          value: typeof manager,
+          centerId: string,
+          section: Record<string, unknown>,
+        ) => Promise<void>;
+      }
+    ).applyHygieneSection;
+
+    await applyHygieneSection.call(service, manager, "10", {
+      response: "SI",
+      hygieneSafety: {
+        entries: [],
+        radios: {
+          available: "SI",
+          visitorUse: "NO",
+          internalUse: "SI",
+          emergencyUse: "SI",
+          quantity: 2,
+        },
+        contingency: {
+          exists: "SI",
+          institution: "GAD",
+          document: "Plan 2025",
+          year: 2025,
+        },
+      },
+    });
+
+    const statements = managerQuery.mock.calls.map(([sql]) => sql);
+    expect(statements).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("INSERT INTO radios_portatiles_centro"),
+        expect.stringContaining("INSERT INTO planes_contingencia"),
+      ]),
+    );
+  });
+
   it("exposes persisted valuation status without recalculating the ficha", async () => {
     const managerQuery = vi
       .fn()
