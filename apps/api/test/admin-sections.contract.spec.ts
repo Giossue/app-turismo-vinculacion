@@ -290,6 +290,56 @@ describe("admin section contract", () => {
     ).toContain("HTTP o HTTPS");
   });
 
+  it("validates visitors, seasons, origins, informants and influx", () => {
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        visitors: {
+          registry: {
+            exists: "SI",
+            type: "DIGITAL",
+            years: 3,
+            reports: "SI",
+            frequency: "Mensual",
+          },
+          seasons: [{ type: "ALTA", quantity: 120, year: 2025, months: [7, 8] }],
+          origins: [
+            { type: "NACIONAL", place: "Guaranda", month: 8, year: 2025, quantity: 80 },
+          ],
+          informants: [{ name: "Ana Pérez", contact: "0999999999" }],
+          influx: {
+            weekday: 10,
+            weekend: 35,
+            holidays: 60,
+            frequency: "ESTACIONAL",
+          },
+        },
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects repeated or out-of-range visitor months", () => {
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        visitors: {
+          seasons: [{ type: "ALTA", months: [1, 1] }],
+        },
+      }),
+    ).toContain("no pueden repetirse");
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        visitors: {
+          origins: [{ type: "NACIONAL", place: "Guaranda", month: 13 }],
+        },
+      }),
+    ).toContain("mes de procedencia");
+  });
+
   it("derives core progress and explicit no aplica states", () => {
     const progress = buildAdminSectionProgress({
       name: "Centro de prueba",

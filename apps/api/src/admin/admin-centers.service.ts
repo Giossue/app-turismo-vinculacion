@@ -158,6 +158,15 @@ const POLICY_CODES = new Set([
   "ORDENANZAS_APLICABLES",
 ]);
 const PROMOTION_MEDIA_RESPONSE_VALUES = SECTION_RESPONSE_VALUES;
+const VISITOR_REGISTRY_TYPES = new Set(["DIGITAL", "PAPEL"]);
+const VISITOR_SEASON_TYPES = new Set(["ALTA", "BAJA"]);
+const VISITOR_ORIGIN_TYPES = new Set(["NACIONAL", "EXTRANJERA"]);
+const VISITOR_FREQUENCIES = new Set([
+  "PERMANENTE",
+  "ESTACIONAL",
+  "ESPORADICA",
+  "INEXISTENTE",
+]);
 
 /**
  * Validates the transitional JSON contract used by the web section editor.
@@ -290,6 +299,10 @@ export function validateAdminSectionContent(content: unknown): string | null {
   if (content.promotion !== undefined) {
     const promotionError = validatePromotionBlock(content.promotion);
     if (promotionError) return promotionError;
+  }
+  if (content.visitors !== undefined) {
+    const visitorsError = validateVisitorsBlock(content.visitors);
+    if (visitorsError) return visitorsError;
   }
   if (content.rows !== undefined) {
     if (!Array.isArray(content.rows) || content.rows.length > 200) {
@@ -692,6 +705,201 @@ function validatePromotionBlock(value: unknown): string | null {
         }
       }
     }
+  }
+  return null;
+}
+
+function validateVisitorsBlock(value: unknown): string | null {
+  if (!isJsonRecord(value)) return "El bloque de visitantes no es válido.";
+  if (value.registry !== undefined) {
+    if (!isJsonRecord(value.registry)) return "El registro de visitantes no es válido.";
+    for (const key of ["exists", "reports"]) {
+      if (!isSectionResponse(value.registry[key])) {
+        return "Cada decisión del registro de visitantes requiere una respuesta válida.";
+      }
+    }
+    if (
+      value.registry.type !== undefined &&
+      value.registry.type !== null &&
+      !VISITOR_REGISTRY_TYPES.has(String(value.registry.type))
+    ) {
+      return "El tipo de registro de visitantes no es válido.";
+    }
+    if (
+      value.registry.years !== undefined &&
+      value.registry.years !== null &&
+      (!Number.isInteger(value.registry.years) ||
+        Number(value.registry.years) < 0 ||
+        Number(value.registry.years) > 200)
+    ) {
+      return "Los años del registro de visitantes no son válidos.";
+    }
+    if (
+      value.registry.frequency !== undefined &&
+      value.registry.frequency !== null &&
+      (typeof value.registry.frequency !== "string" ||
+        value.registry.frequency.length > 80)
+    ) {
+      return "La frecuencia de reportes supera el límite permitido.";
+    }
+    if (
+      value.registry.observation !== undefined &&
+      value.registry.observation !== null &&
+      (typeof value.registry.observation !== "string" ||
+        value.registry.observation.length > 1_000)
+    ) {
+      return "La observación del registro de visitantes supera el límite permitido.";
+    }
+  }
+  if (value.seasons !== undefined) {
+    if (!Array.isArray(value.seasons) || value.seasons.length > 24) {
+      return "Las temporadas de visitación no son válidas.";
+    }
+    for (const season of value.seasons) {
+      if (!isJsonRecord(season) || !VISITOR_SEASON_TYPES.has(String(season.type))) {
+        return "El tipo de temporada no es válido.";
+      }
+      if (
+        season.quantity !== undefined &&
+        season.quantity !== null &&
+        (!Number.isInteger(season.quantity) || Number(season.quantity) < 0)
+      ) {
+        return "La cantidad de visitantes por temporada no es válida.";
+      }
+      const yearError = validateOptionalYear(season.year, "temporada");
+      if (yearError) return yearError;
+      const monthsError = validateMonths(season.months);
+      if (monthsError) return monthsError;
+      if (
+        season.observation !== undefined &&
+        season.observation !== null &&
+        (typeof season.observation !== "string" || season.observation.length > 1_000)
+      ) {
+        return "La observación de temporada supera el límite permitido.";
+      }
+    }
+  }
+  if (value.origins !== undefined) {
+    if (!Array.isArray(value.origins) || value.origins.length > 200) {
+      return "Las procedencias de visitantes no son válidas.";
+    }
+    for (const origin of value.origins) {
+      if (!isJsonRecord(origin) || !VISITOR_ORIGIN_TYPES.has(String(origin.type))) {
+        return "El tipo de procedencia no es válido.";
+      }
+      if (
+        typeof origin.place !== "string" ||
+        origin.place.trim().length === 0 ||
+        origin.place.length > 150
+      ) {
+        return "Cada procedencia requiere un lugar de hasta 150 caracteres.";
+      }
+      if (
+        origin.month !== undefined &&
+        origin.month !== null &&
+        (!Number.isInteger(origin.month) ||
+          Number(origin.month) < 1 ||
+          Number(origin.month) > 12)
+      ) {
+        return "El mes de procedencia no es válido.";
+      }
+      const yearError = validateOptionalYear(origin.year, "procedencia");
+      if (yearError) return yearError;
+      if (
+        origin.quantity !== undefined &&
+        origin.quantity !== null &&
+        (!Number.isInteger(origin.quantity) || Number(origin.quantity) < 0)
+      ) {
+        return "La cantidad de visitantes por procedencia no es válida.";
+      }
+      if (
+        origin.observation !== undefined &&
+        origin.observation !== null &&
+        (typeof origin.observation !== "string" || origin.observation.length > 1_000)
+      ) {
+        return "La observación de procedencia supera el límite permitido.";
+      }
+    }
+  }
+  if (value.informants !== undefined) {
+    if (!Array.isArray(value.informants) || value.informants.length > 100) {
+      return "Los informantes clave no son válidos.";
+    }
+    for (const informant of value.informants) {
+      if (
+        !isJsonRecord(informant) ||
+        typeof informant.name !== "string" ||
+        informant.name.trim().length === 0 ||
+        informant.name.length > 180
+      ) {
+        return "Cada informante requiere un nombre de hasta 180 caracteres.";
+      }
+      for (const key of ["contact", "observation"]) {
+        const field = informant[key];
+        if (
+          field !== undefined &&
+          field !== null &&
+          (typeof field !== "string" || field.length > (key === "contact" ? 120 : 1_000))
+        ) {
+          return "Los datos del informante superan los límites permitidos.";
+        }
+      }
+    }
+  }
+  if (value.influx !== undefined) {
+    if (!isJsonRecord(value.influx)) return "La afluencia de visitantes no es válida.";
+    for (const key of ["weekday", "weekend", "holidays"]) {
+      const quantity = value.influx[key];
+      if (
+        quantity !== undefined &&
+        quantity !== null &&
+        (!Number.isInteger(quantity) || Number(quantity) < 0)
+      ) {
+        return "Las cantidades de afluencia deben ser enteros no negativos.";
+      }
+    }
+    if (
+      value.influx.frequency !== undefined &&
+      value.influx.frequency !== null &&
+      !VISITOR_FREQUENCIES.has(String(value.influx.frequency))
+    ) {
+      return "La frecuencia de demanda no es válida.";
+    }
+    if (
+      value.influx.observation !== undefined &&
+      value.influx.observation !== null &&
+      (typeof value.influx.observation !== "string" ||
+        value.influx.observation.length > 1_000)
+    ) {
+      return "La observación de afluencia supera el límite permitido.";
+    }
+  }
+  return null;
+}
+
+function validateOptionalYear(value: unknown, label: string): string | null {
+  if (
+    value !== undefined &&
+    value !== null &&
+    (!Number.isInteger(value) || Number(value) < 1900 || Number(value) > 2200)
+  ) {
+    return `El año de ${label} no es válido.`;
+  }
+  return null;
+}
+
+function validateMonths(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (!Array.isArray(value) || value.length > 12) {
+    return "Los meses de temporada no son válidos.";
+  }
+  const seen = new Set<number>();
+  for (const month of value) {
+    if (!Number.isInteger(month) || Number(month) < 1 || Number(month) > 12) {
+      return "Cada mes de temporada debe estar entre 1 y 12.";
+    }
+    if (seen.has(Number(month))) return "Los meses de temporada no pueden repetirse.";
+    seen.add(Number(month));
   }
   return null;
 }

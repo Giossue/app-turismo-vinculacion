@@ -41,6 +41,10 @@ explícita.
   `NO APLICA` como estados distintos.
 - La sección de promoción y comercialización separa el plan institucional, los paquetes y
   los medios de difusión, con nombre, periodicidad, URL y observación validados.
+- La sección de visitantes y afluencia separa registros, temporadas, procedencias,
+  informantes y cantidades habituales, conservando meses, años y cero como datos explícitos.
+- Las temporadas rechazan meses fuera de 1–12 o repetidos, y las procedencias distinguen
+  ciudad nacional de país extranjero antes de publicar la ficha.
 - Las facilidades seleccionadas conservan cantidad y observación por opción, en lugar de
   imponer siempre una cantidad fija.
 - Durante la revisión, el editor compara la versión publicada con la propuesta por cada

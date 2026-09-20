@@ -46,6 +46,10 @@ implementados, formularios normalizados y valoración pendientes.
   códigos repetidos o fuera del catálogo contractual.
 - La sección 10 ahora conserva por separado el plan de promoción, su inclusión institucional,
   paquetes y medios utilizados, validando respuestas, textos y URLs HTTP/HTTPS.
+- La sección 11 ahora separa registro de visitantes, temporadas, procedencias, informantes y
+  afluencia, con validación de tipos, meses, años y cantidades enteras no negativas.
+- La sección 11 conserva meses como lista validada, procedencias nacionales/extranjeras,
+  informantes y afluencia entre semana, fin de semana y feriados sin mezclar sus fuentes.
 - La sección 4 ya captura localidad cercana y distancia desde el catálogo administrativo,
   además de sus filas de vías, transporte y accesibilidad, con validación de cantidades y
   distancia no negativa.
