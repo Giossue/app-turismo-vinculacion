@@ -30,6 +30,9 @@ explícita.
   separadas de la localidad oficial del centro y validadas contra el contrato de captura.
 - La sección de características conserva el tipo de clima y sus rangos de temperatura y
   precipitación, distinguiendo valores ausentes de cero.
+- La sección de conservación distingue el estado del atractivo y del entorno, factores de
+  alteración naturales/antrópicos y declaratorias con fecha, ámbito y observación dentro del
+  mismo centro turístico.
 - Las facilidades seleccionadas conservan cantidad y observación por opción, en lugar de
   imponer siempre una cantidad fija.
 - Durante la revisión, el editor compara la versión publicada con la propuesta por cada

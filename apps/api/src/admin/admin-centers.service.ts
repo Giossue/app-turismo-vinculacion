@@ -134,6 +134,13 @@ const SECTION_RESPONSE_VALUES = new Set([
   "SIN_INFORMACION",
   "NO_APLICA",
 ]);
+const CONSERVATION_STATE_VALUES = new Set([
+  "CONSERVADO",
+  "ALTERADO",
+  "EN_PROCESO_DE_DETERIORO",
+  "DETERIORADO",
+]);
+const CONSERVATION_ORIGIN_VALUES = new Set(["NATURAL", "ANTROPICO"]);
 
 /**
  * Validates the transitional JSON contract used by the web section editor.
@@ -245,6 +252,16 @@ export function validateAdminSectionContent(content: unknown): string | null {
       return "La precipitación mínima no puede superar la máxima.";
     }
   }
+  if (content.conservation !== undefined) {
+    const conservationError = validateConservationBlock(content.conservation);
+    if (conservationError) return conservationError;
+  }
+  if (content.declarations !== undefined) {
+    const declarationsError = validateConservationDeclarations(
+      content.declarations,
+    );
+    if (declarationsError) return declarationsError;
+  }
   if (content.rows !== undefined) {
     if (!Array.isArray(content.rows) || content.rows.length > 200) {
       return "Las filas de la sección no son válidas.";
@@ -291,6 +308,13 @@ export function getAdminSectionProgress(
   const validationError = validateAdminSectionContent(content);
   if (validationError) return "CON_ERRORES";
   if (!("response" in content)) return "INCOMPLETA";
+  if (
+    content.response === "SI" &&
+    content.conservation !== undefined &&
+    !isConservationBlockComplete(content.conservation)
+  ) {
+    return "INCOMPLETA";
+  }
   return content.response === "NO_APLICA" ? "NO_APLICA" : "COMPLETA";
 }
 
@@ -300,6 +324,130 @@ function isSectionResponse(value: unknown): boolean {
 
 function isJsonRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function validateConservationBlock(value: unknown): string | null {
+  if (!isJsonRecord(value)) return "El bloque de conservación no es válido.";
+  for (const component of ["attraction", "environment"]) {
+    const entry = value[component];
+    if (entry === undefined || entry === null) continue;
+    if (!isJsonRecord(entry)) {
+      return "Cada componente de conservación debe ser un objeto.";
+    }
+    if (
+      entry.state !== undefined &&
+      entry.state !== null &&
+      !CONSERVATION_STATE_VALUES.has(String(entry.state))
+    ) {
+      return "El estado de conservación no es válido.";
+    }
+    if (
+      entry.observation !== undefined &&
+      entry.observation !== null &&
+      (typeof entry.observation !== "string" || entry.observation.length > 2_000)
+    ) {
+      return "La observación de conservación supera el límite permitido.";
+    }
+  }
+  if (value.factors !== undefined) {
+    if (!Array.isArray(value.factors) || value.factors.length > 100) {
+      return "Los factores de alteración no son válidos.";
+    }
+    for (const factor of value.factors) {
+      if (!isJsonRecord(factor)) return "Un factor de alteración no es válido.";
+      if (
+        typeof factor.name !== "string" ||
+        factor.name.trim().length === 0 ||
+        factor.name.length > 180
+      ) {
+        return "Cada factor de alteración requiere un nombre de hasta 180 caracteres.";
+      }
+      if (!CONSERVATION_ORIGIN_VALUES.has(String(factor.origin))) {
+        return "El origen del factor de alteración no es válido.";
+      }
+      if (!isSectionResponse(factor.response)) {
+        return "Cada factor de alteración requiere una respuesta válida.";
+      }
+      if (
+        factor.observation !== undefined &&
+        factor.observation !== null &&
+        (typeof factor.observation !== "string" || factor.observation.length > 1_000)
+      ) {
+        return "La observación del factor de alteración supera el límite permitido.";
+      }
+      if (
+        factor.detailOther !== undefined &&
+        factor.detailOther !== null &&
+        (typeof factor.detailOther !== "string" || factor.detailOther.length > 180)
+      ) {
+        return "El detalle del factor de alteración supera el límite permitido.";
+      }
+    }
+  }
+  return null;
+}
+
+function validateConservationDeclarations(value: unknown): string | null {
+  if (!Array.isArray(value) || value.length > 50) {
+    return "Las declaratorias turísticas no son válidas.";
+  }
+  for (const declaration of value) {
+    if (!isJsonRecord(declaration)) return "Una declaratoria no es válida.";
+    if (
+      typeof declaration.entity !== "string" ||
+      declaration.entity.trim().length === 0 ||
+      declaration.entity.length > 180
+    ) {
+      return "Cada declaratoria requiere una entidad de hasta 180 caracteres.";
+    }
+    if (
+      typeof declaration.denomination !== "string" ||
+      declaration.denomination.trim().length === 0 ||
+      declaration.denomination.length > 250
+    ) {
+      return "Cada declaratoria requiere una denominación de hasta 250 caracteres.";
+    }
+    if (
+      declaration.date !== undefined &&
+      declaration.date !== null &&
+      (typeof declaration.date !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(declaration.date) ||
+        Number.isNaN(Date.parse(`${declaration.date}T00:00:00Z`)))
+    ) {
+      return "La fecha de declaratoria no es válida.";
+    }
+    if (
+      declaration.scope !== undefined &&
+      declaration.scope !== null &&
+      (typeof declaration.scope !== "string" || declaration.scope.length > 120)
+    ) {
+      return "El ámbito de la declaratoria supera el límite permitido.";
+    }
+    if (
+      declaration.observation !== undefined &&
+      declaration.observation !== null &&
+      (typeof declaration.observation !== "string" ||
+        declaration.observation.length > 1_000)
+    ) {
+      return "La observación de la declaratoria supera el límite permitido.";
+    }
+  }
+  return null;
+}
+
+function isConservationBlockComplete(value: unknown): boolean {
+  if (!isJsonRecord(value)) return false;
+  for (const component of ["attraction", "environment"]) {
+    const entry = value[component];
+    if (
+      !isJsonRecord(entry) ||
+      typeof entry.state !== "string" ||
+      !CONSERVATION_STATE_VALUES.has(entry.state)
+    ) {
+      return false;
+    }
+  }
+  return true;
 }
 
 export function buildAdminSectionProgress(

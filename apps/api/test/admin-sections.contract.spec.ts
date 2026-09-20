@@ -79,6 +79,82 @@ describe("admin section contract", () => {
     expect(getAdminSectionProgress(legacy)).toBe("INCOMPLETA");
   });
 
+  it("validates structured conservation components, factors and declarations", () => {
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        conservation: {
+          attraction: {
+            state: "CONSERVADO",
+            observation: "La estructura se mantiene estable.",
+          },
+          environment: { state: "ALTERADO" },
+          factors: [
+            {
+              origin: "NATURAL",
+              name: "Humedad",
+              response: "NO",
+              observation: "No se observó durante la visita.",
+            },
+          ],
+        },
+        declarations: [
+          {
+            entity: "GAD Municipal",
+            denomination: "Patrimonio local",
+            date: "2024-05-10",
+            scope: "Cantonal",
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects invalid conservation states, factors and declaration dates", () => {
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        conservation: {
+          attraction: { state: "DESCONOCIDO" },
+          factors: [{ origin: "OTRO", name: "Humedad", response: "SI" }],
+        },
+      }),
+    ).toContain("estado de conservación");
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        conservation: {
+          factors: [{ origin: "NATURAL", name: "Humedad", response: "MAYBE" }],
+        },
+      }),
+    ).toContain("factor de alteración requiere una respuesta");
+    expect(
+      validateAdminSectionContent({
+        schemaVersion: 1,
+        response: "SI",
+        declarations: [
+          { entity: "GAD", denomination: "Patrimonio", date: "2024-99-99" },
+        ],
+      }),
+    ).toContain("fecha de declaratoria");
+  });
+
+  it("marks conservation incomplete until both components have a state", () => {
+    expect(
+      getAdminSectionProgress({
+        schemaVersion: 1,
+        response: "SI",
+        conservation: {
+          attraction: { state: "CONSERVADO" },
+          environment: { state: null },
+        },
+      }),
+    ).toBe("INCOMPLETA");
+  });
+
   it("derives core progress and explicit no aplica states", () => {
     const progress = buildAdminSectionProgress({
       name: "Centro de prueba",
