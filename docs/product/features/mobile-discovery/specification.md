@@ -9,8 +9,8 @@ orientarse en el mapa, puede solicitar su posición de forma explícita.
 ## Actores y permisos
 
 - Visitante: consulta centros públicos.
-- La ubicación se solicita únicamente al activar “mi ubicación”; explorar no requiere
-  permisos del dispositivo.
+- La ubicación se solicita únicamente al activar “mi ubicación” o “Servicios cercanos”;
+  explorar atractivos no requiere permisos del dispositivo.
 
 ## Flujo principal
 
@@ -20,7 +20,10 @@ orientarse en el mapa, puede solicitar su posición de forma explícita.
 4. El mapa MapLibre muestra los centros publicados como marcadores.
 5. Al pulsar “mi ubicación”, la aplicación valida permiso y GPS, centra la cámara y
    muestra un punto azul mientras el proveedor esté disponible.
-6. La persona puede escribir una consulta y enviarla desde el teclado; los resultados
+6. La persona puede cambiar a `Servicios cercanos`, escribir una actividad (por ejemplo,
+   alimentación) y enviarla desde el teclado; la API devuelve establecimientos activos y,
+   si la localidad actual no tiene resultados, informa la ciudad más cercana con resultados.
+7. La persona puede escribir una consulta y enviarla desde el teclado; los resultados
    aparecen en una ficha inferior deslizable sin abandonar el mapa.
 
 ## Estados y excepciones
@@ -33,6 +36,9 @@ orientarse en el mapa, puede solicitar su posición de forma explícita.
 - Búsqueda: mientras se escribe no se consulta la API; al enviar se buscan al menos dos
   caracteres en nombre, descripción y clasificación. La respuesta puede estar vacía o
   fallar sin bloquear el mapa.
+- Catastro: la búsqueda de servicios requiere ubicación foreground puntual; si se deniega,
+  el mapa continúa disponible y se ofrece reintentar. La respuesta distingue localidad
+  solicitada, localidad efectiva, fallback y distancia aproximada.
 
 ## Datos e integraciones
 

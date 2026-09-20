@@ -12,6 +12,10 @@
       y permiten abrir la ficha del atractivo seleccionado.
 - [x] Limpiar la consulta restaura el mapa general y el acceso al menú.
 - [x] La búsqueda solo consulta nombre, descripción y clasificación de atractivos publicados.
+- [x] La búsqueda permite cambiar a servicios cercanos y consultar el catastro por actividad
+      usando una ubicación puntual autorizada.
+- [x] El resultado de catastro comunica fallback, localidad efectiva y distancia aproximada
+      sin exponer identificadores fiscales.
 - [x] Si el permiso se deniega, el GPS está apagado o la señal falla, el mapa, la búsqueda
       y los filtros continúan disponibles.
 - [x] Las rutas y la navegación giro a giro real continúan fuera de alcance de esta

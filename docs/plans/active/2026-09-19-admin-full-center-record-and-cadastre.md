@@ -15,6 +15,9 @@ catálogos faltantes y publicación completa pendientes.
 - Implementada consulta pública por actividad con orden espacial y fallback a la ciudad más
   cercana que tenga esa actividad; la respuesta omite identificadores internos y datos
   fiscales.
+- Integrada la consulta pública en la aplicación móvil: `Explorar > Servicios cercanos`
+  solicita únicamente ubicación foreground puntual, conserva el mapa disponible ante
+  permisos/GPS/red no disponibles y comunica la localidad efectiva, fallback y distancia.
 - Añadido `localities` al contrato de catálogos para que el panel seleccione ciudades y
   poblados sin conexión directa a PostgreSQL.
 - Ampliado el contrato de catálogos de solo lectura con estados y factores de conservación,
@@ -597,7 +600,7 @@ no alterar el esquema.
 
 Salida: establecimientos administrables por ciudad/localidad sin mezclarse con centros.
 
-### Fase 7 — Consulta pública y fallback (API implementada)
+### Fase 7 — Consulta pública y fallback (implementada)
 
 - Implementar búsqueda por actividad y localidad.
 - Añadir orden espacial y fallback PostGIS.
@@ -606,7 +609,8 @@ Salida: establecimientos administrables por ciudad/localidad sin mezclarse con c
   el lugar original.
 
 La API ya ordena por distancia, compara actividad sin distinguir mayúsculas/acentos y marca
-el fallback. Falta integrar el contrato en la experiencia móvil.
+el fallback. La experiencia móvil ya permite buscar servicios cercanos desde el mapa,
+solicita ubicación solo cuando la función lo necesita y deja visible la localidad efectiva.
 
 Salida: el turista recibe opciones de la localidad más cercana cuando no hay resultados
 locales.

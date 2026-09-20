@@ -25,6 +25,7 @@ import {
   TourismActionButton,
   TourismBadge,
   TourismCompassAction,
+  TourismChoiceChip,
   TourismIconAction,
   TourismSearchField,
   useTurismoPalette,
@@ -40,6 +41,8 @@ import {
 } from "@/core/ui/tokens";
 import { useDiscoveryCatalog } from "@/features/centers/application/use-discovery-catalog";
 import { usePublishedCenters } from "@/features/centers/application/use-published-centers";
+import { useNearbyEstablishments } from "@/features/establishments/application/use-nearby-establishments";
+import { EstablishmentResultsSheet } from "@/features/establishments/presentation/establishment-results-sheet";
 import type {
   PublicCenter,
   PublicCenterDetail,
@@ -60,6 +63,8 @@ type ExploreTabNavigation = {
   addListener: (event: "tabPress", callback: () => void) => () => void;
 };
 
+type ExploreSearchMode = "CENTERS" | "ESTABLISHMENTS";
+
 export default function HomeScreen() {
   const router = useRouter();
   const navigation = useNavigation<ExploreTabNavigation>();
@@ -71,6 +76,7 @@ export default function HomeScreen() {
   const mapAttributionHandlerRef = useRef<(() => void) | null>(null);
   const [text, setText] = useState("");
   const [submittedText, setSubmittedText] = useState("");
+  const [searchMode, setSearchMode] = useState<ExploreSearchMode>("CENTERS");
   const [searchFocused, setSearchFocused] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [nearbyOnly, setNearbyOnly] = useState(false);
@@ -94,9 +100,26 @@ export default function HomeScreen() {
     [],
   );
   const submittedQuery = submittedText.trim();
+  const establishmentSearchQuery = useMemo(
+    () =>
+      searchMode === "ESTABLISHMENTS" && submittedQuery && userLocation
+        ? {
+            activity: submittedQuery,
+            latitude: userLocation.latitude,
+            longitude: userLocation.longitude,
+          }
+        : null,
+    [searchMode, submittedQuery, userLocation],
+  );
+  const nearbyEstablishments = useNearbyEstablishments(
+    establishmentSearchQuery,
+  );
   const query = useMemo(
-    () => ({ ...filters, text: submittedQuery || undefined }),
-    [filters, submittedQuery],
+    () => ({
+      ...filters,
+      text: searchMode === "CENTERS" ? submittedQuery || undefined : undefined,
+    }),
+    [filters, searchMode, submittedQuery],
   );
   const {
     data: centers = [],
@@ -109,18 +132,23 @@ export default function HomeScreen() {
   // No conservamos pines mientras una consulta remota está en curso ni cuando
   // terminó con error. Así una respuesta remota vacía también elimina los
   // centros que pudieran haber quedado persistidos de una sesión anterior.
-  const visibleCenters = error || isFetching ? [] : centers;
+  const visibleCenters =
+    searchMode === "CENTERS" && (error || isFetching) ? [] : centers;
 
   const selectedCenter = selectedCenterCode
     ? (visibleCenters.find((center) => center.code === selectedCenterCode) ??
       null)
     : null;
   const isSearchMode =
-    searchFocused || Boolean(text.trim()) || Boolean(submittedQuery);
+    searchFocused ||
+    Boolean(text.trim()) ||
+    Boolean(submittedQuery) ||
+    searchMode === "ESTABLISHMENTS";
 
   const clearSearch = useCallback(() => {
     setText("");
     setSubmittedText("");
+    setSearchMode("CENTERS");
     setSearchFocused(false);
     setShowFilters(false);
     setNearbyOnly(false);
@@ -149,6 +177,10 @@ export default function HomeScreen() {
       else setSelectedCenterCode(null);
       return true;
     }
+    if (searchMode === "ESTABLISHMENTS") {
+      clearSearch();
+      return true;
+    }
     if (submittedQuery || text.trim()) {
       clearSearch();
       return true;
@@ -159,6 +191,7 @@ export default function HomeScreen() {
     closeMenu,
     menuVisible,
     selectedCenterCode,
+    searchMode,
     submittedQuery,
     showFilters,
     text,
@@ -249,7 +282,7 @@ export default function HomeScreen() {
     void refetch();
   }, [refetch]);
 
-  if (error && visibleCenters.length === 0) {
+  if (searchMode === "CENTERS" && error && visibleCenters.length === 0) {
     return <ErrorState isRetrying={isFetching} onRetry={retryCenters} />;
   }
 
@@ -281,7 +314,11 @@ export default function HomeScreen() {
         >
           <View style={styles.searchRow}>
             <TourismSearchField
-              accessibilityLabel="Buscar atractivos"
+              accessibilityLabel={
+                searchMode === "ESTABLISHMENTS"
+                  ? "Buscar servicios cercanos"
+                  : "Buscar atractivos"
+              }
               onBlur={() => setSearchFocused(false)}
               onChangeText={setText}
               onClear={clearSearch}
@@ -291,6 +328,31 @@ export default function HomeScreen() {
               value={text}
             />
           </View>
+          {isSearchMode ? (
+            <View style={styles.searchModeRow}>
+              <TourismChoiceChip
+                label="Atractivos"
+                onPress={() => {
+                  setSearchMode("CENTERS");
+                  setSubmittedText("");
+                  setSelectedCenterCode(null);
+                  sheetRef.current?.dismiss();
+                }}
+                selected={searchMode === "CENTERS"}
+              />
+              <TourismChoiceChip
+                label="Servicios cercanos"
+                onPress={() => {
+                  setSearchMode("ESTABLISHMENTS");
+                  setSubmittedText("");
+                  setSelectedCenterCode(null);
+                  sheetRef.current?.dismiss();
+                  if (!userLocation) void requestLocation();
+                }}
+                selected={searchMode === "ESTABLISHMENTS"}
+              />
+            </View>
+          ) : null}
           {!isSearchMode ? (
             <>
               <FilterChips
@@ -319,7 +381,7 @@ export default function HomeScreen() {
               ) : null}
             </>
           ) : null}
-          {isFetching ? (
+          {searchMode === "CENTERS" && isFetching ? (
             <View
               accessible
               accessibilityLabel="Actualizando lugares turísticos"
@@ -434,7 +496,7 @@ export default function HomeScreen() {
               onRetryDetail={() => void refetchSelectedCenterDetail()}
             />
           </BottomSheetScrollView>
-        ) : submittedQuery ? (
+        ) : submittedQuery && searchMode === "CENTERS" ? (
           <BottomSheetScrollView
             contentContainerStyle={[
               styles.sheetView,
@@ -460,6 +522,26 @@ export default function HomeScreen() {
               query={submittedQuery}
               showFilters={showFilters}
               userLocation={userLocation}
+            />
+          </BottomSheetScrollView>
+        ) : submittedQuery && searchMode === "ESTABLISHMENTS" ? (
+          <BottomSheetScrollView
+            contentContainerStyle={[
+              styles.sheetView,
+              isLandscape && styles.sheetViewLandscape,
+            ]}
+            key={`establishments-${submittedQuery}`}
+            showsVerticalScrollIndicator={false}
+          >
+            <EstablishmentResultsSheet
+              data={nearbyEstablishments.data}
+              error={nearbyEstablishments.error as Error | null}
+              hasLocation={Boolean(userLocation)}
+              isFetching={nearbyEstablishments.isFetching}
+              onClear={clearSearch}
+              onRequestLocation={() => void handleLocateUser()}
+              onRetry={() => void nearbyEstablishments.refetch()}
+              query={submittedQuery}
             />
           </BottomSheetScrollView>
         ) : null}
@@ -820,6 +902,11 @@ const styles = StyleSheet.create({
   searchRow: {
     alignItems: "center",
     flexDirection: "row",
+    gap: turismoSpacing.xs,
+  },
+  searchModeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: turismoSpacing.xs,
   },
   refreshNotice: {
