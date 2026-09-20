@@ -30,10 +30,9 @@ Se generaron con GPT Image y se copiaron al repositorio como material visual de 
 | `assets/seed-tourism-media/zona-entorno-guaranda/03-sendero-panoramico-guaranda.png` | Entorno paisajístico | `28eee599ecd3dc75032035c8ab0f3aa414f0b3a11ca546b956138e587f79002f` |
 
 Las imágenes son ilustrativas, no una afirmación de que representen un sitio exacto.
-El esquema actual solo permite asociar metadatos de archivos a `centros_turisticos`, no
-a `zonas_turisticas` ni `puntos_interes`; por eso no se crean filas multimedia huérfanas
-ni se reutiliza un centro que no corresponde. Para una galería pública de zonas habrá que
-definir explícitamente ese contrato en una tarea posterior.
+La tabla territorial no recibe multimedia directamente. La ficha visible que usa el mapa
+se crea mediante `20260920_seed_guaranda_ficha.sql` como un centro turístico dentro de
+esta zona, y allí sí se registran las fotografías con la relación multimedia existente.
 
 ## Verificación
 

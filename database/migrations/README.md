@@ -95,6 +95,13 @@ con coordenadas y descripciones referenciales. Es idempotente, utiliza solo las 
 territoriales existentes y no registra fotografías porque el esquema actual relaciona
 los metadatos multimedia exclusivamente con `centros_turisticos`.
 
+La migración `20260920_seed_guaranda_ficha.sql` crea la ficha integral demostrativa
+`Centro Cultural Indio Guaranga` dentro de esa zona, con código `020101MC010202001`,
+valoración A-I `48,7`, jerarquía `02`, datos de ingreso, accesibilidad, planta,
+actividades, promoción y tres fotografías PNG publicadas. Es idempotente y reutiliza
+las tablas existentes; para el almacenamiento local, `scripts/seed-guaranda-ficha-media.sh`
+copia los binarios a `apps/api/.data/media/centers/<id>/photos/`.
+
 `database/seeds/003_xlsm_valuation_indicators.sql` es un seed de datos manual, no una
 migración de esquema. Carga de forma idempotente los 56 indicadores A-I derivados de
 `Jerarquia` y `Calculos`; debe ejecutarse solo cuando los nueve criterios de
