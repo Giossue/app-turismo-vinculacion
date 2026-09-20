@@ -3,8 +3,8 @@
 Fecha: 2026-09-19
 Estado: en curso; catastro inicial, navegación integral, revisión por diferencias, captura
 estructurada, valoración XLSM persistida y adaptadores normalizados implementados. Quedan
-como operación manual la carga del seed de indicadores y la auditoría/importación durable
-del catastro, porque esta ejecución no altera la base desplegada.
+como pendiente la auditoría/importación durable del catastro. El seed de indicadores ya fue
+aplicado a la base remota sin modificar el esquema.
 
 ## Avance de esta ejecución
 
@@ -71,10 +71,11 @@ del catastro, porque esta ejecución no altera la base desplegada.
   reproduce sus nueve resultados (`0, 7,2, 10, 7,5, 2, 9, 5, 5, 3`), total `48,7` y
   jerarquía `02`. `temp/db.md` conserva una anotación histórica `56,2/53,2` que no coincide
   con el libro entregado y ya no se usa como fixture. La base desplegada mantiene
-  `criterios_valoracion`, pero no tiene filas en `indicadores_valoracion`. La publicación ya
-  traduce el snapshot a señales tipadas y persiste sus resultados; hasta aplicar el seed
-  manual `database/seeds/003_xlsm_valuation_indicators.sql`, el servidor conserva la
-  jerarquía provisional `00` y no inventa puntajes.
+  `criterios_valoracion` y ahora tiene 56 indicadores XLSM activos, cargados con el seed
+  idempotente `database/seeds/003_xlsm_valuation_indicators.sql`. La publicación traduce el
+  snapshot a señales tipadas y persiste sus resultados; los seis centros históricos que aún
+  no tienen filas en `resultados_indicador`/`resultados_criterio` conservan sus totales como
+  datos previos y requieren republicación para generar el detalle auditable.
 - El panel consulta `GET /admin/centers/:code/valuation` y muestra si la jerarquía/código son
   provisionales; el endpoint solo expone resultados persistidos y no calcula cuando faltan
   indicadores activos.
@@ -507,9 +508,9 @@ preparará con inventario, respaldo y rollback explícitos antes de ejecutarla e
 - Documentar el significado exacto de cada opción de catastro.
 
 La matriz de las nueve hojas y las 14 secciones ya está documentada; el fixture del libro
-entregado quedó aprobado como referencia técnica (`48,7`/`02`). La carga operativa de
-catálogos e indicadores queda como paso manual y explícito de despliegue, no como cambio
-automático de esta refactorización.
+entregado quedó aprobado como referencia técnica (`48,7`/`02`). El seed de indicadores fue
+aplicado y verificado en la base remota; la carga de otros catálogos técnicos sigue siendo
+una operación explícita de despliegue.
 
 Salida: especificación y criterios de aceptación actualizados, sin código de producto.
 
@@ -543,9 +544,9 @@ Salida: jerarquía y código calculados, reproducibles y auditables.
 El motor tipado exacto y la regresión del XLSM ya están implementados en
 `apps/api/src/admin/valuation.ts`. El adaptador del snapshot y la persistencia transaccional
 ya conectan las señales con `resultados_indicador` y `resultados_criterio`; el seed manual
-`database/seeds/003_xlsm_valuation_indicators.sql` deja listo el catálogo sin tocar el
-esquema ni la base desplegada. Mientras no se aplique ese seed, el cálculo permanece
-provisional y no depende de ejecutar texto de `regla_calculo`.
+`database/seeds/003_xlsm_valuation_indicators.sql` está aplicado sin tocar el esquema. Las
+fichas nuevas o republicadas calculan con el catálogo activo; una ficha sin snapshot puntuable
+mantiene la jerarquía provisional y no depende de ejecutar texto de `regla_calculo`.
 
 ### Fase 3 — Publicación normalizada completa
 
