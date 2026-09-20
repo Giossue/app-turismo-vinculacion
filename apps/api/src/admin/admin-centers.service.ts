@@ -620,7 +620,12 @@ export class AdminCentersService {
 
   async create(actorId: number, input: SaveAdminCenterDto) {
     return this.dataSource.transaction(async (manager) => {
-      const draft = this.requireComplete(input);
+      const draft = this.requireComplete(
+        await this.ensureProvisionalHierarchy(manager, {
+          ...input,
+          hierarchyId: undefined,
+        }),
+      );
       await this.validateReferences(manager, draft);
       const state = await this.stateId(manager, "BORRADOR");
       const sequence = await this.nextSequence(manager, draft.parishId);
@@ -690,7 +695,20 @@ export class AdminCentersService {
         );
       }
       const next = mergeDraft(base, input);
-      await this.validateReferences(manager, next);
+      if (
+        input.hierarchyId !== undefined &&
+        Number(base.hierarchyId) !== Number(input.hierarchyId)
+      ) {
+        throw new ConflictException(
+          "La jerarquía se calcula a partir de la valoración y no se puede editar.",
+        );
+      }
+      const normalized = next.hierarchyId
+        ? next
+        : this.requireComplete(
+            await this.ensureProvisionalHierarchy(manager, next),
+          );
+      await this.validateReferences(manager, normalized);
       const state = await this.stateId(manager, "BORRADOR");
       const nextVersion = (currentDraft?.version ?? 0) + 1;
       await this.upsertDraft(
@@ -698,10 +716,17 @@ export class AdminCentersService {
         center.id,
         state.id,
         nextVersion,
-        next,
+        normalized,
         actorId,
       );
-      await this.audit(manager, center.id, actorId, "MODIFICAR", base, next);
+      await this.audit(
+        manager,
+        center.id,
+        actorId,
+        "MODIFICAR",
+        base,
+        normalized,
+      );
       return this.findById(manager, center.id);
     });
   }
@@ -715,12 +740,17 @@ export class AdminCentersService {
           "No existe un borrador editable para enviar a revisión.",
         );
       }
-      const complete = this.requireComplete(draft.data);
+      const complete = this.requireComplete(
+        await this.ensureProvisionalHierarchy(manager, draft.data),
+      );
       await this.validateReferences(manager, complete);
       const state = await this.stateId(manager, "EN_REVISION");
       await manager.query(
-        `UPDATE borradores_centros_turisticos SET estado_resenia_id = $2, version = version + 1, actualizado_por = $3 WHERE centro_turistico_id = $1`,
-        [center.id, state.id, actorId],
+        `UPDATE borradores_centros_turisticos
+            SET estado_resenia_id = $2, version = version + 1,
+                datos = $4::jsonb, actualizado_por = $3
+          WHERE centro_turistico_id = $1`,
+        [center.id, state.id, actorId, JSON.stringify(complete)],
       );
       if (center.statusCode !== "PUBLICADO") {
         await this.setCenterState(manager, center.id, "EN_REVISION");
@@ -1371,6 +1401,29 @@ export class AdminCentersService {
       }
     }
     return value as CenterDraft;
+  }
+
+  private async ensureProvisionalHierarchy(
+    manager: EntityManager,
+    value: SaveAdminCenterDto | CenterDraft,
+  ): Promise<SaveAdminCenterDto | CenterDraft> {
+    if (
+      typeof value.hierarchyId === "number" &&
+      Number.isInteger(value.hierarchyId) &&
+      value.hierarchyId > 0
+    ) {
+      return value;
+    }
+    const rows = (await manager.query(
+      `SELECT id FROM rangos_jerarquia WHERE codigo = '00' AND activo = TRUE LIMIT 1`,
+    )) as Array<{ id: string }>;
+    const provisional = rows[0];
+    if (!provisional) {
+      throw new ConflictException(
+        "No está configurada la jerarquía provisional de recurso.",
+      );
+    }
+    return { ...value, hierarchyId: Number(provisional.id) };
   }
 
   private async validateReferences(manager: EntityManager, draft: CenterDraft) {

@@ -24,6 +24,8 @@ explícita.
   apartado admite respuesta `SÍ`, `NO`, `SIN INFORMACIÓN` o `NO APLICA`, observación general
   y filas repetibles con cantidad y observación por fila; el guardado reemplaza únicamente
   la sección elegida dentro del snapshot versionado.
+- El código institucional se muestra por componentes y la jerarquía es de solo lectura. Si
+  la valoración aún no está calculada, el servidor usa provisionalmente la jerarquía `00`.
 
 El snapshot se puede consultar en `GET /admin/centers/:code/sections` y actualizar por
 sección con `PATCH /admin/centers/:code/sections/:sectionCode`. Durante la transición, el

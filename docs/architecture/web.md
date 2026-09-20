@@ -40,7 +40,8 @@ La primera superficie operativa implementada en `web-turismo-admin` incluye Resu
 Revisión, inventario, captura del núcleo de fichas, Catastro por localidad y Configuración. El editor consulta
 catálogos activos, presenta las 14 secciones de la ficha con progreso calculado por la API
 y captura adicional por sección (respuesta, observaciones y filas repetibles), además de
-actividades, accesibilidad y facilidades normalizadas. El panel consulta
+actividades, accesibilidad y facilidades normalizadas. El código institucional se muestra
+por componentes y la jerarquía se mantiene de solo lectura. El panel consulta
 `/admin/summary`, `/admin/centers`, `/admin/catalogs` y `/admin/centers/:code`; las
 mutaciones de borrador, revisión, aprobación, publicación, desactivación y reactivación
 se realizan exclusivamente mediante la API. Los borradores se mantienen aislados de la

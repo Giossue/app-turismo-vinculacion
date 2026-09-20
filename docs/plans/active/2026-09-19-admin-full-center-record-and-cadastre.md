@@ -32,6 +32,9 @@ normalizados y valoración pendientes.
 - El endpoint de secciones devuelve el progreso de cada apartado (`SIN_INICIAR`,
   `INCOMPLETA`, `COMPLETA`, `CON_ERRORES` o `NO_APLICA`) y el API valida el contrato de
   respuestas, observaciones, cantidades y filas antes de versionar el borrador.
+- La interfaz muestra el código institucional canónico por partes y dejó de permitir editar
+  la jerarquía; una alta sin valoración usa provisionalmente el rango `00` de recurso hasta
+  que la Fase 2 calcule el resultado A–I.
 
 ## Objetivo
 
