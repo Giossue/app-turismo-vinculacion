@@ -320,6 +320,7 @@ export function useNavigationSession({
           }
           return;
         }
+        if (disposed) return;
 
         if (!(await Location.hasServicesEnabledAsync())) {
           if (!disposed) {
@@ -331,6 +332,7 @@ export function useNavigationSession({
           }
           return;
         }
+        if (disposed) return;
 
         if (Platform.OS !== "web") {
           const backgroundPermission =
@@ -347,6 +349,7 @@ export function useNavigationSession({
             return;
           }
         }
+        if (disposed) return;
 
         const currentRoute = routeRef.current;
         const destinationCoordinate = destinationRef.current;
@@ -367,7 +370,12 @@ export function useNavigationSession({
           updatedAt: Date.now(),
           version: 1,
         });
+        if (disposed) return;
         await startNavigationLocationTask();
+        if (disposed) {
+          await stopNavigationLocationTask();
+          return;
+        }
         await restoreLastLocation();
 
         subscription = await Location.watchPositionAsync(

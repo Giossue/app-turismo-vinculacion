@@ -14,7 +14,10 @@ type BackgroundLocationTaskData = Readonly<{
   locations?: Location.LocationObject[];
 }>;
 
-if (!TaskManager.isTaskDefined(navigationLocationTaskName)) {
+if (
+  Platform.OS !== "web" &&
+  !TaskManager.isTaskDefined(navigationLocationTaskName)
+) {
   TaskManager.defineTask<BackgroundLocationTaskData>(
     navigationLocationTaskName,
     async ({ data, error }) => {
