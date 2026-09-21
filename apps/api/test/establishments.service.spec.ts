@@ -44,7 +44,7 @@ describe("EstablishmentsService", () => {
         longitude: "-79.00098",
         approximate: true,
         icon: "hotel",
-        color: "#2563eb",
+        color: "#7c3aed",
       },
     ]);
     const service = new EstablishmentsService({ query } as never);
@@ -58,7 +58,7 @@ describe("EstablishmentsService", () => {
           longitude: -79.00098,
           approximate: true,
           icon: "hotel",
-          color: "#2563eb",
+          color: "#7c3aed",
         },
       ],
     });

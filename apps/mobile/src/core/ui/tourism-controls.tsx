@@ -120,6 +120,7 @@ export function TourismSearchField({
 export function TourismIconAction({
   accessibilityLabel,
   disabled = false,
+  filled = false,
   icon,
   onPress,
   selected = false,
@@ -128,6 +129,7 @@ export function TourismIconAction({
 }: Readonly<{
   accessibilityLabel: string;
   disabled?: boolean;
+  filled?: boolean;
   icon: TurismoIconName;
   onPress: () => void;
   selected?: boolean;
@@ -162,6 +164,8 @@ export function TourismIconAction({
       >
         <TurismoIcon
           color={selected ? colors.onPrimary : colors.text}
+          fill={filled && selected ? colors.onPrimary : "none"}
+          fillOpacity={filled && selected ? 0.72 : undefined}
           name={icon}
           size={turismoIconSizes.md}
         />

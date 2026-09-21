@@ -1121,6 +1121,8 @@ function PlaceSheet({
           >
             <TurismoIcon
               color={saved ? colors.primaryStrong : colors.primary}
+              fill={saved ? colors.primaryStrong : "none"}
+              fillOpacity={saved ? 0.72 : undefined}
               name="bookmark"
               size={turismoIconSizes.md}
             />

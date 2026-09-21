@@ -108,6 +108,10 @@ y reserva el pin de lugar para los centros turísticos. La migración
 `20260921_establishment_category_palette_cleanup.sql` normaliza colores heredados fuera
 de la paleta pública y alinea la restricción con las opciones del panel.
 
+La migración `20260921_establishment_category_z_blue_reserved.sql` reserva el azul para la
+ubicación actual: convierte categorías existentes azules a violeta, cambia el valor por
+defecto y retira el azul de la paleta administrativa.
+
 La migración `20260921_establishment_coordinates_required.sql` completa las coordenadas
 faltantes de `establecimientos_turisticos` usando la localidad vinculada, las marca como
 `coordenadas_aproximadas` y establece `NOT NULL` en latitud y longitud. Se detiene ante

@@ -153,6 +153,7 @@ export default function CenterDetailScreen() {
                   accessibilityLabel={
                     saved ? "Quitar de guardados" : "Guardar centro turístico"
                   }
+                  filled={saved}
                   icon="bookmark"
                   onPress={() => {
                     if (auth.status !== "authenticated") {

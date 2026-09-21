@@ -434,7 +434,6 @@ export const ESTABLISHMENT_CATEGORY_ICON_CODES = [
   "briefcase",
 ] as const;
 export const ESTABLISHMENT_CATEGORY_COLOR_CODES = [
-  "#2563eb",
   "#0891b2",
   "#7c3aed",
   "#c026d3",

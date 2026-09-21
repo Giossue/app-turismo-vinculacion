@@ -80,7 +80,6 @@ const establishmentIconImages: Record<string, number> = {
   briefcase: require("../../../../assets/images/establishment-icons/briefcase.png"),
 };
 const establishmentPinImages: Record<string, string> = {
-  "#2563eb": "tourism-establishment-pin-blue",
   "#0891b2": "tourism-establishment-pin-cyan",
   "#7c3aed": "tourism-establishment-pin-violet",
   "#c026d3": "tourism-establishment-pin-fuchsia",
@@ -90,7 +89,6 @@ const establishmentPinImages: Record<string, string> = {
   "#4f46e5": "tourism-establishment-pin-indigo",
 };
 const establishmentPinColorKeys: Record<string, string> = {
-  "#2563eb": "blue",
   "#0891b2": "cyan",
   "#7c3aed": "violet",
   "#c026d3": "fuchsia",
@@ -100,15 +98,6 @@ const establishmentPinColorKeys: Record<string, string> = {
   "#4f46e5": "indigo",
 };
 const establishmentIconImagesByColor: Record<string, Record<string, number>> = {
-  blue: {
-    hotel: require("../../../../assets/images/establishment-icons/hotel-blue-dark.png"),
-    restaurant: require("../../../../assets/images/establishment-icons/restaurant-blue-dark.png"),
-    coffee: require("../../../../assets/images/establishment-icons/coffee-blue-dark.png"),
-    store: require("../../../../assets/images/establishment-icons/store-blue-dark.png"),
-    bus: require("../../../../assets/images/establishment-icons/bus-blue-dark.png"),
-    ticket: require("../../../../assets/images/establishment-icons/ticket-blue-dark.png"),
-    briefcase: require("../../../../assets/images/establishment-icons/briefcase-blue-dark.png"),
-  },
   cyan: {
     hotel: require("../../../../assets/images/establishment-icons/hotel-cyan-dark.png"),
     restaurant: require("../../../../assets/images/establishment-icons/restaurant-cyan-dark.png"),
@@ -182,7 +171,7 @@ const establishmentIconImageNamesByColor: Record<
     Object.fromEntries(
       Object.keys(establishmentIconImages).map((icon) => [
         icon,
-        `tourism-establishment-icon-${icon}-${colorKey}`,
+        `tourism-establishment-icon-${icon}-${colorKey}-deep`,
       ]),
     ),
   ]),
@@ -190,12 +179,12 @@ const establishmentIconImageNamesByColor: Record<
 const establishmentColorIconImages: Record<string, number> = Object.fromEntries(
   Object.entries(establishmentIconImagesByColor).flatMap(([colorKey, icons]) =>
     Object.entries(icons).map(([icon, image]) => [
-      `tourism-establishment-icon-${icon}-${colorKey}`,
+      `tourism-establishment-icon-${icon}-${colorKey}-deep`,
       image,
     ]),
   ),
 ) as Record<string, number>;
-const establishmentDefaultPinImage = "tourism-establishment-pin-blue";
+const establishmentDefaultPinImage = "tourism-establishment-pin-violet";
 const establishmentDefaultIcon = "hotel";
 
 const tourismPinLight = require("../../../../assets/images/tourism-pin-light.png");
@@ -295,7 +284,7 @@ export function CenterMap({
         const icon = establishmentIconImages[establishment.icon]
           ? establishment.icon
           : establishmentDefaultIcon;
-        const colorKey = establishmentPinColorKeys[color] ?? "blue";
+        const colorKey = establishmentPinColorKeys[color] ?? "violet";
         return {
           type: "Feature",
           id: featureKey,
@@ -548,7 +537,6 @@ export function CenterMap({
         />
         <Images
           images={{
-            "tourism-establishment-pin-blue": require("../../../../assets/images/establishment-icons/pin-blue.png"),
             "tourism-establishment-pin-cyan": require("../../../../assets/images/establishment-icons/pin-cyan.png"),
             "tourism-establishment-pin-violet": require("../../../../assets/images/establishment-icons/pin-violet.png"),
             "tourism-establishment-pin-fuchsia": require("../../../../assets/images/establishment-icons/pin-fuchsia.png"),

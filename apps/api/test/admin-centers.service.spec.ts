@@ -14,7 +14,7 @@ describe("AdminCentersService", () => {
           name: "Categoría única",
           active: true,
           icon: "mapPin",
-          color: "#2563eb",
+          color: "#7c3aed",
         },
       ])
       .mockResolvedValueOnce([])

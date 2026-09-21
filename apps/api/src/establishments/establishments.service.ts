@@ -391,7 +391,7 @@ export class EstablishmentsService {
               ${longitudeExpression}::double precision AS longitude,
               e.coordenadas_aproximadas AS approximate,
               COALESCE(NULLIF(category_catalog.icono, 'mapPin'), 'hotel') AS icon,
-              COALESCE(category_catalog.color, '#2563eb') AS color
+              COALESCE(category_catalog.color, '#7c3aed') AS color
          ${establishmentJoin}
         WHERE ${where.join(" AND ")}
         ORDER BY e.nombre_comercial, e.id

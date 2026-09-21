@@ -19,7 +19,7 @@ describe("getMapEstablishments", () => {
               longitude: -79.01,
               approximate: true,
               icon: "hotel",
-              color: "#2563eb",
+              color: "#7c3aed",
             },
           ],
         },
@@ -37,7 +37,7 @@ describe("getMapEstablishments", () => {
           longitude: -79.01,
           approximate: true,
           icon: "hotel",
-          color: "#2563eb",
+          color: "#7c3aed",
         },
       ],
     });
