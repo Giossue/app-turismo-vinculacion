@@ -98,15 +98,6 @@ const establishmentPinImages: Record<string, string> = {
   "#dc2626": "tourism-establishment-pin-red",
   "#4f46e5": "tourism-establishment-pin-indigo",
 };
-const establishmentIconImageNames: Record<string, string> = {
-  hotel: "tourism-establishment-icon-hotel",
-  restaurant: "tourism-establishment-icon-restaurant",
-  coffee: "tourism-establishment-icon-coffee",
-  store: "tourism-establishment-icon-store",
-  bus: "tourism-establishment-icon-bus",
-  ticket: "tourism-establishment-icon-ticket",
-  briefcase: "tourism-establishment-icon-briefcase",
-};
 const establishmentDarkIconImageNames: Record<string, string> = {
   hotel: "tourism-establishment-icon-hotel-dark",
   restaurant: "tourism-establishment-icon-restaurant-dark",
@@ -118,7 +109,6 @@ const establishmentDarkIconImageNames: Record<string, string> = {
 };
 const establishmentDefaultPinImage = "tourism-establishment-pin-blue";
 const establishmentDefaultIcon = "hotel";
-const establishmentDarkIconColor = "#d97706";
 
 const tourismPinLight = require("../../../../assets/images/tourism-pin-light.png");
 const tourismPinDark = require("../../../../assets/images/tourism-pin-dark.png");
@@ -225,10 +215,7 @@ export function CenterMap({
             color,
             featureKey,
             icon,
-            iconImage:
-              color === establishmentDarkIconColor
-                ? establishmentDarkIconImageNames[icon]
-                : establishmentIconImageNames[icon],
+            iconImage: establishmentDarkIconImageNames[icon],
             name: establishment.name,
             approximate: establishment.approximate,
             pinImage:
@@ -618,8 +605,8 @@ export function CenterMap({
               "icon-anchor": "center",
               "icon-ignore-placement": true,
               "icon-image": ["get", "iconImage"],
-              "icon-offset": [0, -57],
-              "icon-size": 0.35,
+              "icon-offset": [0, -40],
+              "icon-size": 0.60,
             }}
             minzoom={establishmentPinMinZoom}
             type="symbol"

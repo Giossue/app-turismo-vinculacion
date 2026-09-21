@@ -1116,14 +1116,14 @@ function PlaceSheet({
             size={turismoIconSizes.md}
           />
         </Pressable>
+        <CenterRatingSummary
+          onPress={() => changeTab("opinions")}
+          summary={opinions.data?.summary}
+        />
       </View>
       <Text style={[styles.placeTitle, { color: colors.text }]}>
         {center.name}
       </Text>
-      <CenterRatingSummary
-        onPress={() => changeTab("opinions")}
-        summary={opinions.data?.summary}
-      />
       <View style={styles.actions}>
         <TourismActionButton
           icon="route"
@@ -1214,6 +1214,7 @@ function CenterRatingSummary({
     <Pressable
       accessibilityLabel={`${formatRating(summary.averageRating)} de 5 estrellas, ${summary.total} opiniones`}
       accessibilityRole="button"
+      hitSlop={turismoMetrics.chipHitSlop}
       onPress={onPress}
       style={({ pressed }) => [
         styles.ratingSummary,
@@ -1705,15 +1706,15 @@ const styles = StyleSheet.create({
   ratingSummary: {
     alignItems: "center",
     alignSelf: "flex-start",
-    borderRadius: turismoRadii.sm,
+    borderRadius: turismoRadii.xs,
     borderWidth: turismoMetrics.borderWidth,
     flexDirection: "row",
-    gap: turismoSpacing.xs,
-    minHeight: turismoMetrics.touchTarget,
-    paddingHorizontal: turismoSpacing.sm,
+    gap: turismoSpacing.xxs,
+    minHeight: turismoMetrics.chipHeight,
+    paddingHorizontal: turismoSpacing.xs,
   },
-  ratingValue: { ...turismoTypography.heading },
-  ratingCount: { ...turismoTypography.body },
+  ratingValue: { ...turismoTypography.label },
+  ratingCount: { ...turismoTypography.caption },
   ratingPressed: { opacity: 0.72 },
   actions: { flexDirection: "row", gap: turismoSpacing.xs },
   routeAction: { flex: 1 },

@@ -257,6 +257,7 @@ function CenterRatingSummary({
     <Pressable
       accessibilityLabel={`${formatRating(summary.averageRating)} de 5 estrellas, ${summary.total} opiniones`}
       accessibilityRole="button"
+      hitSlop={turismoMetrics.chipHitSlop}
       onPress={onPress}
       style={({ pressed }) => [
         styles.ratingSummary,
@@ -566,15 +567,15 @@ const styles = StyleSheet.create({
   ratingSummary: {
     alignItems: "center",
     alignSelf: "flex-start",
-    borderRadius: turismoRadii.sm,
+    borderRadius: turismoRadii.xs,
     borderWidth: turismoMetrics.borderWidth,
     flexDirection: "row",
-    gap: turismoSpacing.xs,
-    minHeight: turismoMetrics.touchTarget,
-    paddingHorizontal: turismoSpacing.sm,
+    gap: turismoSpacing.xxs,
+    minHeight: turismoMetrics.chipHeight,
+    paddingHorizontal: turismoSpacing.xs,
   },
-  ratingValue: { ...turismoTypography.heading },
-  ratingCount: { ...turismoTypography.body },
+  ratingValue: { ...turismoTypography.label },
+  ratingCount: { ...turismoTypography.caption },
   ratingPressed: { opacity: 0.72 },
   routeButton: { width: "100%" },
   tabs: {
