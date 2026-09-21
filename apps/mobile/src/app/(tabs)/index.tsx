@@ -975,7 +975,10 @@ function SearchSuggestionsPanel({
         {showSuggestions ? (
           <View>
             <Text
-              style={[styles.searchSuggestionsTitle, { color: colors.textMuted }]}
+              style={[
+                styles.searchSuggestionsTitle,
+                { color: colors.textMuted },
+              ]}
             >
               Coincidencias rápidas
             </Text>
@@ -998,13 +1001,19 @@ function SearchSuggestionsPanel({
                 <View style={styles.searchSuggestionTextWrap}>
                   <Text
                     numberOfLines={1}
-                    style={[styles.searchSuggestionName, { color: colors.text }]}
+                    style={[
+                      styles.searchSuggestionName,
+                      { color: colors.text },
+                    ]}
                   >
                     {center.name}
                   </Text>
                   <Text
                     numberOfLines={1}
-                    style={[styles.searchSuggestionMeta, { color: colors.textMuted }]}
+                    style={[
+                      styles.searchSuggestionMeta,
+                      { color: colors.textMuted },
+                    ]}
                   >
                     {[center.category, center.type].filter(Boolean).join(" · ")}
                   </Text>
@@ -1023,7 +1032,10 @@ function SearchSuggestionsPanel({
           <View>
             <View style={styles.searchSuggestionsHeader}>
               <Text
-                style={[styles.searchSuggestionsTitle, { color: colors.textMuted }]}
+                style={[
+                  styles.searchSuggestionsTitle,
+                  { color: colors.textMuted },
+                ]}
               >
                 Búsquedas recientes
               </Text>
@@ -1035,7 +1047,10 @@ function SearchSuggestionsPanel({
                 style={styles.searchSuggestionsClear}
               >
                 <Text
-                  style={[styles.searchSuggestionsClearText, { color: colors.primaryStrong }]}
+                  style={[
+                    styles.searchSuggestionsClearText,
+                    { color: colors.primaryStrong },
+                  ]}
                 >
                   Borrar
                 </Text>
@@ -1069,7 +1084,9 @@ function SearchSuggestionsPanel({
         ) : null}
 
         {hasQuery && !showSuggestions ? (
-          <Text style={[styles.searchSuggestionsEmpty, { color: colors.textMuted }]}>
+          <Text
+            style={[styles.searchSuggestionsEmpty, { color: colors.textMuted }]}
+          >
             Presiona buscar para ver todos los resultados.
           </Text>
         ) : null}
