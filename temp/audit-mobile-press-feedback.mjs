@@ -42,6 +42,8 @@ const inventory = {
   paperChips: [],
   paperIconButtons: [],
   nativeRipples: [],
+  expoBottomSheets: [],
+  hiddenBottomSheetHandles: [],
   tourismIconActions: [],
 };
 const findings = [];
@@ -61,6 +63,11 @@ for (const filePath of files.sort()) {
   collectMatches(/<PaperChip\b/g, inventory.paperChips);
   collectMatches(/<PaperIconButton\b/g, inventory.paperIconButtons);
   collectMatches(/android_ripple\s*=/g, inventory.nativeRipples);
+  collectMatches(/<ExpoBottomSheet(?=\s)/g, inventory.expoBottomSheets);
+  collectMatches(
+    /handleComponent\s*=\s*\{null\}/g,
+    inventory.hiddenBottomSheetHandles,
+  );
   collectMatches(/<TourismIconAction\b/g, inventory.tourismIconActions);
 
   if (/<PaperIconButton\b/.test(source) && !/contentStyle\s*=/.test(source)) {
@@ -80,6 +87,23 @@ for (const filePath of files.sort()) {
         "Ripple nativo declarado directamente: revisar borderRadius/overflow del Pressable.",
     });
   }
+
+  const bottomSheetCount = [
+    ...source.matchAll(/<ExpoBottomSheet(?=\s)/g),
+  ].length;
+  const hiddenHandleCount = [
+    ...source.matchAll(/handleComponent\s*=\s*\{null\}/g),
+  ].length;
+  if (bottomSheetCount > hiddenHandleCount) {
+    findings.push({
+      path,
+      line: lineAt(source, source.indexOf("<ExpoBottomSheet")),
+      reason:
+        `${bottomSheetCount - hiddenHandleCount} ExpoBottomSheet usa el ` +
+        "indicador nativo, que puede mostrar el tooltip de accesibilidad " +
+        '“Controlador de arrastre”.',
+    });
+  }
 }
 
 console.log("Auditoría de feedback táctil móvil");
@@ -90,6 +114,10 @@ console.log(`PaperButton: ${inventory.paperButtons.length}`);
 console.log(`PaperChip: ${inventory.paperChips.length}`);
 console.log(`PaperIconButton: ${inventory.paperIconButtons.length}`);
 console.log(`android_ripple directo: ${inventory.nativeRipples.length}`);
+console.log(`ExpoBottomSheet: ${inventory.expoBottomSheets.length}`);
+console.log(
+  `Indicadores nativos ocultos: ${inventory.hiddenBottomSheetHandles.length}`,
+);
 
 if (findings.length > 0) {
   console.log("\nCasos que requieren revisión:");

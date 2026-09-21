@@ -13,7 +13,6 @@ import {
 import {
   Button as PaperButton,
   Chip as PaperChip,
-  IconButton as PaperIconButton,
   Surface as PaperSurface,
 } from "react-native-paper";
 import { G, Polygon, Svg } from "react-native-svg";
@@ -137,36 +136,48 @@ export function TourismIconAction({
 }>) {
   const colors = useTurismoPalette();
   return (
-    <PaperIconButton
+    <Pressable
       accessibilityLabel={accessibilityLabel}
-      containerColor={selected ? colors.primary : colors.surface}
+      accessibilityRole="button"
+      accessibilityState={{ disabled, selected }}
       disabled={disabled}
-      icon={({ color, size }) => (
-        <View style={[styles.iconGraphic, { height: size, width: size }]}>
-          <TurismoIcon color={color} name={icon} size={size} />
-          {slashed ? (
-            <View
-              pointerEvents="none"
-              style={[
-                styles.iconSlash,
-                { backgroundColor: colors.textMuted, width: size * 1.4 },
-              ]}
-            />
-          ) : null}
-        </View>
-      )}
-      iconColor={selected ? colors.onPrimary : colors.text}
-      mode={selected ? "contained" : "outlined"}
+      hitSlop={10}
       onPress={onPress}
-      selected={selected}
-      size={turismoIconSizes.md}
-      contentStyle={styles.iconActionContent}
-      style={[
+      style={({ pressed }) => [
         styles.iconAction,
-        { borderColor: selected ? colors.primary : colors.border },
+        {
+          backgroundColor: selected ? colors.primary : colors.surface,
+          borderColor: selected ? colors.primary : colors.border,
+          opacity: disabled ? 0.38 : pressed ? 0.72 : 1,
+        },
         style,
       ]}
-    />
+    >
+      <View
+        pointerEvents="none"
+        style={[
+          styles.iconGraphic,
+          { height: turismoIconSizes.md, width: turismoIconSizes.md },
+        ]}
+      >
+        <TurismoIcon
+          color={selected ? colors.onPrimary : colors.text}
+          name={icon}
+          size={turismoIconSizes.md}
+        />
+        {slashed ? (
+          <View
+            style={[
+              styles.iconSlash,
+              {
+                backgroundColor: colors.textMuted,
+                width: turismoIconSizes.md * 1.4,
+              },
+            ]}
+          />
+        ) : null}
+      </View>
+    </Pressable>
   );
 }
 
@@ -398,10 +409,8 @@ const styles = StyleSheet.create({
     height: turismoMetrics.controlMd,
     justifyContent: "center",
     margin: 0,
+    overflow: "hidden",
     width: turismoMetrics.controlMd,
-  },
-  iconActionContent: {
-    borderRadius: turismoRadii.pill,
   },
   iconGraphic: { alignItems: "center", justifyContent: "center" },
   iconSlash: {

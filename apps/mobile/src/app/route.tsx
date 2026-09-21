@@ -335,6 +335,7 @@ export default function RouteScreen() {
         <ExpoBottomSheet
           backgroundStyle={{ backgroundColor: colors.surface }}
           enablePanDownToClose
+          handleComponent={null}
           index={0}
           onClose={handleRouteSheetClose}
           ref={routeSheetRef}

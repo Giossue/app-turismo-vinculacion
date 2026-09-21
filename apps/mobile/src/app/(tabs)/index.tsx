@@ -639,6 +639,7 @@ function ExploreMapScreen() {
         <ExpoBottomSheet
           backgroundStyle={{ backgroundColor: colors.surface }}
           enablePanDownToClose
+          handleComponent={null}
           index={-1}
           onClose={() => {
             const preserveSelection = preserveSelectionOnSearchCloseRef.current;
