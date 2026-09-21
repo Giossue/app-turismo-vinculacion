@@ -112,12 +112,24 @@ La migración `20260921_establishment_category_z_blue_reserved.sql` reserva el a
 ubicación actual: convierte categorías existentes azules a violeta, cambia el valor por
 defecto y retira el azul de la paleta administrativa.
 
+La migración `20260921_establishment_category_z_varied_markers.sql` asigna iconos y colores
+semánticos a todas las categorías: alojamiento, restaurantes, cafeterías, vida nocturna,
+guianza, eventos, agencias y transporte dejan de compartir el marcador de hotel violeta.
+Conserva el azul puro reservado para la ubicación actual y es idempotente.
+
 La migración `20260921_establishment_coordinates_required.sql` completa las coordenadas
 faltantes de `establecimientos_turisticos` usando la localidad vinculada, las marca como
 `coordenadas_aproximadas` y establece `NOT NULL` en latitud y longitud. Se detiene ante
 coordenadas incompletas o localidades sin posición; requiere respaldo previo y debe
 ejecutarse antes de desplegar la validación obligatoria del API. Las coordenadas de
 localidad no sustituyen la captura posterior de la ubicación exacta del establecimiento.
+
+La migración `20260921_establishment_demo_coordinates_spread.sql` distribuye los 50
+establecimientos demostrativos alrededor de Guaranda, Riobamba, Ambato, Latacunga y
+Babahoyo para evitar marcadores apilados. Las posiciones continúan marcadas como
+aproximadas y no sustituyen la captura institucional de coordenadas exactas. La migración
+se detiene si detecta una distribución parcial o datos enriquecidos que podrían ser
+sobrescritos.
 
 La migración `20260920_opinions_versions.sql` separa la opinión lógica de sus versiones
 moderables. Convierte el contenido histórico de la tabla `opiniones` en la versión 1,

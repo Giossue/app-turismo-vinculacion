@@ -127,10 +127,7 @@ export default function RouteScreen() {
   );
 
   const handleRouteClose = useCallback(() => {
-    if (
-      navigationActiveRef.current ||
-      navigationStartInFlightRef.current
-    ) {
+    if (navigationActiveRef.current || navigationStartInFlightRef.current) {
       return;
     }
     finishNavigation(null);
@@ -165,7 +162,6 @@ export default function RouteScreen() {
       return navigationActiveRef.current || navigationStartInFlightRef.current;
     }, []),
   );
-
 
   useEffect(() => {
     setForegroundTrackingSuspended(navigationActive);
@@ -375,6 +371,7 @@ export default function RouteScreen() {
       )}
       {destination && !navigationActive ? (
         <RoutePreviewPanel
+          key={`route-preview-${previewExpanded ? "expanded" : "collapsed"}`}
           destinationName={destinationName}
           expanded={previewExpanded}
           isCalculating={isCalculating}
@@ -456,27 +453,24 @@ function RoutePreviewPanel({
   const colors = useTurismoPalette();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
-  const expandedHeight = Math.max(
-    1,
+  const maxExpandedHeight = Math.min(
+    height * 0.46,
     height -
       insets.top -
-      (turismoMetrics.controlLg * 2 + turismoSpacing.lg + turismoSpacing.sm),
+      (turismoMetrics.controlLg * 3 + turismoSpacing.lg + turismoSpacing.sm),
   );
   const compactHeight = Math.min(
-    expandedHeight,
-    turismoMetrics.controlLg * 3 + turismoSpacing.xl + insets.bottom,
+    maxExpandedHeight,
+    turismoMetrics.controlLg * 3 +
+      turismoSpacing.xxl +
+      turismoSpacing.lg +
+      insets.bottom,
   );
+  const expandedHeight = Math.max(compactHeight, maxExpandedHeight);
   const panelHeight = useSharedValue(expanded ? expandedHeight : compactHeight);
   const dragStartHeight = useSharedValue(
     expanded ? expandedHeight : compactHeight,
   );
-
-  useEffect(() => {
-    panelHeight.value = withSpring(
-      expanded ? expandedHeight : compactHeight,
-      ROUTE_PANEL_SPRING,
-    );
-  }, [compactHeight, expanded, expandedHeight, panelHeight]);
 
   const panGesture = Gesture.Pan()
     .activeOffsetY([-8, 8])
@@ -539,7 +533,7 @@ function RoutePreviewPanel({
             <View
               style={[
                 styles.routeSummaryDot,
-                { backgroundColor: colors.location },
+                { backgroundColor: colors.map.location },
               ]}
             />
             <View style={styles.routeSummaryCopy}>
@@ -564,7 +558,9 @@ function RoutePreviewPanel({
               ]}
             />
             <View style={styles.routeSummaryCopy}>
-              <Text style={[styles.routeSummaryLabel, { color: colors.textMuted }]}>
+              <Text
+                style={[styles.routeSummaryLabel, { color: colors.textMuted }]}
+              >
                 Destino
               </Text>
               <Text style={[styles.routeSummaryValue, { color: colors.text }]}>
@@ -585,7 +581,9 @@ function RoutePreviewPanel({
         >
           <Pressable
             accessibilityLabel={
-              expanded ? "Ocultar detalles de la ruta" : "Mostrar detalles de la ruta"
+              expanded
+                ? "Ocultar detalles de la ruta"
+                : "Mostrar detalles de la ruta"
             }
             accessibilityRole="button"
             accessibilityState={{ expanded }}
@@ -593,12 +591,18 @@ function RoutePreviewPanel({
             style={styles.routePanelHeader}
           >
             <View
-              style={[styles.routePanelHandle, { backgroundColor: colors.border }]}
+              style={[
+                styles.routePanelHandle,
+                { backgroundColor: colors.border },
+              ]}
             />
             <View style={styles.routePanelHeaderRow}>
               <View style={styles.routePanelTitleCopy}>
                 <Text
-                  style={[styles.routePanelEyebrow, { color: colors.textMuted }]}
+                  style={[
+                    styles.routePanelEyebrow,
+                    { color: colors.textMuted },
+                  ]}
                 >
                   Ruta hacia
                 </Text>
@@ -678,7 +682,9 @@ function RoutePreviewPanel({
               {isCalculating ? (
                 <View style={styles.loadingRow}>
                   <ActivityIndicator color={colors.primary} />
-                  <Text style={[styles.noticeText, { color: colors.textMuted }]}>
+                  <Text
+                    style={[styles.noticeText, { color: colors.textMuted }]}
+                  >
                     Buscando una ruta sin tráfico en tiempo real…
                   </Text>
                 </View>
@@ -691,7 +697,9 @@ function RoutePreviewPanel({
                     name="circleHelp"
                     size={turismoIconSizes.md}
                   />
-                  <Text style={[styles.noticeText, { color: colors.textMuted }]}>
+                  <Text
+                    style={[styles.noticeText, { color: colors.textMuted }]}
+                  >
                     {navigationNotice ?? routeError ?? locationMessage}
                   </Text>
                 </TourismSurface>
@@ -781,7 +789,9 @@ function RoutePreviewPanel({
               {isCalculating ? (
                 <View style={styles.loadingRow}>
                   <ActivityIndicator color={colors.primary} />
-                  <Text style={[styles.noticeText, { color: colors.textMuted }]}>
+                  <Text
+                    style={[styles.noticeText, { color: colors.textMuted }]}
+                  >
                     Calculando ruta…
                   </Text>
                 </View>
