@@ -6,9 +6,12 @@ import { StyleSheet, Text, View } from "react-native";
 import {
   TourismActionButton,
   TourismBadge,
-  TourismIconAction,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
+import {
+  tourismFlexibleSheetBehavior,
+  tourismFlexibleSheetSnapPoints,
+} from "@/core/ui/tourism-bottom-sheet";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
@@ -30,16 +33,16 @@ export function EstablishmentDetailSheet({
 
   return (
     <ExpoBottomSheet
+      {...tourismFlexibleSheetBehavior}
       backgroundStyle={{ backgroundColor: colors.surface }}
-      enablePanDownToClose
-      handleComponent={null}
       index={0}
       onClose={onClose}
-      snapPoints={["40%", "72%"]}
+      snapPoints={tourismFlexibleSheetSnapPoints}
     >
       <BottomSheetScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
+        style={styles.scroll}
       >
         <View style={styles.header}>
           <View style={styles.headerCopy}>
@@ -50,11 +53,6 @@ export function EstablishmentDetailSheet({
               <TourismBadge>{establishment.category}</TourismBadge>
             ) : null}
           </View>
-          <TourismIconAction
-            accessibilityLabel="Cerrar información del establecimiento"
-            icon="close"
-            onPress={onClose}
-          />
         </View>
 
         <View style={styles.infoRow}>
@@ -86,7 +84,9 @@ export function EstablishmentDetailSheet({
 }
 
 const styles = StyleSheet.create({
+  scroll: { flex: 1 },
   container: {
+    flexGrow: 1,
     gap: turismoSpacing.lg,
     padding: turismoSpacing.lg,
     paddingBottom: turismoSpacing.xxl,

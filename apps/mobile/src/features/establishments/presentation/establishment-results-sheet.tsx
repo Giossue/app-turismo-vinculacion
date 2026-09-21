@@ -3,7 +3,6 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import {
   TourismActionButton,
   TourismBadge,
-  TourismIconAction,
   TourismSurface,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
@@ -22,7 +21,6 @@ export function EstablishmentResultsSheet({
   error,
   hasLocation,
   isFetching,
-  onClear,
   onRequestLocation,
   onRetry,
   query,
@@ -31,7 +29,6 @@ export function EstablishmentResultsSheet({
   error: Error | null;
   hasLocation: boolean;
   isFetching: boolean;
-  onClear: () => void;
   onRequestLocation: () => void;
   onRetry: () => void;
   query: string;
@@ -47,11 +44,6 @@ export function EstablishmentResultsSheet({
             Catastro turístico
           </Text>
         </View>
-        <TourismIconAction
-          accessibilityLabel="Limpiar búsqueda de catastro y cerrar resultados"
-          icon="close"
-          onPress={onClear}
-        />
       </View>
 
       {!hasLocation ? (

@@ -7,6 +7,7 @@ type RouteMapProps = Readonly<{
   currentLocation?: RouteCoordinate | null;
   destination: RouteCoordinate;
   fullScreen?: boolean;
+  navigationActive?: boolean;
   onUserInteraction?: () => void;
   origin: RouteCoordinate | null;
   recenterKey?: number;

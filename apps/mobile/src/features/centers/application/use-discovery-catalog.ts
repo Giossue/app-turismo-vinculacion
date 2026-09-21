@@ -3,9 +3,11 @@ import { getDiscoveryCatalog } from "../data/public-centers-api";
 import { getStoredOfflineCenters } from "@/features/offline/application/offline-fallback";
 import type { PublicCenter } from "../domain/public-center";
 
+export const discoveryCatalogQueryKey = ["discovery-catalog"] as const;
+
 export function useDiscoveryCatalog() {
   return useQuery({
-    queryKey: ["discovery-catalog"],
+    queryKey: discoveryCatalogQueryKey,
     queryFn: async () => {
       try {
         return await getDiscoveryCatalog();

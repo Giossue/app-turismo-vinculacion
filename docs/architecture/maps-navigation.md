@@ -99,15 +99,22 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   No se guarda un historial de coordenadas ni se reinicia automáticamente una navegación
   después de forzar el cierre de la app.
 - En móvil, la pantalla de ruta usa MapLibre a pantalla completa: la geometría y los
-  extremos se dibujan como capas sobre el mapa. La vista previa de «Cómo llegar» usa un
-  panel inline sobre el mapa con modo, tiempo e indicaciones; el mapa sigue siendo
-  manipulable y una interacción del usuario contrae el panel sin desmontar ni cerrar la
-  ruta. El resumen superior conserva el origen «Tu ubicación» y el destino. Al iniciar la
-  navegación, el panel se desmonta y aparece un modo activo independiente con la próxima
-  maniobra, la posición actual, un control para recentrar y una barra inferior con tiempo
-  restante, distancia y hora estimada. Ese modo bloquea el gesto de salida y el Atrás del
-  sistema; la `X` regresa a la vista previa. Desde la vista previa, Atrás o el control
-  explícito de cierre cierra la ruta y regresa a la ficha del atractivo.
+  extremos se dibujan como capas sobre el mapa. La vista previa de «Cómo llegar» muestra
+  los puntos de origen y destino y usa un panel inline sobre el mapa con modo, tiempo e
+  indicaciones; el mapa sigue siendo manipulable y una interacción del usuario contrae el
+  panel sin desmontar ni cerrar la ruta. El resumen superior conserva el origen «Tu
+  ubicación» y el destino. Al iniciar la navegación, el punto de origen se oculta, el panel
+  se desmonta y aparece un modo activo independiente con la próxima maniobra, un indicador
+  de posición con flecha orientable, un control para recentrar y una barra inferior con
+  tiempo restante, distancia y hora estimada. Mientras el seguimiento está activo, la cámara usa
+  zoom 19 y una inclinación de 60 grados; su rumbo se orienta con la brújula del dispositivo
+  usando el rumbo verdadero cuando está disponible y el magnético como respaldo. Un gesto
+  manual libera el seguimiento y el control de recentrado lo restablece. El mapa permite
+  inclinación táctil de tres dedos y rotación
+  para que la perspectiva se pueda ajustar sin otro control de brújula. Ese modo bloquea el
+  gesto de salida y el Atrás del sistema; la `X` regresa a la vista previa. Desde la vista
+  previa, Atrás o el control explícito de cierre cierra la ruta y regresa a la ficha del
+  atractivo.
 - Al abrir “Cómo llegar” desde un atractivo publicado, el cliente solicita la ubicación
   puntual y calcula automáticamente la primera ruta; iniciar la navegación sigue siendo
   una acción explícita. Si la ubicación o el cálculo fallan, el panel permite reintentar.

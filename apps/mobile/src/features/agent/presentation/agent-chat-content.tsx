@@ -1,6 +1,15 @@
-import { BottomSheetTextInput } from "@expo/ui/community/bottom-sheet";
+import {
+  BottomSheetScrollView,
+  BottomSheetTextInput,
+} from "@expo/ui/community/bottom-sheet";
 import { useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  type ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import {
   TourismIconAction,
@@ -21,10 +30,8 @@ import {
 import { useAuth } from "@/features/auth/application/auth-context";
 
 export function AgentChatContent({
-  onClose,
   onOpenCenter,
 }: Readonly<{
-  onClose: () => void;
   onOpenCenter: (code: string) => void;
 }>) {
   const colors = useTurismoPalette();
@@ -73,15 +80,7 @@ export function AgentChatContent({
 
   return (
     <View style={styles.root}>
-      <View style={styles.header}>
-        <TourismIconAction
-          accessibilityLabel="Cerrar agente turístico"
-          icon="close"
-          onPress={onClose}
-        />
-      </View>
-
-      <ScrollView
+      <BottomSheetScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         onContentSizeChange={() =>
@@ -159,7 +158,7 @@ export function AgentChatContent({
             </View>
           ))}
         </View>
-      </ScrollView>
+      </BottomSheetScrollView>
 
       <TourismSurface style={styles.composerCard}>
         <BottomSheetTextInput
@@ -189,12 +188,6 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: turismoSpacing.sm,
     minHeight: 360,
-  },
-  header: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    minHeight: turismoMetrics.controlMd,
   },
   messagesScroll: { flex: 1 },
   content: {

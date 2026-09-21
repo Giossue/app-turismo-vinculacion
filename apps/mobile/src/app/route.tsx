@@ -30,7 +30,6 @@ import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler"
 import { useAuth } from "@/features/auth/application/auth-context";
 import {
   TourismActionButton,
-  TourismChoiceChip,
   TourismIconAction,
   TourismSurface,
   useTurismoPalette,
@@ -354,6 +353,7 @@ export default function RouteScreen() {
           currentLocation={navigationSession.currentLocation}
           destination={destination}
           fullScreen
+          navigationActive={navigationActive}
           onUserInteraction={
             !navigationActive ? handleMapInteraction : undefined
           }
@@ -454,10 +454,8 @@ function RoutePreviewPanel({
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const maxExpandedHeight = Math.min(
-    height * 0.46,
-    height -
-      insets.top -
-      (turismoMetrics.controlLg * 3 + turismoSpacing.lg + turismoSpacing.sm),
+    height * 0.72,
+    height - insets.top - turismoSpacing.xxl,
   );
   const compactHeight = Math.min(
     maxExpandedHeight,
@@ -504,73 +502,6 @@ function RoutePreviewPanel({
 
   return (
     <View pointerEvents="box-none" style={styles.routePreviewOverlay}>
-      <View
-        style={[
-          styles.routeSummaryCard,
-          {
-            backgroundColor: colors.surface,
-            borderColor: colors.border,
-            top: insets.top + turismoSpacing.md,
-          },
-        ]}
-      >
-        <View style={styles.routeSummaryHeader}>
-          <Text style={[styles.routeSummaryTitle, { color: colors.text }]}>
-            Cómo llegar
-          </Text>
-          <TourismIconAction
-            accessibilityLabel="Cerrar ruta"
-            icon="close"
-            onPress={onClose}
-            style={{
-              backgroundColor: colors.surfaceMuted,
-              borderColor: colors.border,
-            }}
-          />
-        </View>
-        <View style={styles.routeSummaryStops}>
-          <View style={styles.routeSummaryStop}>
-            <View
-              style={[
-                styles.routeSummaryDot,
-                { backgroundColor: colors.map.location },
-              ]}
-            />
-            <View style={styles.routeSummaryCopy}>
-              <Text
-                style={[styles.routeSummaryLabel, { color: colors.textMuted }]}
-              >
-                Tu ubicación
-              </Text>
-            </View>
-          </View>
-          <View
-            style={[
-              styles.routeSummaryLine,
-              { backgroundColor: colors.border },
-            ]}
-          />
-          <View style={styles.routeSummaryStop}>
-            <View
-              style={[
-                styles.routeSummaryDot,
-                { backgroundColor: colors.primary },
-              ]}
-            />
-            <View style={styles.routeSummaryCopy}>
-              <Text
-                style={[styles.routeSummaryLabel, { color: colors.textMuted }]}
-              >
-                Destino
-              </Text>
-              <Text style={[styles.routeSummaryValue, { color: colors.text }]}>
-                {destinationName}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-
       <GestureDetector gesture={panGesture}>
         <Animated.View
           style={[
@@ -579,206 +510,301 @@ function RoutePreviewPanel({
             panelAnimatedStyle,
           ]}
         >
-          <Pressable
-            accessibilityLabel={
-              expanded
-                ? "Ocultar detalles de la ruta"
-                : "Mostrar detalles de la ruta"
-            }
-            accessibilityRole="button"
-            accessibilityState={{ expanded }}
-            onPress={() => onExpandedChange(!expanded)}
-            style={styles.routePanelHeader}
-          >
-            <View
-              style={[
-                styles.routePanelHandle,
-                { backgroundColor: colors.border },
-              ]}
-            />
+          <View style={styles.routePanelHeader}>
+            <Pressable
+              accessibilityLabel={
+                expanded
+                  ? "Contraer detalles de la ruta"
+                  : "Expandir detalles de la ruta"
+              }
+              accessibilityRole="button"
+              accessibilityState={{ expanded }}
+              hitSlop={turismoSpacing.xs}
+              onPress={() => onExpandedChange(!expanded)}
+              style={styles.routePanelHandleButton}
+            >
+              <View
+                style={[
+                  styles.routePanelHandle,
+                  { backgroundColor: colors.border },
+                ]}
+              />
+            </Pressable>
             <View style={styles.routePanelHeaderRow}>
               <View style={styles.routePanelTitleCopy}>
+                <Text style={[styles.routePanelTitle, { color: colors.text }]}>
+                  {formatModeTitle(modeLabel)}
+                </Text>
                 <Text
+                  numberOfLines={2}
                   style={[
                     styles.routePanelEyebrow,
                     { color: colors.textMuted },
                   ]}
                 >
-                  Ruta hacia
-                </Text>
-                <Text style={[styles.routePanelTitle, { color: colors.text }]}>
-                  {destinationName}
+                  Ruta hacia {destinationName}
                 </Text>
               </View>
-              <TurismoIcon
-                color={colors.textMuted}
-                name={expanded ? "chevronDown" : "chevronUp"}
-                size={turismoIconSizes.md}
-              />
+              <Pressable
+                accessibilityLabel="Cerrar ruta"
+                accessibilityRole="button"
+                hitSlop={turismoSpacing.xs}
+                onPress={onClose}
+                style={({ pressed }) => [
+                  styles.routePanelClose,
+                  pressed && styles.routePanelClosePressed,
+                ]}
+              >
+                <TurismoIcon
+                  color={colors.text}
+                  name="close"
+                  size={turismoIconSizes.lg}
+                />
+              </Pressable>
             </View>
-          </Pressable>
+          </View>
 
           {expanded ? (
-            <ScrollView
-              contentContainerStyle={styles.panelContent}
-              showsVerticalScrollIndicator={false}
-              style={styles.routePanelScroll}
-            >
-              <TourismSurface style={styles.modeCard}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  Modo de transporte
-                </Text>
-                <View style={styles.modeOptions}>
-                  {modeOptions.map((option) => (
-                    <View key={option.mode} style={styles.modeOption}>
-                      <TurismoIcon
-                        color={
-                          mode === option.mode
-                            ? colors.primaryStrong
-                            : colors.textMuted
-                        }
-                        name={option.icon}
-                        size={turismoIconSizes.md}
-                      />
-                      <TourismChoiceChip
-                        label={option.label}
+            <>
+              <ScrollView
+                contentContainerStyle={styles.panelContent}
+                showsVerticalScrollIndicator={false}
+                style={styles.routePanelScroll}
+              >
+                <View
+                  style={[
+                    styles.routeModeTabs,
+                    { borderBottomColor: colors.border },
+                  ]}
+                >
+                  {modeOptions.map((option) => {
+                    const selected = mode === option.mode;
+                    return (
+                      <Pressable
+                        accessibilityLabel={`Modo ${option.label}`}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected }}
+                        key={option.mode}
                         onPress={() => onModeChange(option.mode)}
-                        selected={mode === option.mode}
-                      />
-                    </View>
-                  ))}
-                </View>
-              </TourismSurface>
-
-              {!route ? (
-                <TourismActionButton
-                  disabled={isCalculating || locationRequesting}
-                  icon={
-                    isCalculating || locationRequesting
-                      ? undefined
-                      : "navigation"
-                  }
-                  label={
-                    isCalculating
-                      ? "Calculando ruta…"
-                      : locationRequesting
-                        ? "Obteniendo ubicación…"
-                        : routeError
-                          ? "Reintentar ruta"
-                          : "Calcular ruta"
-                  }
-                  onPress={onCalculateRoute}
-                />
-              ) : null}
-
-              {route && !isCalculating ? (
-                <TourismActionButton
-                  icon="navigation"
-                  label="Iniciar navegación"
-                  onPress={onStartNavigation}
-                />
-              ) : null}
-
-              {isCalculating ? (
-                <View style={styles.loadingRow}>
-                  <ActivityIndicator color={colors.primary} />
-                  <Text
-                    style={[styles.noticeText, { color: colors.textMuted }]}
-                  >
-                    Buscando una ruta sin tráfico en tiempo real…
-                  </Text>
-                </View>
-              ) : null}
-
-              {navigationNotice || locationMessage || routeError ? (
-                <TourismSurface style={styles.noticeCard}>
-                  <TurismoIcon
-                    color={colors.danger}
-                    name="circleHelp"
-                    size={turismoIconSizes.md}
-                  />
-                  <Text
-                    style={[styles.noticeText, { color: colors.textMuted }]}
-                  >
-                    {navigationNotice ?? routeError ?? locationMessage}
-                  </Text>
-                </TourismSurface>
-              ) : null}
-
-              {route ? (
-                <>
-                  <View style={styles.metrics}>
-                    <Metric
-                      label="Tiempo estimado"
-                      value={formatDuration(route.durationSeconds)}
-                    />
-                    <Metric
-                      label="Distancia"
-                      value={formatDistance(route.distanceMeters)}
-                    />
-                    <Metric label="Modo" value={modeLabel} />
-                  </View>
-                  <TourismSurface style={styles.stepsCard}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                      Indicaciones
-                    </Text>
-                    {route.steps.length ? (
-                      route.steps.map((step, index) => (
-                        <View
-                          key={`${step.instruction}-${index}`}
-                          style={styles.stepRow}
+                        style={[
+                          styles.routeModeTab,
+                          selected && [
+                            styles.routeModeTabSelected,
+                            { borderBottomColor: colors.primary },
+                          ],
+                        ]}
+                      >
+                        <TurismoIcon
+                          color={selected ? colors.primary : colors.textMuted}
+                          name={option.icon}
+                          size={turismoIconSizes.md}
+                        />
+                        <Text
+                          style={[
+                            styles.routeModeTabLabel,
+                            {
+                              color: selected
+                                ? colors.primaryStrong
+                                : colors.textMuted,
+                            },
+                          ]}
                         >
-                          <View
+                          {option.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                {!isCalculating ? (
+                  <View style={styles.routeOverview}>
+                    <Text
+                      style={[
+                        styles.routeOverviewValue,
+                        { color: colors.text },
+                      ]}
+                    >
+                      {route
+                        ? `${formatDuration(route.durationSeconds)} (${formatDistance(route.distanceMeters)})`
+                        : "Prepara tu ruta"}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.routeOverviewMeta,
+                        { color: colors.textMuted },
+                      ]}
+                    >
+                      {route
+                        ? "Ruta más rápida"
+                        : "Calcula un trayecto desde tu ubicación"}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {isCalculating ? (
+                  <View style={styles.loadingRow}>
+                    <ActivityIndicator color={colors.primary} />
+                    <Text
+                      style={[styles.noticeText, { color: colors.textMuted }]}
+                    >
+                      Buscando una ruta sin tráfico en tiempo real…
+                    </Text>
+                  </View>
+                ) : null}
+
+                {navigationNotice || locationMessage || routeError ? (
+                  <TourismSurface style={styles.noticeCard}>
+                    <TurismoIcon
+                      color={colors.danger}
+                      name="circleHelp"
+                      size={turismoIconSizes.md}
+                    />
+                    <Text
+                      style={[styles.noticeText, { color: colors.textMuted }]}
+                    >
+                      {navigationNotice ?? routeError ?? locationMessage}
+                    </Text>
+                  </TourismSurface>
+                ) : null}
+
+                {route && !isCalculating ? (
+                  <View style={styles.stepsSection}>
+                    <Text
+                      style={[styles.stepsSectionTitle, { color: colors.text }]}
+                    >
+                      Pasos
+                    </Text>
+                    <View style={styles.stepsList}>
+                      <View style={styles.stepRow}>
+                        <View
+                          style={[
+                            styles.stepIcon,
+                            {
+                              backgroundColor: colors.map.locationSoft,
+                            },
+                          ]}
+                        >
+                          <TurismoIcon
+                            color={colors.map.location}
+                            name="locate"
+                            size={turismoIconSizes.sm}
+                          />
+                        </View>
+                        <View style={styles.stepCopy}>
+                          <Text
                             style={[
-                              styles.stepIcon,
-                              { backgroundColor: colors.primarySoft },
+                              styles.stepInstruction,
+                              { color: colors.text },
                             ]}
                           >
-                            <TurismoIcon
-                              color={colors.primaryStrong}
-                              name={index === 0 ? "locate" : "navigation"}
-                              size={turismoIconSizes.sm}
-                            />
-                          </View>
-                          <View style={styles.stepCopy}>
-                            <Text
-                              style={[
-                                styles.stepInstruction,
-                                { color: colors.text },
-                              ]}
-                            >
-                              {step.instruction}
-                            </Text>
-                            <Text
-                              style={[
-                                styles.stepDistance,
-                                { color: colors.textFaint },
-                              ]}
-                            >
-                              {formatDistance(step.distanceMeters)}
-                            </Text>
-                          </View>
-                          {index < route.steps.length - 1 ? (
+                            Tu ubicación
+                          </Text>
+                        </View>
+                        {route.steps.length ? (
+                          <View
+                            style={[
+                              styles.stepLine,
+                              { backgroundColor: colors.border },
+                            ]}
+                          />
+                        ) : null}
+                      </View>
+                      {route.steps.length ? (
+                        route.steps.map((step, index) => (
+                          <View
+                            key={`${step.instruction}-${index}`}
+                            style={styles.stepRow}
+                          >
                             <View
                               style={[
-                                styles.stepLine,
-                                { backgroundColor: colors.border },
+                                styles.stepIcon,
+                                { backgroundColor: colors.primarySoft },
                               ]}
-                            />
-                          ) : null}
-                        </View>
-                      ))
-                    ) : (
-                      <Text
-                        style={[styles.noticeText, { color: colors.textMuted }]}
-                      >
-                        No hay indicaciones detalladas para este trayecto.
-                      </Text>
-                    )}
-                  </TourismSurface>
-                </>
+                            >
+                              <TurismoIcon
+                                color={colors.primaryStrong}
+                                name={getRouteStepIcon(step)}
+                                size={turismoIconSizes.sm}
+                              />
+                            </View>
+                            <View style={styles.stepCopy}>
+                              <Text
+                                style={[
+                                  styles.stepInstruction,
+                                  { color: colors.text },
+                                ]}
+                              >
+                                {step.instruction}
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.stepDistance,
+                                  { color: colors.textFaint },
+                                ]}
+                              >
+                                {formatDistance(step.distanceMeters)}
+                              </Text>
+                            </View>
+                            {index < route.steps.length - 1 ? (
+                              <View
+                                style={[
+                                  styles.stepLine,
+                                  { backgroundColor: colors.border },
+                                ]}
+                              />
+                            ) : null}
+                          </View>
+                        ))
+                      ) : (
+                        <Text
+                          style={[
+                            styles.noticeText,
+                            { color: colors.textMuted },
+                          ]}
+                        >
+                          No hay indicaciones detalladas para este trayecto.
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                ) : null}
+              </ScrollView>
+              {!isCalculating ? (
+                <View
+                  style={[
+                    styles.routePanelFooter,
+                    {
+                      backgroundColor: colors.surface,
+                      borderTopColor: colors.border,
+                      paddingBottom: Math.max(insets.bottom, turismoSpacing.sm),
+                    },
+                  ]}
+                >
+                  {!route ? (
+                    <TourismActionButton
+                      disabled={locationRequesting}
+                      icon={locationRequesting ? undefined : "navigation"}
+                      label={
+                        locationRequesting
+                          ? "Obteniendo ubicación…"
+                          : routeError
+                            ? "Reintentar ruta"
+                            : "Calcular ruta"
+                      }
+                      onPress={onCalculateRoute}
+                      style={styles.routePanelAction}
+                    />
+                  ) : (
+                    <TourismActionButton
+                      icon="navigation"
+                      label="Iniciar navegación"
+                      onPress={onStartNavigation}
+                      style={styles.routePanelAction}
+                    />
+                  )}
+                </View>
               ) : null}
-            </ScrollView>
+            </>
           ) : (
             <View
               style={[
@@ -883,6 +909,9 @@ function ActiveNavigationOverlay({
           stepIndex: 0,
         }
       : null);
+  const activeStep = activeGuidance
+    ? (route.steps[activeGuidance.stepIndex] ?? firstStep)
+    : firstStep;
   const nextStep = activeGuidance
     ? route.steps[activeGuidance.stepIndex + 1]
     : undefined;
@@ -906,7 +935,7 @@ function ActiveNavigationOverlay({
           styles.activeGuidanceCard,
           {
             backgroundColor: colors.primarySoft,
-            borderColor: colors.primary,
+            borderColor: colors.primarySoft,
             top: insets.top + turismoSpacing.sm,
           },
         ]}
@@ -919,7 +948,7 @@ function ActiveNavigationOverlay({
         >
           <TurismoIcon
             color={colors.onPrimary}
-            name="navigation"
+            name={activeStep ? getRouteStepIcon(activeStep) : "navigation"}
             size={turismoIconSizes.lg}
           />
         </View>
@@ -951,6 +980,7 @@ function ActiveNavigationOverlay({
             styles.activeNextStep,
             {
               backgroundColor: colors.primary,
+              borderRadius: turismoRadii.md,
               top: insets.top + 102,
             },
           ]}
@@ -963,26 +993,6 @@ function ActiveNavigationOverlay({
           </Text>
         </View>
       ) : null}
-
-      <View
-        style={[
-          styles.activeRecenter,
-          {
-            bottom:
-              insets.bottom + turismoMetrics.controlMd + turismoSpacing.lg,
-          },
-        ]}
-      >
-        <TourismIconAction
-          accessibilityLabel="Centrar en mi ubicación"
-          icon="locate"
-          onPress={onRecenter}
-          style={{
-            backgroundColor: colors.surface,
-            borderColor: colors.border,
-          }}
-        />
-      </View>
 
       <View
         style={[
@@ -1013,25 +1023,16 @@ function ActiveNavigationOverlay({
             {formatArrivalTime(clock, remainingDuration)}
           </Text>
         </View>
-        <View style={styles.activeSummarySpacer} />
+        <TourismIconAction
+          accessibilityLabel="Centrar y seguir mi ubicación"
+          icon="locate"
+          onPress={onRecenter}
+          style={{
+            backgroundColor: colors.background,
+            borderColor: colors.textFaint,
+          }}
+        />
       </View>
-    </View>
-  );
-}
-
-function Metric({ label, value }: Readonly<{ label: string; value: string }>) {
-  const colors = useTurismoPalette();
-  return (
-    <View
-      style={[
-        styles.metric,
-        { backgroundColor: colors.surface, borderColor: colors.border },
-      ]}
-    >
-      <Text style={[styles.metricValue, { color: colors.text }]}>{value}</Text>
-      <Text style={[styles.metricLabel, { color: colors.textMuted }]}>
-        {label}
-      </Text>
     </View>
   );
 }
@@ -1065,6 +1066,35 @@ function formatDuration(seconds: number): string {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   return rest ? `${hours} h ${rest} min` : `${hours} h`;
+}
+
+function formatModeTitle(modeLabel: string): string {
+  if (modeLabel === "Auto") return "En automóvil";
+  if (modeLabel === "Bicicleta") return "En bicicleta";
+  return "A pie";
+}
+
+function getRouteStepIcon(
+  step: CalculatedRoute["steps"][number],
+): TurismoIconName {
+  const maneuverType = step.maneuver.type.toLowerCase().replace(/[-_]/g, " ");
+  const modifier = step.maneuver.modifier?.toLowerCase() ?? "";
+  const turnsLeft = modifier.includes("left");
+  const turnsRight = modifier.includes("right");
+  const isSlightTurn = modifier.includes("slight");
+
+  if (maneuverType === "arrive" || maneuverType === "destination") {
+    return "flag";
+  }
+  if (maneuverType.includes("uturn") || maneuverType.includes("u turn")) {
+    return turnsRight ? "redo" : "undo";
+  }
+  if (maneuverType.includes("roundabout") || maneuverType.includes("rotary")) {
+    return "refresh";
+  }
+  if (turnsLeft) return isSlightTurn ? "cornerUpLeft" : "arrowLeft";
+  if (turnsRight) return isSlightTurn ? "cornerUpRight" : "arrowRight";
+  return "arrowUp";
 }
 
 function formatArrivalTime(now: number, durationSeconds: number): string {
@@ -1107,43 +1137,7 @@ const styles = StyleSheet.create({
     top: 0,
     zIndex: 20,
   },
-  routeSummaryCard: {
-    borderRadius: turismoRadii.md,
-    borderWidth: turismoMetrics.borderWidth,
-    elevation: 12,
-    left: turismoSpacing.md,
-    padding: turismoSpacing.md,
-    position: "absolute",
-    right: turismoSpacing.md,
-  },
-  routeSummaryHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-    justifyContent: "space-between",
-  },
-  routeSummaryTitle: { ...turismoTypography.heading, flex: 1 },
-  routeSummaryStops: { gap: turismoSpacing.xxs, paddingTop: turismoSpacing.sm },
-  routeSummaryStop: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-    minWidth: 0,
-  },
-  routeSummaryDot: {
-    borderRadius: turismoRadii.pill,
-    height: turismoSpacing.sm,
-    marginTop: turismoSpacing.xs,
-    width: turismoSpacing.sm,
-  },
-  routeSummaryLine: {
-    height: turismoSpacing.sm,
-    marginLeft: turismoSpacing.xs,
-    width: 1,
-  },
-  routeSummaryCopy: { flex: 1, minWidth: 0 },
-  routeSummaryLabel: { ...turismoTypography.caption },
-  routeSummaryValue: { ...turismoTypography.body, flexShrink: 1 },
+
   routePreviewSurface: {
     borderTopLeftRadius: turismoRadii.lg,
     borderTopRightRadius: turismoRadii.lg,
@@ -1161,6 +1155,11 @@ const styles = StyleSheet.create({
     paddingTop: turismoSpacing.xs,
     paddingBottom: turismoSpacing.sm,
   },
+  routePanelHandleButton: {
+    alignItems: "center",
+    alignSelf: "stretch",
+    paddingVertical: turismoSpacing.xxs,
+  },
   routePanelHandle: {
     alignSelf: "center",
     borderRadius: turismoRadii.pill,
@@ -1174,8 +1173,21 @@ const styles = StyleSheet.create({
   },
   routePanelTitleCopy: { flex: 1, gap: turismoSpacing.xxs, minWidth: 0 },
   routePanelEyebrow: { ...turismoTypography.caption },
-  routePanelTitle: { ...turismoTypography.heading, flexShrink: 1 },
+  routePanelTitle: { ...turismoTypography.title, flexShrink: 1 },
+  routePanelClose: {
+    alignItems: "center",
+    height: turismoMetrics.touchTarget,
+    justifyContent: "center",
+    width: turismoMetrics.touchTarget,
+  },
+  routePanelClosePressed: { opacity: 0.6 },
   routePanelScroll: { flex: 1 },
+  routePanelFooter: {
+    borderTopWidth: turismoMetrics.borderWidth,
+    paddingHorizontal: turismoSpacing.md,
+    paddingTop: turismoSpacing.xs,
+  },
+  routePanelAction: { alignSelf: "stretch" },
   routeCompactContent: {
     gap: turismoSpacing.sm,
     paddingHorizontal: turismoSpacing.md,
@@ -1193,22 +1205,40 @@ const styles = StyleSheet.create({
   },
   routeCompactMeta: { ...turismoTypography.caption },
   panelContent: {
-    gap: turismoSpacing.lg,
+    gap: turismoSpacing.md,
     paddingHorizontal: turismoSpacing.md,
-    paddingTop: turismoSpacing.md,
-    paddingBottom: turismoSpacing.xl,
+    paddingTop: turismoSpacing.xs,
+    paddingBottom: turismoSpacing.md,
   },
-  modeCard: { gap: turismoSpacing.md, padding: turismoSpacing.md },
-  modeOptions: {
+  routeModeTabs: {
+    borderBottomWidth: turismoMetrics.borderWidth,
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: turismoSpacing.xs,
   },
-  modeOption: {
+  routeModeTab: {
     alignItems: "center",
-    flexDirection: "row",
+    borderBottomColor: "transparent",
+    borderBottomWidth: turismoMetrics.borderWidthStrong,
+    flex: 1,
     gap: turismoSpacing.xxs,
+    justifyContent: "center",
+    minHeight: turismoMetrics.controlLg,
+    paddingVertical: turismoSpacing.xxs,
   },
+  routeModeTabSelected: {},
+  routeModeTabLabel: { ...turismoTypography.label },
+  routeOverview: {
+    gap: turismoSpacing.xxs,
+    paddingVertical: turismoSpacing.xs,
+  },
+  routeOverviewValue: {
+    fontSize: 24,
+    fontWeight: "700",
+    lineHeight: 30,
+  },
+  routeOverviewMeta: { ...turismoTypography.body },
+  stepsSection: { gap: turismoSpacing.sm },
+  stepsSectionTitle: { ...turismoTypography.heading },
+  stepsList: { gap: turismoSpacing.xxs },
   activeOverlay: {
     bottom: 0,
     left: 0,
@@ -1236,6 +1266,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: turismoMetrics.controlMd,
   },
+
   activeGuidanceCopy: {
     flex: 1,
     gap: turismoSpacing.xxs,
@@ -1254,7 +1285,7 @@ const styles = StyleSheet.create({
   },
   activeNextStep: {
     alignItems: "center",
-    borderBottomRightRadius: turismoRadii.md,
+    borderRadius: turismoRadii.md,
     flexDirection: "row",
     gap: turismoSpacing.sm,
     left: turismoSpacing.sm,
@@ -1267,18 +1298,15 @@ const styles = StyleSheet.create({
     ...turismoTypography.label,
   },
   activeNextText: {
-    ...turismoTypography.caption,
+    ...turismoTypography.label,
     flexShrink: 1,
     minWidth: 0,
-  },
-  activeRecenter: {
-    left: turismoSpacing.md,
-    position: "absolute",
   },
   activeBottomBar: {
     alignItems: "center",
     bottom: 0,
     flexDirection: "row",
+    gap: turismoSpacing.sm,
     left: 0,
     paddingHorizontal: turismoSpacing.md,
     paddingTop: turismoSpacing.sm,
@@ -1298,24 +1326,9 @@ const styles = StyleSheet.create({
   activeSummaryMeta: {
     ...turismoTypography.body,
   },
-  activeSummarySpacer: {
-    height: turismoMetrics.controlMd,
-    width: turismoMetrics.controlMd,
-  },
-  metrics: { flexDirection: "row", flexWrap: "wrap", gap: turismoSpacing.xs },
-  metric: {
-    borderRadius: turismoRadii.md,
-    borderWidth: turismoMetrics.borderWidth,
-    flex: 1,
-    gap: turismoSpacing.xxs,
-    minWidth: 96,
-    padding: turismoSpacing.sm,
-  },
-  metricValue: { ...turismoTypography.heading },
-  metricLabel: { ...turismoTypography.caption },
-  sectionTitle: { ...turismoTypography.heading },
-  stepsCard: { gap: turismoSpacing.md, padding: turismoSpacing.md },
+
   stepRow: {
+    alignItems: "flex-start",
     flexDirection: "row",
     gap: turismoSpacing.sm,
     minHeight: 58,
@@ -1329,7 +1342,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: turismoMetrics.controlSm,
   },
-  stepCopy: { flex: 1, gap: turismoSpacing.xxs, minWidth: 0 },
+  stepCopy: {
+    flex: 1,
+    gap: turismoSpacing.xxs,
+    minWidth: 0,
+    paddingTop: turismoSpacing.xxs,
+  },
   stepInstruction: {
     ...turismoTypography.body,
     flexShrink: 1,
@@ -1337,11 +1355,11 @@ const styles = StyleSheet.create({
   },
   stepDistance: { ...turismoTypography.caption, flexShrink: 1, minWidth: 0 },
   stepLine: {
-    bottom: -turismoSpacing.sm,
-    left: turismoMetrics.controlSm / 2,
+    bottom: -turismoSpacing.xxs,
+    left: (turismoMetrics.controlSm - turismoMetrics.borderWidthStrong) / 2,
     position: "absolute",
-    top: 34,
-    width: 1,
+    top: turismoMetrics.controlSm,
+    width: turismoMetrics.borderWidthStrong,
   },
   loadingRow: {
     alignItems: "center",

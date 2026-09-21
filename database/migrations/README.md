@@ -131,6 +131,11 @@ aproximadas y no sustituyen la captura institucional de coordenadas exactas. La 
 se detiene si detecta una distribución parcial o datos enriquecidos que podrían ser
 sobrescritos.
 
+La migración `20260921_seed_guaranda_nearby_demo_poi.sql` crea un catastro demostrativo a
+diez metros del único centro turístico publicado de Guaranda. Permite verificar el zoom y
+la sheet de selección de lugares cercanos; se identifica como demo y conserva la marca de
+coordenada aproximada.
+
 La migración `20260920_opinions_versions.sql` separa la opinión lógica de sus versiones
 moderables. Convierte el contenido histórico de la tabla `opiniones` en la versión 1,
 elimina el estado `OCULTA`, conserva una versión aprobada mientras una edición está

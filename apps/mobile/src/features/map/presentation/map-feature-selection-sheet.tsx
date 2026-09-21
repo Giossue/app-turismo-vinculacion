@@ -4,10 +4,11 @@ import ExpoBottomSheet, {
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
-  TourismIconAction,
-  useTurismoPalette,
-} from "@/core/ui/tourism-controls";
-import { TurismoIcon } from "@/core/ui/turismo-icons";
+  tourismFlexibleSheetBehavior,
+  tourismFlexibleSheetSnapPoints,
+} from "@/core/ui/tourism-bottom-sheet";
+import { useTurismoPalette } from "@/core/ui/tourism-controls";
+import { TurismoIcon, type TurismoIconName } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
   turismoSpacing,
@@ -28,15 +29,16 @@ export function MapFeatureSelectionSheet({
 
   return (
     <ExpoBottomSheet
+      {...tourismFlexibleSheetBehavior}
       backgroundStyle={{ backgroundColor: colors.surface }}
-      enablePanDownToClose
       index={0}
       onClose={onClose}
-      snapPoints={["34%", "64%"]}
+      snapPoints={tourismFlexibleSheetSnapPoints}
     >
       <BottomSheetScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
+        style={styles.scroll}
       >
         <View style={styles.header}>
           <View style={styles.headerCopy}>
@@ -47,11 +49,6 @@ export function MapFeatureSelectionSheet({
               Selecciona cuál quieres abrir.
             </Text>
           </View>
-          <TourismIconAction
-            accessibilityLabel="Cerrar selección de lugares"
-            icon="close"
-            onPress={onClose}
-          />
         </View>
         <View style={styles.options}>
           {selections.map((selection, index) => {
@@ -89,7 +86,7 @@ export function MapFeatureSelectionSheet({
                 >
                   <TurismoIcon
                     color={colors.primaryStrong}
-                    name={isCenter ? "mapPinned" : "mapPin"}
+                    name={getSelectionIcon(selection)}
                     size={turismoIconSizes.md}
                   />
                 </View>
@@ -120,13 +117,30 @@ export function MapFeatureSelectionSheet({
   );
 }
 
+const establishmentIconNames: Readonly<Record<string, TurismoIconName>> = {
+  hotel: "hotel",
+  restaurant: "restaurant",
+  coffee: "coffee",
+  store: "store",
+  bus: "bus",
+  ticket: "ticket",
+  briefcase: "briefcase",
+};
+
+function getSelectionIcon(selection: MapFeatureSelection): TurismoIconName {
+  if (selection.kind === "center") return "mapPinned";
+  return establishmentIconNames[selection.establishment.icon] ?? "mapPin";
+}
+
 function getSelectionKey(selection: MapFeatureSelection): string {
   if (selection.kind === "center") return `center:${selection.center.code}`;
   return `establishment:${selection.establishment.name}:${selection.establishment.latitude}:${selection.establishment.longitude}`;
 }
 
 const styles = StyleSheet.create({
+  scroll: { flex: 1 },
   container: {
+    flexGrow: 1,
     gap: turismoSpacing.lg,
     padding: turismoSpacing.lg,
     paddingBottom: turismoSpacing.xxl,

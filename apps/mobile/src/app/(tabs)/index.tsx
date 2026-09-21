@@ -30,6 +30,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Defs, LinearGradient, Rect, Stop, Svg } from "react-native-svg";
 import { Redirect, Stack, useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -44,6 +45,10 @@ import {
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
 import {
+  tourismFlexibleSheetBehavior,
+  tourismFlexibleSheetSnapPoints,
+} from "@/core/ui/tourism-bottom-sheet";
+import {
   TourismMenuButton as NavigationMenuButton,
   useTourismMenu,
 } from "@/core/ui/tourism-navigation";
@@ -55,9 +60,18 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
-import { useDiscoveryCatalog } from "@/features/centers/application/use-discovery-catalog";
-import { usePublishedCenters } from "@/features/centers/application/use-published-centers";
-import { useMapEstablishments } from "@/features/establishments/application/use-map-establishments";
+import {
+  discoveryCatalogQueryKey,
+  useDiscoveryCatalog,
+} from "@/features/centers/application/use-discovery-catalog";
+import {
+  publishedCentersQueryKey,
+  usePublishedCenters,
+} from "@/features/centers/application/use-published-centers";
+import {
+  mapEstablishmentsQueryKey,
+  useMapEstablishments,
+} from "@/features/establishments/application/use-map-establishments";
 import { useNearbyEstablishments } from "@/features/establishments/application/use-nearby-establishments";
 import type { PublicMapEstablishment } from "@/features/establishments/domain/establishment";
 import { EstablishmentDetailSheet } from "@/features/establishments/presentation/establishment-detail-sheet";
@@ -141,6 +155,7 @@ export default function HomeScreen() {
 
 function ExploreMapScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const colors = useTurismoPalette();
   const auth = useAuth();
   const { closeMenu, menuVisible, openMenu } = useTourismMenu();
@@ -238,6 +253,29 @@ function ExploreMapScreen() {
     refetch,
   } = usePublishedCenters(query);
   const { data: catalog } = useDiscoveryCatalog();
+  const handleCategoryChange = useCallback(
+    (categoryCode: string | undefined) => {
+      setFilters((current) => ({
+        ...current,
+        categoryCode,
+        typeCode: undefined,
+        subtypeCode: undefined,
+      }));
+      if (categoryCode !== undefined) return;
+
+      // "Todo" también funciona como actualización manual: invalida incluso
+      // respuestas que todavía están dentro de su staleTime y conserva en el
+      // mapa los datos actuales mientras llegan los nuevos.
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: publishedCentersQueryKey }),
+        queryClient.invalidateQueries({
+          queryKey: mapEstablishmentsQueryKey,
+        }),
+        queryClient.invalidateQueries({ queryKey: discoveryCatalogQueryKey }),
+      ]);
+    },
+    [queryClient],
+  );
   // Conservamos los centros ya confirmados mientras se revalida la consulta;
   // una respuesta remota vacía sí los reemplaza al terminar correctamente.
   const visibleCenters =
@@ -617,18 +655,12 @@ function ExploreMapScreen() {
                 label="Categorías de atractivos"
                 options={catalog?.categories ?? []}
                 selected={filters.categoryCode}
-                onChange={(categoryCode) =>
-                  setFilters((current) => ({
-                    ...current,
-                    categoryCode,
-                    typeCode: undefined,
-                    subtypeCode: undefined,
-                  }))
-                }
+                onChange={handleCategoryChange}
               />
             </>
           ) : null}
-          {searchMode === "CENTERS" && isFetching ? (
+          {searchMode === "CENTERS" &&
+          (isFetching || mapEstablishments.isFetching) ? (
             <View
               accessible
               accessibilityLabel="Actualizando lugares turísticos"
@@ -692,9 +724,8 @@ function ExploreMapScreen() {
       </View>
       {!selectedCenterCode && !selectedEstablishment && !mapFeatureSelection ? (
         <ExpoBottomSheet
+          {...tourismFlexibleSheetBehavior}
           backgroundStyle={{ backgroundColor: colors.surface }}
-          enablePanDownToClose
-          handleComponent={null}
           index={-1}
           onClose={() => {
             const preserveSelection = preserveSelectionOnSearchCloseRef.current;
@@ -703,7 +734,7 @@ function ExploreMapScreen() {
             if (!preserveSelection) clearSearch();
           }}
           ref={sheetRef}
-          snapPoints={["38%", "84%"]}
+          snapPoints={tourismFlexibleSheetSnapPoints}
         >
           {submittedQuery && searchMode === "CENTERS" ? (
             <BottomSheetScrollView
@@ -713,6 +744,7 @@ function ExploreMapScreen() {
               ]}
               key={`search-${submittedQuery}`}
               showsVerticalScrollIndicator={false}
+              style={styles.flexibleSheetScroll}
             >
               <SearchResultsSheet
                 catalog={catalog}
@@ -723,7 +755,6 @@ function ExploreMapScreen() {
                 isPlaceholderData={isPlaceholderData}
                 nearbyOnly={nearbyOnly}
                 onChangeFilters={setFilters}
-                onClear={clearSearch}
                 onNearbyToggle={handleNearbyToggle}
                 onRetry={() => void refetch()}
                 onSelectCenter={selectCenter}
@@ -739,13 +770,13 @@ function ExploreMapScreen() {
               ]}
               key={`establishments-${submittedQuery}`}
               showsVerticalScrollIndicator={false}
+              style={styles.flexibleSheetScroll}
             >
               <EstablishmentResultsSheet
                 data={nearbyEstablishments.data}
                 error={nearbyEstablishments.error as Error | null}
                 hasLocation={Boolean(userLocation)}
                 isFetching={nearbyEstablishments.isFetching}
-                onClear={clearSearch}
                 onRequestLocation={() => void handleLocateUser()}
                 onRetry={() => void nearbyEstablishments.refetch()}
                 query={submittedQuery}
@@ -796,22 +827,18 @@ function ExploreMapScreen() {
         />
       ) : null}
       <ExpoBottomSheet
+        {...tourismFlexibleSheetBehavior}
         backgroundStyle={{ backgroundColor: colors.surface }}
-        enablePanDownToClose={false}
-        handleComponent={null}
         index={-1}
         onClose={() => {
           agentSheetOpenRef.current = false;
           setAgentOpen(false);
         }}
         ref={agentSheetRef}
-        snapPoints={["100%"]}
+        snapPoints={tourismFlexibleSheetSnapPoints}
       >
         <BottomSheetView style={styles.agentSheetView}>
-          <AgentChatContent
-            onClose={closeAgent}
-            onOpenCenter={openAgentCenter}
-          />
+          <AgentChatContent onOpenCenter={openAgentCenter} />
         </BottomSheetView>
       </ExpoBottomSheet>
     </View>
@@ -1689,9 +1716,11 @@ const styles = StyleSheet.create({
   },
   sheetView: {
     alignSelf: "center",
+    flexGrow: 1,
     padding: turismoSpacing.lg,
     width: "100%",
   },
+  flexibleSheetScroll: { flex: 1 },
   sheetViewLandscape: { maxWidth: turismoMetrics.sheetMaxWidth },
   centerSheetOverlay: {
     bottom: 0,

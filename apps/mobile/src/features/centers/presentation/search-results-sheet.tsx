@@ -12,7 +12,6 @@ import {
   TourismActionButton,
   TourismBadge,
   TourismChoiceChip,
-  TourismIconAction,
   TourismSurface,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
@@ -40,7 +39,6 @@ export function SearchResultsSheet({
   isPlaceholderData,
   nearbyOnly,
   onChangeFilters,
-  onClear,
   onNearbyToggle,
   onRetry,
   onSelectCenter,
@@ -55,7 +53,6 @@ export function SearchResultsSheet({
   isPlaceholderData: boolean;
   nearbyOnly: boolean;
   onChangeFilters: (filters: DiscoveryFilterValues) => void;
-  onClear: () => void;
   onNearbyToggle: () => void;
   onRetry: () => void;
   onSelectCenter: (center: PublicCenter) => void;
@@ -82,11 +79,6 @@ export function SearchResultsSheet({
             Atractivos turísticos publicados
           </Text>
         </View>
-        <TourismIconAction
-          accessibilityLabel="Limpiar búsqueda y cerrar resultados"
-          icon="close"
-          onPress={onClear}
-        />
       </View>
 
       <ScrollView
