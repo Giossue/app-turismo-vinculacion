@@ -5,6 +5,7 @@ import {
   getDistanceToRouteMeters,
   getNavigationGuidance,
   getNavigationNotification,
+  getRouteRemainingMetrics,
 } from "./navigation-guidance";
 import type { CalculatedRoute } from "./routing";
 
@@ -68,6 +69,15 @@ describe("navigation guidance", () => {
       instruction: "Gira a la derecha hacia el destino",
       stepIndex: 1,
     });
+  });
+
+  it("estimates remaining distance and duration from route progress", () => {
+    expect(
+      getRouteRemainingMetrics(route, {
+        latitude: -1.59,
+        longitude: -79.0015,
+      }),
+    ).toEqual({ distanceMeters: 110, durationSeconds: 30 });
   });
 
   it("formats a dynamic notification for the next maneuver", () => {

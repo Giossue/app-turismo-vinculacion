@@ -8,6 +8,7 @@ type RouteMapProps = Readonly<{
   destination: RouteCoordinate;
   fullScreen?: boolean;
   origin: RouteCoordinate | null;
+  recenterKey?: number;
   route: CalculatedRoute | null;
 }>;
 

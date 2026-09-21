@@ -8,6 +8,7 @@ import {
   getDistanceToRouteMeters,
   getNavigationGuidance,
   getNavigationNotification,
+  getRouteRemainingMetrics,
   type NavigationGuidance,
 } from "../domain/navigation-guidance";
 import type {
@@ -59,6 +60,8 @@ type NavigationSessionOptions = Readonly<{
 type NavigationSessionState = Readonly<{
   currentLocation: RouteCoordinate | null;
   distanceToDestinationMeters: number | null;
+  remainingDistanceMeters: number | null;
+  remainingDurationSeconds: number | null;
   message: string | null;
   nextInstruction: NavigationGuidance | null;
   status: NavigationSessionStatus;
@@ -67,6 +70,8 @@ type NavigationSessionState = Readonly<{
 const initialState: NavigationSessionState = {
   currentLocation: null,
   distanceToDestinationMeters: null,
+  remainingDistanceMeters: null,
+  remainingDurationSeconds: null,
   message: null,
   nextInstruction: null,
   status: "idle",
@@ -206,11 +211,17 @@ export function useNavigationSession({
       const destinationDistance = destinationCoordinate
         ? getDistanceMeters(coordinate, destinationCoordinate)
         : null;
+      const currentRoute = routeRef.current;
+      const remaining = currentRoute
+        ? getRouteRemainingMetrics(currentRoute, coordinate)
+        : null;
 
       setState((current) => ({
         ...current,
         currentLocation: coordinate,
         distanceToDestinationMeters: destinationDistance,
+        remainingDistanceMeters: remaining?.distanceMeters ?? null,
+        remainingDurationSeconds: remaining?.durationSeconds ?? null,
       }));
 
       if (accuracy !== null && accuracy > 150) {
@@ -238,7 +249,6 @@ export function useNavigationSession({
         return;
       }
 
-      const currentRoute = routeRef.current;
       if (!currentRoute) return;
 
       const guidance = getNavigationGuidance(currentRoute, coordinate);

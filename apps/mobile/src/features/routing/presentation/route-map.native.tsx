@@ -24,6 +24,7 @@ export type RouteMapProps = Readonly<{
   destination: RouteCoordinate;
   fullScreen?: boolean;
   origin: RouteCoordinate | null;
+  recenterKey?: number;
   route: CalculatedRoute | null;
 }>;
 
@@ -36,6 +37,7 @@ export function RouteMap({
   destination,
   fullScreen = false,
   origin,
+  recenterKey = 0,
   route,
 }: RouteMapProps) {
   const cameraRef = useRef<CameraRef>(null);
@@ -46,6 +48,11 @@ export function RouteMap({
   const [mapLoadState, setMapLoadState] = useState<"loading" | "ready">(
     "loading",
   );
+  const latestCenterRef = useRef(currentLocation ?? origin);
+
+  useEffect(() => {
+    latestCenterRef.current = currentLocation ?? origin;
+  }, [currentLocation, origin]);
 
   const routeData = useMemo<GeoJSON.FeatureCollection<GeoJSON.LineString>>(
     () => ({
@@ -158,6 +165,18 @@ export function RouteMap({
     });
   }, [bounds]);
 
+  useEffect(() => {
+    if (!recenterKey) return;
+    const center = latestCenterRef.current;
+    if (!center) return;
+    cameraRef.current?.easeTo({
+      center: [center.longitude, center.latitude],
+      duration: 400,
+      easing: "ease",
+      zoom: 16,
+    });
+  }, [recenterKey]);
+
   return (
     <View
       style={[
@@ -210,10 +229,19 @@ export function RouteMap({
           />
           <Layer
             filter={["==", ["get", "kind"], "current"]}
+            id="calculated-route-current-halo"
+            paint={{
+              "circle-color": colors.locationSoft,
+              "circle-radius": 18,
+            }}
+            type="circle"
+          />
+          <Layer
+            filter={["==", ["get", "kind"], "current"]}
             id="calculated-route-current"
             paint={{
               "circle-color": colors.location,
-              "circle-radius": 8,
+              "circle-radius": 9,
               "circle-stroke-color": colors.surface,
               "circle-stroke-width": 3,
             }}

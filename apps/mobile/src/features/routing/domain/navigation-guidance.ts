@@ -14,6 +14,11 @@ export type NavigationNotification = Readonly<{
   key: string;
 }>;
 
+export type RouteRemainingMetrics = Readonly<{
+  distanceMeters: number;
+  durationSeconds: number;
+}>;
+
 type RouteProgress = Readonly<{
   distanceAlongRouteMeters: number;
   distanceToRouteMeters: number;
@@ -47,6 +52,30 @@ export function getDistanceToRouteMeters(
   coordinate: RouteCoordinate,
 ): number {
   return getRouteProgress(route, coordinate).distanceToRouteMeters;
+}
+
+/** Estimates the remaining route distance and duration from the current position. */
+export function getRouteRemainingMetrics(
+  route: CalculatedRoute,
+  coordinate: RouteCoordinate,
+): RouteRemainingMetrics {
+  const progress = getRouteProgress(route, coordinate);
+  if (progress.routeLengthMeters <= 0) {
+    return {
+      distanceMeters: Math.max(0, route.distanceMeters),
+      durationSeconds: Math.max(0, route.durationSeconds),
+    };
+  }
+
+  const progressRatio = Math.min(
+    1,
+    Math.max(0, progress.distanceAlongRouteMeters / progress.routeLengthMeters),
+  );
+  const remainingRatio = 1 - progressRatio;
+  return {
+    distanceMeters: Math.max(0, route.distanceMeters * remainingRatio),
+    durationSeconds: Math.max(0, route.durationSeconds * remainingRatio),
+  };
 }
 
 /** Finds the next OSRM instruction and its approximate remaining distance. */
