@@ -16,6 +16,7 @@ import { RolesGuard } from "../auth/roles.guard";
 import type { AuthenticatedUser } from "../auth/auth.types";
 import {
   AdminEstablishmentsQueryDto,
+  CreateEstablishmentDto,
   PublicEstablishmentsMapQueryDto,
   PublicEstablishmentsQueryDto,
   SaveEstablishmentDto,
@@ -50,7 +51,7 @@ export class AdminEstablishmentsController {
   @Post()
   @Roles("ADMINISTRADOR")
   async create(
-    @Body() body: SaveEstablishmentDto,
+    @Body() body: CreateEstablishmentDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return { data: await this.establishments.create(user.id, body) };

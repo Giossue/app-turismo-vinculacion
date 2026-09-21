@@ -81,10 +81,11 @@ La migración `20260920_seed_catastro_demo.sql` carga una muestra reproducible d
 consolidado nacional: diez establecimientos ratificados de parroquias urbanas por cada
 una de las ciudades Guaranda, Riobamba, Ambato, Latacunga y Babahoyo. Crea o reactiva
 las cinco localidades como `CIUDAD`, conserva los números de registro oficiales como
-clave de upsert y deja vacías dirección, teléfono y coordenadas individuales porque no
-son columnas informadas por la fuente. Las coordenadas aproximadas de la cabecera se
-guardan en la localidad para probar el fallback territorial. Es idempotente, no elimina
-ni desactiva datos fuera de la muestra y se reproduce con
+clave de upsert y deja vacías dirección y teléfono porque no son columnas informadas por
+la fuente. Copia las coordenadas aproximadas de la cabecera al establecimiento y las
+marca con `coordenadas_aproximadas` para probar el descubrimiento territorial sin
+presentarlas como ubicación exacta. Es idempotente, no elimina ni desactiva datos fuera
+de la muestra y se reproduce con
 `scripts/generate-catastro-demo-migration.py` desde
 `temp/Consolidado-Nacional-2026-publico-8 (1).xlsx`
 (SHA-256 `3e5598c95edb2b4dc31ce0f776742e0bea59c146a2d9cb7087e0c47b53374e7d`).
@@ -100,6 +101,13 @@ con `scripts/generate-establishment-taxonomy-migration.py`, normaliza las etique
 categoría conocidas y conserva aliases de los valores fuente. Añade relaciones opcionales
 por ID a `establecimientos_turisticos` sin borrar sus columnas de texto, para permitir una
 normalización progresiva y trazable.
+
+La migración `20260921_establishment_coordinates_required.sql` completa las coordenadas
+faltantes de `establecimientos_turisticos` usando la localidad vinculada, las marca como
+`coordenadas_aproximadas` y establece `NOT NULL` en latitud y longitud. Se detiene ante
+coordenadas incompletas o localidades sin posición; requiere respaldo previo y debe
+ejecutarse antes de desplegar la validación obligatoria del API. Las coordenadas de
+localidad no sustituyen la captura posterior de la ubicación exacta del establecimiento.
 
 La migración `20260920_opinions_versions.sql` separa la opinión lógica de sus versiones
 moderables. Convierte el contenido histórico de la tabla `opiniones` en la versión 1,

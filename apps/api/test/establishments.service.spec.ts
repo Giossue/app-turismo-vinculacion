@@ -35,7 +35,7 @@ const row = {
 };
 
 describe("EstablishmentsService", () => {
-  it("returns active map markers with category visuals and locality fallback", async () => {
+  it("returns active map markers with category visuals and precision", async () => {
     const query = vi.fn().mockResolvedValue([
       {
         name: "Hotel de prueba",
@@ -65,6 +65,9 @@ describe("EstablishmentsService", () => {
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining("e.activo = TRUE"),
       [500],
+    );
+    expect(query.mock.calls[0]?.[0]).toContain(
+      "e.coordenadas_aproximadas AS approximate",
     );
   });
 
@@ -163,6 +166,20 @@ describe("EstablishmentsService", () => {
     expect(transaction).not.toHaveBeenCalled();
   });
 
+  it("requires both coordinates before opening a create transaction", async () => {
+    const transaction = vi.fn();
+    const service = new EstablishmentsService({ transaction } as never);
+
+    await expect(
+      service.create(4, {
+        localityId: 1,
+        nombreComercial: "Comedor de prueba",
+        actividad: "Alimentación",
+      }),
+    ).rejects.toThrow("latitud y la longitud son obligatorias");
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
   it("audits a new establishment in the same transaction", async () => {
     const managerQuery = vi
       .fn()
@@ -182,6 +199,8 @@ describe("EstablishmentsService", () => {
       numeroRegistro: "CAT-9",
       nombreComercial: "Nuevo comedor",
       actividad: "Alimentación",
+      latitude: -1.59,
+      longitude: -79.01,
     });
 
     expect(managerQuery).toHaveBeenLastCalledWith(
@@ -239,6 +258,8 @@ describe("EstablishmentsService", () => {
       activityId: 10,
       classificationId: 11,
       categoryId: 12,
+      latitude: -1.59,
+      longitude: -79.01,
     });
 
     expect(managerQuery).toHaveBeenCalledWith(

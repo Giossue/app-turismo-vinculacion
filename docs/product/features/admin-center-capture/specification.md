@@ -12,7 +12,7 @@ explícita.
 - Administración institucional, clima e ingreso/atención.
 - Actividades, condiciones de accesibilidad y facilidades seleccionadas desde catálogos
   activos, validadas contra la categoría del atractivo.
-- Borrador versionado, envío a revisión, aprobación, rechazo y publicación.
+- Borrador versionado, envío a revisión, aprobación, rechazo y publicación. La cola administrativa conserva visibles las fichas `EN_REVISION` y `APROBADO`; solo las pendientes admiten decisiones.
 - Desactivación/reactivación y auditoría.
 - Multimedia institucional con descripción y fuente/autor. El panel valida fotos JPEG/PNG/WebP,
   video MP4/WebM y audio MP3/M4A/WAV/OGG, aplica límites de tamaño y mantiene los archivos

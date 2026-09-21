@@ -103,10 +103,12 @@ ON CONFLICT (canton_id, nombre) DO UPDATE SET
 
 INSERT INTO establecimientos_turisticos (
   localidad_id, numero_registro, ruc, nombre_comercial, razon_social, actividad,
-  clasificacion, categoria, direccion, telefono, latitud, longitud, activo
+  clasificacion, categoria, direccion, telefono, latitud, longitud,
+  coordenadas_aproximadas, activo
 )
 SELECT l.id, seed.numero_registro, seed.ruc, seed.nombre_comercial, seed.razon_social,
-       seed.actividad, seed.clasificacion, seed.categoria, NULL, NULL, NULL, NULL, TRUE
+       seed.actividad, seed.clasificacion, seed.categoria, NULL, NULL,
+       l.latitud, l.longitud, TRUE, TRUE
 FROM _catastro_demo_seed seed
 JOIN provincias p ON p.codigo_dpa = seed.provincia_codigo AND p.activo
 JOIN cantones c ON c.provincia_id = p.id AND c.codigo_cton = seed.canton_codigo AND c.activo
@@ -125,8 +127,9 @@ ON CONFLICT (numero_registro) DO UPDATE SET
   -- La fuente no informa estos campos; no borrar enriquecimientos existentes al repetir el seed.
   direccion = COALESCE(EXCLUDED.direccion, establecimientos_turisticos.direccion),
   telefono = COALESCE(EXCLUDED.telefono, establecimientos_turisticos.telefono),
-  latitud = COALESCE(EXCLUDED.latitud, establecimientos_turisticos.latitud),
-  longitud = COALESCE(EXCLUDED.longitud, establecimientos_turisticos.longitud),
+  latitud = EXCLUDED.latitud,
+  longitud = EXCLUDED.longitud,
+  coordenadas_aproximadas = EXCLUDED.coordenadas_aproximadas,
   activo = TRUE,
   updated_at = CURRENT_TIMESTAMP;
 

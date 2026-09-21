@@ -827,6 +827,23 @@ describe("AdminCentersService", () => {
     );
   });
 
+  it("uses the review queue filter for pending and approved fichas", async () => {
+    const dataSource = {
+      query: vi.fn().mockResolvedValue([]),
+    };
+    const service = new AdminCentersService(dataSource as never);
+
+    await expect(
+      service.list({ status: "REVIEW_QUEUE", limit: 20, offset: 0 } as never),
+    ).resolves.toMatchObject({ total: 0, items: [] });
+    expect(dataSource.query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "inventory.status_code IN ('EN_REVISION', 'APROBADO')",
+      ),
+      [20, 0],
+    );
+  });
+
   it("updates a technical catalog option and records the change", async () => {
     const managerQuery = vi
       .fn()

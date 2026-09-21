@@ -27,8 +27,10 @@ la ficha técnica de un centro turístico.
 
 1. Un establecimiento pertenece a una `localidad`; no se convierte en centro turístico ni
    se copia dentro de la ficha.
-2. `localidad_id` es obligatorio al crear. Latitud y longitud son opcionales, pero deben
-   enviarse juntas y se validan dentro de los rangos geográficos.
+2. `localidad_id`, latitud y longitud son obligatorios al crear. Ambas coordenadas deben
+   enviarse juntas y se validan dentro de los rangos geográficos. Los registros históricos
+   completados con la coordenada de su localidad se identifican como aproximados hasta que
+   operación capture la ubicación exacta.
 3. El número de registro es único cuando se informa y el RUC, si se informa, debe contener
    13 dígitos.
 4. Desactivar es lógico: el registro se conserva para operación e historia.

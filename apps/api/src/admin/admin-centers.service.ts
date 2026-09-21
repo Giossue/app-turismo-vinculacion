@@ -1802,7 +1802,9 @@ export class AdminCentersService {
   async list(query: AdminCentersQueryDto) {
     const values: unknown[] = [];
     const conditions: string[] = ["TRUE"];
-    if (query.status) {
+    if (query.status === "REVIEW_QUEUE") {
+      conditions.push("inventory.status_code IN ('EN_REVISION', 'APROBADO')");
+    } else if (query.status) {
       values.push(query.status);
       conditions.push(`inventory.status_code = $${values.length}`);
     }

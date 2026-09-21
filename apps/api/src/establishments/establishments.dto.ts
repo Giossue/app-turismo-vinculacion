@@ -87,7 +87,7 @@ export class AdminEstablishmentsQueryDto {
   offset = 0;
 }
 
-export class SaveEstablishmentDto {
+class EstablishmentFieldsDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -167,7 +167,9 @@ export class SaveEstablishmentDto {
   @IsString()
   @MaxLength(25)
   telefono?: string;
+}
 
+export class SaveEstablishmentDto extends EstablishmentFieldsDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
@@ -176,6 +178,20 @@ export class SaveEstablishmentDto {
   latitude?: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
+}
+
+export class CreateEstablishmentDto extends EstablishmentFieldsDto {
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
+
   @Type(() => Number)
   @IsNumber()
   @Min(-180)

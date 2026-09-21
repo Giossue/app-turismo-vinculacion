@@ -149,8 +149,9 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   usan una capa separada con conteo y se expanden mediante `getClusterExpansionZoom`.
   Los establecimientos activos del catastro llegan desde `GET /api/v1/establishments/map`
   en una fuente GeoJSON separada, limitada y agrupada; reciben el icono y color de su
-  categoría. Cuando un registro antiguo no tiene coordenadas propias, el endpoint usa la
-  coordenada de su localidad y marca el punto como aproximado.
+  categoría. Cuando un registro histórico fue completado con la coordenada de su localidad,
+  el endpoint conserva la marca de punto aproximado; las nuevas coordenadas capturadas por
+  operación se publican como ubicación exacta.
   En el mapa en línea, ese conjunto proviene exclusivamente de una respuesta exitosa de
   `GET /api/v1/centers`; si la respuesta remota está vacía, no se crean pines de ejemplo ni
   se reutiliza el manifiesto offline.

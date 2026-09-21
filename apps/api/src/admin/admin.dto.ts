@@ -27,6 +27,11 @@ export const REVIEWABLE_STATUSES = [
   "INACTIVO",
 ] as const;
 
+export const ADMIN_CENTER_STATUS_FILTERS = [
+  ...REVIEWABLE_STATUSES,
+  "REVIEW_QUEUE",
+] as const;
+
 export const ADMIN_CENTER_SECTION_CODES = [
   "identificacion",
   "ubicacion-admin",
@@ -71,8 +76,8 @@ export class AdminCentersQueryDto {
   q?: string;
 
   @IsOptional()
-  @IsIn(REVIEWABLE_STATUSES)
-  status?: (typeof REVIEWABLE_STATUSES)[number];
+  @IsIn(ADMIN_CENTER_STATUS_FILTERS)
+  status?: (typeof ADMIN_CENTER_STATUS_FILTERS)[number];
 
   @IsOptional()
   @Type(() => Number)

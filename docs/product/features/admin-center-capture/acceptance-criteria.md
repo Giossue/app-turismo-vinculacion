@@ -5,7 +5,7 @@
 - Guardar cambios incrementa la versión del borrador y no cambia la ficha pública.
 - Enviar a revisión bloquea la edición hasta aprobar o rechazar.
 - Rechazar conserva la observación y permite corregir el borrador.
-- Aprobar habilita la acción de publicar; publicar actualiza la ficha pública y su fecha.
+- Aprobar habilita la acción de publicar y mantiene la ficha visible en la cola con estado aprobado; publicar actualiza la ficha pública y su fecha.
 - Editar una ficha publicada mantiene visible la versión anterior hasta la publicación.
 - Desactivar oculta la ficha del catálogo público; reactivar conserva su historial.
 - El panel permite seleccionar actividades compatibles con la categoría del atractivo.

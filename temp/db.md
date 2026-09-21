@@ -280,11 +280,13 @@ direccion TEXT NULL
 
 telefono VARCHAR(25) NULL
 
-latitud NUMERIC(9,6) NULL
+latitud NUMERIC(9,6) NOT NULL
 
-longitud NUMERIC(10,6) NULL
+longitud NUMERIC(10,6) NOT NULL
 
 ubicacion GEOGRAPHY(POINT, 4326) NULL
+
+coordenadas\_aproximadas BOOLEAN NOT NULL DEFAULT FALSE
 
 activo BOOLEAN NOT NULL DEFAULT TRUE
 

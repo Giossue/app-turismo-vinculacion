@@ -129,6 +129,7 @@ CREATE TABLE establecimientos_turisticos (
     latitud NUMERIC(9,6) CHECK (latitud BETWEEN -90 AND 90),
     longitud NUMERIC(10,6) CHECK (longitud BETWEEN -180 AND 180),
     ubicacion GEOGRAPHY(POINT, 4326),
+    coordenadas_aproximadas BOOLEAN NOT NULL DEFAULT FALSE,
     activo BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP

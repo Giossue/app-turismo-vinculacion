@@ -14,12 +14,14 @@ en Guaranda, Riobamba, Ambato, Latacunga y Babahoyo.
 
 - Solo se usan filas con estado `RATIFICADO` y nombre comercial no vacío.
 - Se restringen las filas a parroquias urbanas de la cabecera cantonal; el destino
-  persiste la localidad ciudad y no inventa direcciones, teléfonos ni coordenadas de
-  establecimientos que no existen en la fuente.
+  persiste la localidad ciudad y no inventa direcciones ni teléfonos. Como la fuente no
+  trae coordenadas individuales, copia las coordenadas de la localidad y las marca como
+  aproximadas.
 - Se ordena por `Número de Registro` y se toman las primeras 10 filas únicas por ciudad,
   de modo que el resultado sea reproducible.
 - Las coordenadas cargadas son puntos aproximados de las cinco cabeceras para habilitar
-  el descubrimiento por cercanía; no son coordenadas de cada establecimiento.
+  el descubrimiento por cercanía; no son coordenadas de cada establecimiento y quedan
+  identificadas por `coordenadas_aproximadas`.
 
 ## Persistencia
 

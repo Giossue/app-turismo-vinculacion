@@ -14,7 +14,8 @@ Permitir que una categoría de catastro administre un icono y un color, y mostra
 - Incorporar controles de selección de icono y color al diálogo de edición de categorías de catastro.
 - Exponer un endpoint público acotado para establecimientos activos georreferenciados, con filtros de viewport y límites.
 - Añadir una capa nativa al mapa móvil para esos establecimientos, separada de los centros turísticos y usando el icono/color de su categoría.
-- Mantener los centros publicados, búsquedas y estados sin ubicación funcionando como antes.
+- Mantener los centros publicados, búsquedas y estados sin ubicación funcionando como antes;
+  los establecimientos con coordenada territorial conservan su marca de aproximación.
 
 ## Reglas
 

@@ -9,6 +9,7 @@ import { DataSource, EntityManager } from "typeorm";
 
 import type {
   AdminEstablishmentsQueryDto,
+  CreateEstablishmentDto,
   PublicEstablishmentsMapQueryDto,
   PublicEstablishmentsQueryDto,
   SaveEstablishmentDto,
@@ -194,7 +195,7 @@ export class EstablishmentsService {
     return this.toAdminItem(row);
   }
 
-  async create(actorId: number, input: SaveEstablishmentDto) {
+  async create(actorId: number, input: CreateEstablishmentDto) {
     const required = this.requireCreateFields(input);
     return this.dataSource.transaction(async (manager) => {
       await this.assertLocality(manager, required.localityId);
@@ -223,9 +224,9 @@ export class EstablishmentsService {
         input.latitude ?? this.toNullableNumber(current.latitude);
       const nextLongitude =
         input.longitude ?? this.toNullableNumber(current.longitude);
-      if ((nextLatitude === null) !== (nextLongitude === null)) {
+      if (nextLatitude === null || nextLongitude === null) {
         throw new BadRequestException(
-          "La latitud y la longitud deben enviarse juntas o dejarse vacías.",
+          "La latitud y la longitud son obligatorias y deben enviarse juntas.",
         );
       }
       await this.assertLocality(manager, nextLocalityId);
@@ -284,10 +285,13 @@ export class EstablishmentsService {
                 telefono = $13,
                 latitud = $14,
                 longitud = $15,
-                ubicacion = CASE WHEN $14::numeric IS NULL OR $15::numeric IS NULL
-                                 THEN NULL
-                                 ELSE ST_SetSRID(ST_MakePoint($15::double precision, $14::double precision), 4326)::geography
-                            END,
+                ubicacion = ST_SetSRID(ST_MakePoint($15::double precision, $14::double precision), 4326)::geography,
+                coordenadas_aproximadas = CASE
+                  WHEN latitud IS DISTINCT FROM $14::numeric
+                    OR longitud IS DISTINCT FROM $15::numeric
+                  THEN FALSE
+                  ELSE coordenadas_aproximadas
+                END,
                 updated_at = CURRENT_TIMESTAMP
           WHERE id = $16`,
         values,
@@ -362,10 +366,8 @@ export class EstablishmentsService {
       params.push(value);
       return `$${params.length}`;
     };
-    const latitudeExpression =
-      "COALESCE(CASE WHEN e.latitud IS NOT NULL AND e.longitud IS NOT NULL THEN e.latitud END, l.latitud)";
-    const longitudeExpression =
-      "COALESCE(CASE WHEN e.latitud IS NOT NULL AND e.longitud IS NOT NULL THEN e.longitud END, l.longitud)";
+    const latitudeExpression = "e.latitud";
+    const longitudeExpression = "e.longitud";
     const where = [
       "e.activo = TRUE",
       `${latitudeExpression} IS NOT NULL`,
@@ -387,7 +389,7 @@ export class EstablishmentsService {
               COALESCE(category_catalog.nombre, e.categoria) AS category,
               ${latitudeExpression}::double precision AS latitude,
               ${longitudeExpression}::double precision AS longitude,
-              NOT (e.latitud IS NOT NULL AND e.longitud IS NOT NULL) AS approximate,
+              e.coordenadas_aproximadas AS approximate,
               COALESCE(category_catalog.icono, 'mapPin') AS icon,
               COALESCE(category_catalog.color, '#2563eb') AS color
          ${establishmentJoin}
@@ -513,30 +515,26 @@ export class EstablishmentsService {
 
   private async insert(
     manager: EntityManager,
-    input: SaveEstablishmentDto,
+    input: CreateEstablishmentDto,
     taxonomy: ResolvedTaxonomy,
     required: {
       localityId: number;
       nombreComercial: string;
+      latitude: number;
+      longitude: number;
     },
   ) {
-    const latitude = input.latitude ?? null;
-    const longitude = input.longitude ?? null;
-    if ((latitude === null) !== (longitude === null)) {
-      throw new BadRequestException(
-        "La latitud y la longitud deben enviarse juntas o dejarse vacías.",
-      );
-    }
     const rows = (await manager.query(
       `INSERT INTO establecimientos_turisticos (
          localidad_id, numero_registro, ruc, nombre_comercial, razon_social,
          actividad, clasificacion, categoria,
          actividad_catalogo_id, clasificacion_catalogo_id, categoria_catalogo_id,
-         direccion, telefono, latitud, longitud, ubicacion, activo, created_at, updated_at
+         direccion, telefono, latitud, longitud, ubicacion,
+         coordenadas_aproximadas, activo, created_at, updated_at
        ) VALUES (
          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-         CASE WHEN $14::numeric IS NULL OR $15::numeric IS NULL THEN NULL
-              ELSE ST_SetSRID(ST_MakePoint($15::double precision, $14::double precision), 4326)::geography END,
+         ST_SetSRID(ST_MakePoint($15::double precision, $14::double precision), 4326)::geography,
+         FALSE,
          TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
        ) RETURNING id`,
       [
@@ -553,8 +551,8 @@ export class EstablishmentsService {
         taxonomy.categoryId,
         input.direccion || null,
         input.telefono || null,
-        latitude,
-        longitude,
+        required.latitude,
+        required.longitude,
       ],
     )) as Array<{ id: string }>;
     return rows[0];
@@ -760,7 +758,9 @@ export class EstablishmentsService {
     }
   }
 
-  private requireCreateFields(input: SaveEstablishmentDto) {
+  private requireCreateFields(input: CreateEstablishmentDto) {
+    const latitude = input.latitude;
+    const longitude = input.longitude;
     if (
       !input.localityId ||
       !input.nombreComercial?.trim() ||
@@ -770,9 +770,25 @@ export class EstablishmentsService {
         "La localidad, el nombre comercial y la actividad son obligatorios.",
       );
     }
+    if (
+      latitude === undefined ||
+      longitude === undefined ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      throw new BadRequestException(
+        "La latitud y la longitud son obligatorias y deben estar dentro de un rango válido.",
+      );
+    }
     return {
       localityId: input.localityId,
       nombreComercial: input.nombreComercial.trim(),
+      latitude,
+      longitude,
     };
   }
 
