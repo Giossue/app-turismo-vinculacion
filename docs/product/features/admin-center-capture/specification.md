@@ -114,7 +114,8 @@ la ficha. Importaciones y procesamiento avanzado quedan para una fase posterior.
 1. Solo `ADMINISTRADOR` puede usar `/admin/*`.
 2. El turista solo recibe centros activos con estado `PUBLICADO`.
 3. Las ediciones de un centro publicado se almacenan como borrador aislado.
-4. Una ficha no puede publicarse sin revisión aprobada.
-5. La publicación aplica el snapshot y registra auditoría en una transacción.
-6. Una fotografía pendiente no tiene URL pública utilizable; la URL solo se incluye cuando
+4. Al consultar un borrador parcial, la versión publicada completa sirve como base de lectura y los valores presentes en el borrador la sobrescriben por sección.
+5. Una ficha no puede publicarse sin revisión aprobada.
+7. La publicación aplica el snapshot y registra auditoría en una transacción.
+8. Una fotografía pendiente no tiene URL pública utilizable; la URL solo se incluye cuando
    la ficha y el archivo están publicados.
