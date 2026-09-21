@@ -7,7 +7,7 @@ Mantener visible en el panel la opinión después de aprobarla, conservar los en
 ## Alcance
 
 - Extender la consulta administrativa de opiniones para devolver una fila por opinión activa: versiones pendientes y versiones ya publicadas.
-- Exponer el estado de la fila para que el panel distinga `PENDIENTE` de `PUBLICADA` y solo permita moderar pendientes.
+- Exponer el estado de la fila para que el panel distinga `PENDIENTE` de `APROBADA` (mostrada como “Publicada”) y solo permita moderar pendientes.
 - Mantener el encabezado y la estructura de las tablas administrativas durante el estado vacío.
 - Revalidar opiniones públicas al montar la pestaña móvil y cuando el estado propio ya tenga una versión aprobada.
 - Añadir pruebas de mapeo/contrato y actualizar la especificación de la feature.
@@ -44,11 +44,12 @@ No se requiere migración. La implementación usa `opiniones.version_publicada_i
 
 ## Verificación
 
-- Pruebas unitarias de API para filas pendientes y publicadas.
-- Formato, lint, typecheck, tests y build de API/móvil.
-- `bun run verify` del panel administrativo.
-- Revisión del diff y comprobación del endpoint público contra la base desplegada.
+- API: formato, lint, typecheck, build y 104 tests pasan.
+- Móvil: formato de los archivos modificados, lint, typecheck, build web y 36 tests pasan.
+- Panel: `bun run format`, `bun run lint`, `bun run typecheck` y `bun run build` pasan.
+- La consulta equivalente contra la base desplegada devuelve una fila `APROBADA`.
+- El chequeo global de formato móvil aún reporta `apps/mobile/src/app/route.tsx`, un archivo preexistente ajeno a esta corrección.
 
 ## Estado
 
-En progreso.
+Completado localmente. Requiere reconstruir y desplegar la API y el panel, y generar un nuevo build móvil para distribuir la corrección.
