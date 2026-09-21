@@ -37,7 +37,7 @@ import {
 type JsonRecord = Record<string, unknown>;
 type CatalogKey =
   "ACCESSIBILITY" | "ACTIVITY" | "FACILITY" | "ESTABLISHMENT_CATEGORY";
-const DEFAULT_ESTABLISHMENT_CATEGORY_ICON = "mapPin";
+const DEFAULT_ESTABLISHMENT_CATEGORY_ICON = "hotel";
 const DEFAULT_ESTABLISHMENT_CATEGORY_COLOR = "#2563eb";
 const CATALOG_TARGETS: Record<
   CatalogKey,

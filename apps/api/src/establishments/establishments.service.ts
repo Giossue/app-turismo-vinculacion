@@ -390,7 +390,7 @@ export class EstablishmentsService {
               ${latitudeExpression}::double precision AS latitude,
               ${longitudeExpression}::double precision AS longitude,
               e.coordenadas_aproximadas AS approximate,
-              COALESCE(category_catalog.icono, 'mapPin') AS icon,
+              COALESCE(NULLIF(category_catalog.icono, 'mapPin'), 'hotel') AS icon,
               COALESCE(category_catalog.color, '#2563eb') AS color
          ${establishmentJoin}
         WHERE ${where.join(" AND ")}

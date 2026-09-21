@@ -70,7 +70,6 @@ type EstablishmentFeatureCollection = GeoJSON.FeatureCollection<
 >;
 
 const establishmentIconGlyphs: Record<string, string> = {
-  mapPin: "•",
   hotel: "⌂",
   restaurant: "R",
   coffee: "C",
@@ -183,7 +182,7 @@ export function CenterMap({
             icon: establishment.icon,
             iconGlyph:
               establishmentIconGlyphs[establishment.icon] ??
-              establishmentIconGlyphs.mapPin,
+              establishmentIconGlyphs.hotel,
             name: establishment.name,
             approximate: establishment.approximate,
           },
@@ -522,18 +521,13 @@ export function CenterMap({
           onPress={handleEstablishmentSourcePress}
         >
           <Layer
-            key="tourism-establishment-icons"
-            id="tourism-establishment-icons"
-            layout={{
-              "icon-allow-overlap": true,
-              "icon-anchor": "bottom",
-              "icon-ignore-placement": true,
-              "icon-image":
-                scheme === "dark" ? "tourism-pin-dark" : "tourism-pin-light",
-              "icon-size": 0.55,
-            }}
+            id="tourism-establishment-markers"
             minzoom={establishmentPinMinZoom}
-            type="symbol"
+            paint={{
+              "circle-color": ["get", "color"],
+              "circle-radius": 8,
+            }}
+            type="circle"
           />
           <Layer
             key="tourism-establishment-dots"

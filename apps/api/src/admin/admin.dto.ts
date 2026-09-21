@@ -425,7 +425,6 @@ export class SaveAdminSectionDto {
 }
 
 export const ESTABLISHMENT_CATEGORY_ICON_CODES = [
-  "mapPin",
   "hotel",
   "restaurant",
   "coffee",
