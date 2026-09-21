@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" fill="none">
+  <defs>
+    <linearGradient id="gradRight" x1="60" y1="28" x2="86" y2="78" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#60A5FA" />
+      <stop offset="100%" stop-color="#2563EB" />
+    </linearGradient>
+    <linearGradient id="gradLeft" x1="60" y1="28" x2="34" y2="78" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#1D4ED8" />
+    </linearGradient>
+    <filter id="dropShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#0F172A" flood-opacity="0.35" />
+    </filter>
+  </defs>
+  <g opacity="0.6">
+    <ellipse cx="60" cy="60" rx="52" ry="26" stroke="#FFFFFF" stroke-width="1.2" stroke-dasharray="4 3" opacity="0.4" />
+    <ellipse cx="60" cy="60" rx="38" ry="19" stroke="#FFFFFF" stroke-width="1.4" opacity="0.7" />
+    <ellipse cx="60" cy="60" rx="24" ry="12" stroke="#FFFFFF" stroke-width="1.6" opacity="0.9" />
+  </g>
+  <g id="arrow" transform="rotate(0 60 60)" filter="url(#dropShadow)">
+    <path d="M60 26 L88 82 L60 68 L32 82 Z" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="4" stroke-linejoin="miter" stroke-miterlimit="10" />
+    <path d="M60 28 L34 80 L60 67 Z" fill="url(#gradLeft)" />
+    <path d="M60 28 L86 80 L60 67 Z" fill="url(#gradRight)" />
+    <path d="M60 28 L86 80 L60 67 Z" fill="#FFFFFF" opacity="0.08" />
+  </g>
+</svg>
