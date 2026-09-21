@@ -8,6 +8,7 @@ export function useCalculatedRoute(request: RouteRequest | null) {
     queryKey: ["calculated-route", request],
     queryFn: ({ signal }) => calculateRoute(request!, fetch, undefined, signal),
     enabled: request !== null,
+    placeholderData: (previousData) => previousData,
     retry: false,
     staleTime: 0,
   });

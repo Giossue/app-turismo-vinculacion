@@ -163,8 +163,9 @@ límites proceden de una fuente oficial y no se editan en el móvil.
 - Persistir únicamente ruta, destino, modo y última posición para restaurar el estado al
   volver a la app; no conservar trazas precisas por defecto.
 - Detener seguimiento, eliminar la sesión local y limpiar la tarea y su notificación al
-  terminar/cancelar la ruta o al salir de la pantalla de ruta con Atrás. La tarea comprueba
-  también la llegada mientras la app está en segundo plano. Minimizar la aplicación o cambiar
+  cancelar/cerrar la ruta con la `X` o al salir de la pantalla antes de iniciar la navegación
+  con Atrás. La tarea comprueba también la llegada mientras la app está en segundo plano y
+  detiene el seguimiento persistente al alcanzar el destino. Minimizar la aplicación o cambiar
   temporalmente de aplicación no cancela la sesión; desmontar la pantalla por ese cambio de
   estado no debe limpiarla. La
   misma notificación foreground muestra la próxima maniobra y distancia redondeada y se

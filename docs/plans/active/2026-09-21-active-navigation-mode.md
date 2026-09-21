@@ -14,7 +14,7 @@ la posición actual y el resumen dinámico del trayecto.
 - Mostrar en navegación activa el mapa completo, la próxima maniobra, recentrado y una
   barra inferior con tiempo, distancia restante, hora estimada y cierre explícito.
 - Impedir que el modo activo termine por arrastre del panel o por Atrás; solo se detiene
-  con `X`, llegada o cierre de la aplicación.
+  con `X` o cierre de la aplicación. Al llegar, informa el estado sin desmontar el modo.
 - Reutilizar el seguimiento GPS, recálculo, persistencia y voz ya existentes.
 
 ## Verificación

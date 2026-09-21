@@ -77,9 +77,11 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   persistente ni promete actualizaciones al cambiar de aplicación. En Android 13 o posterior
   también se solicita `POST_NOTIFICATIONS` cuando el seguimiento persistente está habilitado,
   para mostrar el servicio en el cajón de notificaciones.
-- Al detenerla, llegar al destino, cancelar o abandonar la pantalla de ruta con Atrás, se
+- Al detenerla con la `X`, cancelar o abandonar la pantalla antes de iniciar la navegación, se
   eliminan el watcher, la tarea del sistema, la sesión persistida, la notificación foreground
-  y la voz. Minimizar la app o cambiar temporalmente de aplicación no equivale a cancelar:
+  y la voz. Al llegar al destino, el modo activo conserva su pantalla y muestra el estado de
+  llegada hasta que la persona lo cierre explícitamente. Minimizar la app o cambiar temporalmente
+  de aplicación no equivale a cancelar:
   mientras la navegación siga activa, la tarea continúa bajo las condiciones permitidas por
   Android. La tarea también comprueba la distancia al destino cuando recibe una ubicación en
   segundo plano, para cerrar la sesión al llegar aunque la app no esté visible. El cuerpo de
@@ -96,10 +98,12 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   No se guarda un historial de coordenadas ni se reinicia automáticamente una navegación
   después de forzar el cierre de la app.
 - En móvil, la pantalla de ruta usa MapLibre a pantalla completa: la geometría y los
-  extremos se dibujan como capas sobre el mapa y el tiempo, modo e indicaciones viven en
-  un `BottomSheet` nativo desplazable, con las indicaciones visibles sin un botón
-  intermedio; no se monta un minimapa dentro del contenido. Durante la navegación activa
-  se oculta el selector de modo porque el modo ya fue confirmado.
+  extremos se dibujan como capas sobre el mapa. La vista previa de «Cómo llegar» mantiene
+  el `BottomSheet` nativo desplazable con modo, tiempo e indicaciones. Al iniciar la
+  navegación, la hoja se desmonta y aparece un modo activo independiente con la próxima
+  maniobra, la posición actual, un control para recentrar y una barra inferior con tiempo
+  restante, distancia y hora estimada. Ese modo bloquea el gesto de salida y el Atrás del
+  sistema; solo la `X` lo cierra.
 - Al abrir “Cómo llegar” desde un atractivo publicado, el cliente solicita la ubicación
   puntual y calcula automáticamente la primera ruta; iniciar la navegación sigue siendo
   una acción explícita. Si la ubicación o el cálculo fallan, el panel permite reintentar.

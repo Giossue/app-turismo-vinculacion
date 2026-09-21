@@ -95,56 +95,6 @@ export default function SavedScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.intro}>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Tus lugares
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-              {auth.status === "authenticated"
-                ? "Sincronizados con tu cuenta turística."
-                : "Guardados en este dispositivo para volver a encontrarlos rápido."}
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.sessionBanner,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-          >
-            <TurismoIcon
-              color={colors.primaryStrong}
-              name={auth.status === "authenticated" ? "check" : "user"}
-              size={turismoIconSizes.md}
-            />
-            <View style={styles.sessionCopy}>
-              <Text style={[styles.sessionTitle, { color: colors.text }]}>
-                {auth.status === "authenticated"
-                  ? `Sesión activa · ${auth.user?.name ?? "Turista"}`
-                  : "Sin sesión turística"}
-              </Text>
-              <Text style={[styles.sessionText, { color: colors.textMuted }]}>
-                {auth.status === "authenticated"
-                  ? "Tus guardados se conservan en tu cuenta."
-                  : "Inicia sesión para sincronizarlos entre dispositivos."}
-              </Text>
-            </View>
-            {auth.status === "authenticated" ? (
-              <TourismActionButton
-                compact
-                label="Salir"
-                mode="outlined"
-                onPress={() => void auth.logout()}
-              />
-            ) : auth.status === "anonymous" ? (
-              <TourismActionButton
-                compact
-                icon="user"
-                label="Iniciar sesión"
-                onPress={() => router.push("/login" as never)}
-              />
-            ) : null}
-          </View>
 
           {savedCenters.data.length > 0 ? (
             <View style={styles.list}>
@@ -163,27 +113,7 @@ export default function SavedScreen() {
               ))}
             </View>
           ) : (
-            <View
-              style={[
-                styles.empty,
-                { borderColor: colors.border, backgroundColor: colors.surface },
-              ]}
-            >
-              <View
-                style={[
-                  styles.emptyIcon,
-                  { backgroundColor: colors.primarySoft },
-                ]}
-              >
-                <TurismoIcon
-                  color={colors.primaryStrong}
-                  name="bookmark"
-                  size={turismoIconSizes.lg}
-                />
-              </View>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                Todavía no tienes lugares guardados
-              </Text>
+            <>
               <Text style={[styles.emptyText, { color: colors.textMuted }]}>
                 Abre una ficha turística y toca el marcador para conservarla
                 aquí.
@@ -193,7 +123,7 @@ export default function SavedScreen() {
                 label="Explorar lugares"
                 onPress={handleBack}
               />
-            </View>
+            </>
           )}
         </ScrollView>
       )}
@@ -263,20 +193,7 @@ const styles = StyleSheet.create({
     paddingVertical: turismoSpacing.md,
     paddingBottom: turismoSpacing.xxl,
   },
-  intro: { gap: turismoSpacing.xs },
-  title: { ...turismoTypography.title },
-  subtitle: { ...turismoTypography.body },
-  sessionBanner: {
-    alignItems: "center",
-    borderRadius: turismoRadii.md,
-    borderWidth: turismoMetrics.borderWidth,
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-    padding: turismoSpacing.sm,
-  },
-  sessionCopy: { flex: 1, gap: turismoSpacing.xxs },
-  sessionTitle: { ...turismoTypography.label },
-  sessionText: { ...turismoTypography.caption },
+
   list: { gap: turismoSpacing.sm },
   row: {
     alignItems: "center",
@@ -306,21 +223,6 @@ const styles = StyleSheet.create({
   rowCategory: { ...turismoTypography.caption, fontWeight: "700" as const },
   rowMeta: { ...turismoTypography.caption },
   pressed: { opacity: 0.72 },
-  empty: {
-    alignItems: "center",
-    borderRadius: turismoRadii.lg,
-    borderWidth: turismoMetrics.borderWidth,
-    gap: turismoSpacing.sm,
-    padding: turismoSpacing.xl,
-  },
-  emptyIcon: {
-    alignItems: "center",
-    borderRadius: turismoRadii.pill,
-    height: turismoMetrics.iconButtonLg,
-    justifyContent: "center",
-    width: turismoMetrics.iconButtonLg,
-  },
-  emptyTitle: { ...turismoTypography.heading, textAlign: "center" },
   emptyText: { ...turismoTypography.body, textAlign: "center" },
   state: {
     alignItems: "center",

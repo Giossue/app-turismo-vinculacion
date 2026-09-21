@@ -175,7 +175,7 @@ export function RouteMap({
       easing: "ease",
       zoom: 16,
     });
-  }, [recenterKey]);
+  }, [mapLoadState, recenterKey]);
 
   return (
     <View

@@ -72,12 +72,13 @@ describe("navigation guidance", () => {
   });
 
   it("estimates remaining distance and duration from route progress", () => {
-    expect(
-      getRouteRemainingMetrics(route, {
-        latitude: -1.59,
-        longitude: -79.0015,
-      }),
-    ).toEqual({ distanceMeters: 110, durationSeconds: 30 });
+    const remaining = getRouteRemainingMetrics(route, {
+      latitude: -1.59,
+      longitude: -79.001,
+    });
+
+    expect(remaining.distanceMeters).toBeCloseTo(110, 5);
+    expect(remaining.durationSeconds).toBeCloseTo(30, 5);
   });
 
   it("formats a dynamic notification for the next maneuver", () => {
