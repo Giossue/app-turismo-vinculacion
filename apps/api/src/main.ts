@@ -48,6 +48,7 @@ async function bootstrap(): Promise<void> {
       config.getOrThrow<string>("WEB_ORIGIN"),
       config.getOrThrow<string>("ADMIN_WEB_ORIGIN"),
     ],
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
   });
   app.setGlobalPrefix("api/v1");
