@@ -6,6 +6,13 @@ BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '30s';
 
+ALTER TABLE auditoria_catalogos
+  DROP CONSTRAINT IF EXISTS auditoria_catalogos_catalogo_codigo_check;
+
+ALTER TABLE auditoria_catalogos
+  ADD CONSTRAINT auditoria_catalogos_catalogo_codigo_check
+  CHECK (catalogo_codigo IN ('ACCESSIBILITY', 'ACTIVITY', 'FACILITY', 'ESTABLISHMENT_CATEGORY', 'ESTABLISHMENT'));
+
 ALTER TABLE catalogo_catastro_categorias
   ADD COLUMN IF NOT EXISTS icono VARCHAR(40) NOT NULL DEFAULT 'mapPin',
   ADD COLUMN IF NOT EXISTS color VARCHAR(7) NOT NULL DEFAULT '#2563eb';

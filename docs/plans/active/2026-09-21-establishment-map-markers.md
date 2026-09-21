@@ -1,7 +1,7 @@
 # Plan: categorías de catastro y marcadores en el mapa
 
 Fecha: 2026-09-21
-Estado: en curso
+Estado: implementado; pendiente aplicar la migración en el entorno y comprobación visual en dispositivo
 
 ## Objetivo
 
@@ -29,5 +29,6 @@ Permitir que una categoría de catastro administre un icono y un color, y mostra
 - Pruebas API para devolver/actualizar icono y color y rechazar valores inválidos.
 - Prueba del endpoint público con límite y viewport.
 - `bun run verify` en `web-turismo-admin`.
-- Typecheck, lint y pruebas aplicables de API y móvil.
-- Revisión del diff y comprobación visual del panel y del mapa.
+- Build, lint y suite completa de pruebas del API; el typecheck global del API conserva un fallo previo en `test/opinions.service.spec.ts:121`.
+- Typecheck, lint y suite completa de pruebas del móvil.
+- Revisión del diff y comprobación visual pendiente en panel/mapa.
