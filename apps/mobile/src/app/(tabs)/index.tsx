@@ -1330,11 +1330,7 @@ function PlaceOpinions({
   onRequireAuth: () => void;
 }>) {
   return (
-    <CenterOpinions
-      active={active}
-      code={code}
-      onRequireAuth={onRequireAuth}
-    />
+    <CenterOpinions active={active} code={code} onRequireAuth={onRequireAuth} />
   );
 }
 

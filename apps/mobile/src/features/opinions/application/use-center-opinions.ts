@@ -20,7 +20,7 @@ export function useCenterOpinions(code: string, enabled = true) {
     queryFn: () => listCenterOpinions(code),
     enabled: Boolean(code) && enabled,
     refetchOnMount: "always",
-    staleTime: 60_000,
+    staleTime: 0,
   });
 }
 
@@ -32,7 +32,7 @@ export function useOwnCenterOpinion(code: string, enabled = true) {
     queryFn: () => getMyCenterOpinion(code, auth.request),
     enabled: Boolean(code) && enabled && auth.status === "authenticated",
     refetchOnMount: "always",
-    staleTime: 15_000,
+    staleTime: 0,
   });
 }
 
