@@ -64,9 +64,7 @@ type NearbyStopRouteRow = {
 };
 
 @Injectable()
-export class PostgresPublicTransportRepository
-  implements PublicTransportRepository
-{
+export class PostgresPublicTransportRepository implements PublicTransportRepository {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   async findForPublishedCenter(

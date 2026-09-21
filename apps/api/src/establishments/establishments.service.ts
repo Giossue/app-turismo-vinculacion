@@ -532,8 +532,7 @@ export class EstablishmentsService {
     limit: number;
   }) {
     const category = query.category?.trim() || null;
-    const origin =
-      "ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography";
+    const origin = "ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography";
     const rows = await this.dataSource.query<PublicEstablishmentRow[]>(
       `${publicEstablishmentSelect},
               ST_Distance(e.ubicacion, ${origin}) AS "distanceMeters"
@@ -553,7 +552,13 @@ export class EstablishmentsService {
           )
         ORDER BY "distanceMeters", e.nombre_comercial, e.id
         LIMIT $5`,
-      [query.latitude, query.longitude, query.radiusMeters, category, query.limit],
+      [
+        query.latitude,
+        query.longitude,
+        query.radiusMeters,
+        category,
+        query.limit,
+      ],
     );
 
     return rows.map((row) => this.toPublicItem(row));

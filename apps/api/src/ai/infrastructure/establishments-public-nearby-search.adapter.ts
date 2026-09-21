@@ -7,9 +7,7 @@ import {
 } from "../application/public-nearby-establishment-search";
 
 @Injectable()
-export class EstablishmentsPublicNearbySearchAdapter
-  implements PublicNearbyEstablishmentSearch
-{
+export class EstablishmentsPublicNearbySearchAdapter implements PublicNearbyEstablishmentSearch {
   constructor(
     @Inject(EstablishmentsService)
     private readonly establishments: EstablishmentsService,

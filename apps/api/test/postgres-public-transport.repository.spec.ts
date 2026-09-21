@@ -10,7 +10,9 @@ describe("PostgresPublicTransportRepository", () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
-    const repository = new PostgresPublicTransportRepository({ query } as never);
+    const repository = new PostgresPublicTransportRepository({
+      query,
+    } as never);
 
     await expect(
       repository.findForPublishedCenter("CENTER-001"),
@@ -27,7 +29,9 @@ describe("PostgresPublicTransportRepository", () => {
 
   it("uses an indexed spatial predicate for nearby active stops", async () => {
     const query = vi.fn().mockResolvedValue([]);
-    const repository = new PostgresPublicTransportRepository({ query } as never);
+    const repository = new PostgresPublicTransportRepository({
+      query,
+    } as never);
 
     await expect(
       repository.listNearbyStops({

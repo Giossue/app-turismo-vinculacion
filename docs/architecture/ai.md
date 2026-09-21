@@ -21,11 +21,25 @@ usa AI SDK Core (`generateText` + `Output.object`) y selecciona OpenAI o Anthrop
 la aplicación móvil. La respuesta contiene `text`, `cards`, `itinerary` opcional, `actions` y `sources`.
 
 Las herramientas allowlisted de esta unidad son `searchPublishedCenters`,
-`findItineraryCandidates`, `getPublishedCenter` y `searchNearbyEstablishments`. Las tres
-primeras delegan en el repositorio de centros publicados y la cuarta en la consulta pública
-del catastro. El modelo solo recibe referencias de resultados y el backend rehidrata/sanitiza
-tarjetas, itinerarios, fuentes y destinos; no acepta coordenadas ni detalles escritos por el
-modelo.
+`findItineraryCandidates`, `getPublishedCenter`, `searchNearbyEstablishments`,
+`searchNearbyPublishedPlaces`, `getPublishedTransportForCenter` y
+`searchNearbyTransportStops`. Las consultas de cercanía usan PostGIS sobre centros publicados,
+POI activos y establecimientos activos; `searchNearbyPublishedPlaces` recibe únicamente radio,
+límite y categoría opcional, mientras que las coordenadas se toman del contexto aproximado del
+request. La intención cercana detectada en español obliga a ejecutar esa herramienta en el
+primer paso para evitar convertir “cerca de mí” en una búsqueda textual. El modelo solo recibe
+referencias de resultados y el backend rehidrata/sanitiza tarjetas, itinerarios, fuentes y
+destinos; no acepta coordenadas ni detalles escritos por el modelo.
+
+Los POI no tienen código público en el esquema actual: se representan internamente con una
+referencia opaca por solicitud y la respuesta solo contiene nombre, descripción, localidad y
+coordenadas públicas. Las acciones `start_route` pueden apuntar a un POI, establecimiento o
+centro, pero la navegación continúa requiriendo confirmación móvil.
+
+Las herramientas de transporte consultan rutas, cooperativas, tipos, paradas, horarios y
+asociaciones reales. Si las tablas operativas no tienen registros, devuelven una ausencia
+explícita (“no hay rutas/paradas/horarios publicados”) y nunca inventan frecuencia, precio ni
+duración.
 Las acciones son intenciones: `start_route` siempre exige confirmación explícita en el
 móvil y no ejecuta navegación desde la API.
 
@@ -34,7 +48,7 @@ móvil y no ejecuta navegación desde la API.
 - Buscar centros/POI/establecimientos publicados.
 - Consultar ficha pública.
 - Buscar por radio y filtros.
-- Consultar rutas, paradas y horarios.
+- Consultar rutas, paradas y horarios publicados, sin rellenar ausencias.
 - Proponer itinerario y validarlo contra horarios/distancias.
 - Recuperar fuentes de una recomendación.
 

@@ -105,7 +105,7 @@ export const agentActionSchema = z.discriminatedUnion("type", [
 
 export const agentSourceSchema = z
   .object({
-    type: z.enum(["center", "establishment"]),
+    type: z.enum(["center", "establishment", "poi", "transport"]),
     label: z.string().min(1).max(240),
   })
   .strict();

@@ -91,7 +91,10 @@ describe("askTourismAgent", () => {
             requiresConfirmation: true,
           },
         ],
-        sources: [{ type: "poi", label: "Catálogo público geolocalizado" }],
+        sources: [
+          { type: "poi", label: "Catálogo público geolocalizado" },
+          { type: "transport", label: "Registro institucional de transporte" },
+        ],
       }),
       ok: true,
     });

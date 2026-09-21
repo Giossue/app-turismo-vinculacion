@@ -75,8 +75,7 @@ export class PostgresPublicCenterRepository implements PublicCenterRepository {
   async listNearbyPublished(
     query: NearbyPublishedCentersQuery,
   ): Promise<NearbyPublicCenterPage> {
-    const origin =
-      "ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography";
+    const origin = "ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography";
     const rows = await this.dataSource.query<NearbyCenterRow[]>(
       `SELECT ${this.publicFields()},
               ST_Distance(c.ubicacion, ${origin}) AS distance_meters

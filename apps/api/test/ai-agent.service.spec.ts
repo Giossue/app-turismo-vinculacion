@@ -6,7 +6,10 @@ import {
   type AgentChatInput,
 } from "../src/ai/application/ai-agent.contracts";
 import { nearbyPublishedPlacesInputSchema } from "../src/ai/application/ai-agent.service";
-import { AiAgentService } from "../src/ai/application/ai-agent.service";
+import {
+  AiAgentService,
+  hasNearbyIntent,
+} from "../src/ai/application/ai-agent.service";
 import type { PublicEstablishmentSearch } from "../src/ai/application/public-establishment-search";
 import type { PublicNearbyEstablishmentSearch } from "../src/ai/application/public-nearby-establishment-search";
 import type { PublicCenterRepository } from "../src/centers/application/public-center.repository";
@@ -103,12 +106,19 @@ describe("AiAgentService", () => {
     ).toBe(false);
   });
 
+  it("recognizes nearby intent without turning the phrase into a text search", () => {
+    expect(hasNearbyIntent("Lo que haya cerca de mí")).toBe(true);
+    expect(hasNearbyIntent("qué puedo visitar alrededor")).toBe(true);
+    expect(hasNearbyIntent("cuéntame la historia de Guaranda")).toBe(false);
+  });
+
   it("rejects an invalid nearby radius before a tool can query the database", () => {
     expect(
       nearbyPublishedPlacesInputSchema.safeParse({ radiusMeters: 0 }).success,
     ).toBe(false);
     expect(
-      nearbyPublishedPlacesInputSchema.safeParse({ radiusMeters: 25_001 }).success,
+      nearbyPublishedPlacesInputSchema.safeParse({ radiusMeters: 25_001 })
+        .success,
     ).toBe(false);
   });
 

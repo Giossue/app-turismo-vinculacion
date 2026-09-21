@@ -3,9 +3,11 @@
 ## Estado
 
 Implementada la primera rebanada vertical para visitantes autenticados, incluyendo
-propuestas no persistentes de recorrido con lugares publicados. La integración está lista
-para validarse con credenciales Anthropic y datos publicados reales; itinerarios persistentes,
-horarios/rutas consultables y voz quedan para unidades posteriores.
+propuestas no persistentes de recorrido con lugares publicados. La búsqueda cercana ahora
+consulta centros, POI y establecimientos mediante PostGIS, y el agente dispone de tools de
+transporte que degradan explícitamente cuando no hay registros operativos. La integración
+queda lista para validarse con credenciales Anthropic y una prueba desde dispositivo real;
+itinerarios persistentes, cálculo de rutas y voz quedan para unidades posteriores.
 
 ## Objetivo
 
@@ -19,9 +21,14 @@ tarjetas de lugares y propuestas de acción.
 - `getPublishedCenter`: ficha pública completa de un centro publicado.
 - `searchNearbyEstablishments`: búsqueda de catastro público cercano por actividad/categoría,
   usando ubicación aproximada solo durante la solicitud.
+- `searchNearbyPublishedPlaces`: búsqueda geoespacial combinada de centros publicados, POI
+  activos y establecimientos activos; recibe radio, límite y categoría, no coordenadas.
+- `getPublishedTransportForCenter` y `searchNearbyTransportStops`: consulta real de rutas,
+  tipos, cooperativas, paradas y horarios; devuelven ausencia explícita si la BD está vacía.
 - `findItineraryCandidates`: candidatos de 2 a 6 lugares publicados para una propuesta de
   recorrido; no calcula horarios, tiempos ni rutas.
-- Tarjetas confiables de centros y establecimientos.
+- Tarjetas confiables de centros, POI y establecimientos; los POI usan referencias opacas por
+  solicitud y no exponen el `id` interno.
 - Tarjeta de itinerario con paradas ordenadas y apertura de cada ficha.
 - Acciones propuestas `open_center` y `start_route`; iniciar navegación requiere confirmación
   explícita en el móvil y no se ejecuta desde el backend ni desde el modelo.
@@ -36,8 +43,8 @@ tarjetas de lugares y propuestas de acción.
   puede leer datos públicos en esta unidad.
 - La autenticación y los roles se validan con `AuthGuard`/`RolesGuard`; el agente no recibe
   tokens, correo, fecha de nacimiento ni datos de sesión.
-- Centros y establecimientos se consultan únicamente por repositorios/servicios públicos.
-  No se exponen RUC, número de registro, IDs internos, SQL ni datos no publicados.
+- Centros, POI, establecimientos y transporte se consultan únicamente por repositorios/servicios
+  públicos. No se exponen RUC, número de registro, IDs internos, SQL ni datos no publicados.
 
 ## Ubicación y privacidad
 
@@ -81,7 +88,10 @@ referencias inexistentes.
 
 - El backend valida el nuevo contrato y rechaza ubicación inválida, exceso de historial y
   propiedades desconocidas.
-- El agente puede consultar centros publicados y catastro cercano con ubicación aproximada.
+- El agente puede consultar centros publicados, POI activos y catastro cercano con ubicación
+  aproximada; la frase “cerca de mí” fuerza la tool geográfica en el primer paso.
+- El agente puede consultar transporte registrado y comunicar que no hay rutas/paradas/horarios
+  publicados sin inventarlos.
 - El agente puede proponer de 2 a 6 lugares publicados en un orden explícito, sin presentarlo
   como horario o ruta calculada.
 - El backend solo devuelve tarjetas/itinerarios/acciones que correspondan a resultados de
@@ -96,13 +106,16 @@ referencias inexistentes.
 - [x] Pruebas unitarias de esquemas, adaptación de herramientas y sanitización.
 - [x] Pruebas del controlador para respuesta JSON y entrada inválida.
 - [x] Pruebas del parser móvil y de la solicitud de ubicación aproximada.
-- [x] Typecheck, lint, Prettier y `git diff --check` en API.
-- [x] Tests, typecheck y Prettier del móvil.
+- [x] Typecheck, lint, Prettier y `git diff --check` en API; 24 suites y 121 tests pasan.
+- [x] Tests, typecheck y Prettier del móvil; 12 suites y 40 tests pasan.
 - [x] Lint móvil sin errores; permanece un warning previo sobre la dependencia de
   `visibleCenters` en un `useMemo` del shell del mapa.
+- [x] Smoke SQL contra PostgreSQL: 1 centro publicado, 2 POI, 51 establecimientos y 0 rutas,
+  paradas, asociaciones u horarios operativos; `EXPLAIN` mostró los índices GIST de POI y
+  establecimientos para las consultas de radio.
 
 ## Siguiente unidad
 
-Agregar herramientas de rutas, transporte y horarios para validar propuestas, y después
-persistencia explícita con confirmación por etapa. No permitir que el modelo inicie navegación
-ni modifique centros/publicaciones.
+Integrar cálculo de rutas vial con el proveedor existente y validación de duración/distancia;
+después añadir persistencia explícita de itinerarios con confirmación por etapa. No permitir
+que el modelo inicie navegación ni modifique centros/publicaciones.

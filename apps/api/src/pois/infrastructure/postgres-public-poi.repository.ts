@@ -57,7 +57,13 @@ export class PostgresPublicPoiRepository implements PublicPoiRepository {
           )
         ORDER BY "distanceMeters", pi.nombre
         LIMIT $5`,
-      [query.latitude, query.longitude, query.radiusMeters, query.category ?? null, query.limit],
+      [
+        query.latitude,
+        query.longitude,
+        query.radiusMeters,
+        query.category ?? null,
+        query.limit,
+      ],
     );
 
     return { items: rows.map(mapPublicPoi) };

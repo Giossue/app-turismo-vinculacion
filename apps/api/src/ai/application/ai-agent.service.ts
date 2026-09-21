@@ -134,6 +134,7 @@ export class AiAgentService {
           longitude: roundCoordinate(input.location.longitude),
         }
       : undefined;
+    const forceNearbyTool = hasNearbyIntent(input.message);
     let establishmentSequence = 0;
     let poiSequence = 0;
 
@@ -184,8 +185,7 @@ export class AiAgentService {
           type: "poi",
           name: item.name,
           summary: truncate(
-            item.description?.trim() ||
-              `Punto de interés en ${item.zoneName}.`,
+            item.description?.trim() || `Punto de interés en ${item.zoneName}.`,
             500,
           ),
           category: "Punto de interés",
@@ -277,6 +277,15 @@ export class AiAgentService {
           "No solicites ni repitas contraseñas, tokens, ubicación histórica o datos personales.",
         ].join(" "),
         messages,
+        prepareStep: ({ stepNumber }) =>
+          forceNearbyTool && stepNumber === 0
+            ? {
+                toolChoice: {
+                  type: "tool" as const,
+                  toolName: "searchNearbyPublishedPlaces" as const,
+                },
+              }
+            : { toolChoice: "auto" as const },
         output: Output.object({
           schema: agentModelResponseSchema,
           name: "tourism_agent_response",
@@ -399,7 +408,10 @@ export class AiAgentService {
                       ref,
                       type: "establishment" as const,
                       name: item.nombreComercial,
-                      description: [item.actividad, item.categoria ?? item.clasificacion]
+                      description: [
+                        item.actividad,
+                        item.categoria ?? item.clasificacion,
+                      ]
                         .filter(Boolean)
                         .join(" · "),
                       category: item.categoria ?? item.clasificacion,
@@ -511,9 +523,8 @@ export class AiAgentService {
             inputSchema: transportForCenterInputSchema,
             execute: async ({ code }) => {
               try {
-                const transport = await this.transport.findForPublishedCenter(
-                  code,
-                );
+                const transport =
+                  await this.transport.findForPublishedCenter(code);
                 if (!transport) return { available: true, found: false };
                 const source: AgentSource = {
                   type: "transport",
@@ -637,11 +648,9 @@ export class AiAgentService {
         },
       });
 
-      return sanitizeAgentResponse(
-        result.output,
-        entities,
-        [...trustedSources.values()],
-      );
+      return sanitizeAgentResponse(result.output, entities, [
+        ...trustedSources.values(),
+      ]);
     } catch (error) {
       if (error instanceof ServiceUnavailableException) throw error;
       throw new ServiceUnavailableException(
@@ -668,6 +677,12 @@ export class AiAgentService {
       );
     return createAnthropic({ apiKey })(modelId);
   }
+}
+
+export function hasNearbyIntent(message: string): boolean {
+  return /\b(cerca|cercan[oa]s?|alrededor|pr[oó]xim[oa]s?|aqu[ií] cerca)\b/i.test(
+    message,
+  );
 }
 
 function roundCoordinate(value: number): number {
