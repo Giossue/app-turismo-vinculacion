@@ -1,7 +1,7 @@
 # Plan: coordenadas obligatorias para establecimientos
 
 Fecha: 2026-09-21
-Estado: en curso
+Estado: implementado; migración aplicada en la base remota
 
 ## Objetivo
 
@@ -29,11 +29,11 @@ exacta del negocio.
 
 ## Verificación
 
-- Ejecutar la migración sobre la base remota después del preflight y comprobar 50/50 filas
-  con coordenadas, 50 filas aproximadas y cero valores nulos.
-- Ejecutar typecheck, lint y pruebas del API.
-- Ejecutar `bun run verify` en `web-turismo-admin`.
-- Revisar el diff y la consulta SQL final del mapa.
+- Migración aplicada sobre la base remota: 50/50 filas con coordenadas, 50 filas
+  aproximadas, 50 geometrías `ubicacion` y cero valores nulos.
+- API: typecheck, lint, formato y 109 pruebas pasan.
+- Panel: `bun run verify` pasa, incluido el build de Next.js.
+- `git diff --check` pasa.
 
 ## Operación y rollback
 

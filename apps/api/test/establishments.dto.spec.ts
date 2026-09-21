@@ -21,6 +21,22 @@ describe("CreateEstablishmentDto", () => {
     );
   });
 
+  it("does not turn blank coordinates into zero", async () => {
+    const errors = await validate(
+      plainToInstance(CreateEstablishmentDto, {
+        localityId: 1,
+        nombreComercial: "Comedor de prueba",
+        actividad: "Alimentación",
+        latitude: "",
+        longitude: "",
+      }),
+    );
+
+    expect(errors.map((error) => error.property)).toEqual(
+      expect.arrayContaining(["latitude", "longitude"]),
+    );
+  });
+
   it("transforms and accepts valid coordinate values", async () => {
     const errors = await validate(
       plainToInstance(CreateEstablishmentDto, {

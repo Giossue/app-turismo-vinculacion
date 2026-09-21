@@ -25,6 +25,15 @@ const toOptionalBoolean = ({ value }: { value: unknown }) => {
   return value;
 };
 
+const toCoordinateNumber = ({ value }: { value: unknown }) => {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed === "" ? undefined : Number(trimmed);
+  }
+  return value;
+};
+
 export class AdminEstablishmentsQueryDto {
   @IsOptional()
   @Transform(toOptionalTrimmedString)
@@ -171,14 +180,14 @@ class EstablishmentFieldsDto {
 
 export class SaveEstablishmentDto extends EstablishmentFieldsDto {
   @IsOptional()
-  @Type(() => Number)
+  @Transform(toCoordinateNumber)
   @IsNumber()
   @Min(-90)
   @Max(90)
   latitude?: number;
 
   @IsOptional()
-  @Type(() => Number)
+  @Transform(toCoordinateNumber)
   @IsNumber()
   @Min(-180)
   @Max(180)
@@ -186,13 +195,13 @@ export class SaveEstablishmentDto extends EstablishmentFieldsDto {
 }
 
 export class CreateEstablishmentDto extends EstablishmentFieldsDto {
-  @Type(() => Number)
+  @Transform(toCoordinateNumber)
   @IsNumber()
   @Min(-90)
   @Max(90)
   latitude?: number;
 
-  @Type(() => Number)
+  @Transform(toCoordinateNumber)
   @IsNumber()
   @Min(-180)
   @Max(180)
