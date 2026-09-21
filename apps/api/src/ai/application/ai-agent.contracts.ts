@@ -168,6 +168,7 @@ export const agentResponseSchema = z
     text: z.string().trim().min(1).max(4_000),
     cards: z.array(agentCardSchema).max(6),
     actions: z.array(agentActionSchema).max(4),
+    itinerary: agentItinerarySchema.optional(),
     sources: z.array(agentSourceSchema).max(8),
   })
   .strict();

@@ -9,6 +9,28 @@ describe("askTourismAgent", () => {
         text: "Hay un mirador publicado en Guaranda.",
         cards: [],
         actions: [],
+        itinerary: {
+          title: "Paseo recomendado",
+          summary: "Lugares publicados para visitar.",
+          stops: [
+            {
+              type: "center",
+              code: "GUA-001",
+              name: "Primer lugar",
+              latitude: -1.59,
+              longitude: -79,
+              order: 1,
+            },
+            {
+              type: "center",
+              code: "GUA-002",
+              name: "Segundo lugar",
+              latitude: -1.58,
+              longitude: -79.01,
+              order: 2,
+            },
+          ],
+        },
         sources: [],
       }),
       ok: true,
@@ -22,7 +44,10 @@ describe("askTourismAgent", () => {
         "http://api.test/api/v1",
         { latitude: -1.59234, longitude: -79.00123, accuracyMeters: 35 },
       ),
-    ).resolves.toMatchObject({ text: expect.stringContaining("mirador") });
+    ).resolves.toMatchObject({
+      itinerary: { stops: [{ code: "GUA-001" }, { code: "GUA-002" }] },
+      text: expect.stringContaining("mirador"),
+    });
     expect(fetcher).toHaveBeenCalledWith("http://api.test/api/v1/ai/chat", {
       body: JSON.stringify({
         message: "Quiero una buena vista",

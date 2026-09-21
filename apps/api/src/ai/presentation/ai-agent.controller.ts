@@ -43,6 +43,15 @@ export class AiAgentController {
         text: { type: "string" },
         cards: { type: "array", items: { type: "object" } },
         actions: { type: "array", items: { type: "object" } },
+        itinerary: {
+          type: "object",
+          nullable: true,
+          properties: {
+            title: { type: "string" },
+            summary: { type: "string" },
+            stops: { type: "array", items: { type: "object" } },
+          },
+        },
         sources: { type: "array", items: { type: "object" } },
       },
     },

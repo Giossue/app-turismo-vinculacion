@@ -111,6 +111,31 @@ describe("AiAgentService", () => {
       ],
     ]);
 
+    trusted.set("center:GUA-002", {
+      ref: "center:GUA-002",
+      card: {
+        type: "center",
+        code: "GUA-002",
+        name: "Segundo centro",
+        summary: "Otra descripción oficial",
+        category: "Naturaleza",
+        latitude: -1.58,
+        longitude: -79.01,
+        distanceMeters: null,
+      },
+      destination: {
+        type: "center",
+        code: "GUA-002",
+        name: "Segundo centro",
+        latitude: -1.58,
+        longitude: -79.01,
+      },
+      source: {
+        type: "center",
+        label: "Catálogo de centros turísticos publicados",
+      },
+    });
+
     const sanitized = sanitizeAgentResponse(
       {
         text: "Encontré un lugar.",
@@ -119,6 +144,15 @@ describe("AiAgentService", () => {
           { type: "open_center", ref: "center:inventado" },
           { type: "start_route", mode: "foot", ref: "center:GUA-001" },
         ],
+        itinerary: {
+          title: "Paseo publicado",
+          summary: "Propuesta verificada.",
+          stops: [
+            { ref: "center:GUA-002", order: 2 },
+            { ref: "center:GUA-001", order: 1 },
+            { ref: "center:inventado", order: 3 },
+          ],
+        },
       },
       trusted,
     );
@@ -138,5 +172,27 @@ describe("AiAgentService", () => {
         requiresConfirmation: true,
       },
     ]);
+    expect(sanitized.itinerary).toEqual({
+      title: "Paseo publicado",
+      summary: "Propuesta verificada.",
+      stops: [
+        {
+          type: "center",
+          code: "GUA-001",
+          name: "Centro publicado",
+          latitude: -1.59,
+          longitude: -79,
+          order: 1,
+        },
+        {
+          type: "center",
+          code: "GUA-002",
+          name: "Segundo centro",
+          latitude: -1.58,
+          longitude: -79.01,
+          order: 2,
+        },
+      ],
+    });
   });
 });

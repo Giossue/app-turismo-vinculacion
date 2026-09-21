@@ -18,13 +18,14 @@ pregunta -> policy/rate limit -> herramientas del backend
 La primera integración expone `POST /api/v1/ai/chat` como JSON estructurado. El backend
 usa AI SDK Core (`generateText` + `Output.object`) y selecciona OpenAI o Anthropic con
 `AI_PROVIDER` y `AI_MODEL`; las claves `OPENAI_API_KEY` y `ANTHROPIC_API_KEY` nunca llegan a
-la aplicación móvil. La respuesta contiene `text`, `cards`, `actions` y `sources`.
+la aplicación móvil. La respuesta contiene `text`, `cards`, `itinerary` opcional, `actions` y `sources`.
 
 Las herramientas allowlisted de esta unidad son `searchPublishedCenters`,
-`getPublishedCenter` y `searchNearbyEstablishments`. Las dos primeras delegan en el
-repositorio de centros publicados y la tercera en la consulta pública del catastro. El
-modelo solo recibe referencias de resultados y el backend rehidrata/sanitiza tarjetas,
-fuentes y destinos; no acepta coordenadas ni detalles escritos por el modelo.
+`findItineraryCandidates`, `getPublishedCenter` y `searchNearbyEstablishments`. Las tres
+primeras delegan en el repositorio de centros publicados y la cuarta en la consulta pública
+del catastro. El modelo solo recibe referencias de resultados y el backend rehidrata/sanitiza
+tarjetas, itinerarios, fuentes y destinos; no acepta coordenadas ni detalles escritos por el
+modelo.
 Las acciones son intenciones: `start_route` siempre exige confirmación explícita en el
 móvil y no ejecuta navegación desde la API.
 

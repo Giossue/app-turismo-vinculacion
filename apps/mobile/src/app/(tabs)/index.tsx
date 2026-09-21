@@ -323,6 +323,25 @@ function ExploreMapScreen() {
     setSearchFocused(false);
   }, []);
 
+  const beginFocusedSearch = useCallback(() => {
+    setSearchFocused(true);
+    setSelectedCenterCode(null);
+    setSelectedEstablishment(null);
+    setMapFeatureSelection(null);
+    setMapFeatureFocusSelection(null);
+    dismissSearchSheet();
+  }, [dismissSearchSheet]);
+
+  useEffect(() => {
+    if (!searchFocused) return;
+
+    const keyboardSubscription = Keyboard.addListener("keyboardDidHide", () => {
+      setSearchFocused(false);
+    });
+
+    return () => keyboardSubscription.remove();
+  }, [searchFocused]);
+
   const clearSearch = useCallback(() => {
     setText("");
     setSubmittedText("");
@@ -678,10 +697,9 @@ function ExploreMapScreen() {
                       ? "Buscar servicios cercanos"
                       : "Buscar atractivos"
                   }
-                  onBlur={() => setSearchFocused(false)}
                   onChangeText={setText}
                   onClear={handleClearSearchInput}
-                  onFocus={() => setSearchFocused(true)}
+                  onFocus={beginFocusedSearch}
                   onSubmitEditing={handleSubmitSearch}
                   placeholder="Buscar aquí"
                   value={text}
@@ -751,32 +769,15 @@ function ExploreMapScreen() {
                     ? "Buscar servicios cercanos"
                     : "Buscar atractivos"
                 }
-                onBlur={() => setSearchFocused(false)}
                 onChangeText={setText}
                 onClear={handleClearSearchInput}
-                onFocus={() => setSearchFocused(true)}
+                onFocus={beginFocusedSearch}
                 onSubmitEditing={handleSubmitSearch}
                 placeholder="Buscar aquí"
                 value={text}
               />
             </View>
           </View>
-          <SearchModeChips
-            onSelectCenters={() => {
-              setSearchMode("CENTERS");
-              setSubmittedText("");
-              setSelectedCenterCode(null);
-              dismissSearchSheet();
-            }}
-            onSelectEstablishments={() => {
-              setSearchMode("ESTABLISHMENTS");
-              setSubmittedText("");
-              setSelectedCenterCode(null);
-              dismissSearchSheet();
-              if (!userLocation) void requestLocation();
-            }}
-            searchMode={searchMode}
-          />
           <SearchSuggestionsPanel
             fullScreen
             history={searchHistory}
@@ -913,14 +914,14 @@ function ExploreMapScreen() {
           ) : null}
         </BottomSheetModal>
       ) : null}
-      {mapFeatureSelection ? (
+      {!searchFocused && mapFeatureSelection ? (
         <MapFeatureSelectionSheet
           onClose={() => setMapFeatureSelection(null)}
           onSelect={handleMapFeatureSelection}
           selections={mapFeatureSelection}
         />
       ) : null}
-      {selectedCenter ? (
+      {!searchFocused && selectedCenter ? (
         <CenterDetailSheet
           center={selectedCenter}
           detail={selectedCenterDetail}
@@ -933,7 +934,7 @@ function ExploreMapScreen() {
           key={`${selectedCenter.code}-${isLandscape ? "landscape" : "portrait"}`}
         />
       ) : null}
-      {selectedEstablishment ? (
+      {!searchFocused && selectedEstablishment ? (
         <EstablishmentDetailSheet
           establishment={selectedEstablishment}
           onClose={closeSelectedEstablishment}
