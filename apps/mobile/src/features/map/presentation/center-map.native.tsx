@@ -60,7 +60,6 @@ type EstablishmentProperties = Readonly<{
   color: string;
   featureKey: string;
   icon: string;
-  iconGlyph: string;
   name: string;
   approximate: boolean;
 }>;
@@ -69,14 +68,14 @@ type EstablishmentFeatureCollection = GeoJSON.FeatureCollection<
   EstablishmentProperties
 >;
 
-const establishmentIconGlyphs: Record<string, string> = {
-  hotel: "⌂",
-  restaurant: "R",
-  coffee: "C",
-  store: "S",
-  bus: "B",
-  ticket: "★",
-  briefcase: "A",
+const establishmentIconImages: Record<string, number> = {
+  hotel: require("../../../../assets/images/establishment-icons/hotel.png"),
+  restaurant: require("../../../../assets/images/establishment-icons/restaurant.png"),
+  coffee: require("../../../../assets/images/establishment-icons/coffee.png"),
+  store: require("../../../../assets/images/establishment-icons/store.png"),
+  bus: require("../../../../assets/images/establishment-icons/bus.png"),
+  ticket: require("../../../../assets/images/establishment-icons/ticket.png"),
+  briefcase: require("../../../../assets/images/establishment-icons/briefcase.png"),
 };
 
 const tourismPinLight = require("../../../../assets/images/tourism-pin-light.png");
@@ -172,6 +171,9 @@ export function CenterMap({
       type: "FeatureCollection",
       features: establishments.map((establishment, index) => {
         const featureKey = getEstablishmentFeatureKey(establishment, index);
+        const icon = establishmentIconImages[establishment.icon]
+          ? establishment.icon
+          : "hotel";
         return {
           type: "Feature",
           id: featureKey,
@@ -179,10 +181,7 @@ export function CenterMap({
             category: establishment.category,
             color: establishment.color,
             featureKey,
-            icon: establishment.icon,
-            iconGlyph:
-              establishmentIconGlyphs[establishment.icon] ??
-              establishmentIconGlyphs.hotel,
+            icon,
             name: establishment.name,
             approximate: establishment.approximate,
           },
@@ -424,6 +423,15 @@ export function CenterMap({
         />
         <Images
           images={{
+            "tourism-establishment-hotel": establishmentIconImages.hotel,
+            "tourism-establishment-restaurant":
+              establishmentIconImages.restaurant,
+            "tourism-establishment-coffee": establishmentIconImages.coffee,
+            "tourism-establishment-store": establishmentIconImages.store,
+            "tourism-establishment-bus": establishmentIconImages.bus,
+            "tourism-establishment-ticket": establishmentIconImages.ticket,
+            "tourism-establishment-briefcase":
+              establishmentIconImages.briefcase,
             "tourism-pin-dark": tourismPinDark,
             "tourism-pin-light": tourismPinLight,
             "tourism-pin-selected-dark": tourismPinSelectedDark,
@@ -528,6 +536,22 @@ export function CenterMap({
               "circle-radius": 8,
             }}
             type="circle"
+          />
+          <Layer
+            id="tourism-establishment-icons"
+            layout={{
+              "icon-allow-overlap": true,
+              "icon-anchor": "center",
+              "icon-ignore-placement": true,
+              "icon-image": [
+                "concat",
+                "tourism-establishment-",
+                ["get", "icon"],
+              ],
+              "icon-size": 0.55,
+            }}
+            minzoom={establishmentPinMinZoom}
+            type="symbol"
           />
           <Layer
             key="tourism-establishment-dots"
