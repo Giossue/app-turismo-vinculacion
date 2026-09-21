@@ -128,6 +128,12 @@ actividades, promoción y tres fotografías PNG publicadas. Es idempotente y reu
 las tablas existentes; para el almacenamiento local, `scripts/seed-guaranda-ficha-media.sh`
 copia los binarios a `apps/api/.data/media/centers/<id>/photos/`.
 
+La migración `20260921_seed_complete_guaranda_demo_draft.sql` completa únicamente el
+snapshot JSONB del borrador existente de `Centro Cultural Indio Guaranga` con las catorce
+secciones y datos referenciales de demostración. Ubica la ficha por nombre exacto, reutiliza
+catálogos por código, registra auditoría, conserva revisiones históricas y no altera el
+contenido público ni crea binarios multimedia.
+
 `database/seeds/003_xlsm_valuation_indicators.sql` es un seed de datos manual, no una
 migración de esquema. Carga de forma idempotente los 56 indicadores A-I derivados de
 `Jerarquia` y `Calculos`; debe ejecutarse solo cuando los nueve criterios de
