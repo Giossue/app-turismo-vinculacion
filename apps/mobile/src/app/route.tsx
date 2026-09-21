@@ -83,6 +83,7 @@ export default function RouteScreen() {
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const navigationActiveRef = useRef(false);
   const navigationStartInFlightRef = useRef(false);
+  const pendingLoginAfterCloseRef = useRef(false);
   const screenFocusedRef = useRef(false);
   const routeSheetRef = useRef<ExpoBottomSheet>(null);
   const {
@@ -119,6 +120,14 @@ export default function RouteScreen() {
 
   const handleRouteSheetClose = useCallback(() => {
     finishNavigation(null);
+    if (pendingLoginAfterCloseRef.current) {
+      pendingLoginAfterCloseRef.current = false;
+      router.push({
+        pathname: "/login",
+        params: { returnTo: "/route" },
+      } as never);
+      return;
+    }
     if (router.canGoBack()) {
       router.back();
     } else {
@@ -129,6 +138,7 @@ export default function RouteScreen() {
   useFocusEffect(
     useCallback(() => {
       screenFocusedRef.current = true;
+      routeSheetRef.current?.present();
 
       return () => {
         screenFocusedRef.current = false;
@@ -234,10 +244,8 @@ export default function RouteScreen() {
 
     if (auth.status !== "authenticated") {
       if (auth.status === "anonymous") {
-        router.push({
-          pathname: "/login",
-          params: { returnTo: "/route" },
-        } as never);
+        pendingLoginAfterCloseRef.current = true;
+        routeSheetRef.current?.close();
       }
       return;
     }
