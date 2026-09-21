@@ -920,6 +920,7 @@ function ExploreMapScreen() {
                 accessibilityLabel="Cerrar agente turístico"
                 icon="close"
                 onPress={closeAgent}
+                style={styles.agentCloseAction}
               />
             </View>
             <View style={styles.agentContent}>
@@ -1710,9 +1711,10 @@ const styles = StyleSheet.create({
   centerSheetScroll: { flex: 1 },
   agentSheetView: {
     flex: 1,
-    minHeight: 360,
+    height: "100%",
+    minHeight: 0,
   },
-  agentSheetSafeArea: { flex: 1 },
+  agentSheetSafeArea: { flex: 1, minHeight: 0 },
   agentHeader: {
     alignItems: "center",
     borderBottomWidth: turismoMetrics.borderWidth,
@@ -1722,6 +1724,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: turismoSpacing.md,
   },
   agentHeaderTitle: { ...turismoTypography.heading },
+  agentCloseAction: {
+    backgroundColor: "transparent",
+    borderColor: "transparent",
+    borderRadius: 0,
+    borderWidth: 0,
+  },
   agentContent: {
     flex: 1,
     minHeight: 0,

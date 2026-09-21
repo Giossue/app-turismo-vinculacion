@@ -57,7 +57,8 @@ pantalla principal vive en un `Tabs` de Expo Router para conservar la estructura
 pero el shell del mapa no renderiza barra inferior: el mapa ocupa toda la pantalla y sus
 acciones efímeras no crean entradas de navegación. El chat del agente se monta dentro de
 una sheet nativa de altura completa sobre el mapa; no se cierra por gesto y muestra una `X`
-en el encabezado.
+en el encabezado. El compositor usa el manejo nativo de teclado y permanece sobre el área
+visible cuando aparece el teclado del sistema.
 
 El acceso al menú lateral se presenta en la fila superior, junto al buscador del mapa. Un
 `TourismMenuProvider` posee un único drawer para el shell principal; las pantallas

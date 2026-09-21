@@ -10,9 +10,12 @@ export const tourismFlexibleSheetBehavior = {
 export const tourismAgentSheetSnapPoints = ["100%"];
 
 export const tourismAgentSheetBehavior = {
+  android_keyboardInputMode: "adjustResize",
   enableContentPanningGesture: true,
   enableDynamicSizing: false,
   enableHandlePanningGesture: false,
   enableOverDrag: false,
   enablePanDownToClose: false,
+  keyboardBehavior: "interactive",
+  keyboardBlurBehavior: "restore",
 } as const;

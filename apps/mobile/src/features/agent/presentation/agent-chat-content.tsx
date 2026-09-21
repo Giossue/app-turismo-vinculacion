@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     gap: turismoSpacing.sm,
-    minHeight: 360,
+    minHeight: 0,
   },
   messagesScroll: { flex: 1 },
   content: {
