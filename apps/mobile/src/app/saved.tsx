@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -13,7 +13,6 @@ import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler"
 import { useAuth } from "@/features/auth/application/auth-context";
 import {
   TourismActionButton,
-  TourismIconAction,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
@@ -29,6 +28,7 @@ import {
   useSavedCenterMutation,
   useSavedCenters,
 } from "@/features/favorites/application/use-saved-centers";
+import { useDiscoveryCatalog } from "@/features/centers/application/use-discovery-catalog";
 import type { SavedCenter } from "@/features/favorites/domain/saved-center";
 
 export default function SavedScreen() {
@@ -37,6 +37,17 @@ export default function SavedScreen() {
   const auth = useAuth();
   const savedCenters = useSavedCenters();
   const savedMutation = useSavedCenterMutation();
+  const discoveryCatalog = useDiscoveryCatalog();
+  const cantonNames = useMemo(
+    () =>
+      new Map(
+        (discoveryCatalog.data?.cantons ?? []).map((canton) => [
+          canton.code,
+          canton.name,
+        ]),
+      ),
+    [discoveryCatalog.data?.cantons],
+  );
 
   const handleBack = useCallback(() => {
     router.back();
@@ -100,6 +111,7 @@ export default function SavedScreen() {
               {savedCenters.data.map((center) => (
                 <SavedCenterRow
                   center={center}
+                  city={cantonNames.get(center.cantonCode)}
                   key={center.code}
                   onOpen={() =>
                     router.push({
@@ -132,10 +144,12 @@ export default function SavedScreen() {
 
 function SavedCenterRow({
   center,
+  city,
   onOpen,
   onRemove,
 }: Readonly<{
   center: SavedCenter;
+  city?: string;
   onOpen: () => void;
   onRemove: () => void;
 }>) {
@@ -154,13 +168,6 @@ function SavedCenterRow({
         onPress={onOpen}
         style={({ pressed }) => [styles.rowMain, pressed && styles.pressed]}
       >
-        <View style={[styles.rowIcon, { backgroundColor: colors.primarySoft }]}>
-          <TurismoIcon
-            color={colors.primaryStrong}
-            name="mapPinned"
-            size={turismoIconSizes.md}
-          />
-        </View>
         <View style={styles.rowCopy}>
           <Text
             numberOfLines={2}
@@ -168,20 +175,32 @@ function SavedCenterRow({
           >
             {center.name}
           </Text>
-          <Text style={[styles.rowCategory, { color: colors.primaryStrong }]}>
-            {center.category}
-          </Text>
-          <Text style={[styles.rowMeta, { color: colors.textMuted }]}>
-            {center.subtype}
-          </Text>
+          {city ? (
+            <Text style={[styles.rowCity, { color: colors.textMuted }]}>
+              {city}
+            </Text>
+          ) : null}
         </View>
       </Pressable>
-      <TourismIconAction
+      <Pressable
         accessibilityLabel={`Quitar ${center.name} de guardados`}
-        icon="bookmark"
+        accessibilityRole="button"
+        accessibilityState={{ selected: true }}
+        hitSlop={10}
         onPress={onRemove}
-        selected
-      />
+        style={({ pressed }) => [
+          styles.removeAction,
+          pressed && styles.pressed,
+        ]}
+      >
+        <TurismoIcon
+          color={colors.primaryStrong}
+          fill={colors.primaryStrong}
+          fillOpacity={1}
+          name="bookmark"
+          size={turismoIconSizes.md}
+        />
+      </Pressable>
     </View>
   );
 }
@@ -210,17 +229,15 @@ const styles = StyleSheet.create({
     gap: turismoSpacing.sm,
     minHeight: turismoMetrics.touchTarget,
   },
-  rowIcon: {
-    alignItems: "center",
-    borderRadius: turismoRadii.pill,
-    height: turismoMetrics.controlMd,
-    justifyContent: "center",
-    width: turismoMetrics.controlMd,
-  },
   rowCopy: { flex: 1, gap: turismoSpacing.xxs },
   rowTitle: { ...turismoTypography.heading },
-  rowCategory: { ...turismoTypography.caption, fontWeight: "700" as const },
-  rowMeta: { ...turismoTypography.caption },
+  rowCity: { ...turismoTypography.caption },
+  removeAction: {
+    alignItems: "center",
+    height: turismoMetrics.touchTarget,
+    justifyContent: "center",
+    width: turismoMetrics.touchTarget,
+  },
   pressed: { opacity: 0.72 },
   emptyText: { ...turismoTypography.body, textAlign: "center" },
   state: {

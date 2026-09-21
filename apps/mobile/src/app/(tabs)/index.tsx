@@ -12,12 +12,11 @@ import {
 } from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
-  Image,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -957,12 +956,13 @@ function PlaceSheet({
   const savedMutation = useSavedCenterMutation();
   const pagerRef = useRef<ScrollView>(null);
   const [pagerWidth, setPagerWidth] = useState(0);
+  const [pageHeights, setPageHeights] = useState<
+    Partial<Record<PlaceTab, number>>
+  >({});
   const [visitedTabs, setVisitedTabs] = useState<ReadonlySet<PlaceTab>>(
     () => new Set<PlaceTab>(["information"]),
   );
   const heroPhoto = detail?.photos[0];
-  const location =
-    detail?.address ?? detail?.touristZone ?? "Ubicación no registrada";
   const saved =
     savedCenters.data?.some(
       (savedCenter) => savedCenter.code === center.code,
@@ -1001,6 +1001,13 @@ function PlaceSheet({
     },
     [markTabVisited, pagerWidth],
   );
+  const updatePageHeight = useCallback((tab: PlaceTab, height: number) => {
+    const nextHeight = Math.ceil(height);
+    setPageHeights((current) =>
+      current[tab] === nextHeight ? current : { ...current, [tab]: nextHeight },
+    );
+  }, []);
+  const activePageHeight = pageHeights[activeTab] ?? 0;
 
   return (
     <View style={styles.placeSheet}>
@@ -1064,8 +1071,8 @@ function PlaceSheet({
         </View>
         <View style={styles.placeHeroClose}>
           <TourismIconAction
-            accessibilityLabel="Cerrar ficha turística"
-            icon="close"
+            accessibilityLabel="Volver a explorar"
+            icon="arrowLeft"
             onPress={onClose}
           />
         </View>
@@ -1080,26 +1087,6 @@ function PlaceSheet({
           summary={opinions.data?.summary}
         />
         <View style={styles.placeActionGroup}>
-          <Pressable
-            accessibilityLabel="Compartir ficha turística"
-            accessibilityRole="button"
-            hitSlop={4}
-            onPress={() =>
-              void Share.share({
-                message: `${center.name} · ${location}`,
-              })
-            }
-            style={({ pressed }) => [
-              styles.placeAction,
-              pressed && styles.placeActionPressed,
-            ]}
-          >
-            <TurismoIcon
-              color={colors.text}
-              name="share"
-              size={turismoIconSizes.md}
-            />
-          </Pressable>
           <Pressable
             accessibilityLabel={
               saved ? "Quitar de guardados" : "Guardar centro turístico"
@@ -1122,7 +1109,7 @@ function PlaceSheet({
             <TurismoIcon
               color={saved ? colors.primaryStrong : colors.primary}
               fill={saved ? colors.primaryStrong : "none"}
-              fillOpacity={saved ? 0.72 : undefined}
+              fillOpacity={saved ? 1 : undefined}
               name="bookmark"
               size={turismoIconSizes.md}
             />
@@ -1166,22 +1153,40 @@ function PlaceSheet({
           <PlaceTabButton activeTab={activeTab} onChange={changeTab} />
           <View
             onLayout={(event) => setPagerWidth(event.nativeEvent.layout.width)}
-            style={styles.placePagerViewport}
+            style={[
+              styles.placePagerViewport,
+              activePageHeight > 0 && { height: activePageHeight },
+            ]}
           >
             <ScrollView
+              contentContainerStyle={styles.placePagerContent}
               horizontal
               nestedScrollEnabled
               onMomentumScrollEnd={handlePagerEnd}
               pagingEnabled
               ref={pagerRef}
               showsHorizontalScrollIndicator={false}
+              style={styles.placePager}
             >
-              <View style={[styles.placePage, { width: pagerWidth || "100%" }]}>
+              <View
+                onLayout={(event) =>
+                  updatePageHeight(
+                    "information",
+                    event.nativeEvent.layout.height,
+                  )
+                }
+                style={[styles.placePage, { width: pagerWidth || "100%" }]}
+              >
                 {visitedTabs.has("information") ? (
                   <PlaceInformation detail={detail} />
                 ) : null}
               </View>
-              <View style={[styles.placePage, { width: pagerWidth || "100%" }]}>
+              <View
+                onLayout={(event) =>
+                  updatePageHeight("opinions", event.nativeEvent.layout.height)
+                }
+                style={[styles.placePage, { width: pagerWidth || "100%" }]}
+              >
                 {visitedTabs.has("opinions") ? (
                   <PlaceOpinions
                     active={activeTab === "opinions"}
@@ -1190,7 +1195,12 @@ function PlaceSheet({
                   />
                 ) : null}
               </View>
-              <View style={[styles.placePage, { width: pagerWidth || "100%" }]}>
+              <View
+                onLayout={(event) =>
+                  updatePageHeight("photos", event.nativeEvent.layout.height)
+                }
+                style={[styles.placePage, { width: pagerWidth || "100%" }]}
+              >
                 {visitedTabs.has("photos") ? (
                   <PlacePhotos photos={detail.photos} />
                 ) : null}
@@ -1216,10 +1226,11 @@ function CenterRatingSummary({
   if (!summary || summary.averageRating === null || summary.total === 0) {
     return null;
   }
+  const opinionLabel = summary.total === 1 ? "opinión" : "opiniones";
 
   return (
     <Pressable
-      accessibilityLabel={`${formatRating(summary.averageRating)} de 5 estrellas, ${summary.total} opiniones`}
+      accessibilityLabel={`${formatRating(summary.averageRating)} de 5 estrellas, ${summary.total} ${opinionLabel}`}
       accessibilityRole="button"
       hitSlop={turismoMetrics.chipHitSlop}
       onPress={onPress}
@@ -1235,7 +1246,7 @@ function CenterRatingSummary({
         {formatRating(summary.averageRating)}
       </Text>
       <Text style={[styles.ratingCount, { color: colors.textMuted }]}>
-        ({summary.total} opiniones)
+        ({summary.total} {opinionLabel})
       </Text>
     </Pressable>
   );
@@ -1475,16 +1486,13 @@ function PlaceTagsSection({
       {values.length ? (
         <View style={styles.detailBulletList}>
           {values.map((value) => (
-            <View key={value} style={styles.detailBulletRow}>
-              <Text
-                style={[styles.detailBullet, { color: colors.primaryStrong }]}
-              >
-                •
-              </Text>
-              <Text style={[styles.detailBulletText, { color: colors.text }]}>
-                {value}
-              </Text>
-            </View>
+            <Text
+              key={value}
+              style={[styles.detailBulletText, { color: colors.text }]}
+            >
+              <Text style={{ color: colors.primaryStrong }}>• </Text>
+              {value}
+            </Text>
           ))}
         </View>
       ) : (
@@ -1693,8 +1701,8 @@ const styles = StyleSheet.create({
     top: 0,
   },
   placeHeroClose: {
+    left: turismoSpacing.xxl,
     position: "absolute",
-    right: turismoSpacing.xxl,
     top: turismoSpacing.md,
     zIndex: 2,
   },
@@ -1747,8 +1755,13 @@ const styles = StyleSheet.create({
   },
   placeTabPressed: { opacity: 0.72 },
   placeTabLabel: { ...turismoTypography.label },
-  placePagerViewport: { width: "100%" },
-  placePage: { gap: turismoSpacing.md },
+  placePager: { width: "100%" },
+  placePagerContent: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+  },
+  placePagerViewport: { overflow: "hidden", width: "100%" },
+  placePage: { flexShrink: 0, gap: turismoSpacing.md },
   placePhotoGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -1773,6 +1786,7 @@ const styles = StyleSheet.create({
   detailSection: {
     borderBottomWidth: turismoMetrics.borderWidth,
     gap: turismoSpacing.sm,
+    minWidth: 0,
     paddingBottom: turismoSpacing.lg,
     paddingTop: turismoSpacing.md,
   },
@@ -1782,20 +1796,22 @@ const styles = StyleSheet.create({
     gap: turismoSpacing.sm,
   },
   detailSectionTitle: { ...turismoTypography.heading },
-  detailSectionContent: { gap: turismoSpacing.sm },
+  detailSectionContent: { gap: turismoSpacing.sm, minWidth: 0 },
   detailInfoRow: { gap: turismoSpacing.xxs },
   detailInfoLabel: { ...turismoTypography.caption },
   detailInfoValue: { ...turismoTypography.body },
   detailBulletList: {
+    alignSelf: "stretch",
     gap: turismoSpacing.xs,
+    minWidth: 0,
+    width: "100%",
   },
-  detailBulletRow: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: turismoSpacing.xs,
+  detailBulletText: {
+    ...turismoTypography.body,
+    lineHeight: 20,
+    minWidth: 0,
+    width: "100%",
   },
-  detailBullet: { ...turismoTypography.body, lineHeight: 20 },
-  detailBulletText: { ...turismoTypography.body, flex: 1 },
   detailEmptyText: { ...turismoTypography.body },
   entryLoading: {
     alignItems: "center",

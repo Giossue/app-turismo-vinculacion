@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -15,6 +16,7 @@ import {
   TourismSurface,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
+import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
   turismoMetrics,
   turismoRadii,
@@ -54,6 +56,11 @@ export function CenterOpinions({
   const canOpenForm =
     auth.status === "authenticated" &&
     (ownState === null || ownState.canCreate || ownState.canEdit);
+  const isOwnPublishedOpinion = (publishedAt: string) =>
+    auth.status === "authenticated" &&
+    ownState?.status === "APROBADA" &&
+    ownState.canEdit &&
+    ownState.current?.submittedAt === publishedAt;
 
   const averageLabel = useMemo(() => {
     const average = opinions.data?.summary.averageRating;
@@ -119,9 +126,25 @@ export function CenterOpinions({
     }
   }
 
+  const opinionComposer = (
+    <OpinionComposer
+      comment={comment}
+      error={formError}
+      loading={mutation.isPending}
+      rating={rating}
+      title={formMode === "edit" ? "Editar mi opinión" : "Escribe una opinión"}
+      onCancel={formMode === "edit" ? () => setEditing(false) : undefined}
+      onChangeComment={setComment}
+      onChangeRating={setRating}
+      onSubmit={() => void submit()}
+    />
+  );
+
   return (
     <View style={styles.container}>
-      <TourismSurface style={styles.summary}>
+      <TourismSurface
+        style={[styles.summary, { backgroundColor: colors.surfaceMuted }]}
+      >
         <View style={styles.summaryContent}>
           <View style={styles.averageBlock}>
             <Text style={[styles.averageValue, { color: colors.text }]}>
@@ -136,6 +159,9 @@ export function CenterOpinions({
               {opinions.data?.summary.total ?? 0} opiniones
             </Text>
           </View>
+          <View
+            style={[styles.summaryDivider, { backgroundColor: colors.border }]}
+          />
           <RatingDistribution
             distribution={
               opinions.data?.summary.distribution ?? emptyDistribution
@@ -143,6 +169,7 @@ export function CenterOpinions({
           />
         </View>
       </TourismSurface>
+      <View style={[styles.separator, { backgroundColor: colors.border }]} />
 
       {opinions.data?.total ? (
         <View style={styles.filters}>
@@ -183,19 +210,64 @@ export function CenterOpinions({
         visibleOpinions.map((opinion, index) => (
           <TourismSurface
             key={`${opinion.publishedAt}-${index}`}
-            style={styles.opinionItem}
+            style={[
+              styles.opinionItem,
+              { backgroundColor: colors.surfaceMuted },
+            ]}
           >
             <View style={styles.opinionHeader}>
-              <Text style={[styles.author, { color: colors.text }]}>
-                {opinion.authorName}
-              </Text>
-              <Text style={[styles.date, { color: colors.textFaint }]}>
-                {formatDate(opinion.publishedAt)}
-              </Text>
+              <View style={styles.authorInfo}>
+                <View
+                  style={[
+                    styles.avatar,
+                    {
+                      backgroundColor: colors.primarySoft,
+                      borderColor: colors.primary,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[styles.avatarText, { color: colors.primaryStrong }]}
+                  >
+                    {getInitials(opinion.authorName)}
+                  </Text>
+                </View>
+                <View style={styles.authorDetails}>
+                  <Text style={[styles.author, { color: colors.text }]}>
+                    {opinion.authorName}
+                  </Text>
+                  <Text style={[styles.date, { color: colors.textFaint }]}>
+                    {formatRelativeDate(opinion.publishedAt)}
+                  </Text>
+                </View>
+              </View>
+              {opinion.rating !== null ||
+              isOwnPublishedOpinion(opinion.publishedAt) ? (
+                <View style={styles.opinionActions}>
+                  {opinion.rating !== null ? (
+                    <Stars compact rating={opinion.rating} readOnly />
+                  ) : null}
+                  {isOwnPublishedOpinion(opinion.publishedAt) ? (
+                    <Pressable
+                      accessibilityLabel="Editar mi opinión"
+                      accessibilityRole="button"
+                      hitSlop={turismoMetrics.chipHitSlop}
+                      onPress={startEdit}
+                      style={({ pressed }) => [
+                        styles.editOpinionButton,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <TurismoIcon
+                        color={colors.accent}
+                        name="pencil"
+                        size={16}
+                      />
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null}
             </View>
-            {opinion.rating !== null ? (
-              <Stars compact rating={opinion.rating} readOnly />
-            ) : null}
             {opinion.comment ? (
               <Text style={[styles.comment, { color: colors.textMuted }]}>
                 {opinion.comment}
@@ -275,34 +347,27 @@ export function CenterOpinions({
             />
           )}
         </TourismSurface>
-      ) : auth.status === "authenticated" && ownState?.current && !editing ? (
-        <TourismSurface style={styles.composerNotice}>
-          <Text style={[styles.noticeTitle, { color: colors.text }]}>
-            Tu opinión publicada
-          </Text>
-          <Text style={[styles.stateText, { color: colors.textMuted }]}>
-            Puedes editarla; el cambio volverá a revisión.
-          </Text>
-          <TourismActionButton
-            compact
-            label="Editar mi opinión"
-            onPress={startEdit}
-          />
-        </TourismSurface>
-      ) : auth.status === "authenticated" && canOpenForm ? (
-        <OpinionComposer
-          comment={comment}
-          error={formError}
-          loading={mutation.isPending}
-          rating={rating}
-          title={
-            formMode === "edit" ? "Editar mi opinión" : "Escribe una opinión"
-          }
-          onCancel={formMode === "edit" ? () => setEditing(false) : undefined}
-          onChangeComment={setComment}
-          onChangeRating={setRating}
-          onSubmit={() => void submit()}
-        />
+      ) : auth.status === "authenticated" &&
+        canOpenForm &&
+        !ownState?.current ? (
+        opinionComposer
+      ) : null}
+      {editing && formMode === "edit" ? (
+        <Modal
+          animationType="fade"
+          onRequestClose={() => setEditing(false)}
+          transparent
+          visible
+        >
+          <View
+            style={[
+              styles.editModalBackdrop,
+              { backgroundColor: colors.scrim },
+            ]}
+          >
+            {opinionComposer}
+          </View>
+        </Modal>
       ) : null}
     </View>
   );
@@ -483,6 +548,7 @@ function RatingDistribution({
               />
             </View>
             <Text
+              numberOfLines={1}
               style={[styles.distributionCount, { color: colors.textFaint }]}
             >
               {percentage}%
@@ -502,45 +568,84 @@ const emptyDistribution = {
   "5": 0,
 } as const;
 
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("es-EC", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+function getInitials(value: string): string {
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+  const initials = parts
+    .slice(0, 2)
+    .map((part) => part[0] ?? "")
+    .join("")
+    .toUpperCase();
+  return initials || "?";
+}
+
+function formatRelativeDate(value: string): string {
+  const timestamp = new Date(value).getTime();
+  if (Number.isNaN(timestamp)) return "";
+
+  const elapsed = Date.now() - timestamp;
+  if (elapsed <= 0) return "Ahora";
+
+  const minute = 60 * 1000;
+  const day = 24 * 60 * minute;
+  const days = Math.floor(elapsed / day);
+  if (days === 0) return "Hoy";
+  if (days < 7) return `Hace ${days} ${days === 1 ? "día" : "días"}`;
+
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `Hace ${weeks} ${weeks === 1 ? "semana" : "semanas"}`;
+
+  const months = Math.floor(days / 30);
+  if (months < 12) {
+    return `Hace ${months} ${months === 1 ? "mes" : "meses"}`;
+  }
+
+  const years = Math.floor(days / 365);
+  return `Hace ${years} ${years === 1 ? "año" : "años"}`;
 }
 
 const styles = StyleSheet.create({
   container: { gap: turismoSpacing.md },
-  summary: { borderWidth: 0, padding: turismoSpacing.md },
+  summary: {
+    borderRadius: turismoRadii.sm,
+    padding: turismoSpacing.md,
+  },
   summaryContent: {
     alignItems: "center",
     flexDirection: "row",
-    gap: turismoSpacing.lg,
+    gap: turismoSpacing.sm,
+  },
+  summaryDivider: {
+    alignSelf: "stretch",
+    width: turismoMetrics.borderWidth,
   },
   averageBlock: {
     alignItems: "center",
-    minWidth: 100,
+    flexShrink: 0,
+    minWidth: 112,
   },
   averageValue: {
-    fontSize: 30,
+    fontSize: 36,
     fontWeight: "700",
-    lineHeight: 36,
+    lineHeight: 40,
   },
   summaryMeta: { ...turismoTypography.caption, marginTop: turismoSpacing.xxs },
   filters: {
     flexDirection: "row",
     gap: turismoSpacing.xs,
   },
-  distribution: { flex: 1, gap: turismoSpacing.xxs },
+  separator: { height: turismoMetrics.borderWidth, width: "100%" },
+  distribution: { flex: 1, gap: turismoSpacing.xxs, minWidth: 0 },
   distributionRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: turismoSpacing.xs,
+    minWidth: 0,
   },
-  distributionLabel: { ...turismoTypography.caption, width: 12 },
+  distributionLabel: {
+    ...turismoTypography.caption,
+    textAlign: "right",
+    width: 12,
+  },
   track: {
     borderRadius: turismoRadii.pill,
     flex: 1,
@@ -550,8 +655,9 @@ const styles = StyleSheet.create({
   trackValue: { borderRadius: turismoRadii.pill, height: "100%" },
   distributionCount: {
     ...turismoTypography.caption,
+    flexShrink: 0,
     textAlign: "right",
-    width: 32,
+    width: 40,
   },
   stateRow: {
     alignItems: "center",
@@ -562,19 +668,57 @@ const styles = StyleSheet.create({
   stateSurface: { gap: turismoSpacing.sm, padding: turismoSpacing.lg },
   stateText: { ...turismoTypography.body },
   emptyTitle: { ...turismoTypography.heading },
-  opinionItem: { gap: turismoSpacing.sm, padding: turismoSpacing.md },
+  opinionItem: {
+    borderRadius: turismoRadii.sm,
+    gap: turismoSpacing.sm,
+    padding: turismoSpacing.md,
+  },
   opinionHeader: {
-    alignItems: "baseline",
+    alignItems: "flex-start",
     flexDirection: "row",
     gap: turismoSpacing.sm,
     justifyContent: "space-between",
   },
-  author: { ...turismoTypography.label, flex: 1 },
+  opinionActions: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: turismoSpacing.xxs,
+  },
+  editOpinionButton: {
+    alignItems: "flex-end",
+    justifyContent: "flex-start",
+    minHeight: turismoMetrics.touchTarget,
+    minWidth: turismoMetrics.touchTarget,
+    paddingTop: turismoSpacing.xxs,
+  },
+  authorInfo: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: turismoSpacing.sm,
+    minWidth: 0,
+  },
+  avatar: {
+    alignItems: "center",
+    borderRadius: turismoRadii.pill,
+    borderWidth: turismoMetrics.borderWidth,
+    height: turismoMetrics.avatarSm,
+    justifyContent: "center",
+    width: turismoMetrics.avatarSm,
+  },
+  avatarText: { ...turismoTypography.caption, fontWeight: "600" },
+  authorDetails: { flex: 1, gap: turismoSpacing.xxs, minWidth: 0 },
+  author: { ...turismoTypography.label },
   date: { ...turismoTypography.caption },
-  comment: { ...turismoTypography.body },
+  comment: { ...turismoTypography.body, fontSize: 14, lineHeight: 20 },
   composerNotice: { gap: turismoSpacing.sm, padding: turismoSpacing.md },
   noticeTitle: { ...turismoTypography.label },
   composer: { gap: turismoSpacing.sm, padding: turismoSpacing.md },
+  editModalBackdrop: {
+    flex: 1,
+    justifyContent: "center",
+    padding: turismoSpacing.md,
+  },
   inputLabel: { ...turismoTypography.caption },
   stars: { alignItems: "center", flexDirection: "row", gap: turismoSpacing.xs },
   starButton: {
@@ -584,7 +728,11 @@ const styles = StyleSheet.create({
     minWidth: turismoMetrics.touchTarget,
   },
   star: { fontSize: 28, lineHeight: 32 },
-  starCompact: { fontSize: 16, lineHeight: 20 },
+  starCompact: {
+    fontSize: 16,
+    letterSpacing: 1,
+    lineHeight: 20,
+  },
   pressed: { opacity: 0.65 },
   input: {
     borderRadius: turismoRadii.md,

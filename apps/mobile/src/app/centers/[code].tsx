@@ -4,7 +4,6 @@ import {
   Image,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -167,20 +166,6 @@ export default function CenterDetailScreen() {
                   }}
                   selected={saved}
                 />
-                <TourismIconAction
-                  accessibilityLabel={`Compartir ficha de ${center.name}`}
-                  icon="share"
-                  onPress={() =>
-                    void Share.share({
-                      message: `${center.name} · ${center.touristZone}`,
-                    })
-                  }
-                />
-                <TourismIconAction
-                  accessibilityLabel="Cerrar ficha turística"
-                  icon="close"
-                  onPress={() => router.back()}
-                />
               </View>
             </View>
           </View>
@@ -253,10 +238,11 @@ function CenterRatingSummary({
   if (!summary || summary.averageRating === null || summary.total === 0) {
     return null;
   }
+  const opinionLabel = summary.total === 1 ? "opinión" : "opiniones";
 
   return (
     <Pressable
-      accessibilityLabel={`${formatRating(summary.averageRating)} de 5 estrellas, ${summary.total} opiniones`}
+      accessibilityLabel={`${formatRating(summary.averageRating)} de 5 estrellas, ${summary.total} ${opinionLabel}`}
       accessibilityRole="button"
       hitSlop={turismoMetrics.chipHitSlop}
       onPress={onPress}
@@ -271,7 +257,7 @@ function CenterRatingSummary({
         {formatRating(summary.averageRating)}
       </Text>
       <Text style={[styles.ratingCount, { color: colors.textMuted }]}>
-        ({summary.total} opiniones)
+        ({summary.total} {opinionLabel})
       </Text>
     </Pressable>
   );

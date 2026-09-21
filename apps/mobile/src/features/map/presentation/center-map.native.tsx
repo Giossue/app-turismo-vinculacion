@@ -97,6 +97,7 @@ const establishmentPinColorKeys: Record<string, string> = {
   "#dc2626": "red",
   "#4f46e5": "indigo",
 };
+const establishmentDefaultPinColor = "#7c3aed";
 const establishmentIconImagesByColor: Record<string, Record<string, number>> = {
   cyan: {
     hotel: require("../../../../assets/images/establishment-icons/hotel-cyan-dark.png"),
@@ -280,7 +281,10 @@ export function CenterMap({
       type: "FeatureCollection",
       features: establishments.map((establishment, index) => {
         const featureKey = getEstablishmentFeatureKey(establishment, index);
-        const color = establishment.color.toLowerCase();
+        const rawColor = establishment.color.toLowerCase();
+        const color = establishmentPinColorKeys[rawColor]
+          ? rawColor
+          : establishmentDefaultPinColor;
         const icon = establishmentIconImages[establishment.icon]
           ? establishment.icon
           : establishmentDefaultIcon;

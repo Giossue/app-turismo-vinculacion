@@ -165,7 +165,7 @@ export function TourismIconAction({
         <TurismoIcon
           color={selected ? colors.onPrimary : colors.text}
           fill={filled && selected ? colors.onPrimary : "none"}
-          fillOpacity={filled && selected ? 0.72 : undefined}
+          fillOpacity={filled && selected ? 1 : undefined}
           name={icon}
           size={turismoIconSizes.md}
         />
