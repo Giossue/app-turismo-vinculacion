@@ -127,9 +127,14 @@ ON CONFLICT (numero_registro) DO UPDATE SET
   -- La fuente no informa estos campos; no borrar enriquecimientos existentes al repetir el seed.
   direccion = COALESCE(EXCLUDED.direccion, establecimientos_turisticos.direccion),
   telefono = COALESCE(EXCLUDED.telefono, establecimientos_turisticos.telefono),
-  latitud = EXCLUDED.latitud,
-  longitud = EXCLUDED.longitud,
-  coordenadas_aproximadas = EXCLUDED.coordenadas_aproximadas,
+  latitud = COALESCE(establecimientos_turisticos.latitud, EXCLUDED.latitud),
+  longitud = COALESCE(establecimientos_turisticos.longitud, EXCLUDED.longitud),
+  coordenadas_aproximadas = CASE
+    WHEN establecimientos_turisticos.latitud IS NULL
+      OR establecimientos_turisticos.longitud IS NULL
+    THEN TRUE
+    ELSE establecimientos_turisticos.coordenadas_aproximadas
+  END,
   activo = TRUE,
   updated_at = CURRENT_TIMESTAMP;
 
