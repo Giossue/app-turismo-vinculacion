@@ -59,5 +59,6 @@ una opinión oculta ni se muestra como tal al turista.
 
 ## Estado
 
-En implementación. La migración se prepara en el repositorio y no se aplica a la base
-remota hasta una autorización explícita de despliegue.
+Implementación local completada y verificada. Migración aplicada a la base remota el
+20 de septiembre de 2026; no había opiniones ni moderaciones existentes para convertir.
+Respaldo previo verificado en `/tmp/turismo-vinculacion-backups-20260920/turismo_vinculacion_app-before-opinions.dump`.

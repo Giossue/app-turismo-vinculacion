@@ -78,6 +78,7 @@ const styles = StyleSheet.create({
     maxWidth: turismoMetrics.contentMaxWidth,
   },
   fullBleedContentFrame: {
+    alignSelf: "stretch",
     maxWidth: "100%",
     paddingHorizontal: 0,
   },
