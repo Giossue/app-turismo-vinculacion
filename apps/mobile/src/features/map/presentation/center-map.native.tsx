@@ -397,10 +397,8 @@ export function CenterMap({
         renderedFeatures =
           (await mapRef.current?.queryRenderedFeatures(
             [
-              pointX - mapFeatureQueryRadius,
-              pointY - mapFeatureQueryRadius,
-              pointX + mapFeatureQueryRadius,
-              pointY + mapFeatureQueryRadius,
+              [pointX - mapFeatureQueryRadius, pointY - mapFeatureQueryRadius],
+              [pointX + mapFeatureQueryRadius, pointY + mapFeatureQueryRadius],
             ],
             { layers: mapFeatureLayerIds },
           )) ?? [];

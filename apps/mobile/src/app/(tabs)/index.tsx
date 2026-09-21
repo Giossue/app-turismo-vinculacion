@@ -78,8 +78,10 @@ import {
 } from "@/features/favorites/application/use-saved-centers";
 import { useCenterOpinions } from "@/features/opinions/application/use-center-opinions";
 import { CenterOpinions } from "@/features/opinions/presentation/center-opinions";
+import type { MapFeatureSelection } from "@/features/map/domain/map-feature-selection";
 import { CenterMap } from "@/features/map/presentation/center-map";
 import { MapAttributionButton } from "@/features/map/presentation/map-attribution-button";
+import { MapFeatureSelectionSheet } from "@/features/map/presentation/map-feature-selection-sheet";
 import { AgentChatContent } from "@/features/agent/presentation/agent-chat-content";
 import { useAuth } from "@/features/auth/application/auth-context";
 import {
@@ -162,6 +164,9 @@ function ExploreMapScreen() {
   );
   const [selectedEstablishment, setSelectedEstablishment] =
     useState<PublicMapEstablishment | null>(null);
+  const [mapFeatureSelection, setMapFeatureSelection] = useState<
+    readonly MapFeatureSelection[] | null
+  >(null);
   const [selectedCenterExpanded, setSelectedCenterExpanded] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
   const [focusLocationKey, setFocusLocationKey] = useState(0);
@@ -272,6 +277,7 @@ function ExploreMapScreen() {
     setNearbyOnly(false);
     setSelectedCenterCode(null);
     setSelectedEstablishment(null);
+    setMapFeatureSelection(null);
     setSelectedCenterExpanded(false);
     dismissSearchSheet();
   }, [dismissSearchSheet]);
@@ -310,6 +316,34 @@ function ExploreMapScreen() {
     },
     [dismissSearchSheet],
   );
+  const handleMapFeatureSelection = useCallback(
+    (selection: MapFeatureSelection) => {
+      setMapFeatureSelection(null);
+      if (selection.kind === "center") {
+        selectCenter(selection.center);
+      } else {
+        selectEstablishment(selection.establishment);
+      }
+    },
+    [selectCenter, selectEstablishment],
+  );
+  const handleOverlappingMapFeatures = useCallback(
+    (selections: readonly MapFeatureSelection[]) => {
+      if (selections.length === 0) return;
+      if (selections.length === 1) {
+        handleMapFeatureSelection(selections[0]);
+        return;
+      }
+
+      preserveSelectionOnSearchCloseRef.current = searchSheetOpenRef.current;
+      dismissSearchSheet();
+      setSelectedCenterCode(null);
+      setSelectedEstablishment(null);
+      setSelectedCenterExpanded(false);
+      setMapFeatureSelection(selections);
+    },
+    [dismissSearchSheet, handleMapFeatureSelection],
+  );
   const {
     data: selectedCenterDetail,
     error: selectedCenterDetailError,
@@ -324,6 +358,10 @@ function ExploreMapScreen() {
     }
     if (agentOpen) {
       closeAgent();
+      return true;
+    }
+    if (mapFeatureSelection) {
+      setMapFeatureSelection(null);
       return true;
     }
     if (selectedEstablishment) {
@@ -351,6 +389,7 @@ function ExploreMapScreen() {
     closeMenu,
     menuVisible,
     agentOpen,
+    mapFeatureSelection,
     selectedCenterCode,
     selectedEstablishment,
     searchMode,
@@ -428,6 +467,7 @@ function ExploreMapScreen() {
     setNearbyOnly(false);
     setSelectedCenterCode(null);
     setSelectedEstablishment(null);
+    setMapFeatureSelection(null);
     setSelectedCenterExpanded(false);
   }, [auth.status, dismissSearchSheet, router]);
 
@@ -499,6 +539,7 @@ function ExploreMapScreen() {
           selectCenter(center);
         }}
         onEstablishmentPress={selectEstablishment}
+        onOverlappingFeaturePress={handleOverlappingMapFeatures}
         onLocationFocusChange={handleLocationFocusChange}
         onViewportChange={handleViewportChange}
         resetNorthKey={resetNorthKey}
@@ -640,7 +681,7 @@ function ExploreMapScreen() {
           onPress={() => mapAttributionHandlerRef.current?.()}
         />
       </View>
-      {!selectedCenterCode && !selectedEstablishment ? (
+      {!selectedCenterCode && !selectedEstablishment && !mapFeatureSelection ? (
         <ExpoBottomSheet
           backgroundStyle={{ backgroundColor: colors.surface }}
           enablePanDownToClose
@@ -703,6 +744,13 @@ function ExploreMapScreen() {
             </BottomSheetScrollView>
           ) : null}
         </ExpoBottomSheet>
+      ) : null}
+      {mapFeatureSelection ? (
+        <MapFeatureSelectionSheet
+          onClose={() => setMapFeatureSelection(null)}
+          onSelect={handleMapFeatureSelection}
+          selections={mapFeatureSelection}
+        />
       ) : null}
       {selectedCenter ? (
         <CenterDetailSheet

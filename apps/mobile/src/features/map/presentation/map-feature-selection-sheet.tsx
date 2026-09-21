@@ -41,8 +41,12 @@ export function MapFeatureSelectionSheet({
       >
         <View style={styles.header}>
           <View style={styles.headerCopy}>
-            <Text style={[styles.title, { color: colors.text }]}>Varios lugares aquí</Text>
-            <Text style={[styles.subtitle, { color: colors.textMuted }]}>Selecciona cuál quieres abrir.</Text>
+            <Text style={[styles.title, { color: colors.text }]}>
+              Varios lugares aquí
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+              Selecciona cuál quieres abrir.
+            </Text>
           </View>
           <TourismIconAction
             accessibilityLabel="Cerrar selección de lugares"
@@ -71,12 +75,18 @@ export function MapFeatureSelectionSheet({
                 onPress={() => onSelect(selection)}
                 style={({ pressed }) => [
                   styles.option,
-                  { borderColor: colors.border, backgroundColor: colors.surfaceMuted },
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: colors.surfaceMuted,
+                  },
                   pressed && styles.optionPressed,
                 ]}
               >
                 <View
-                  style={[styles.iconContainer, { backgroundColor: colors.primarySoft }]}
+                  style={[
+                    styles.iconContainer,
+                    { backgroundColor: colors.primarySoft },
+                  ]}
                 >
                   <TurismoIcon
                     color={colors.primaryStrong}
@@ -85,10 +95,15 @@ export function MapFeatureSelectionSheet({
                   />
                 </View>
                 <View style={styles.optionCopy}>
-                  <Text numberOfLines={2} style={[styles.optionTitle, { color: colors.text }]}>
+                  <Text
+                    numberOfLines={2}
+                    style={[styles.optionTitle, { color: colors.text }]}
+                  >
                     {title}
                   </Text>
-                  <Text style={[styles.optionSubtitle, { color: colors.textMuted }]}>
+                  <Text
+                    style={[styles.optionSubtitle, { color: colors.textMuted }]}
+                  >
                     {subtitle}
                   </Text>
                 </View>
