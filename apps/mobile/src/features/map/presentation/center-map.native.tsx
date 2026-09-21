@@ -84,6 +84,7 @@ const tourismPinSelectedDark = require("../../../../assets/images/tourism-pin-se
 
 const selectedCenterZoom = 15;
 const selectedCenterCameraDuration = 500;
+const establishmentPinMinZoom = 13;
 const cameraTargetTolerance = 0.001;
 const cameraZoomTolerance = 0.15;
 const selfHostedStyleCache = new Map<string, StyleSpecification>();
@@ -480,67 +481,21 @@ export function CenterMap({
           />
         </GeoJSONSource>
         <GeoJSONSource
-          cluster
-          clusterMaxZoom={14}
-          clusterMinPoints={2}
-          clusterRadius={48}
+          cluster={false}
           data={establishmentFeatures}
           id="tourism-establishments-source"
         >
           <Layer
-            filter={["has", "point_count"]}
-            id="tourism-establishment-cluster-circles"
-            paint={{
-              "circle-color": colors.info,
-              "circle-radius": [
-                "step",
-                ["get", "point_count"],
-                16,
-                10,
-                19,
-                30,
-                22,
-              ],
-              "circle-stroke-color": colors.surface,
-              "circle-stroke-width": 2,
-            }}
-            type="circle"
-          />
-          <Layer
-            filter={["has", "point_count"]}
-            id="tourism-establishment-cluster-count"
-            layout={{
-              "text-font": ["Noto Sans Regular"],
-              "text-field": ["get", "point_count_abbreviated"],
-              "text-size": 12,
-              visibility: hasMapGlyphs ? "visible" : "none",
-            }}
-            paint={{ "text-color": colors.onPrimary }}
-            type="symbol"
-          />
-          <Layer
-            filter={["!", ["has", "point_count"]]}
-            id="tourism-establishment-circles"
-            paint={{
-              "circle-color": ["get", "color"],
-              "circle-radius": 11,
-              "circle-stroke-color": colors.surface,
-              "circle-stroke-width": 2,
-            }}
-            type="circle"
-          />
-          <Layer
-            filter={["!", ["has", "point_count"]]}
             id="tourism-establishment-icons"
             layout={{
-              "text-allow-overlap": true,
-              "text-font": ["Noto Sans Regular"],
-              "text-field": ["get", "iconGlyph"],
-              "text-ignore-placement": true,
-              "text-size": 12,
-              visibility: hasMapGlyphs ? "visible" : "none",
+              "icon-allow-overlap": true,
+              "icon-anchor": "bottom",
+              "icon-ignore-placement": true,
+              "icon-image":
+                scheme === "dark" ? "tourism-pin-dark" : "tourism-pin-light",
+              "icon-size": 0.55,
             }}
-            paint={{ "text-color": colors.surface }}
+            minzoom={establishmentPinMinZoom}
             type="symbol"
           />
         </GeoJSONSource>
