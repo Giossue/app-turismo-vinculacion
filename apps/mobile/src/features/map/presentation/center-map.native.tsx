@@ -23,6 +23,7 @@ import { useTurismoTheme } from "@/core/ui/theme-context";
 import type { UserLocationCoordinate } from "@/core/location/use-user-location";
 import type { PublicCenter } from "@/features/centers/domain/public-center";
 import type { PublicMapEstablishment } from "@/features/establishments/domain/establishment";
+import type { MapFeatureSelection } from "../domain/map-feature-selection";
 
 type BoundingBox = Readonly<{
   west: number;
@@ -40,6 +41,9 @@ type CenterMapProps = Readonly<{
   onBearingChange?: (bearing: number) => void;
   onCenterPress: (center: PublicCenter) => void;
   onEstablishmentPress: (establishment: PublicMapEstablishment) => void;
+  onOverlappingFeaturePress: (
+    selections: readonly MapFeatureSelection[],
+  ) => void;
   onLocationFocusChange?: (focused: boolean) => void;
   onViewportChange: (bounds: BoundingBox) => void;
   resetNorthKey?: number;
@@ -196,6 +200,15 @@ const tourismPinSelectedDark = require("../../../../assets/images/tourism-pin-se
 const selectedCenterZoom = 15;
 const selectedCenterCameraDuration = 500;
 const establishmentPinMinZoom = 13;
+const mapFeatureQueryRadius = 24;
+const mapFeatureLayerIds = [
+  "tourism-center-cluster-circles",
+  "tourism-center-icons",
+  "tourism-center-selected-icon",
+  "tourism-establishment-pins",
+  "tourism-establishment-icons",
+  "tourism-establishment-dots",
+];
 const cameraTargetTolerance = 0.001;
 const cameraZoomTolerance = 0.15;
 const selfHostedStyleCache = new Map<string, StyleSpecification>();
@@ -221,6 +234,7 @@ export function CenterMap({
   onBearingChange,
   onCenterPress,
   onEstablishmentPress,
+  onOverlappingFeaturePress,
   onLocationFocusChange,
   onViewportChange,
   resetNorthKey,
@@ -372,11 +386,30 @@ export function CenterMap({
       : fallbackMapStyle;
   const hasMapGlyphs =
     typeof mapStyle.glyphs === "string" && mapStyle.glyphs.trim().length > 0;
-  const handleSourcePress = useCallback(
+  const handleRenderedFeaturePress = useCallback(
     async (event: NativeSyntheticEvent<PressEventWithFeatures>) => {
       pendingLocationFocusRef.current = null;
       onLocationFocusChange?.(false);
-      const features = event.nativeEvent.features;
+
+      const [pointX, pointY] = event.nativeEvent.point;
+      let renderedFeatures: GeoJSON.Feature[] = [];
+      try {
+        renderedFeatures =
+          (await mapRef.current?.queryRenderedFeatures(
+            [
+              pointX - mapFeatureQueryRadius,
+              pointY - mapFeatureQueryRadius,
+              pointX + mapFeatureQueryRadius,
+              pointY + mapFeatureQueryRadius,
+            ],
+            { layers: mapFeatureLayerIds },
+          )) ?? [];
+      } catch {
+        // Mientras el estilo termina de cargar, el evento de la fuente sigue
+        // permitiendo abrir el marcador que recibió el toque.
+      }
+
+      const features = [...event.nativeEvent.features, ...renderedFeatures];
       const clusterFeature = features.find(
         (feature) => typeof feature.properties?.cluster_id === "number",
       );
@@ -394,40 +427,72 @@ export function CenterMap({
         return;
       }
 
-      const centerCode = features.find(
-        (feature) => typeof feature.properties?.code === "string",
-      )?.properties?.code;
-      if (typeof centerCode !== "string") return;
-      const center = centersByCode.get(centerCode);
-      if (!center) return;
+      const centerCodes = Array.from(
+        new Set(
+          features.flatMap((feature) => {
+            const code = feature.properties?.code;
+            return typeof code === "string" ? [code] : [];
+          }),
+        ),
+      );
+      const establishmentFeatureKeys = Array.from(
+        new Set(
+          features.flatMap((feature) => {
+            const featureKey = feature.properties?.featureKey;
+            return typeof featureKey === "string" ? [featureKey] : [];
+          }),
+        ),
+      );
+      const selections: MapFeatureSelection[] = [
+        ...centerCodes.flatMap((code) => {
+          const center = centersByCode.get(code);
+          return center ? [{ kind: "center" as const, center }] : [];
+        }),
+        ...establishmentFeatureKeys.flatMap((featureKey) => {
+          const establishment = establishmentsByFeatureKey.get(featureKey);
+          return establishment
+            ? [{ kind: "establishment" as const, establishment }]
+            : [];
+        }),
+      ];
 
-      const target: [number, number] = [center.longitude, center.latitude];
-      // La selección se confirma cuando MapLibre termina el enfoque. Así el
-      // cambio de pin y la apertura del bottom sheet no compiten con la
-      // animación de la cámara en el mismo frame.
-      pendingCenterSelectionRef.current = { center, target };
-      cameraRef.current?.easeTo({
-        center: target,
-        duration: selectedCenterCameraDuration,
-        easing: "ease",
-        zoom: selectedCenterZoom,
-      });
+      if (selections.length === 0) return;
+      if (selections.length > 1) {
+        onOverlappingFeaturePress(selections);
+        return;
+      }
+
+      const [selection] = selections;
+      if (selection.kind === "center") {
+        const target: [number, number] = [
+          selection.center.longitude,
+          selection.center.latitude,
+        ];
+        // La selección se confirma cuando MapLibre termina el enfoque. Así el
+        // cambio de pin y la apertura del bottom sheet no compiten con la
+        // animación de la cámara en el mismo frame.
+        pendingCenterSelectionRef.current = {
+          center: selection.center,
+          target,
+        };
+        cameraRef.current?.easeTo({
+          center: target,
+          duration: selectedCenterCameraDuration,
+          easing: "ease",
+          zoom: selectedCenterZoom,
+        });
+        return;
+      }
+
+      onEstablishmentPress(selection.establishment);
     },
-    [centersByCode, onLocationFocusChange],
-  );
-  const handleEstablishmentSourcePress = useCallback(
-    (event: NativeSyntheticEvent<PressEventWithFeatures>) => {
-      pendingLocationFocusRef.current = null;
-      onLocationFocusChange?.(false);
-      const featureKey = event.nativeEvent.features.find(
-        (feature) => typeof feature.properties?.featureKey === "string",
-      )?.properties?.featureKey;
-      if (typeof featureKey !== "string") return;
-      const establishment = establishmentsByFeatureKey.get(featureKey);
-      if (!establishment) return;
-      onEstablishmentPress(establishment);
-    },
-    [establishmentsByFeatureKey, onEstablishmentPress, onLocationFocusChange],
+    [
+      centersByCode,
+      establishmentsByFeatureKey,
+      onEstablishmentPress,
+      onLocationFocusChange,
+      onOverlappingFeaturePress,
+    ],
   );
 
   useEffect(() => {
@@ -563,7 +628,7 @@ export function CenterMap({
           data={centerFeatures}
           hitbox={{ bottom: 22, left: 22, right: 22, top: 22 }}
           id="tourism-centers-source"
-          onPress={handleSourcePress}
+          onPress={handleRenderedFeaturePress}
           ref={sourceRef}
         >
           <Layer
@@ -643,7 +708,7 @@ export function CenterMap({
           data={establishmentFeatures}
           hitbox={{ bottom: 22, left: 22, right: 22, top: 22 }}
           id="tourism-establishments-source"
-          onPress={handleEstablishmentSourcePress}
+          onPress={handleRenderedFeaturePress}
         >
           <Layer
             id="tourism-establishment-pins"

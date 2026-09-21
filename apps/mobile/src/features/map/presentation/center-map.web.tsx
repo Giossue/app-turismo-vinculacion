@@ -11,6 +11,7 @@ import {
 import type { UserLocationCoordinate } from "@/core/location/use-user-location";
 import type { PublicCenter } from "@/features/centers/domain/public-center";
 import type { PublicMapEstablishment } from "@/features/establishments/domain/establishment";
+import type { MapFeatureSelection } from "../domain/map-feature-selection";
 
 type CenterMapProps = Readonly<{
   centers: readonly PublicCenter[];
@@ -19,6 +20,9 @@ type CenterMapProps = Readonly<{
   onAttributionChange?: (handler: (() => void) | null) => void;
   onCenterPress: (center: PublicCenter) => void;
   onEstablishmentPress: (establishment: PublicMapEstablishment) => void;
+  onOverlappingFeaturePress: (
+    selections: readonly MapFeatureSelection[],
+  ) => void;
   onViewportChange: (bounds: {
     west: number;
     south: number;
