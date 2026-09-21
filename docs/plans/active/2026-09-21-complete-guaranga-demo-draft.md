@@ -1,7 +1,7 @@
 # Completar borrador demo de Centro Cultural Indio Guaranga
 
 Fecha: 2026-09-21
-Estado: en ejecución
+Estado: completado
 
 ## Objetivo
 
@@ -29,6 +29,17 @@ de publicar.
 3. Confirmar que el estado, código, descripción y coordenadas públicas no cambian.
 4. Validar que `validateAdminSectionContent` acepta cada sección con el contrato estructurado.
 5. Recargar el panel y revisar que los campos del editor se hidraten desde el borrador.
+
+## Resultado remoto
+
+- Ficha localizada por nombre exacto con código actual `020101MC010500001`.
+- Borrador en estado `BORRADOR`, versión `13`, con las 14 secciones presentes.
+- Las 14 secciones tienen respuesta `SI` y observación; las filas repetibles no tienen
+  etiqueta ni observación vacía.
+- La ficha pública conserva estado `PUBLICADO`, código, descripción y coordenadas.
+- Las dos revisiones históricas permanecen sin secciones propuestas y se registró una nueva
+  auditoría `MODIFICAR`.
+- No se añadieron archivos binarios; los documentos institucionales quedan pendientes.
 
 ## Rollback operativo
 

@@ -86,6 +86,16 @@ BEGIN
     RAISE EXCEPTION 'La ficha % no tiene borrador administrativo; se aborta para no crear otro centro', center_code;
   END IF;
 
+  IF old_data->>'description' = demo_description
+     AND old_data->'sections'->'identificacion'->>'observation' = demo_note
+     AND (
+       SELECT count(*)
+       FROM jsonb_object_keys(COALESCE(old_data->'sections', '{}'::jsonb))
+     ) = 14 THEN
+    RAISE NOTICE 'El borrador demo de % ya está completo; no se incrementa la versión', center_code;
+    RETURN;
+  END IF;
+
   SELECT z.localidad_id
   INTO locality_id
   FROM zonas_turisticas z
