@@ -1225,7 +1225,7 @@ function CenterRatingSummary({
       <Text style={[styles.ratingValue, { color: colors.text }]}>
         {formatRating(summary.averageRating)}
       </Text>
-      <Text style={[styles.ratingCount, { color: colors.textMuted }]}> 
+      <Text style={[styles.ratingCount, { color: colors.textMuted }]}>
         ({summary.total} opiniones)
       </Text>
     </Pressable>
