@@ -43,6 +43,25 @@ export const agentCardSchema = z.discriminatedUnion("type", [
   agentEstablishmentCardSchema,
 ]);
 
+export const agentItineraryStopSchema = z
+  .object({
+    type: z.literal("center"),
+    code: z.string().min(1).max(120),
+    name: z.string().min(1).max(180),
+    latitude: finiteCoordinate.min(-90).max(90),
+    longitude: finiteCoordinate.min(-180).max(180),
+    order: z.number().int().min(1).max(6),
+  })
+  .strict();
+
+export const agentItinerarySchema = z
+  .object({
+    title: z.string().min(1).max(160),
+    summary: z.string().min(1).max(500),
+    stops: z.array(agentItineraryStopSchema).min(2).max(6),
+  })
+  .strict();
+
 export const agentRouteDestinationSchema = z
   .object({
     type: z.enum(["center", "establishment"]),
@@ -82,12 +101,14 @@ export const agentResponseSchema = z
     text: z.string().min(1).max(4_000),
     cards: z.array(agentCardSchema).max(6),
     actions: z.array(agentActionSchema).max(4),
+    itinerary: agentItinerarySchema.optional(),
     sources: z.array(agentSourceSchema).max(8),
   })
   .strict();
 
 export type AgentLocation = z.infer<typeof agentLocationSchema>;
 export type AgentCard = z.infer<typeof agentCardSchema>;
+export type AgentItinerary = z.infer<typeof agentItinerarySchema>;
 export type AgentAction = z.infer<typeof agentActionSchema>;
 export type AgentRouteDestination = z.infer<typeof agentRouteDestinationSchema>;
 export type AgentResponse = z.infer<typeof agentResponseSchema>;
@@ -102,6 +123,7 @@ export type AgentMessage = Readonly<{
   role: "assistant" | "user";
   text: string;
   cards?: readonly AgentCard[];
+  itinerary?: AgentItinerary;
   actions?: readonly AgentAction[];
   sources?: readonly Readonly<{
     type: "center" | "establishment";

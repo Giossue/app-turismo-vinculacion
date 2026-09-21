@@ -21,6 +21,28 @@ describe("AI agent contracts", () => {
           distanceMeters: null,
         },
       ],
+      itinerary: {
+        title: "Paseo de naturaleza",
+        summary: "Propuesta de recorrido con lugares publicados.",
+        stops: [
+          {
+            type: "center",
+            code: "GUA-001",
+            name: "Centro publicado",
+            latitude: -1.59,
+            longitude: -79,
+            order: 1,
+          },
+          {
+            type: "center",
+            code: "GUA-002",
+            name: "Segundo lugar",
+            latitude: -1.58,
+            longitude: -79.01,
+            order: 2,
+          },
+        ],
+      },
       actions: [
         {
           type: "start_route",

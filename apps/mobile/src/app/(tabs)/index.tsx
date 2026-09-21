@@ -14,6 +14,7 @@ import {
 import {
   ActivityIndicator,
   Image,
+  Keyboard,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -317,6 +318,11 @@ function ExploreMapScreen() {
     agentSheetRef.current?.dismiss();
   }, []);
 
+  const closeFocusedSearch = useCallback(() => {
+    Keyboard.dismiss();
+    setSearchFocused(false);
+  }, []);
+
   const clearSearch = useCallback(() => {
     setText("");
     setSubmittedText("");
@@ -392,6 +398,10 @@ function ExploreMapScreen() {
   } = usePublishedCenter(selectedCenterCode ?? "");
 
   const handleBeforeBack = useCallback(() => {
+    if (searchFocused) {
+      closeFocusedSearch();
+      return true;
+    }
     if (menuVisible) {
       closeMenu();
       return true;
@@ -427,6 +437,7 @@ function ExploreMapScreen() {
     return false;
   }, [
     clearSearch,
+    closeFocusedSearch,
     closeSelectedCenter,
     closeSelectedEstablishment,
     closeAgent,
@@ -437,6 +448,7 @@ function ExploreMapScreen() {
     mapFeatureFocusSelection,
     selectedCenterCode,
     selectedEstablishment,
+    searchFocused,
     searchMode,
     submittedQuery,
     text,
@@ -453,9 +465,9 @@ function ExploreMapScreen() {
   }, [agentOpen]);
 
   useEffect(() => {
-    if (agentOpen || !submittedQuery) return;
+    if (agentOpen || searchFocused || !submittedQuery) return;
     presentSearchSheet();
-  }, [agentOpen, presentSearchSheet, submittedQuery]);
+  }, [agentOpen, presentSearchSheet, searchFocused, submittedQuery]);
 
   const handleViewportChange = useCallback(() => {
     setConfirmedLocationFocusKey(null);
@@ -646,18 +658,92 @@ function ExploreMapScreen() {
         focusLocationKey={focusLocationKey}
         userLocation={userLocation}
       />
-      <SafeAreaView
-        edges={["top"]}
-        pointerEvents="box-none"
-        style={styles.overlay}
-      >
-        <View
+      {!searchFocused ? (
+        <SafeAreaView
+          edges={["top"]}
+          pointerEvents="box-none"
+          style={styles.overlay}
+        >
+          <View
+            style={[
+              styles.topControls,
+              isLandscape && styles.topControlsLandscape,
+            ]}
+          >
+            <View style={styles.searchRow}>
+              <View style={styles.searchFieldWrap}>
+                <TourismSearchField
+                  accessibilityLabel={
+                    searchMode === "ESTABLISHMENTS"
+                      ? "Buscar servicios cercanos"
+                      : "Buscar atractivos"
+                  }
+                  onBlur={() => setSearchFocused(false)}
+                  onChangeText={setText}
+                  onClear={handleClearSearchInput}
+                  onFocus={() => setSearchFocused(true)}
+                  onSubmitEditing={handleSubmitSearch}
+                  placeholder="Buscar aquí"
+                  value={text}
+                />
+              </View>
+              <NavigationMenuButton onPress={openMenu} />
+            </View>
+            {isSearchMode ? (
+              <SearchModeChips
+                onSelectCenters={() => {
+                  setSearchMode("CENTERS");
+                  setSubmittedText("");
+                  setSelectedCenterCode(null);
+                  dismissSearchSheet();
+                }}
+                onSelectEstablishments={() => {
+                  setSearchMode("ESTABLISHMENTS");
+                  setSubmittedText("");
+                  setSelectedCenterCode(null);
+                  dismissSearchSheet();
+                  if (!userLocation) void requestLocation();
+                }}
+                searchMode={searchMode}
+              />
+            ) : null}
+            {!isSearchMode ? (
+              <FilterChips
+                label="Categorías de atractivos"
+                options={catalog?.categories ?? []}
+                selected={filters.categoryCode}
+                onChange={handleCategoryChange}
+              />
+            ) : null}
+            {searchMode === "CENTERS" &&
+            (isFetching || mapEstablishments.isFetching) ? (
+              <View
+                accessible
+                accessibilityLabel="Actualizando lugares turísticos"
+                accessibilityRole="progressbar"
+                pointerEvents="none"
+                style={styles.refreshIndicator}
+              >
+                <ActivityIndicator color={colors.primaryStrong} size="small" />
+              </View>
+            ) : null}
+          </View>
+        </SafeAreaView>
+      ) : (
+        <SafeAreaView
+          edges={["top", "bottom"]}
           style={[
-            styles.topControls,
-            isLandscape && styles.topControlsLandscape,
+            styles.fullScreenSearchOverlay,
+            { backgroundColor: colors.background },
           ]}
         >
-          <View style={styles.searchRow}>
+          <View style={styles.fullScreenSearchHeader}>
+            <TourismIconAction
+              accessibilityLabel="Volver al mapa"
+              icon="arrowLeft"
+              onPress={closeFocusedSearch}
+              style={styles.searchBackAction}
+            />
             <View style={styles.searchFieldWrap}>
               <TourismSearchField
                 accessibilityLabel={
@@ -674,122 +760,97 @@ function ExploreMapScreen() {
                 value={text}
               />
             </View>
-            <NavigationMenuButton onPress={openMenu} />
           </View>
-          {isSearchMode ? (
-            <View style={styles.searchModeRow}>
-              <TourismChoiceChip
-                label="Atractivos"
-                onPress={() => {
-                  setSearchMode("CENTERS");
-                  setSubmittedText("");
-                  setSelectedCenterCode(null);
-                  dismissSearchSheet();
-                }}
-                selected={searchMode === "CENTERS"}
-              />
-              <TourismChoiceChip
-                label="Servicios cercanos"
-                onPress={() => {
-                  setSearchMode("ESTABLISHMENTS");
-                  setSubmittedText("");
-                  setSelectedCenterCode(null);
-                  dismissSearchSheet();
-                  if (!userLocation) void requestLocation();
-                }}
-                selected={searchMode === "ESTABLISHMENTS"}
-              />
+          <SearchModeChips
+            onSelectCenters={() => {
+              setSearchMode("CENTERS");
+              setSubmittedText("");
+              setSelectedCenterCode(null);
+              dismissSearchSheet();
+            }}
+            onSelectEstablishments={() => {
+              setSearchMode("ESTABLISHMENTS");
+              setSubmittedText("");
+              setSelectedCenterCode(null);
+              dismissSearchSheet();
+              if (!userLocation) void requestLocation();
+            }}
+            searchMode={searchMode}
+          />
+          <SearchSuggestionsPanel
+            fullScreen
+            history={searchHistory}
+            onClearHistory={() => {
+              void clearSearchHistory().then(() => setSearchHistory([]));
+            }}
+            onRecentPress={handleRecentSearch}
+            onSuggestionPress={(center) => {
+              void rememberSearch(center.name);
+              setSearchFocused(false);
+              selectCenter(center);
+            }}
+            query={text}
+            suggestions={searchSuggestions}
+          />
+        </SafeAreaView>
+      )}
+      {!searchFocused ? (
+        <View
+          pointerEvents="box-none"
+          style={[
+            styles.mapActionLayer,
+            isLandscape && styles.mapActionLayerLandscape,
+          ]}
+        >
+          <View style={styles.mapActionColumn}>
+            <View style={styles.mapActionSlot}>
+              {Math.abs(mapBearing) > 1 ? (
+                <TourismCompassAction
+                  accessibilityLabel="Orientar mapa al norte"
+                  bearing={mapBearing}
+                  onPress={handleResetNorth}
+                  style={styles.locationAction}
+                />
+              ) : null}
             </View>
-          ) : null}
-          {searchFocused ? (
-            <SearchSuggestionsPanel
-              history={searchHistory}
-              onClearHistory={() => {
-                void clearSearchHistory().then(() => setSearchHistory([]));
-              }}
-              onRecentPress={handleRecentSearch}
-              onSuggestionPress={(center) => {
-                void rememberSearch(center.name);
-                selectCenter(center);
-              }}
-              query={text}
-              suggestions={searchSuggestions}
-            />
-          ) : null}
-          {!isSearchMode ? (
-            <>
-              <FilterChips
-                label="Categorías de atractivos"
-                options={catalog?.categories ?? []}
-                selected={filters.categoryCode}
-                onChange={handleCategoryChange}
-              />
-            </>
-          ) : null}
-          {searchMode === "CENTERS" &&
-          (isFetching || mapEstablishments.isFetching) ? (
-            <View
-              accessible
-              accessibilityLabel="Actualizando lugares turísticos"
-              accessibilityRole="progressbar"
-              pointerEvents="none"
-              style={styles.refreshIndicator}
-            >
-              <ActivityIndicator color={colors.primaryStrong} size="small" />
-            </View>
-          ) : null}
-        </View>
-      </SafeAreaView>
-      <View
-        pointerEvents="box-none"
-        style={[
-          styles.mapActionLayer,
-          isLandscape && styles.mapActionLayerLandscape,
-        ]}
-      >
-        <View style={styles.mapActionColumn}>
-          <View style={styles.mapActionSlot}>
-            {Math.abs(mapBearing) > 1 ? (
-              <TourismCompassAction
-                accessibilityLabel="Orientar mapa al norte"
-                bearing={mapBearing}
-                onPress={handleResetNorth}
-                style={styles.locationAction}
-              />
-            ) : null}
-          </View>
-          <View style={styles.mapActionSlot}>
-            <TourismIconAction
-              accessibilityLabel="Abrir agente turístico"
-              icon="bot"
-              onPress={openAgent}
-              selected={agentOpen}
-              style={styles.locationAction}
-            />
-          </View>
-          <View style={styles.mapActionSlot}>
-            {showLocationAction ? (
+            <View style={styles.mapActionSlot}>
               <TourismIconAction
-                accessibilityLabel={locationButtonLabel}
-                disabled={locationStatus === "requesting"}
-                icon="locate"
-                onPress={() => void handleLocateUser()}
-                selected={false}
-                slashed={locationStatus === "disabled"}
+                accessibilityLabel="Abrir agente turístico"
+                icon="bot"
+                onPress={openAgent}
+                selected={agentOpen}
                 style={styles.locationAction}
               />
-            ) : null}
+            </View>
+            <View style={styles.mapActionSlot}>
+              {showLocationAction ? (
+                <TourismIconAction
+                  accessibilityLabel={locationButtonLabel}
+                  disabled={locationStatus === "requesting"}
+                  icon="locate"
+                  onPress={() => void handleLocateUser()}
+                  selected={false}
+                  slashed={locationStatus === "disabled"}
+                  style={styles.locationAction}
+                />
+              ) : null}
+            </View>
           </View>
         </View>
-      </View>
-      <View pointerEvents="box-none" style={styles.attributionLayer}>
-        <MapAttributionButton
-          bottom={0}
-          left={0}
-          onPress={() => mapAttributionHandlerRef.current?.()}
-        />
-      </View>
-      {!selectedCenterCode && !selectedEstablishment && !mapFeatureSelection ? (
+      ) : null}
+      {!searchFocused ? (
+        <View pointerEvents="box-none" style={styles.attributionLayer}>
+          <MapAttributionButton
+            bottom={0}
+            left={0}
+            onPress={() => mapAttributionHandlerRef.current?.()}
+          />
+        </View>
+      ) : null}
+      {!searchFocused &&
+      !selectedCenterCode &&
+      !selectedEstablishment &&
+      !mapFeatureSelection ? (
         <BottomSheetModal
           {...tourismFlexibleSheetBehavior}
           backgroundStyle={{ backgroundColor: colors.surface }}
@@ -936,7 +997,33 @@ function ExploreMapScreen() {
   );
 }
 
+function SearchModeChips({
+  onSelectCenters,
+  onSelectEstablishments,
+  searchMode,
+}: Readonly<{
+  onSelectCenters: () => void;
+  onSelectEstablishments: () => void;
+  searchMode: ExploreSearchMode;
+}>) {
+  return (
+    <View style={styles.searchModeRow}>
+      <TourismChoiceChip
+        label="Atractivos"
+        onPress={onSelectCenters}
+        selected={searchMode === "CENTERS"}
+      />
+      <TourismChoiceChip
+        label="Servicios cercanos"
+        onPress={onSelectEstablishments}
+        selected={searchMode === "ESTABLISHMENTS"}
+      />
+    </View>
+  );
+}
+
 function SearchSuggestionsPanel({
+  fullScreen = false,
   history,
   onClearHistory,
   onRecentPress,
@@ -944,6 +1031,7 @@ function SearchSuggestionsPanel({
   query,
   suggestions,
 }: Readonly<{
+  fullScreen?: boolean;
   history: readonly string[];
   onClearHistory: () => void;
   onRecentPress: (query: string) => void;
@@ -963,6 +1051,7 @@ function SearchSuggestionsPanel({
       accessibilityLabel="Sugerencias e historial de búsqueda"
       style={[
         styles.searchSuggestionsPanel,
+        fullScreen && styles.searchSuggestionsPanelFullScreen,
         { backgroundColor: colors.surface, borderColor: colors.border },
       ]}
     >
@@ -970,7 +1059,10 @@ function SearchSuggestionsPanel({
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled
         showsVerticalScrollIndicator={false}
-        style={styles.searchSuggestionsScroll}
+        style={[
+          styles.searchSuggestionsScroll,
+          fullScreen && styles.searchSuggestionsScrollFullScreen,
+        ]}
       >
         {showSuggestions ? (
           <View>
@@ -1819,18 +1911,47 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: turismoSpacing.xs,
   },
+  fullScreenSearchOverlay: {
+    bottom: 0,
+    left: 0,
+    paddingHorizontal: turismoSpacing.md,
+    position: "absolute",
+    right: 0,
+    top: 0,
+    zIndex: 50,
+  },
+  fullScreenSearchHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: turismoSpacing.xs,
+  },
+  searchBackAction: {
+    backgroundColor: "transparent",
+    borderColor: "transparent",
+    borderRadius: 0,
+    borderWidth: 0,
+    height: turismoMetrics.touchTarget,
+    width: turismoMetrics.touchTarget,
+  },
   searchSuggestionsPanel: {
     borderRadius: turismoRadii.md,
     borderWidth: turismoMetrics.borderWidth,
     elevation: 8,
-    maxHeight: 300,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { height: 3, width: 0 },
     shadowOpacity: 0.18,
     shadowRadius: 8,
   },
+  searchSuggestionsPanelFullScreen: {
+    borderRadius: 0,
+    borderWidth: 0,
+    elevation: 0,
+    flex: 1,
+    shadowOpacity: 0,
+  },
   searchSuggestionsScroll: { maxHeight: 300 },
+  searchSuggestionsScrollFullScreen: { flex: 1, maxHeight: undefined },
   searchSuggestionsHeader: {
     alignItems: "center",
     flexDirection: "row",

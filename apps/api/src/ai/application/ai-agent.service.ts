@@ -61,6 +61,13 @@ const nearbyEstablishmentsInputSchema = z
   })
   .strict();
 
+const itineraryCandidatesInputSchema = z
+  .object({
+    text: z.string().trim().min(2).max(120),
+    limit: z.number().int().min(2).max(6).default(4),
+  })
+  .strict();
+
 const genericToolFailure = {
   available: false,
   message:
@@ -182,9 +189,10 @@ export class AiAgentService {
           "Eres el agente turístico institucional de Turismo Vinculación.",
           "Responde en español salvo que el visitante pida inglés.",
           "Usa las herramientas para consultar únicamente centros y establecimientos publicados.",
-          "No inventes horarios, precios, coordenadas, disponibilidad, servicios ni nombres.",
+          "Cuando pidan un plan, paseo o recorrido de varias paradas, usa findItineraryCandidates y devuelve un itinerary de 2 a 6 centros publicados en el orden sugerido.",
+          "El título y resumen del itinerary son una propuesta; no afirmes horarios, precios, disponibilidad, servicios ni duración sin una herramienta que los verifique.",
           "Si una herramienta no tiene datos o falla, dilo claramente y no rellenes el vacío con conocimiento externo.",
-          "Para tarjetas y acciones usa solamente las referencias ref devueltas por las herramientas.",
+          "Para tarjetas, itineraries y acciones usa solamente las referencias ref devueltas por las herramientas.",
           "No pongas coordenadas ni códigos inventados en la salida estructurada.",
           "open_center solo sirve para centros publicados.",
           "start_route solo propone una ruta; nunca inicia navegación ni afirma que ya empezó. El móvil pedirá confirmación.",
@@ -235,6 +243,41 @@ export class AiAgentService {
                     };
                   }),
                   source: "Catálogo de centros turísticos publicados",
+                };
+              } catch {
+                return genericToolFailure;
+              }
+            },
+          }),
+          findItineraryCandidates: tool({
+            description:
+              "Busca entre 2 y 6 lugares turísticos publicados que puedan formar una propuesta de recorrido. No calcula horarios, duración ni rutas.",
+            inputSchema: itineraryCandidatesInputSchema,
+            execute: async ({ text, limit }) => {
+              try {
+                const result = await this.centers.listPublished({
+                  text,
+                  limit,
+                });
+                return {
+                  total: result.total,
+                  results: result.items.map((center) => {
+                    const ref = registerCenter(
+                      `center:${center.code}`,
+                      center,
+                      "Candidatos de recorrido del catálogo publicado",
+                    );
+                    return {
+                      ref,
+                      code: center.code,
+                      name: center.name,
+                      description: center.description,
+                      category: center.category,
+                      type: center.type,
+                      subtype: center.subtype,
+                    };
+                  }),
+                  source: "Candidatos de recorrido del catálogo publicado",
                 };
               } catch {
                 return genericToolFailure;

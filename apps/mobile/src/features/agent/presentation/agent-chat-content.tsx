@@ -17,11 +17,13 @@ import {
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
 import {
+  turismoIconSizes,
   turismoMetrics,
   turismoRadii,
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
+import { TurismoIcon } from "@/core/ui/turismo-icons";
 import { useUserLocation } from "@/core/location/use-user-location";
 import { askTourismAgent } from "@/features/agent/data/agent-api";
 import type {
@@ -49,7 +51,7 @@ export function AgentChatContent({
     {
       id: "assistant-intro",
       role: "assistant",
-      text: "Puedo buscar centros publicados, servicios del catastro cerca de ti y preparar una ruta. ¿Qué te gustaría conocer?",
+      text: "¡Hola! Puedo ayudarte a encontrar lugares para visitar, negocios y servicios cercanos, resolver tus dudas y preparar una ruta. ¿Qué estás buscando?",
     },
   ]);
   const [pendingRouteAction, setPendingRouteAction] = useState<Extract<
@@ -94,6 +96,7 @@ export function AgentChatContent({
           role: "assistant",
           text: answer.text,
           cards: answer.cards,
+          itinerary: answer.itinerary,
           actions: answer.actions,
           sources: answer.sources,
         },
@@ -137,6 +140,15 @@ export function AgentChatContent({
                   : styles.assistantMessageRow
               }
             >
+              {message.role === "assistant" ? (
+                <View style={styles.assistantIcon}>
+                  <TurismoIcon
+                    color={colors.primaryStrong}
+                    name="bot"
+                    size={turismoIconSizes.md}
+                  />
+                </View>
+              ) : null}
               <View
                 style={[
                   styles.messageBlock,
@@ -156,6 +168,87 @@ export function AgentChatContent({
                 <Text style={[styles.messageText, { color: colors.text }]}>
                   {message.text}
                 </Text>
+                {message.itinerary ? (
+                  <View
+                    style={[
+                      styles.itineraryCard,
+                      {
+                        backgroundColor: colors.surfaceMuted,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.itineraryTitle, { color: colors.text }]}
+                    >
+                      {message.itinerary.title}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.itinerarySummary,
+                        { color: colors.textMuted },
+                      ]}
+                    >
+                      {message.itinerary.summary}
+                    </Text>
+                    <View style={styles.itineraryStops}>
+                      {message.itinerary.stops.map((stop) => (
+                        <Pressable
+                          accessibilityLabel={`Abrir parada ${stop.order}: ${stop.name}`}
+                          accessibilityRole="button"
+                          key={`${stop.code}-${stop.order}`}
+                          onPress={() => onOpenCenter(stop.code)}
+                          style={({ pressed }) => [
+                            styles.itineraryStop,
+                            { opacity: pressed ? 0.7 : 1 },
+                          ]}
+                        >
+                          <View
+                            style={[
+                              styles.itineraryStopNumber,
+                              { backgroundColor: colors.primary },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.itineraryStopNumberText,
+                                { color: colors.onPrimary },
+                              ]}
+                            >
+                              {stop.order}
+                            </Text>
+                          </View>
+                          <Text
+                            numberOfLines={2}
+                            style={[
+                              styles.itineraryStopName,
+                              { color: colors.text },
+                            ]}
+                          >
+                            {stop.name}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.itineraryStopLink,
+                              { color: colors.primaryStrong },
+                            ]}
+                          >
+                            Ver
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                    <Text
+                      style={[
+                        styles.itineraryDisclaimer,
+                        { color: colors.textFaint },
+                      ]}
+                    >
+                      Propuesta con lugares publicados. Los horarios y tiempos
+                      de traslado todavía no están confirmados.
+                    </Text>
+                  </View>
+                ) : null}
                 {message.cards?.map((card) => {
                   const cardContent = (
                     <>
@@ -434,7 +527,12 @@ const styles = StyleSheet.create({
   },
   messages: { gap: turismoSpacing.lg },
   userMessageRow: { alignItems: "flex-end" },
-  assistantMessageRow: { alignItems: "flex-start" },
+  assistantMessageRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: turismoSpacing.xs,
+  },
+  assistantIcon: { paddingTop: turismoSpacing.xs },
   messageBlock: {
     borderRadius: turismoRadii.md,
     gap: turismoSpacing.sm,
@@ -449,6 +547,33 @@ const styles = StyleSheet.create({
     marginTop: turismoSpacing.xs,
     padding: turismoSpacing.md,
   },
+  itineraryCard: {
+    borderRadius: turismoRadii.md,
+    borderWidth: turismoMetrics.borderWidth,
+    gap: turismoSpacing.sm,
+    marginTop: turismoSpacing.xs,
+    padding: turismoSpacing.md,
+  },
+  itineraryTitle: { ...turismoTypography.label, fontWeight: "700" },
+  itinerarySummary: { ...turismoTypography.caption },
+  itineraryStops: { gap: turismoSpacing.xs },
+  itineraryStop: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: turismoSpacing.sm,
+    minHeight: turismoMetrics.touchTarget,
+  },
+  itineraryStopNumber: {
+    alignItems: "center",
+    borderRadius: turismoRadii.pill,
+    height: turismoMetrics.controlSm,
+    justifyContent: "center",
+    width: turismoMetrics.controlSm,
+  },
+  itineraryStopNumberText: { ...turismoTypography.label },
+  itineraryStopName: { ...turismoTypography.label, flex: 1, fontWeight: "400" },
+  itineraryStopLink: { ...turismoTypography.caption },
+  itineraryDisclaimer: { ...turismoTypography.caption },
   resultTitle: { ...turismoTypography.label, fontWeight: "400" },
   resultSummary: { ...turismoTypography.caption },
   resultMeta: { ...turismoTypography.caption },

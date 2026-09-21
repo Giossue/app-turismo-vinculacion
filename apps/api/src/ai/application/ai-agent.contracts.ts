@@ -37,6 +37,21 @@ export const agentModelCardSchema = z
   })
   .strict();
 
+const agentModelItineraryStopSchema = z
+  .object({
+    order: z.number().int().min(1).max(6),
+    ref: referenceSchema,
+  })
+  .strict();
+
+const agentModelItinerarySchema = z
+  .object({
+    stops: z.array(agentModelItineraryStopSchema).min(2).max(6),
+    summary: z.string().trim().min(1).max(500),
+    title: z.string().trim().min(1).max(160),
+  })
+  .strict();
+
 export const agentModelActionSchema = z.discriminatedUnion("type", [
   z
     .object({
@@ -58,6 +73,7 @@ export const agentModelResponseSchema = z
     text: z.string().trim().min(1).max(4_000),
     cards: z.array(agentModelCardSchema).max(6).default([]),
     actions: z.array(agentModelActionSchema).max(4).default([]),
+    itinerary: agentModelItinerarySchema.optional(),
   })
   .strict();
 
@@ -93,6 +109,25 @@ export const agentCardSchema = z.discriminatedUnion("type", [
   agentCenterCardSchema,
   agentEstablishmentCardSchema,
 ]);
+
+const agentItineraryStopSchema = z
+  .object({
+    type: z.literal("center"),
+    code: z.string().trim().min(1).max(120),
+    name: z.string().trim().min(1).max(180),
+    latitude: finiteCoordinate.min(-90).max(90),
+    longitude: finiteCoordinate.min(-180).max(180),
+    order: z.number().int().min(1).max(6),
+  })
+  .strict();
+
+export const agentItinerarySchema = z
+  .object({
+    title: z.string().trim().min(1).max(160),
+    summary: z.string().trim().min(1).max(500),
+    stops: z.array(agentItineraryStopSchema).min(2).max(6),
+  })
+  .strict();
 
 const agentRouteDestinationSchema = z
   .object({
@@ -139,6 +174,7 @@ export const agentResponseSchema = z
 
 export type AgentModelResponse = z.infer<typeof agentModelResponseSchema>;
 export type AgentResponse = z.infer<typeof agentResponseSchema>;
+export type AgentItinerary = z.infer<typeof agentItinerarySchema>;
 export type AgentCard = z.infer<typeof agentCardSchema>;
 export type AgentAction = z.infer<typeof agentActionSchema>;
 export type AgentSource = z.infer<typeof agentSourceSchema>;
