@@ -342,6 +342,11 @@ function ExploreMapScreen() {
     return () => keyboardSubscription.remove();
   }, [searchFocused]);
 
+  useEffect(() => {
+    if (searchFocused) return;
+    Keyboard.dismiss();
+  }, [searchFocused]);
+
   const clearSearch = useCallback(() => {
     setText("");
     setSubmittedText("");
@@ -769,6 +774,7 @@ function ExploreMapScreen() {
                     ? "Buscar servicios cercanos"
                     : "Buscar atractivos"
                 }
+                autoFocus
                 onChangeText={setText}
                 onClear={handleClearSearchInput}
                 onFocus={beginFocusedSearch}
@@ -1053,7 +1059,10 @@ function SearchSuggestionsPanel({
       style={[
         styles.searchSuggestionsPanel,
         fullScreen && styles.searchSuggestionsPanelFullScreen,
-        { backgroundColor: colors.surface, borderColor: colors.border },
+        {
+          backgroundColor: fullScreen ? colors.background : colors.surface,
+          borderColor: colors.border,
+        },
       ]}
     >
       <ScrollView

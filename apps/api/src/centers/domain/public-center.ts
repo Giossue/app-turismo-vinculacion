@@ -24,6 +24,15 @@ export type PublicCenter = Readonly<{
   hierarchyCode: string | null;
 }>;
 
+export type NearbyPublicCenter = PublicCenter &
+  Readonly<{
+    distanceMeters: number;
+  }>;
+
+export type NearbyPublicCenterPage = Readonly<{
+  items: readonly NearbyPublicCenter[];
+}>;
+
 export type PublicCenterDetail = PublicCenter &
   Readonly<{
     touristZone: string;

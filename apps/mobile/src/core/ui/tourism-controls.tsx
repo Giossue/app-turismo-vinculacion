@@ -35,6 +35,7 @@ export function useTurismoPalette() {
 
 export function TourismSearchField({
   accessibilityLabel,
+  autoFocus = false,
   onChangeText,
   onClear,
   onFocus,
@@ -45,6 +46,7 @@ export function TourismSearchField({
   value,
 }: Readonly<{
   accessibilityLabel: string;
+  autoFocus?: boolean;
   onChangeText: (value: string) => void;
   onClear?: () => void;
   onFocus?: () => void;
@@ -89,6 +91,7 @@ export function TourismSearchField({
       <TextInput
         accessibilityLabel={accessibilityLabel}
         autoCapitalize="none"
+        autoFocus={autoFocus}
         blurOnSubmit
         onBlur={onBlur}
         onChangeText={onChangeText}

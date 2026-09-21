@@ -5,9 +5,13 @@ import {
   agentChatSchema,
   type AgentChatInput,
 } from "../src/ai/application/ai-agent.contracts";
+import { nearbyPublishedPlacesInputSchema } from "../src/ai/application/ai-agent.service";
 import { AiAgentService } from "../src/ai/application/ai-agent.service";
 import type { PublicEstablishmentSearch } from "../src/ai/application/public-establishment-search";
+import type { PublicNearbyEstablishmentSearch } from "../src/ai/application/public-nearby-establishment-search";
 import type { PublicCenterRepository } from "../src/centers/application/public-center.repository";
+import type { PublicPoiRepository } from "../src/pois/application/public-poi.repository";
+import type { PublicTransportRepository } from "../src/transport/application/public-transport.repository";
 import {
   sanitizeAgentResponse,
   type TrustedAgentEntity,
@@ -25,8 +29,13 @@ function repository(): PublicCenterRepository {
       hierarchies: [],
     }),
     findPublishedByCode: async () => null,
+    listNearbyPublished: async () => ({ items: [] }),
     listPublished: async () => ({ items: [], total: 0 }),
   };
+}
+
+function poiRepository(): PublicPoiRepository {
+  return { listNearby: async () => ({ items: [] }) };
 }
 
 function establishmentSearch(): PublicEstablishmentSearch {
@@ -40,11 +49,25 @@ function establishmentSearch(): PublicEstablishmentSearch {
   };
 }
 
+function nearbyEstablishmentSearch(): PublicNearbyEstablishmentSearch {
+  return { nearby: async () => [] };
+}
+
+function transportRepository(): PublicTransportRepository {
+  return {
+    findForPublishedCenter: async () => null,
+    listNearbyStops: async () => [],
+  };
+}
+
 function service(config: Record<string, unknown>) {
   return new AiAgentService(
     new ConfigService(config),
     repository(),
     establishmentSearch(),
+    nearbyEstablishmentSearch(),
+    poiRepository(),
+    transportRepository(),
   );
 }
 
@@ -77,6 +100,15 @@ describe("AiAgentService", () => {
     ).toBe(false);
     expect(
       agentChatSchema.safeParse({ ...valid, locationHistory: [] }).success,
+    ).toBe(false);
+  });
+
+  it("rejects an invalid nearby radius before a tool can query the database", () => {
+    expect(
+      nearbyPublishedPlacesInputSchema.safeParse({ radiusMeters: 0 }).success,
+    ).toBe(false);
+    expect(
+      nearbyPublishedPlacesInputSchema.safeParse({ radiusMeters: 25_001 }).success,
     ).toBe(false);
   });
 

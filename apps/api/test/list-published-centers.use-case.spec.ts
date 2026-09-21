@@ -8,6 +8,7 @@ describe("ListPublishedCentersUseCase", () => {
     const listPublished = vi.fn().mockResolvedValue({ items: [], total: 0 });
     const repository: PublicCenterRepository = {
       listPublished,
+      listNearbyPublished: vi.fn(),
       findPublishedByCode: vi.fn(),
       getDiscoveryCatalog: vi.fn(),
     };

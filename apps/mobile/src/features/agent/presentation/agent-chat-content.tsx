@@ -265,7 +265,7 @@ export function AgentChatContent({
                       >
                         {card.summary}
                       </Text>
-                      {card.type === "establishment" ? (
+                      {card.type === "establishment" || card.type === "poi" ? (
                         <Text
                           style={[
                             styles.resultMeta,
@@ -334,7 +334,7 @@ export function AgentChatContent({
                   }
                   return (
                     <View
-                      key={`establishment-${card.name}-${card.latitude ?? "unknown"}`}
+                      key={`${card.type}-${card.name}-${card.latitude ?? "unknown"}`}
                       style={[
                         styles.resultCard,
                         { backgroundColor: colors.primarySoft },

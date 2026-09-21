@@ -95,7 +95,7 @@ const agentEstablishmentCardSchema = z
     type: z.literal("establishment"),
     name: z.string().trim().min(1).max(180),
     summary: z.string().trim().min(1).max(500),
-    category: z.string().trim().min(1).max(120).nullable(),
+    category: z.string().trim().max(120).nullable(),
     address: z.string().trim().max(500).nullable(),
     phone: z.string().trim().max(40).nullable(),
     localityName: z.string().trim().min(1).max(180),
@@ -105,9 +105,23 @@ const agentEstablishmentCardSchema = z
   })
   .strict();
 
+const agentPoiCardSchema = z
+  .object({
+    type: z.literal("poi"),
+    name: z.string().trim().min(1).max(180),
+    summary: z.string().trim().min(1).max(500),
+    category: z.string().trim().min(1).max(120),
+    localityName: z.string().trim().min(1).max(180),
+    latitude: finiteCoordinate.min(-90).max(90),
+    longitude: finiteCoordinate.min(-180).max(180),
+    distanceMeters: finiteCoordinate.min(0),
+  })
+  .strict();
+
 export const agentCardSchema = z.discriminatedUnion("type", [
   agentCenterCardSchema,
   agentEstablishmentCardSchema,
+  agentPoiCardSchema,
 ]);
 
 const agentItineraryStopSchema = z
@@ -131,7 +145,7 @@ export const agentItinerarySchema = z
 
 const agentRouteDestinationSchema = z
   .object({
-    type: z.enum(["center", "establishment"]),
+    type: z.enum(["center", "establishment", "poi"]),
     code: z.string().trim().min(1).max(120).optional(),
     name: z.string().trim().min(1).max(180),
     latitude: finiteCoordinate.min(-90).max(90),
@@ -158,7 +172,7 @@ export const agentActionSchema = z.discriminatedUnion("type", [
 
 export const agentSourceSchema = z
   .object({
-    type: z.enum(["center", "establishment"]),
+    type: z.enum(["center", "establishment", "poi", "transport"]),
     label: z.string().trim().min(1).max(240),
   })
   .strict();

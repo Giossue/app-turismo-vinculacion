@@ -4,16 +4,22 @@ import type { DataSource } from "typeorm";
 
 import type {
   ListPublishedCentersQuery,
+  NearbyPublishedCentersQuery,
   PublicCenterRepository,
 } from "../application/public-center.repository";
 import type {
   DiscoveryCatalog,
+  NearbyPublicCenterPage,
   PublicCenter,
   PublicCenterDetail,
   PublicCenterPage,
 } from "../domain/public-center";
 
 type CenterRow = Record<string, string | null>;
+type NearbyCenterRow = CenterRow & {
+  distance_meters: string | number | null;
+};
+
 type DetailRow = CenterRow & {
   admission: PublicCenterDetail["admission"];
   activities: string[] | null;
@@ -63,6 +69,45 @@ export class PostgresPublicCenterRepository implements PublicCenterRepository {
     return {
       items: rows.map(mapPublicCenter),
       total: Number(counts[0]?.total ?? 0),
+    };
+  }
+
+  async listNearbyPublished(
+    query: NearbyPublishedCentersQuery,
+  ): Promise<NearbyPublicCenterPage> {
+    const origin =
+      "ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography";
+    const rows = await this.dataSource.query<NearbyCenterRow[]>(
+      `SELECT ${this.publicFields()},
+              ST_Distance(c.ubicacion, ${origin}) AS distance_meters
+         ${this.publishedCentersFromClause()}
+        WHERE c.activo = TRUE
+          AND er.codigo = 'PUBLICADO'
+          AND ST_DWithin(c.ubicacion, ${origin}, $3)
+          AND (
+            $4::text IS NULL
+            OR c.nombre ILIKE '%' || $4 || '%'
+            OR COALESCE(c.descripcion, '') ILIKE '%' || $4 || '%'
+            OR ca.nombre ILIKE '%' || $4 || '%'
+            OR ta.nombre ILIKE '%' || $4 || '%'
+            OR sa.nombre ILIKE '%' || $4 || '%'
+          )
+        ORDER BY distance_meters, c.nombre, c.codigo_atractivo
+        LIMIT $5`,
+      [
+        query.latitude,
+        query.longitude,
+        query.radiusMeters,
+        query.category ?? null,
+        query.limit,
+      ],
+    );
+
+    return {
+      items: rows.map((row) => ({
+        ...mapPublicCenter(row),
+        distanceMeters: Number(row.distance_meters),
+      })),
     };
   }
 

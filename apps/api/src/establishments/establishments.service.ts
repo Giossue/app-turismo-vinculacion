@@ -123,6 +123,31 @@ const establishmentJoin = `
     LEFT JOIN catalogo_catastro_categorias category_catalog
       ON category_catalog.id = e.categoria_catalogo_id`;
 
+const publicEstablishmentSelect = `
+  SELECT e.nombre_comercial AS "nombreComercial",
+         l.nombre AS "localityName",
+         COALESCE(activity_catalog.nombre, e.actividad) AS actividad,
+         COALESCE(classification_catalog.nombre, e.clasificacion) AS clasificacion,
+         COALESCE(category_catalog.nombre, e.categoria) AS categoria,
+         e.direccion,
+         e.telefono,
+         e.latitud AS latitude,
+         e.longitud AS longitude`;
+
+type PublicEstablishmentRow = Pick<
+  EstablishmentRow,
+  | "nombreComercial"
+  | "localityName"
+  | "actividad"
+  | "clasificacion"
+  | "categoria"
+  | "direccion"
+  | "telefono"
+  | "latitude"
+  | "longitude"
+  | "distanceMeters"
+>;
+
 @Injectable()
 export class EstablishmentsService {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
@@ -497,6 +522,41 @@ export class EstablishmentsService {
       true,
       requested?.name ?? null,
     );
+  }
+
+  async nearbyPublicPlaces(query: {
+    latitude: number;
+    longitude: number;
+    radiusMeters: number;
+    category?: string;
+    limit: number;
+  }) {
+    const category = query.category?.trim() || null;
+    const origin =
+      "ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography";
+    const rows = await this.dataSource.query<PublicEstablishmentRow[]>(
+      `${publicEstablishmentSelect},
+              ST_Distance(e.ubicacion, ${origin}) AS "distanceMeters"
+         ${establishmentJoin}
+        WHERE e.activo = TRUE
+          AND l.activo = TRUE
+          AND co.activo = TRUE
+          AND p.activo = TRUE
+          AND e.ubicacion IS NOT NULL
+          AND ST_DWithin(e.ubicacion, ${origin}, $3)
+          AND (
+            $4::text IS NULL
+            OR e.nombre_comercial ILIKE '%' || $4 || '%'
+            OR COALESCE(activity_catalog.nombre, e.actividad) ILIKE '%' || $4 || '%'
+            OR COALESCE(classification_catalog.nombre, e.clasificacion) ILIKE '%' || $4 || '%'
+            OR COALESCE(category_catalog.nombre, e.categoria) ILIKE '%' || $4 || '%'
+          )
+        ORDER BY "distanceMeters", e.nombre_comercial, e.id
+        LIMIT $5`,
+      [query.latitude, query.longitude, query.radiusMeters, category, query.limit],
+    );
+
+    return rows.map((row) => this.toPublicItem(row));
   }
 
   private async findWithManager(
@@ -1028,7 +1088,7 @@ export class EstablishmentsService {
     };
   }
 
-  private toPublicItem(row: EstablishmentRow) {
+  private toPublicItem(row: PublicEstablishmentRow) {
     return {
       nombreComercial: row.nombreComercial,
       actividad: row.actividad,

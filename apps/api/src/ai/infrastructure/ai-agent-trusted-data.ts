@@ -10,7 +10,7 @@ export type TrustedAgentEntity = Readonly<{
   ref: string;
   card: AgentCard;
   destination: Readonly<{
-    type: "center" | "establishment";
+    type: "center" | "establishment" | "poi";
     code?: string;
     name: string;
     latitude: number;
@@ -22,6 +22,7 @@ export type TrustedAgentEntity = Readonly<{
 export function sanitizeAgentResponse(
   output: AgentModelResponse,
   entities: ReadonlyMap<string, TrustedAgentEntity>,
+  trustedSources: readonly AgentSource[] = [],
 ): {
   text: string;
   cards: AgentCard[];
@@ -41,6 +42,8 @@ export function sanitizeAgentResponse(
     seenSources.add(sourceKey);
     sources.push(source);
   };
+
+  trustedSources.forEach(addSource);
 
   for (const requestedCard of output.cards) {
     if (seenCardRefs.has(requestedCard.ref)) continue;

@@ -62,6 +62,49 @@ describe("askTourismAgent", () => {
     });
   });
 
+  it("accepts POI cards and route actions without an internal identifier", async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      json: async () => ({
+        text: "Encontré un punto de interés cercano.",
+        cards: [
+          {
+            type: "poi",
+            name: "Plaza cultural",
+            summary: "Un lugar para caminar.",
+            category: "Punto de interés",
+            localityName: "Guaranda",
+            latitude: -1.5934,
+            longitude: -79.0008,
+            distanceMeters: 180,
+          },
+        ],
+        actions: [
+          {
+            type: "start_route",
+            destination: {
+              type: "poi",
+              name: "Plaza cultural",
+              latitude: -1.5934,
+              longitude: -79.0008,
+            },
+            mode: "foot",
+            requiresConfirmation: true,
+          },
+        ],
+        sources: [{ type: "poi", label: "Catálogo público geolocalizado" }],
+      }),
+      ok: true,
+    });
+
+    await expect(
+      askTourismAgent("¿Qué hay cerca?", [], fetcher, "http://api.test/api/v1"),
+    ).resolves.toMatchObject({
+      cards: [{ type: "poi", name: "Plaza cultural" }],
+      actions: [{ destination: { type: "poi" } }],
+    });
+    expect(fetcher.mock.calls[0]?.[1]).not.toHaveProperty("id");
+  });
+
   it("rejects malformed structured responses", async () => {
     const fetcher = vi.fn().mockResolvedValue({
       json: async () => ({ text: "solo texto" }),

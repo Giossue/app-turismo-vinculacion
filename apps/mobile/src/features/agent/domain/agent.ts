@@ -38,9 +38,23 @@ export const agentEstablishmentCardSchema = z
   })
   .strict();
 
+export const agentPoiCardSchema = z
+  .object({
+    type: z.literal("poi"),
+    name: z.string().min(1).max(180),
+    summary: z.string().min(1).max(500),
+    category: z.string().min(1).max(120),
+    localityName: z.string().min(1).max(180),
+    latitude: finiteCoordinate.min(-90).max(90),
+    longitude: finiteCoordinate.min(-180).max(180),
+    distanceMeters: finiteCoordinate.min(0),
+  })
+  .strict();
+
 export const agentCardSchema = z.discriminatedUnion("type", [
   agentCenterCardSchema,
   agentEstablishmentCardSchema,
+  agentPoiCardSchema,
 ]);
 
 export const agentItineraryStopSchema = z
@@ -64,7 +78,7 @@ export const agentItinerarySchema = z
 
 export const agentRouteDestinationSchema = z
   .object({
-    type: z.enum(["center", "establishment"]),
+    type: z.enum(["center", "establishment", "poi"]),
     code: z.string().min(1).max(120).optional(),
     name: z.string().min(1).max(180),
     latitude: finiteCoordinate.min(-90).max(90),
@@ -126,7 +140,7 @@ export type AgentMessage = Readonly<{
   itinerary?: AgentItinerary;
   actions?: readonly AgentAction[];
   sources?: readonly Readonly<{
-    type: "center" | "establishment";
+    type: "center" | "establishment" | "poi" | "transport";
     label: string;
   }>[];
 }>;
