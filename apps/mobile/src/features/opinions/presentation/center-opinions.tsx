@@ -29,17 +29,19 @@ import {
 } from "../application/use-center-opinions";
 
 export function CenterOpinions({
+  active = true,
   code,
   onRequireAuth,
 }: Readonly<{
+  active?: boolean;
   code: string;
   onRequireAuth?: () => void;
 }>) {
   const colors = useTurismoPalette();
   const router = useRouter();
   const auth = useAuth();
-  const opinions = useCenterOpinions(code);
-  const own = useOwnCenterOpinion(code);
+  const opinions = useCenterOpinions(code, active);
+  const own = useOwnCenterOpinion(code, active);
   const mutation = useCenterOpinionMutation();
   const [editing, setEditing] = useState(false);
   const [rating, setRating] = useState<number | null>(null);

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { DataSource } from "typeorm";
 
 import { OpinionsService } from "../src/opinions/opinions.service";
 
@@ -9,7 +10,7 @@ function dataSourceFor(managerQuery: ReturnType<typeof vi.fn>) {
   const transaction = vi.fn(async (callback: (manager: unknown) => unknown) =>
     callback({ query: managerQuery }),
   );
-  return { query: vi.fn(), transaction } as never;
+  return { query: vi.fn(), transaction } as unknown as DataSource;
 }
 
 describe("OpinionsService", () => {
@@ -108,6 +109,77 @@ describe("OpinionsService", () => {
     expect(managerQuery).toHaveBeenCalledWith(
       expect.stringContaining("SET estado_moderacion = $2"),
       ["12", "RECHAZADA"],
+    );
+  });
+
+  it("keeps published opinions and pending edits in the admin list", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          review_code: firstReviewCode,
+          status: "APROBADA",
+          numero_version: "1",
+          submitted_at: "2026-09-20T12:00:00.000Z",
+          author_name: "Ana Visitante",
+          target_type: "CENTRO",
+          target_code: "CENTER-1",
+          target_name: "Centro de prueba",
+          proposed_rating: 5,
+          proposed_comment: "Publicado",
+          proposed_version: "1",
+          proposed_submitted_at: "2026-09-20T12:00:00.000Z",
+          current_rating: 5,
+          current_comment: "Publicado",
+          current_version: "1",
+          current_submitted_at: "2026-09-20T12:00:00.000Z",
+        },
+        {
+          review_code: secondReviewCode,
+          status: "PENDIENTE",
+          numero_version: "2",
+          submitted_at: "2026-09-21T12:00:00.000Z",
+          author_name: "Bruno Visitante",
+          target_type: "CENTRO",
+          target_code: "CENTER-2",
+          target_name: "Otro centro",
+          proposed_rating: 4,
+          proposed_comment: "Edición pendiente",
+          proposed_version: "2",
+          proposed_submitted_at: "2026-09-21T12:00:00.000Z",
+          current_rating: 3,
+          current_comment: "Versión anterior",
+          current_version: "1",
+          current_submitted_at: "2026-09-19T12:00:00.000Z",
+        },
+      ])
+      .mockResolvedValueOnce([{ total: "2" }]);
+    const service = new OpinionsService({
+      query,
+      transaction: vi.fn(),
+    } as never);
+
+    await expect(service.listAdmin(20, 0)).resolves.toMatchObject({
+      items: [
+        {
+          status: "APROBADA",
+          current: null,
+          proposed: { version: 1, rating: 5, comment: "Publicado" },
+        },
+        {
+          status: "PENDIENTE",
+          current: { version: 1, rating: 3 },
+          proposed: { version: 2, rating: 4, comment: "Edición pendiente" },
+        },
+      ],
+      total: 2,
+      limit: 20,
+      offset: 0,
+    });
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("published_v"),
+      [20, 0],
     );
   });
 

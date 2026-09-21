@@ -430,6 +430,7 @@ export function CenterMap({
             filter={["has", "point_count"]}
             id="tourism-center-cluster-count"
             layout={{
+              "text-font": ["Noto Sans Regular"],
               "text-field": ["get", "point_count_abbreviated"],
               "text-size": 13,
               visibility: hasMapGlyphs ? "visible" : "none",
@@ -509,6 +510,7 @@ export function CenterMap({
             filter={["has", "point_count"]}
             id="tourism-establishment-cluster-count"
             layout={{
+              "text-font": ["Noto Sans Regular"],
               "text-field": ["get", "point_count_abbreviated"],
               "text-size": 12,
               visibility: hasMapGlyphs ? "visible" : "none",
@@ -532,6 +534,7 @@ export function CenterMap({
             id="tourism-establishment-icons"
             layout={{
               "text-allow-overlap": true,
+              "text-font": ["Noto Sans Regular"],
               "text-field": ["get", "iconGlyph"],
               "text-ignore-placement": true,
               "text-size": 12,

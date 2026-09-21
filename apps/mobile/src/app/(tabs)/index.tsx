@@ -1139,7 +1139,11 @@ function PlaceSheet({
               </View>
               <View style={[styles.placePage, { width: pagerWidth || "100%" }]}>
                 {visitedTabs.has("opinions") ? (
-                  <PlaceOpinions code={code} onRequireAuth={onRequireAuth} />
+                  <PlaceOpinions
+                    active={activeTab === "opinions"}
+                    code={code}
+                    onRequireAuth={onRequireAuth}
+                  />
                 ) : null}
               </View>
               <View style={[styles.placePage, { width: pagerWidth || "100%" }]}>
@@ -1317,13 +1321,21 @@ function PlacePhotos({
 }
 
 function PlaceOpinions({
+  active,
   code,
   onRequireAuth,
 }: Readonly<{
+  active: boolean;
   code: string;
   onRequireAuth: () => void;
 }>) {
-  return <CenterOpinions code={code} onRequireAuth={onRequireAuth} />;
+  return (
+    <CenterOpinions
+      active={active}
+      code={code}
+      onRequireAuth={onRequireAuth}
+    />
+  );
 }
 
 function resolveMediaUrl(path: string): string {

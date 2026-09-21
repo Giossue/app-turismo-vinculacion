@@ -14,23 +14,23 @@ export const centerOpinionsQueryKey = (code: string) =>
 export const ownOpinionQueryKey = (code: string, userId: number | null) =>
   ["own-center-opinion", code, userId ?? "anonymous"] as const;
 
-export function useCenterOpinions(code: string) {
+export function useCenterOpinions(code: string, enabled = true) {
   return useQuery({
     queryKey: centerOpinionsQueryKey(code),
     queryFn: () => listCenterOpinions(code),
-    enabled: Boolean(code),
+    enabled: Boolean(code) && enabled,
     refetchOnMount: "always",
     staleTime: 60_000,
   });
 }
 
-export function useOwnCenterOpinion(code: string) {
+export function useOwnCenterOpinion(code: string, enabled = true) {
   const auth = useAuth();
   const userId = auth.user?.id ?? null;
   return useQuery({
     queryKey: ownOpinionQueryKey(code, userId),
     queryFn: () => getMyCenterOpinion(code, auth.request),
-    enabled: Boolean(code) && auth.status === "authenticated",
+    enabled: Boolean(code) && enabled && auth.status === "authenticated",
     refetchOnMount: "always",
     staleTime: 15_000,
   });
