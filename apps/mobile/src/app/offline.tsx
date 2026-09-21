@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -9,14 +9,12 @@ import {
   View,
 } from "react-native";
 
-import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 import {
   TourismActionButton,
   TourismBadge,
   TourismSurface,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
-import { TourismMenuDrawer } from "@/core/ui/tourism-navigation";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
@@ -37,7 +35,6 @@ export default function OfflineMapsScreen() {
   const colors = useTurismoPalette();
   const auth = useAuth();
   const queryClient = useQueryClient();
-  const [menuVisible, setMenuVisible] = useState(false);
   const [activeDownload, setActiveDownload] = useState<{
     slug: string;
     progress: number;
@@ -50,13 +47,6 @@ export default function OfflineMapsScreen() {
     queryFn: listStoredOfflineCities,
     staleTime: 0,
   });
-
-  const handleBeforeBack = useCallback(() => {
-    if (!menuVisible) return false;
-    setMenuVisible(false);
-    return true;
-  }, [menuVisible]);
-  useScreenBackHandler(handleBeforeBack);
 
   useEffect(() => {
     if (auth.status !== "anonymous") return;
@@ -107,34 +97,12 @@ export default function OfflineMapsScreen() {
   return (
     <TourismScreenFrame
       onBack={() => router.back()}
-      onMenu={() => setMenuVisible(true)}
-      subtitle="USO SIN INTERNET"
       title="Mapas sin conexión"
     >
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <TourismSurface style={styles.introCard}>
-          <View
-            style={[styles.introIcon, { backgroundColor: colors.primarySoft }]}
-          >
-            <TurismoIcon
-              color={colors.primaryStrong}
-              name="download"
-              size={turismoIconSizes.lg}
-            />
-          </View>
-          <View style={styles.introCopy}>
-            <Text style={[styles.introTitle, { color: colors.text }]}>
-              Viaja con tus datos
-            </Text>
-            <Text style={[styles.introBody, { color: colors.textMuted }]}>
-              Descarga mapa, atractivos publicados y rutas registradas por
-              ciudad.
-            </Text>
-          </View>
-        </TourismSurface>
         {downloadError ? (
           <Text style={[styles.errorText, { color: colors.danger }]}>
             {downloadError}
@@ -198,26 +166,6 @@ export default function OfflineMapsScreen() {
           <StateMessage label="Aún no hay ciudades con un paquete offline publicado." />
         )}
       </ScrollView>
-      <TourismMenuDrawer
-        onAccount={() =>
-          router.push(
-            auth.status === "authenticated"
-              ? ("/account" as never)
-              : ({
-                  pathname: "/login",
-                  params: { returnTo: "/account" },
-                } as never),
-          )
-        }
-        onClose={() => setMenuVisible(false)}
-        onOfflineMaps={() => setMenuVisible(false)}
-        onSaved={() => setMenuVisible(false)}
-        onSettings={() => {
-          setMenuVisible(false);
-          router.push("/settings" as never);
-        }}
-        visible={menuVisible}
-      />
     </TourismScreenFrame>
   );
 }
@@ -251,22 +199,6 @@ const styles = StyleSheet.create({
     paddingBottom: turismoSpacing.xl,
     paddingVertical: turismoSpacing.md,
   },
-  introCard: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-    padding: turismoSpacing.md,
-  },
-  introIcon: {
-    alignItems: "center",
-    borderRadius: turismoRadii.md,
-    height: turismoMetrics.controlMd,
-    justifyContent: "center",
-    width: turismoMetrics.controlMd,
-  },
-  introCopy: { flex: 1, gap: turismoSpacing.xxs },
-  introTitle: { ...turismoTypography.heading },
-  introBody: { ...turismoTypography.caption },
   cityCard: { gap: turismoSpacing.md, padding: turismoSpacing.md },
   cityHeading: {
     alignItems: "center",

@@ -56,7 +56,9 @@ una sheet nativa sobre el mapa.
 
 El acceso al menú lateral se presenta en la fila superior, junto al buscador del mapa. Un
 `TourismMenuProvider` posee un único drawer para el shell principal; las pantallas
-secundarias conservan el mismo botón en el encabezado con un drawer local.
+secundarias que lo ofrecen conservan el mismo botón en el encabezado con un drawer local.
+La pantalla `Mapas sin conexión` es una excepción intencional: no muestra el subtítulo de
+contexto ni el botón de menú en su encabezado.
 
 Las decisiones de layout siguen las primitivas oficiales de React Native: dimensiones en
 puntos independientes de densidad, Flexbox y `useWindowDimensions` para adaptación,
