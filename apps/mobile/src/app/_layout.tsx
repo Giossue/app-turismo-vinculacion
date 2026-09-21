@@ -38,11 +38,12 @@ function AppProviders({ children }: Readonly<{ children: ReactNode }>) {
     <PersistQueryClientProvider
       client={queryClient}
       persistOptions={{
-        buster: "mobile-v1",
+        buster: "mobile-v2",
         dehydrateOptions: {
           shouldDehydrateQuery: (query) => {
             const rootKey = query.queryKey[0];
             return (
+              query.state.status === "success" &&
               rootKey !== "calculated-route" &&
               rootKey !== "nearby-establishments"
             );

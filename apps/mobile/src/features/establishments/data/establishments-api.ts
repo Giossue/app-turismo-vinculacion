@@ -59,6 +59,9 @@ export async function getMapEstablishments(
   const response = await fetcher(`${apiUrl}/establishments/map`, {
     headers: { Accept: "application/json" },
   });
+  // The map layer is additive and older API deployments do not expose this
+  // route yet. Keep public discovery usable until that deployment is updated.
+  if (response.status === 404) return { items: [] };
   if (!response.ok) {
     throw new Error("No pudimos cargar los establecimientos del mapa.");
   }

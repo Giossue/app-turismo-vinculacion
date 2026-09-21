@@ -46,6 +46,14 @@ describe("getMapEstablishments", () => {
       expect.objectContaining({ headers: { Accept: "application/json" } }),
     );
   });
+
+  it("keeps the map usable when the public marker route is not deployed yet", async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: false, status: 404 });
+
+    await expect(
+      getMapEstablishments(fetcher, "http://api.test/api/v1"),
+    ).resolves.toEqual({ items: [] });
+  });
 });
 
 describe("getNearbyEstablishments", () => {
