@@ -49,6 +49,11 @@ import type { PublicPoiRepository } from "../../pois/application/public-poi.repo
 import type { PublicPoi } from "../../pois/domain/public-poi";
 import { PUBLIC_TRANSPORT_REPOSITORY } from "../../transport/application/public-transport.repository";
 import type { PublicTransportRepository } from "../../transport/application/public-transport.repository";
+import { CalculateRouteUseCase } from "../../routing/application/calculate-route.use-case";
+import {
+  NoRouteFoundError,
+  RouteProviderUnavailableError,
+} from "../../routing/domain/routing-errors";
 
 const searchCentersInputSchema = z
   .object({
@@ -92,6 +97,14 @@ const nearbyTransportStopsInputSchema = z
   })
   .strict();
 
+export const calculateRoadRouteInputSchema = z
+  .object({
+    fromRef: z.string().trim().min(1).max(96).optional(),
+    toRef: z.string().trim().min(1).max(96),
+    mode: z.enum(["car", "bicycle", "foot"]),
+  })
+  .strict();
+
 const itineraryCandidatesInputSchema = z
   .object({
     text: z.string().trim().min(2).max(120),
@@ -123,6 +136,8 @@ export class AiAgentService {
     private readonly pois: PublicPoiRepository,
     @Inject(PUBLIC_TRANSPORT_REPOSITORY)
     private readonly transport: PublicTransportRepository,
+    @Inject(CalculateRouteUseCase)
+    private readonly calculateRoute: CalculateRouteUseCase,
   ) {}
 
   async generate(input: AgentChatInput): Promise<AgentResponse> {
@@ -266,6 +281,7 @@ export class AiAgentService {
           "Cuando pidan un plan, paseo o recorrido de varias paradas, usa findItineraryCandidates y devuelve un itinerary de 2 a 6 centros publicados en el orden sugerido.",
           "El título y resumen del itinerary son una propuesta; no afirmes horarios, precios, disponibilidad, servicios ni duración sin una herramienta que los verifique.",
           "Para transporte usa getPublishedTransportForCenter o searchNearbyTransportStops cuando la pregunta lo requiera. Si no hay rutas, paradas u horarios publicados, dilo así; no inventes transporte, frecuencias, precios ni tiempos.",
+          "Para calcular una ruta vial usa calculateRoadRoute después de obtener referencias confiables. Puede calcular desde la ubicación aproximada o entre dos lugares registrados; no le envíes coordenadas. Las métricas desde la ubicación son aproximadas y el móvil volverá a calcular la ruta antes de navegar.",
           "Si una herramienta no tiene datos o falla, dilo claramente y no rellenes el vacío con conocimiento externo.",
           "Para tarjetas, itineraries y acciones usa solamente las referencias ref devueltas por las herramientas.",
           "No pongas coordenadas ni códigos inventados en la salida estructurada.",
@@ -593,6 +609,118 @@ export class AiAgentService {
                     : {}),
                 };
               } catch {
+                return genericToolFailure;
+              }
+            },
+          }),
+          calculateRoadRoute: tool({
+            description:
+              "Calcula una ruta vial real sin tráfico en tiempo real entre dos referencias confiables. Si fromRef se omite, usa la ubicación aproximada del visitante como origen. Nunca recibe coordenadas.",
+            inputSchema: calculateRoadRouteInputSchema,
+            execute: async ({ fromRef, toRef, mode }) => {
+              const destination = entities.get(toRef)?.destination;
+              if (!destination) {
+                return {
+                  available: true,
+                  found: false,
+                  message:
+                    "No encontré un destino confiable para calcular esta ruta.",
+                };
+              }
+
+              const originEntity = fromRef ? entities.get(fromRef) : undefined;
+              if (fromRef && !originEntity?.destination) {
+                return {
+                  available: true,
+                  found: false,
+                  message:
+                    "No encontré un origen confiable para calcular esta ruta.",
+                };
+              }
+              if (!fromRef && !approximateLocation) {
+                return {
+                  available: false,
+                  message:
+                    "No hay ubicación disponible. Pide permiso de ubicación antes de calcular una ruta desde el visitante.",
+                };
+              }
+
+              const origin = originEntity?.destination ?? approximateLocation;
+              if (!origin) {
+                return genericToolFailure;
+              }
+              const originCoordinate = {
+                latitude: origin.latitude,
+                longitude: origin.longitude,
+              };
+              const destinationCoordinate = {
+                latitude: destination.latitude,
+                longitude: destination.longitude,
+              };
+              if (
+                originCoordinate.latitude === destinationCoordinate.latitude &&
+                originCoordinate.longitude === destinationCoordinate.longitude
+              ) {
+                return {
+                  available: true,
+                  found: false,
+                  message:
+                    "El origen y el destino son el mismo punto; no hay una ruta vial que calcular.",
+                };
+              }
+
+              try {
+                const route = await this.calculateRoute.execute({
+                  destination: destinationCoordinate,
+                  mode,
+                  origin: originCoordinate,
+                });
+                if (
+                  !Number.isFinite(route.distanceMeters) ||
+                  route.distanceMeters < 0 ||
+                  !Number.isFinite(route.durationSeconds) ||
+                  route.durationSeconds < 0
+                ) {
+                  return genericToolFailure;
+                }
+
+                const source: AgentSource = {
+                  type: "routing",
+                  label: "Cálculo de ruta vial",
+                };
+                registerSource(source);
+                return {
+                  available: true,
+                  found: true,
+                  mode,
+                  from:
+                    originEntity?.destination?.name ??
+                    "Tu ubicación aproximada",
+                  to: destination.name,
+                  distanceMeters: route.distanceMeters,
+                  durationSeconds: route.durationSeconds,
+                  instructions: route.steps
+                    .slice(0, 8)
+                    .map((step) => step.instruction),
+                  source: source.label,
+                  approximateOrigin: !fromRef,
+                };
+              } catch (error) {
+                if (error instanceof NoRouteFoundError) {
+                  return {
+                    available: true,
+                    found: false,
+                    message:
+                      "No encontré una ruta vial posible entre esos lugares.",
+                  };
+                }
+                if (error instanceof RouteProviderUnavailableError) {
+                  return {
+                    available: false,
+                    message:
+                      "El servicio de rutas no está disponible ahora. No puedo verificar distancia ni duración.",
+                  };
+                }
                 return genericToolFailure;
               }
             },

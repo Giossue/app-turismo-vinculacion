@@ -94,6 +94,7 @@ describe("askTourismAgent", () => {
         sources: [
           { type: "poi", label: "Catálogo público geolocalizado" },
           { type: "transport", label: "Registro institucional de transporte" },
+          { type: "routing", label: "Cálculo de ruta vial" },
         ],
       }),
       ok: true,

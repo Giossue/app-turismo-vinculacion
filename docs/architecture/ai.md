@@ -22,14 +22,17 @@ la aplicación móvil. La respuesta contiene `text`, `cards`, `itinerary` opcion
 
 Las herramientas allowlisted de esta unidad son `searchPublishedCenters`,
 `findItineraryCandidates`, `getPublishedCenter`, `searchNearbyEstablishments`,
-`searchNearbyPublishedPlaces`, `getPublishedTransportForCenter` y
-`searchNearbyTransportStops`. Las consultas de cercanía usan PostGIS sobre centros publicados,
+`searchNearbyPublishedPlaces`, `getPublishedTransportForCenter`,
+`searchNearbyTransportStops` y `calculateRoadRoute`. Las consultas de cercanía usan PostGIS sobre centros publicados,
 POI activos y establecimientos activos; `searchNearbyPublishedPlaces` recibe únicamente radio,
 límite y categoría opcional, mientras que las coordenadas se toman del contexto aproximado del
 request. La intención cercana detectada en español obliga a ejecutar esa herramienta en el
 primer paso para evitar convertir “cerca de mí” en una búsqueda textual. El modelo solo recibe
 referencias de resultados y el backend rehidrata/sanitiza tarjetas, itinerarios, fuentes y
-destinos; no acepta coordenadas ni detalles escritos por el modelo.
+destinos; no acepta coordenadas ni detalles escritos por el modelo. `calculateRoadRoute` solo
+recibe referencias emitidas por otras tools y delega el cálculo al proveedor vial existente;
+devuelve distancia, duración e instrucciones acotadas, sin exponer geometría al modelo. Desde la
+ubicación del visitante marca el origen como aproximado y la app recalcula antes de navegar.
 
 Los POI no tienen código público en el esquema actual: se representan internamente con una
 referencia opaca por solicitud y la respuesta solo contiene nombre, descripción, localidad y
@@ -49,6 +52,7 @@ móvil y no ejecuta navegación desde la API.
 - Consultar ficha pública.
 - Buscar por radio y filtros.
 - Consultar rutas, paradas y horarios publicados, sin rellenar ausencias.
+- Calcular rutas viales verificadas entre lugares registrados y validar distancia/duración.
 - Proponer itinerario y validarlo contra horarios/distancias.
 - Recuperar fuentes de una recomendación.
 

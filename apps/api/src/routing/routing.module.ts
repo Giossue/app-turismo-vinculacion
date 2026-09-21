@@ -25,5 +25,6 @@ import { RoutingController } from "./presentation/routing.controller";
       inject: [ROUTING_PROVIDER],
     },
   ],
+  exports: [CalculateRouteUseCase],
 })
 export class RoutingModule {}

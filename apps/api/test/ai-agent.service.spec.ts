@@ -15,6 +15,7 @@ import type { PublicNearbyEstablishmentSearch } from "../src/ai/application/publ
 import type { PublicCenterRepository } from "../src/centers/application/public-center.repository";
 import type { PublicPoiRepository } from "../src/pois/application/public-poi.repository";
 import type { PublicTransportRepository } from "../src/transport/application/public-transport.repository";
+import type { CalculateRouteUseCase } from "../src/routing/application/calculate-route.use-case";
 import {
   sanitizeAgentResponse,
   type TrustedAgentEntity,
@@ -63,6 +64,24 @@ function transportRepository(): PublicTransportRepository {
   };
 }
 
+function routeUseCase(): CalculateRouteUseCase {
+  return {
+    execute: async () => ({
+      mode: "foot",
+      distanceMeters: 420,
+      durationSeconds: 360,
+      geometry: {
+        type: "LineString",
+        coordinates: [
+          [-79.0, -1.59],
+          [-79.001, -1.591],
+        ],
+      },
+      steps: [],
+    }),
+  } as unknown as CalculateRouteUseCase;
+}
+
 function service(config: Record<string, unknown>) {
   return new AiAgentService(
     new ConfigService(config),
@@ -71,6 +90,7 @@ function service(config: Record<string, unknown>) {
     nearbyEstablishmentSearch(),
     poiRepository(),
     transportRepository(),
+    routeUseCase(),
   );
 }
 

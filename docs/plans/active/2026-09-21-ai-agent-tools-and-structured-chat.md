@@ -6,8 +6,10 @@ Implementada la primera rebanada vertical para visitantes autenticados, incluyen
 propuestas no persistentes de recorrido con lugares publicados. La búsqueda cercana ahora
 consulta centros, POI y establecimientos mediante PostGIS, y el agente dispone de tools de
 transporte que degradan explícitamente cuando no hay registros operativos. La integración
-queda lista para validarse con credenciales Anthropic y una prueba desde dispositivo real;
-itinerarios persistentes, cálculo de rutas y voz quedan para unidades posteriores.
+queda lista para validarse con credenciales Anthropic y una prueba desde dispositivo real. El
+agente ahora puede delegar el cálculo vial en el proveedor OSRM existente usando referencias
+confiables y métricas verificables; itinerarios persistentes y voz quedan para unidades
+posteriores.
 
 ## Objetivo
 
@@ -25,8 +27,10 @@ tarjetas de lugares y propuestas de acción.
   activos y establecimientos activos; recibe radio, límite y categoría, no coordenadas.
 - `getPublishedTransportForCenter` y `searchNearbyTransportStops`: consulta real de rutas,
   tipos, cooperativas, paradas y horarios; devuelven ausencia explícita si la BD está vacía.
+- `calculateRoadRoute`: cálculo vial entre referencias confiables, desde la ubicación aproximada
+  o entre dos lugares publicados; no recibe coordenadas del modelo y no inicia navegación.
 - `findItineraryCandidates`: candidatos de 2 a 6 lugares publicados para una propuesta de
-  recorrido; no calcula horarios, tiempos ni rutas.
+  recorrido; puede combinarse con `calculateRoadRoute` para validar tramos.
 - Tarjetas confiables de centros, POI y establecimientos; los POI usan referencias opacas por
   solicitud y no exponen el `id` interno.
 - Tarjeta de itinerario con paradas ordenadas y apertura de cada ficha.
@@ -77,7 +81,8 @@ referencias inexistentes.
 
 - Entradas de chat, historial, ubicación y herramientas tienen límites estrictos.
 - La generación usa un máximo pequeño de pasos y tokens y no dispone de ejecución genérica,
-  SQL, escritura de datos, persistencia de itinerarios ni cálculo de rutas/horarios.
+  SQL, escritura de datos ni persistencia de itinerarios. El cálculo vial depende del proveedor
+  configurado y, si no responde o no encuentra ruta, se comunica la ausencia sin estimarla.
 - Una clave de proveedor ausente falla cerrado con error de servicio sin filtrar configuración.
 - Si una consulta pública falla, el agente comunica que no pudo verificarla; no se rellenan
   datos con conocimiento no fundamentado.
@@ -92,8 +97,10 @@ referencias inexistentes.
   aproximada; la frase “cerca de mí” fuerza la tool geográfica en el primer paso.
 - El agente puede consultar transporte registrado y comunicar que no hay rutas/paradas/horarios
   publicados sin inventarlos.
-- El agente puede proponer de 2 a 6 lugares publicados en un orden explícito, sin presentarlo
-  como horario o ruta calculada.
+- El agente puede calcular rutas viales entre referencias verificadas y comunicar distancia y
+  duración provenientes del proveedor; desde ubicación se marca como aproximado.
+- El agente puede proponer de 2 a 6 lugares publicados en un orden explícito, y solo presentar
+  tiempos/distancias cuando `calculateRoadRoute` los haya verificado.
 - El backend solo devuelve tarjetas/itinerarios/acciones que correspondan a resultados de
   herramientas.
 - Coordenadas y detalles de acciones no provienen de texto generado por el modelo.
@@ -106,16 +113,17 @@ referencias inexistentes.
 - [x] Pruebas unitarias de esquemas, adaptación de herramientas y sanitización.
 - [x] Pruebas del controlador para respuesta JSON y entrada inválida.
 - [x] Pruebas del parser móvil y de la solicitud de ubicación aproximada.
-- [x] Typecheck, lint, Prettier y `git diff --check` en API; 24 suites y 121 tests pasan.
+- [x] Typecheck, lint, Prettier y `git diff --check` en API; 25 suites y 122 tests pasan.
 - [x] Tests, typecheck y Prettier del móvil; 12 suites y 40 tests pasan.
 - [x] Lint móvil sin errores; permanece un warning previo sobre la dependencia de
-  `visibleCenters` en un `useMemo` del shell del mapa.
+      `visibleCenters` en un `useMemo` del shell del mapa.
 - [x] Smoke SQL contra PostgreSQL: 1 centro publicado, 2 POI, 51 establecimientos y 0 rutas,
-  paradas, asociaciones u horarios operativos; `EXPLAIN` mostró los índices GIST de POI y
-  establecimientos para las consultas de radio.
+      paradas, asociaciones u horarios operativos; `EXPLAIN` mostró los índices GIST de POI y
+      establecimientos para las consultas de radio.
+- [x] Tool de cálculo vial sobre el puerto OSRM existente: referencias confiables, origen
+      aproximado redondeado, degradación de proveedor/no-route y confirmación móvil intacta.
 
 ## Siguiente unidad
 
-Integrar cálculo de rutas vial con el proveedor existente y validación de duración/distancia;
-después añadir persistencia explícita de itinerarios con confirmación por etapa. No permitir
-que el modelo inicie navegación ni modifique centros/publicaciones.
+Añadir persistencia explícita de itinerarios con confirmación por etapa y, después, voz. No
+permitir que el modelo inicie navegación ni modifique centros/publicaciones.

@@ -105,7 +105,7 @@ export const agentActionSchema = z.discriminatedUnion("type", [
 
 export const agentSourceSchema = z
   .object({
-    type: z.enum(["center", "establishment", "poi", "transport"]),
+    type: z.enum(["center", "establishment", "poi", "transport", "routing"]),
     label: z.string().min(1).max(240),
   })
   .strict();
@@ -140,7 +140,7 @@ export type AgentMessage = Readonly<{
   itinerary?: AgentItinerary;
   actions?: readonly AgentAction[];
   sources?: readonly Readonly<{
-    type: "center" | "establishment" | "poi" | "transport";
+    type: "center" | "establishment" | "poi" | "transport" | "routing";
     label: string;
   }>[];
 }>;

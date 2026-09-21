@@ -5,6 +5,7 @@ import { CentersModule } from "../centers/centers.module";
 import { EstablishmentsModule } from "../establishments/establishments.module";
 import { PoisModule } from "../pois/pois.module";
 import { TransportModule } from "../transport/transport.module";
+import { RoutingModule } from "../routing/routing.module";
 import { AiAgentController } from "./presentation/ai-agent.controller";
 import { AiAgentService } from "./application/ai-agent.service";
 import { PUBLIC_ESTABLISHMENT_SEARCH } from "./application/public-establishment-search";
@@ -19,6 +20,7 @@ import { PUBLIC_NEARBY_ESTABLISHMENT_SEARCH } from "./application/public-nearby-
     EstablishmentsModule,
     PoisModule,
     TransportModule,
+    RoutingModule,
   ],
   controllers: [AiAgentController],
   providers: [
