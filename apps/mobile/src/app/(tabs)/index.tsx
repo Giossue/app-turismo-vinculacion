@@ -35,6 +35,8 @@ import {
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
 import {
+  tourismAgentSheetBehavior,
+  tourismAgentSheetSnapPoints,
   tourismFlexibleSheetBehavior,
   tourismFlexibleSheetSnapPoints,
 } from "@/core/ui/tourism-bottom-sheet";
@@ -552,12 +554,15 @@ function ExploreMapScreen() {
     const nextQuery = text.trim();
     if (nextQuery.length < 2) return;
     void rememberSearch(nextQuery).then(() => {
-      setSearchHistory((current) => [
-        nextQuery,
-        ...current.filter(
-          (item) => item.toLocaleLowerCase() !== nextQuery.toLocaleLowerCase(),
-        ),
-      ].slice(0, 8));
+      setSearchHistory((current) =>
+        [
+          nextQuery,
+          ...current.filter(
+            (item) =>
+              item.toLocaleLowerCase() !== nextQuery.toLocaleLowerCase(),
+          ),
+        ].slice(0, 8),
+      );
     });
     setSubmittedText(nextQuery);
     setSearchFocused(false);
@@ -573,22 +578,20 @@ function ExploreMapScreen() {
     setSearchFocused(true);
   }, [dismissSearchSheet]);
 
-  const handleRecentSearch = useCallback(
-    (recentQuery: string) => {
-      setText(recentQuery);
-      setSubmittedText(recentQuery);
-      setSearchFocused(false);
-      void rememberSearch(recentQuery);
-    },
-    [],
-  );
+  const handleRecentSearch = useCallback((recentQuery: string) => {
+    setText(recentQuery);
+    setSubmittedText(recentQuery);
+    setSearchFocused(false);
+    void rememberSearch(recentQuery);
+  }, []);
 
   const searchSuggestions = useMemo(() => {
     const normalized = text.trim().toLocaleLowerCase();
     if (!normalized || searchMode !== "CENTERS") return [];
     return visibleCenters
       .filter((center) => {
-        const haystack = `${center.name} ${center.category} ${center.type} ${center.subtype}`.toLocaleLowerCase();
+        const haystack =
+          `${center.name} ${center.category} ${center.type} ${center.subtype}`.toLocaleLowerCase();
         return haystack.includes(normalized);
       })
       .slice(0, 8);
@@ -888,21 +891,44 @@ function ExploreMapScreen() {
         />
       ) : null}
       <BottomSheetModal
-        {...tourismFlexibleSheetBehavior}
+        {...tourismAgentSheetBehavior}
         backgroundStyle={{ backgroundColor: colors.surface }}
+        handleComponent={null}
         index={0}
         onDismiss={() => {
           agentSheetOpenRef.current = false;
           setAgentOpen(false);
         }}
         ref={agentSheetRef}
-        snapPoints={tourismFlexibleSheetSnapPoints}
+        snapPoints={tourismAgentSheetSnapPoints}
       >
         <BottomSheetView style={styles.agentSheetView}>
-          <AgentChatContent
-            onOpenCenter={openAgentCenter}
-            onStartRoute={openAgentRoute}
-          />
+          <SafeAreaView
+            edges={["top", "bottom"]}
+            style={[
+              styles.agentSheetSafeArea,
+              { backgroundColor: colors.surface },
+            ]}
+          >
+            <View
+              style={[styles.agentHeader, { borderBottomColor: colors.border }]}
+            >
+              <Text style={[styles.agentHeaderTitle, { color: colors.text }]}>
+                Agente turístico
+              </Text>
+              <TourismIconAction
+                accessibilityLabel="Cerrar agente turístico"
+                icon="close"
+                onPress={closeAgent}
+              />
+            </View>
+            <View style={styles.agentContent}>
+              <AgentChatContent
+                onOpenCenter={openAgentCenter}
+                onStartRoute={openAgentRoute}
+              />
+            </View>
+          </SafeAreaView>
         </BottomSheetView>
       </BottomSheetModal>
     </View>
@@ -1685,6 +1711,20 @@ const styles = StyleSheet.create({
   agentSheetView: {
     flex: 1,
     minHeight: 360,
+  },
+  agentSheetSafeArea: { flex: 1 },
+  agentHeader: {
+    alignItems: "center",
+    borderBottomWidth: turismoMetrics.borderWidth,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    minHeight: turismoMetrics.controlLg,
+    paddingHorizontal: turismoSpacing.md,
+  },
+  agentHeaderTitle: { ...turismoTypography.heading },
+  agentContent: {
+    flex: 1,
+    minHeight: 0,
     paddingHorizontal: turismoSpacing.md,
     paddingTop: turismoSpacing.sm,
   },

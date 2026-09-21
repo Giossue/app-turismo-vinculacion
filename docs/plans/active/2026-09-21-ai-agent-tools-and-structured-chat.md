@@ -2,9 +2,9 @@
 
 ## Estado
 
-En implementación. Esta unidad entrega la primera rebanada vertical del agente turístico
-para visitantes autenticados; itinerarios persistentes, horarios/rutas consultables y voz
-quedan para unidades posteriores.
+Implementada la primera rebanada vertical para visitantes autenticados. La integración
+está lista para validarse con credenciales Anthropic y datos publicados reales; itinerarios
+persistentes, horarios/rutas consultables y voz quedan para unidades posteriores.
 
 ## Objetivo
 
@@ -85,10 +85,13 @@ referencias inexistentes.
 
 ## Verificación
 
-- Pruebas unitarias de esquemas, adaptación de herramientas y sanitización.
-- Pruebas del controlador para respuesta JSON y entrada inválida.
-- Pruebas del parser móvil y de la solicitud de ubicación aproximada.
-- Typecheck, tests, Prettier y `git diff --check` en API y móvil.
+- [x] Pruebas unitarias de esquemas, adaptación de herramientas y sanitización.
+- [x] Pruebas del controlador para respuesta JSON y entrada inválida.
+- [x] Pruebas del parser móvil y de la solicitud de ubicación aproximada.
+- [x] Typecheck, lint, Prettier y `git diff --check` en API.
+- [x] Tests y Prettier del móvil; el typecheck/lint global del móvil queda bloqueado por
+  `SearchSuggestionsPanel`, una referencia sin definición introducida en el cambio local del
+  shell del mapa (`apps/mobile/src/app/(tabs)/index.tsx`), fuera de esta unidad.
 
 ## Siguiente unidad
 

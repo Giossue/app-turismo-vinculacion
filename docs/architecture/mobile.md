@@ -56,7 +56,8 @@ centraliza safe areas, encabezado, ancho máximo de contenido y márgenes horizo
 pantalla principal vive en un `Tabs` de Expo Router para conservar la estructura de rutas,
 pero el shell del mapa no renderiza barra inferior: el mapa ocupa toda la pantalla y sus
 acciones efímeras no crean entradas de navegación. El chat del agente se monta dentro de
-una sheet nativa sobre el mapa.
+una sheet nativa de altura completa sobre el mapa; no se cierra por gesto y muestra una `X`
+en el encabezado.
 
 El acceso al menú lateral se presenta en la fila superior, junto al buscador del mapa. Un
 `TourismMenuProvider` posee un único drawer para el shell principal; las pantallas

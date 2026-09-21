@@ -52,7 +52,13 @@ export async function askTourismAgent(
   });
   if (!response.ok)
     throw new Error("El agente no está disponible en este momento.");
-  const parsed = agentResponseSchema.safeParse(await response.json());
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new Error("El agente devolvió una respuesta con formato inválido.");
+  }
+  const parsed = agentResponseSchema.safeParse(payload);
   if (!parsed.success)
     throw new Error("El agente devolvió una respuesta con formato inválido.");
   return parsed.data;
