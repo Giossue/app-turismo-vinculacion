@@ -618,8 +618,8 @@ export function CenterMap({
               "icon-anchor": "center",
               "icon-ignore-placement": true,
               "icon-image": ["get", "iconImage"],
-              "icon-offset": [0, -20],
-              "icon-size": 0.3,
+              "icon-offset": [0, -57],
+              "icon-size": 0.35,
             }}
             minzoom={establishmentPinMinZoom}
             type="symbol"

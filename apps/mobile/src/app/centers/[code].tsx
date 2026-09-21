@@ -34,9 +34,14 @@ import {
   useSavedCenterMutation,
   useSavedCenters,
 } from "@/features/favorites/application/use-saved-centers";
+import { useCenterOpinions } from "@/features/opinions/application/use-center-opinions";
 import { CenterOpinions } from "@/features/opinions/presentation/center-opinions";
 
 type CenterTab = "information" | "opinions" | "photos";
+type OpinionRatingSummary = Readonly<{
+  averageRating: number | null;
+  total: number;
+}>;
 
 export default function CenterDetailScreen() {
   const router = useRouter();
@@ -56,6 +61,7 @@ export default function CenterDetailScreen() {
     savedCenters.data?.some(
       (savedCenter) => savedCenter.code === center?.code,
     ) ?? false;
+  const opinions = useCenterOpinions(center?.code ?? "");
 
   if (isPending) {
     return (
@@ -89,7 +95,6 @@ export default function CenterDetailScreen() {
   }
 
   const heroPhoto = center.photos[0];
-  const location = center.address ?? center.touristZone;
 
   return (
     <TourismScreenFrame
@@ -183,22 +188,10 @@ export default function CenterDetailScreen() {
             <Text style={[styles.title, { color: colors.text }]}>
               {center.name}
             </Text>
-            <View style={styles.locationRow}>
-              <TurismoIcon
-                color={colors.primaryStrong}
-                name="mapPin"
-                size={turismoIconSizes.sm}
-              />
-              <Text style={[styles.locationText, { color: colors.textMuted }]}>
-                {location}
-              </Text>
-            </View>
-            <View style={styles.metaRow}>
-              <TourismBadge>{center.category}</TourismBadge>
-              <Text style={[styles.metaText, { color: colors.textFaint }]}>
-                {center.type}
-              </Text>
-            </View>
+            <CenterRatingSummary
+              onPress={() => setActiveTab("opinions")}
+              summary={opinions.data?.summary}
+            />
 
             <TourismActionButton
               icon="route"
@@ -245,6 +238,40 @@ export default function CenterDetailScreen() {
         </TourismSurface>
       </ScrollView>
     </TourismScreenFrame>
+  );
+}
+
+function CenterRatingSummary({
+  onPress,
+  summary,
+}: Readonly<{
+  onPress: () => void;
+  summary?: OpinionRatingSummary;
+}>) {
+  const colors = useTurismoPalette();
+  if (!summary || summary.averageRating === null || summary.total === 0) {
+    return null;
+  }
+
+  return (
+    <Pressable
+      accessibilityLabel={`${formatRating(summary.averageRating)} de 5 estrellas, ${summary.total} opiniones`}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.ratingSummary,
+        { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+        pressed && styles.ratingPressed,
+      ]}
+    >
+      <TurismoIcon color={colors.warm} name="star" size={turismoIconSizes.sm} />
+      <Text style={[styles.ratingValue, { color: colors.text }]}>
+        {formatRating(summary.averageRating)}
+      </Text>
+      <Text style={[styles.ratingCount, { color: colors.textMuted }]}>
+        ({summary.total} opiniones)
+      </Text>
+    </Pressable>
   );
 }
 
@@ -336,9 +363,6 @@ function InformationTab({ center }: Readonly<{ center: PublicCenterDetail }>) {
       <Tags title="Actividades" values={center.activities} />
       <Tags title="Accesibilidad" values={center.accessibility} />
       <Tags title="Facilidades" values={center.facilities} />
-      <Text style={[styles.codeText, { color: colors.textFaint }]}>
-        Código turístico: {center.code}
-      </Text>
     </View>
   );
 }
@@ -485,6 +509,10 @@ function EmptyStateText({ text }: Readonly<{ text: string }>) {
   );
 }
 
+function formatRating(value: number): string {
+  return value.toFixed(1).replace(".", ",");
+}
+
 function formatPrice(from: number | null, to: number | null): string {
   if (from !== null && to !== null && from !== to) return `$${from} – $${to}`;
   const value = from ?? to;
@@ -535,18 +563,19 @@ const styles = StyleSheet.create({
   heroControlGroup: { flexDirection: "row", gap: turismoSpacing.xs },
   detailBody: { gap: turismoSpacing.md, padding: turismoSpacing.md },
   title: { ...turismoTypography.title },
-  locationRow: {
-    alignItems: "flex-start",
+  ratingSummary: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    borderRadius: turismoRadii.sm,
+    borderWidth: turismoMetrics.borderWidth,
     flexDirection: "row",
     gap: turismoSpacing.xs,
+    minHeight: turismoMetrics.touchTarget,
+    paddingHorizontal: turismoSpacing.sm,
   },
-  locationText: { ...turismoTypography.label, flex: 1 },
-  metaRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-  },
-  metaText: { ...turismoTypography.caption },
+  ratingValue: { ...turismoTypography.heading },
+  ratingCount: { ...turismoTypography.body },
+  ratingPressed: { opacity: 0.72 },
   routeButton: { width: "100%" },
   tabs: {
     borderBottomWidth: turismoMetrics.borderWidth,
@@ -577,7 +606,6 @@ const styles = StyleSheet.create({
   infoLabel: { ...turismoTypography.caption },
   infoValue: { ...turismoTypography.body },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: turismoSpacing.xs },
-  codeText: { ...turismoTypography.caption },
   emptyState: {
     alignItems: "center",
     gap: turismoSpacing.sm,

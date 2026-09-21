@@ -38,7 +38,6 @@ import {
 
 import {
   TourismActionButton,
-  TourismBadge,
   TourismCompassAction,
   TourismChoiceChip,
   TourismIconAction,
@@ -78,6 +77,7 @@ import {
   useSavedCenterMutation,
   useSavedCenters,
 } from "@/features/favorites/application/use-saved-centers";
+import { useCenterOpinions } from "@/features/opinions/application/use-center-opinions";
 import { CenterOpinions } from "@/features/opinions/presentation/center-opinions";
 import { CenterMap } from "@/features/map/presentation/center-map";
 import { MapAttributionButton } from "@/features/map/presentation/map-attribution-button";
@@ -92,6 +92,10 @@ import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler"
 
 type ExploreSearchMode = "CENTERS" | "ESTABLISHMENTS";
 type PlaceTab = "information" | "opinions" | "photos";
+type OpinionRatingSummary = Readonly<{
+  averageRating: number | null;
+  total: number;
+}>;
 const placeTabOrder = ["information", "opinions", "photos"] as const;
 
 export default function HomeScreen() {
@@ -947,6 +951,7 @@ function PlaceSheet({
 }>) {
   const colors = useTurismoPalette();
   const auth = useAuth();
+  const opinions = useCenterOpinions(code);
   const [activeTab, setActiveTab] = useState<PlaceTab>("information");
   const savedCenters = useSavedCenters();
   const savedMutation = useSavedCenterMutation();
@@ -1115,22 +1120,10 @@ function PlaceSheet({
       <Text style={[styles.placeTitle, { color: colors.text }]}>
         {center.name}
       </Text>
-      <View style={styles.placeLocationRow}>
-        <TurismoIcon
-          color={colors.primaryStrong}
-          name="mapPin"
-          size={turismoIconSizes.sm}
-        />
-        <Text style={[styles.placeLocationText, { color: colors.textMuted }]}>
-          {location}
-        </Text>
-      </View>
-      <View style={styles.placeTags}>
-        <TourismBadge>{center.category}</TourismBadge>
-        <Text style={[styles.placeMetaText, { color: colors.textFaint }]}>
-          {center.type}
-        </Text>
-      </View>
+      <CenterRatingSummary
+        onPress={() => changeTab("opinions")}
+        summary={opinions.data?.summary}
+      />
       <View style={styles.actions}>
         <TourismActionButton
           icon="route"
@@ -1202,6 +1195,40 @@ function PlaceSheet({
         </>
       )}
     </View>
+  );
+}
+
+function CenterRatingSummary({
+  onPress,
+  summary,
+}: Readonly<{
+  onPress: () => void;
+  summary?: OpinionRatingSummary;
+}>) {
+  const colors = useTurismoPalette();
+  if (!summary || summary.averageRating === null || summary.total === 0) {
+    return null;
+  }
+
+  return (
+    <Pressable
+      accessibilityLabel={`${formatRating(summary.averageRating)} de 5 estrellas, ${summary.total} opiniones`}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.ratingSummary,
+        { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+        pressed && styles.ratingPressed,
+      ]}
+    >
+      <TurismoIcon color={colors.warm} name="star" size={turismoIconSizes.sm} />
+      <Text style={[styles.ratingValue, { color: colors.text }]}>
+        {formatRating(summary.averageRating)}
+      </Text>
+      <Text style={[styles.ratingCount, { color: colors.textMuted }]}> 
+        ({summary.total} opiniones)
+      </Text>
+    </Pressable>
   );
 }
 
@@ -1278,7 +1305,6 @@ function PlaceInformation({
             value={`${detail.altitudeMeters} msnm`}
           />
         ) : null}
-        <PlaceInfoRow label="Código turístico" value={detail.code} />
       </PlaceSection>
       <PlaceSection icon="calendar" title="Ingreso y horario">
         {detail.admission ? (
@@ -1485,6 +1511,10 @@ function PlaceEmptyState({ text }: Readonly<{ text: string }>) {
   );
 }
 
+function formatRating(value: number): string {
+  return value.toFixed(1).replace(".", ",");
+}
+
 function formatPrice(from: number | null, to: number | null): string {
   if (from !== null && to !== null && from !== to)
     return `$${from.toFixed(2)} – $${to.toFixed(2)}`;
@@ -1672,14 +1702,19 @@ const styles = StyleSheet.create({
   },
   placeActionPressed: { opacity: 0.68 },
   placeTitle: { ...turismoTypography.title },
-  placeLocationRow: {
-    alignItems: "flex-start",
+  ratingSummary: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    borderRadius: turismoRadii.sm,
+    borderWidth: turismoMetrics.borderWidth,
     flexDirection: "row",
     gap: turismoSpacing.xs,
+    minHeight: turismoMetrics.touchTarget,
+    paddingHorizontal: turismoSpacing.sm,
   },
-  placeLocationText: { ...turismoTypography.label, flex: 1 },
-  placeTags: { flexDirection: "row", flexWrap: "wrap", gap: turismoSpacing.xs },
-  placeMetaText: { ...turismoTypography.caption },
+  ratingValue: { ...turismoTypography.heading },
+  ratingCount: { ...turismoTypography.body },
+  ratingPressed: { opacity: 0.72 },
   actions: { flexDirection: "row", gap: turismoSpacing.xs },
   routeAction: { flex: 1 },
   placeTabs: {
