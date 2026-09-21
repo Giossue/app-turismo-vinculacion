@@ -102,6 +102,12 @@ categoría conocidas y conserva aliases de los valores fuente. Añade relaciones
 por ID a `establecimientos_turisticos` sin borrar sus columnas de texto, para permitir una
 normalización progresiva y trazable.
 
+La migración `20260921_establishment_category_marker_cleanup.sql` reemplaza los iconos
+heredados `mapPin` de las categorías de catastro por `hotel`, cambia el valor por defecto
+y reserva el pin de lugar para los centros turísticos. La migración
+`20260921_establishment_category_palette_cleanup.sql` normaliza colores heredados fuera
+de la paleta pública y alinea la restricción con las opciones del panel.
+
 La migración `20260921_establishment_coordinates_required.sql` completa las coordenadas
 faltantes de `establecimientos_turisticos` usando la localidad vinculada, las marca como
 `coordenadas_aproximadas` y establece `NOT NULL` en latitud y longitud. Se detiene ante

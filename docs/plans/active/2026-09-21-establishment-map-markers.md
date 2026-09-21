@@ -1,7 +1,7 @@
 # Plan: categorías de catastro y marcadores en el mapa
 
 Fecha: 2026-09-21
-Estado: implementado; migración de normalización pendiente de aplicar y comprobación visual en dispositivo
+Estado: implementado; migración de normalización aplicada y pendiente comprobación visual en dispositivo
 
 ## Objetivo
 

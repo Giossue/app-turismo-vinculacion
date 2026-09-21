@@ -433,6 +433,16 @@ export const ESTABLISHMENT_CATEGORY_ICON_CODES = [
   "ticket",
   "briefcase",
 ] as const;
+export const ESTABLISHMENT_CATEGORY_COLOR_CODES = [
+  "#2563eb",
+  "#0891b2",
+  "#7c3aed",
+  "#c026d3",
+  "#ea580c",
+  "#d97706",
+  "#dc2626",
+  "#4f46e5",
+] as const;
 
 export class AdminCatalogsQueryDto {
   @IsOptional()
@@ -465,5 +475,6 @@ export class AdminCatalogUpdateDto {
   @IsOptional()
   @IsString()
   @Matches(/^#[0-9A-Fa-f]{6}$/)
+  @IsIn(ESTABLISHMENT_CATEGORY_COLOR_CODES)
   color?: string;
 }
