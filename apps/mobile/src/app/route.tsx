@@ -93,6 +93,7 @@ export default function RouteScreen() {
   const navigationStartInFlightRef = useRef(false);
   const screenFocusedRef = useRef(false);
   const {
+    coordinate: currentLocation,
     message: locationMessage,
     requestLocation,
     setForegroundTrackingSuspended,
@@ -203,7 +204,10 @@ export default function RouteScreen() {
     if (!destination || origin || routeRequested || navigationActive) return;
 
     let cancelled = false;
-    void requestLocation().then((coordinate) => {
+    const locationPromise = currentLocation
+      ? Promise.resolve(currentLocation)
+      : requestLocation();
+    void locationPromise.then((coordinate) => {
       if (cancelled || !coordinate) return;
       setOrigin(coordinate);
       setRouteRequested(true);
@@ -212,7 +216,14 @@ export default function RouteScreen() {
     return () => {
       cancelled = true;
     };
-  }, [destination, navigationActive, origin, requestLocation, routeRequested]);
+  }, [
+    currentLocation,
+    destination,
+    navigationActive,
+    origin,
+    requestLocation,
+    routeRequested,
+  ]);
 
   const handleCalculateRoute = useCallback(async () => {
     if (!destination || isCalculating || navigationActive) return;
@@ -223,13 +234,14 @@ export default function RouteScreen() {
       return;
     }
 
-    const coordinate = await requestLocation();
+    const coordinate = currentLocation ?? (await requestLocation());
     if (!coordinate) return;
     setOrigin(coordinate);
     setRouteRequested(true);
   }, [
     destination,
     isCalculating,
+    currentLocation,
     navigationActive,
     origin,
     requestLocation,
@@ -652,7 +664,9 @@ function RoutePreviewPanel({
                   </View>
                 ) : null}
 
-                {navigationNotice || locationMessage || routeError ? (
+                {navigationNotice ||
+                routeError ||
+                (!route && locationMessage) ? (
                   <TourismSurface style={styles.noticeCard}>
                     <TurismoIcon
                       color={colors.danger}

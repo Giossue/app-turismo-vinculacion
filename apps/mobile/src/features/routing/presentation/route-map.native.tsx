@@ -9,7 +9,7 @@ import {
   type StyleSpecification,
 } from "@maplibre/maplibre-react-native";
 import * as Location from "expo-location";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { getTurismoMapColors } from "@/core/ui/tokens";
@@ -63,7 +63,25 @@ export function RouteMap({
   const headingSubscriptionRef = useRef<Location.LocationSubscription | null>(
     null,
   );
+  const mapMountedRef = useRef(false);
+  const nativeMapReadyRef = useRef(false);
   const [navigationHeading, setNavigationHeading] = useState(0);
+  const [nativeMapReady, setNativeMapReady] = useState(false);
+
+  const markMapReady = useCallback(() => {
+    if (!mapMountedRef.current) return;
+    nativeMapReadyRef.current = true;
+    setNativeMapReady(true);
+    setMapLoadState("ready");
+  }, []);
+
+  useEffect(() => {
+    mapMountedRef.current = true;
+    return () => {
+      mapMountedRef.current = false;
+      nativeMapReadyRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     latestCenterRef.current = currentLocation ?? origin;
@@ -165,38 +183,38 @@ export function RouteMap({
     let cancelled = false;
     loadSelfHostedMapStyle(scheme, "navigation")
       .then((nextStyle) => {
-        if (!cancelled) {
-          setStyle(nextStyle);
-          setMapLoadState("ready");
-        }
+        if (!cancelled) setStyle(nextStyle);
       })
-      .catch(() => {
-        if (!cancelled) setMapLoadState("ready");
-      });
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
   }, [scheme]);
 
   useEffect(() => {
-    if (navigationActive) return;
+    if (!nativeMapReady || !mapMountedRef.current || navigationActive) return;
     cameraRef.current?.fitBounds(bounds, {
       duration: 450,
       padding: { top: 36, right: 28, bottom: 36, left: 28 },
     });
-  }, [bounds, navigationActive]);
+  }, [bounds, nativeMapReady, navigationActive]);
 
   useEffect(() => {
-    if (!navigationActive) {
-      headingRef.current = 0;
-      headingSubscriptionRef.current?.remove();
-      headingSubscriptionRef.current = null;
+    if (!navigationActive || !nativeMapReady) {
+      if (!navigationActive) {
+        headingRef.current = 0;
+        headingSubscriptionRef.current?.remove();
+        headingSubscriptionRef.current = null;
+      }
       return;
     }
 
     let cancelled = false;
     void Location.watchHeadingAsync(
       ({ magHeading, trueHeading }) => {
+        if (cancelled || !mapMountedRef.current || !nativeMapReadyRef.current) {
+          return;
+        }
         const nextHeading = trueHeading >= 0 ? trueHeading : magHeading;
         if (!Number.isFinite(nextHeading) || nextHeading < 0) return;
 
@@ -219,7 +237,7 @@ export function RouteMap({
       () => undefined,
     )
       .then((subscription) => {
-        if (cancelled) {
+        if (cancelled || !mapMountedRef.current) {
           subscription.remove();
           return;
         }
@@ -232,7 +250,7 @@ export function RouteMap({
       headingSubscriptionRef.current?.remove();
       headingSubscriptionRef.current = null;
     };
-  }, [navigationActive]);
+  }, [nativeMapReady, navigationActive]);
 
   useEffect(() => {
     const becameActive = navigationActive && !wasNavigationActiveRef.current;
@@ -243,6 +261,7 @@ export function RouteMap({
       return;
     }
     if (becameActive) isFollowingRef.current = true;
+    if (!nativeMapReady || !mapMountedRef.current) return;
     const center = currentLocation ?? latestCenterRef.current;
     if (!isFollowingRef.current || !center) return;
     cameraRef.current?.easeTo({
@@ -253,10 +272,10 @@ export function RouteMap({
       pitch: 60,
       zoom: 19,
     });
-  }, [currentLocation, mapLoadState, navigationActive]);
+  }, [currentLocation, mapLoadState, nativeMapReady, navigationActive]);
 
   useEffect(() => {
-    if (!recenterKey) return;
+    if (!recenterKey || !nativeMapReady || !mapMountedRef.current) return;
     const center = latestCenterRef.current;
     if (!center) return;
     isFollowingRef.current = true;
@@ -268,7 +287,7 @@ export function RouteMap({
       pitch: navigationActive ? 60 : 0,
       zoom: 19,
     });
-  }, [mapLoadState, navigationActive, recenterKey]);
+  }, [mapLoadState, nativeMapReady, navigationActive, recenterKey]);
 
   return (
     <View
@@ -285,9 +304,9 @@ export function RouteMap({
         dragPan
         logo={false}
         mapStyle={style ?? getFallbackMapStyle(scheme)}
-        onDidFailLoadingMap={() => setMapLoadState("ready")}
-        onDidFinishLoadingMap={() => setMapLoadState("ready")}
-        onDidFinishLoadingStyle={() => setMapLoadState("ready")}
+        onDidFailLoadingMap={markMapReady}
+        onDidFinishLoadingMap={markMapReady}
+        onDidFinishLoadingStyle={markMapReady}
         onRegionWillChange={(event) => {
           if (event.nativeEvent.userInteraction) {
             isFollowingRef.current = false;
@@ -398,7 +417,9 @@ export function RouteMap({
 
       <MapAttributionButton
         onPress={() => {
-          void mapRef.current?.showAttribution();
+          if (!mapMountedRef.current || !nativeMapReadyRef.current) return;
+          const attributionRequest = mapRef.current?.showAttribution();
+          void attributionRequest?.catch(() => undefined);
         }}
       />
       {mapLoadState === "loading" ? (

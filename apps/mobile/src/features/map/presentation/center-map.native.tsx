@@ -265,9 +265,6 @@ export function CenterMap({
   const focusedLocationKeyRef = useRef<number | undefined>(undefined);
   const { scheme } = useTurismoTheme();
   const colors = getTurismoMapColors(scheme);
-  const showAttribution = useCallback(() => {
-    void mapRef.current?.showAttribution();
-  }, []);
   const centersByCode = useMemo(
     () => new Map(centers.map((center) => [center.code, center])),
     [centers],
@@ -376,7 +373,33 @@ export function CenterMap({
   });
   const [mapLoadState, setMapLoadState] = useState<
     "loading" | "ready" | "error"
-  >(() => (selfHostedStyleCache.has(styleRequestKey) ? "ready" : "loading"));
+  >("loading");
+  const mapMountedRef = useRef(false);
+  const nativeMapReadyRef = useRef(false);
+  const [nativeMapReady, setNativeMapReady] = useState(false);
+
+  const markMapReady = useCallback(() => {
+    if (!mapMountedRef.current) return;
+    nativeMapReadyRef.current = true;
+    setNativeMapReady(true);
+    setMapLoadState("ready");
+  }, []);
+
+  useEffect(() => {
+    mapMountedRef.current = true;
+    return () => {
+      mapMountedRef.current = false;
+      nativeMapReadyRef.current = false;
+      pendingMapFeatureSelectionRef.current = null;
+      pendingLocationFocusRef.current = null;
+    };
+  }, []);
+
+  const showAttribution = useCallback(() => {
+    if (!mapMountedRef.current || !nativeMapReadyRef.current) return;
+    const attributionRequest = mapRef.current?.showAttribution();
+    void attributionRequest?.catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -385,13 +408,11 @@ export function CenterMap({
       .then((style) => {
         if (!cancelled) {
           setSelfHostedMapStyleState({ requestKey: styleRequestKey, style });
-          setMapLoadState("ready");
         }
       })
       .catch(() => {
         // El estilo vacío conserva la exploración y los pines si el servidor
         // propio está temporalmente fuera de línea.
-        if (!cancelled) setMapLoadState("ready");
       });
 
     return () => {
@@ -407,6 +428,7 @@ export function CenterMap({
     typeof mapStyle.glyphs === "string" && mapStyle.glyphs.trim().length > 0;
   const handleRenderedFeaturePress = useCallback(
     async (event: NativeSyntheticEvent<PressEventWithFeatures>) => {
+      if (!mapMountedRef.current || !nativeMapReadyRef.current) return;
       pendingLocationFocusRef.current = null;
       pendingMapFeatureSelectionRef.current = null;
       onLocationFocusChange?.(false);
@@ -427,6 +449,7 @@ export function CenterMap({
         // Mientras el estilo termina de cargar, el evento de la fuente sigue
         // permitiendo abrir el marcador que recibió el toque.
       }
+      if (!mapMountedRef.current || !nativeMapReadyRef.current) return;
 
       // La consulta renderizada sirve solo para reconocer el pin ancla. Los
       // lugares relacionados se calculan luego por distancia geográfica, no
@@ -441,9 +464,20 @@ export function CenterMap({
       if (clusterFeature) {
         const clusterId = clusterFeature.properties?.cluster_id;
         if (typeof clusterId !== "number") return;
-        const expansionZoom =
-          await sourceRef.current?.getClusterExpansionZoom(clusterId);
-        if (expansionZoom === undefined) return;
+        let expansionZoom: number | undefined;
+        try {
+          expansionZoom =
+            await sourceRef.current?.getClusterExpansionZoom(clusterId);
+        } catch {
+          return;
+        }
+        if (
+          expansionZoom === undefined ||
+          !mapMountedRef.current ||
+          !nativeMapReadyRef.current
+        ) {
+          return;
+        }
         cameraRef.current?.easeTo({
           center: nativeEvent.lngLat,
           duration: 350,
@@ -497,7 +531,7 @@ export function CenterMap({
   );
 
   useEffect(() => {
-    if (!focusSelection) return;
+    if (!focusSelection || !nativeMapReady || !mapMountedRef.current) return;
     const target = [...getMapFeatureCoordinate(focusSelection)] as [
       number,
       number,
@@ -520,10 +554,17 @@ export function CenterMap({
         pendingMapFeatureSelectionRef.current = null;
       }
     };
-  }, [focusSelection]);
+  }, [focusSelection, nativeMapReady]);
 
   useEffect(() => {
-    if (!userLocation || focusLocationKey === undefined) return;
+    if (
+      !nativeMapReady ||
+      !mapMountedRef.current ||
+      !userLocation ||
+      focusLocationKey === undefined
+    ) {
+      return;
+    }
     if (focusedLocationKeyRef.current === focusLocationKey) return;
     focusedLocationKeyRef.current = focusLocationKey;
     pendingLocationFocusRef.current = {
@@ -534,24 +575,30 @@ export function CenterMap({
       duration: 500,
       zoom: 15,
     });
-  }, [focusLocationKey, userLocation]);
+  }, [focusLocationKey, nativeMapReady, userLocation]);
 
   useEffect(() => {
-    if (!resetNorthKey) return;
+    if (!resetNorthKey || !nativeMapReady || !mapMountedRef.current) return;
     let cancelled = false;
-    void mapRef.current?.getViewState().then(({ center }) => {
-      if (cancelled) return;
-      cameraRef.current?.easeTo({
-        bearing: 0,
-        center,
-        duration: 240,
-        easing: "ease",
-      });
-    });
+    const viewStateRequest = mapRef.current?.getViewState();
+    if (!viewStateRequest) return;
+    void viewStateRequest
+      .then(({ center }) => {
+        if (cancelled || !mapMountedRef.current || !nativeMapReadyRef.current) {
+          return;
+        }
+        cameraRef.current?.easeTo({
+          bearing: 0,
+          center,
+          duration: 240,
+          easing: "ease",
+        });
+      })
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [resetNorthKey]);
+  }, [nativeMapReady, resetNorthKey]);
 
   useEffect(() => {
     onAttributionChange?.(showAttribution);
@@ -567,9 +614,13 @@ export function CenterMap({
         androidView="texture"
         logo={false}
         mapStyle={mapStyle}
-        onDidFailLoadingMap={() => setMapLoadState("error")}
-        onDidFinishLoadingMap={() => setMapLoadState("ready")}
-        onDidFinishLoadingStyle={() => setMapLoadState("ready")}
+        onDidFailLoadingMap={() => {
+          nativeMapReadyRef.current = true;
+          setNativeMapReady(true);
+          setMapLoadState("error");
+        }}
+        onDidFinishLoadingMap={markMapReady}
+        onDidFinishLoadingStyle={markMapReady}
         onRegionIsChanging={(event) => {
           onBearingChange?.(event.nativeEvent.bearing);
         }}
@@ -578,6 +629,10 @@ export function CenterMap({
           onBearingChange?.(event.nativeEvent.bearing);
           const pendingSelection = pendingMapFeatureSelectionRef.current;
           const pendingLocationFocus = pendingLocationFocusRef.current;
+
+          if (!mapMountedRef.current || !nativeMapReadyRef.current) {
+            return;
+          }
 
           if (pendingLocationFocus && !userInteraction) {
             const [targetLongitude, targetLatitude] =

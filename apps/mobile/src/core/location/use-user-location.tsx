@@ -280,7 +280,10 @@ export function UserLocationProvider({
             message: null,
             status: "ready",
           });
-          await startForegroundTracking();
+          // La lectura puntual no debe esperar a que el watcher foreground
+          // termine de registrarse. Las rutas necesitan la coordenada ya
+          // obtenida y el seguimiento puede continuar de forma asíncrona.
+          void startForegroundTracking();
           return coordinate;
         } catch {
           stopForegroundTracking();
@@ -374,12 +377,21 @@ export function UserLocationProvider({
 
   const requestLocation = useCallback(async () => {
     trackingEnabledRef.current = true;
+    const currentCoordinate = stateRef.current.coordinate;
+    if (currentCoordinate) {
+      // Reutiliza la posición compartida mientras el watcher busca la
+      // siguiente actualización; una ruta no debe quedar esperando otra
+      // lectura puntual si ya existe una coordenada válida.
+      void startForegroundTracking();
+      return currentCoordinate;
+    }
+
     return readAndStoreLocation({
       allowPermissionRequest: true,
       allowProviderPrompt: true,
       showRequesting: true,
     });
-  }, [readAndStoreLocation]);
+  }, [readAndStoreLocation, startForegroundTracking]);
 
   const setForegroundTrackingSuspended = useCallback(
     (suspended: boolean) => {
@@ -387,7 +399,10 @@ export function UserLocationProvider({
       if (suspended) {
         stopForegroundTracking();
       } else if (trackingEnabledRef.current) {
-        void syncAvailability(true);
+        // Al reanudar el watcher basta sincronizar disponibilidad; una lectura
+        // puntual nueva aquí puede fallar transitoriamente y ensuciar una ruta
+        // que ya tiene un origen válido.
+        void syncAvailability(false);
       }
     },
     [stopForegroundTracking, syncAvailability],
