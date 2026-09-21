@@ -292,37 +292,25 @@ updated\_at TIMESTAMPTZ NOT NULL
 
 ## `opiniones`
 
-**Contexto:** registra la calificación, el comentario o ambos datos enviados por un turista sobre un centro turístico o punto de interés.
+**Contexto:** representa la opinión lógica de un turista sobre un centro turístico o punto de interés. El contenido se conserva en `opinion_versiones`.
 
 id BIGINT (PK)
 
 usuario\_id BIGINT (FK → usuarios.id) NOT NULL
 
-centro\_turistico\_id BIGINT
+centro\_turistico\_id BIGINT (FK → centros\_turisticos.id) NULL
 
-(FK → centros\_turisticos.id) NULL
-
-punto\_interes\_id BIGINT
-
-(FK → puntos\_interes.id) NULL
-
-calificacion SMALLINT NULL
-
-comentario TEXT NULL
+punto\_interes\_id BIGINT (FK → puntos\_interes.id) NULL
 
 estado\_moderacion VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE'
+
+version\_publicada\_id BIGINT (FK → opinion_versiones.id) NULL
 
 created\_at TIMESTAMPTZ NOT NULL
 
 updated\_at TIMESTAMPTZ NOT NULL
 
-&nbsp;
-
-CHECK (calificacion IS NULL OR calificacion BETWEEN 1 AND 5\)
-
-CHECK (estado\_moderacion IN ('PENDIENTE', 'APROBADA', 'RECHAZADA', 'OCULTA'))
-
-&nbsp;
+CHECK (estado\_moderacion IN ('PENDIENTE', 'APROBADA', 'RECHAZADA'))
 
 CHECK (
 
@@ -334,25 +322,49 @@ CHECK (
 
 )
 
-&nbsp;
+Una opinión pertenece a un centro turístico o a un punto de interés. Una edición crea una nueva versión pendiente sin reemplazar la versión publicada.
 
-CHECK (
+## `opinion_versiones`
 
-&nbsp;&nbsp;&nbsp;&nbsp;calificacion IS NOT NULL
+**Contexto:** conserva cada envío de una opinión y su resultado de moderación.
 
-&nbsp;&nbsp;&nbsp;&nbsp;OR comentario IS NOT NULL
+id BIGINT (PK)
 
-)
+codigo\_publico UUID NOT NULL UNIQUE
 
-Una opinión pertenece a un centro turístico o a un punto de interés. No puede pertenecer a ambos simultáneamente.
+opinion\_id BIGINT (FK → opiniones.id) NOT NULL
+
+numero\_version SMALLINT NOT NULL
+
+calificacion SMALLINT NULL
+
+comentario TEXT NULL
+
+estado\_moderacion VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE'
+
+created\_at TIMESTAMPTZ NOT NULL
+
+revisado\_at TIMESTAMPTZ NULL
+
+CHECK (calificacion IS NULL OR calificacion BETWEEN 1 AND 5\)
+
+CHECK (estado\_moderacion IN ('PENDIENTE', 'APROBADA', 'RECHAZADA', 'REEMPLAZADA'))
+
+CHECK (calificacion IS NOT NULL OR comentario no vacío)
+
+UNIQUE (opinion\_id, numero\_version)
+
+Solo una versión puede estar pendiente y solo una puede estar aprobada dentro de una opinión lógica. `REEMPLAZADA` es un estado histórico interno para la versión pública anterior.
 
 ## `moderaciones_opinion`
 
-**Contexto:** conserva las decisiones tomadas por el administrador sobre una calificación o comentario.
+**Contexto:** conserva las decisiones tomadas por el administrador sobre una versión.
 
 id BIGINT (PK)
 
 opinion\_id BIGINT (FK → opiniones.id) NOT NULL
+
+opinion\_version\_id BIGINT (FK → opinion_versiones.id) NOT NULL
 
 moderador\_id BIGINT (FK → usuarios.id) NOT NULL
 
@@ -362,11 +374,7 @@ motivo TEXT NULL
 
 created\_at TIMESTAMPTZ NOT NULL
 
-&nbsp;
-
-CHECK (accion IN ('APROBAR', 'RECHAZAR', 'OCULTAR', 'RESTAURAR'))
-
-&nbsp;
+CHECK (accion IN ('APROBAR', 'RECHAZAR'))
 
 **Cardinalidades:**
 
@@ -376,7 +384,11 @@ centros\_turisticos 1:N opiniones
 
 puntos\_interes 1:N opiniones
 
+opiniones 1:N opinion\_versiones
+
 opiniones 1:N moderaciones\_opinion
+
+opinion\_versiones 1:N moderaciones\_opinion
 
 usuarios 1:N moderaciones\_opinion
 

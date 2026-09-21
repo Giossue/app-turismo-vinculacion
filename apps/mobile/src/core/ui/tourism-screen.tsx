@@ -13,16 +13,20 @@ import { turismoMetrics, turismoSpacing } from "./tokens";
  * feature screen from slowly developing its own visual language.
  */
 export function TourismScreenFrame({
+  backgroundColor,
   children,
   includeBottomInset = true,
+  immersive = false,
   onBack,
   onMenu,
   showHeader = true,
   subtitle,
   title,
 }: Readonly<{
+  backgroundColor?: string;
   children: ReactNode;
   includeBottomInset?: boolean;
+  immersive?: boolean;
   onBack?: () => void;
   onMenu?: () => void;
   showHeader?: boolean;
@@ -34,9 +38,12 @@ export function TourismScreenFrame({
   return (
     <SafeAreaView
       edges={includeBottomInset ? ["top", "bottom"] : ["top"]}
-      style={[styles.safeArea, { backgroundColor: colors.background }]}
+      style={[
+        styles.safeArea,
+        { backgroundColor: backgroundColor ?? colors.background },
+      ]}
     >
-      {showHeader ? (
+      {showHeader && !immersive ? (
         <View style={styles.headerWrap}>
           <TourismHeader
             onBack={onBack}
@@ -46,7 +53,11 @@ export function TourismScreenFrame({
           />
         </View>
       ) : null}
-      <View style={styles.contentFrame}>{children}</View>
+      <View
+        style={[styles.contentFrame, immersive && styles.immersiveContentFrame]}
+      >
+        {children}
+      </View>
     </SafeAreaView>
   );
 }
@@ -65,5 +76,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: turismoSpacing.md,
     width: "100%",
     maxWidth: turismoMetrics.contentMaxWidth,
+  },
+  immersiveContentFrame: {
+    maxWidth: "100%",
+    paddingHorizontal: 0,
   },
 });

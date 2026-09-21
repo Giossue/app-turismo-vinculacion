@@ -94,6 +94,12 @@ tabla inmutable existente `auditoria_catalogos` para registrar mutaciones de
 `establecimientos_turisticos` con el discriminador `ESTABLISHMENT`. No crea tablas ni
 columnas nuevas; conserva el trigger de inmutabilidad y los JSONB de antes/después.
 
+La migración `20260920_opinions_versions.sql` separa la opinión lógica de sus versiones
+moderables. Convierte el contenido histórico de la tabla `opiniones` en la versión 1,
+elimina el estado `OCULTA`, conserva una versión aprobada mientras una edición está
+pendiente y registra la versión moderada en `moderaciones_opinion`. Requiere respaldo
+previo porque elimina las columnas antiguas duplicadas de `opiniones`.
+
 La migración `20260920_seed_guaranda_zone.sql` crea o reactiva una única zona de
 demostración (`Entorno de Guaranda`) en la localidad `Guaranda` y dos puntos de interés
 con coordenadas y descripciones referenciales. Es idempotente, utiliza solo las tablas

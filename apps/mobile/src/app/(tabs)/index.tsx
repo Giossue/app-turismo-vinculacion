@@ -76,6 +76,7 @@ import {
   useSavedCenterMutation,
   useSavedCenters,
 } from "@/features/favorites/application/use-saved-centers";
+import { CenterOpinions } from "@/features/opinions/presentation/center-opinions";
 import { CenterMap } from "@/features/map/presentation/center-map";
 import { MapAttributionButton } from "@/features/map/presentation/map-attribution-button";
 import { AgentChatContent } from "@/features/agent/presentation/agent-chat-content";
@@ -890,6 +891,7 @@ function CenterDetailSheet({
           >
             <PlaceSheet
               center={center}
+              code={center.code}
               detail={detail}
               detailError={detailError}
               detailPending={detailPending}
@@ -926,6 +928,7 @@ function CenterDetailSheet({
 
 function PlaceSheet({
   center,
+  code,
   detail,
   detailError,
   detailPending,
@@ -934,6 +937,7 @@ function PlaceSheet({
   onRetryDetail,
 }: Readonly<{
   center: PublicCenter;
+  code: string;
   detail?: PublicCenterDetail;
   detailError: Error | null;
   detailPending: boolean;
@@ -1173,7 +1177,9 @@ function PlaceSheet({
                 ) : null}
               </View>
               <View style={[styles.placePage, { width: pagerWidth || "100%" }]}>
-                {visitedTabs.has("opinions") ? <PlaceOpinions /> : null}
+                {visitedTabs.has("opinions") ? (
+                  <PlaceOpinions code={code} onRequireAuth={onRequireAuth} />
+                ) : null}
               </View>
               <View style={[styles.placePage, { width: pagerWidth || "100%" }]}>
                 {visitedTabs.has("photos") ? (
@@ -1349,11 +1355,15 @@ function PlacePhotos({
   );
 }
 
-function PlaceOpinions() {
+function PlaceOpinions({
+  code,
+  onRequireAuth,
+}: Readonly<{
+  code: string;
+  onRequireAuth: () => void;
+}>) {
   return (
-    <PlaceSection icon="circleHelp" title="Opiniones">
-      <PlaceEmptyState text="Esta versión todavía no tiene opiniones registradas para este centro." />
-    </PlaceSection>
+    <CenterOpinions code={code} onRequireAuth={onRequireAuth} />
   );
 }
 

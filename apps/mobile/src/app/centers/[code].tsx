@@ -34,6 +34,7 @@ import {
   useSavedCenterMutation,
   useSavedCenters,
 } from "@/features/favorites/application/use-saved-centers";
+import { CenterOpinions } from "@/features/opinions/presentation/center-opinions";
 
 type CenterTab = "information" | "opinions" | "photos";
 
@@ -233,7 +234,7 @@ export default function CenterDetailScreen() {
             ) : activeTab === "photos" ? (
               <PhotosTab photos={center.photos} />
             ) : (
-              <OpinionsTab />
+              <OpinionsTab code={center.code} />
             )}
           </View>
         </TourismSurface>
@@ -337,14 +338,10 @@ function InformationTab({ center }: Readonly<{ center: PublicCenterDetail }>) {
   );
 }
 
-function OpinionsTab() {
+function OpinionsTab({ code }: Readonly<{ code: string }>) {
   return (
     <View style={styles.tabContent}>
-      <EmptyState
-        icon="message"
-        title="Opiniones próximamente"
-        text="Esta versión todavía no tiene opiniones registradas para este centro."
-      />
+      <CenterOpinions code={code} />
     </View>
   );
 }

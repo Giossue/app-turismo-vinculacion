@@ -4,6 +4,7 @@ import DateTimePicker, {
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  ImageBackground,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -12,15 +13,18 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 import {
   TourismActionButton,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
+import { TourismHeader } from "@/core/ui/tourism-navigation";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
@@ -29,6 +33,7 @@ import {
   turismoRadii,
   turismoSpacing,
   turismoTypography,
+  getTurismoColors,
 } from "@/core/ui/tokens";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { chooseGuestAccess } from "@/features/auth/data/auth-entry-storage";
@@ -38,6 +43,9 @@ import {
 } from "@/features/auth/domain/registration-options";
 
 type AuthMode = "entry" | "login" | "register";
+
+const accountHeroImage = require("../../assets/images/account-hero.png");
+const accountEntryColors = getTurismoColors("dark");
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -67,15 +75,6 @@ export default function LoginScreen() {
     router.back();
   }, [mode, router]);
 
-  useScreenBackHandler(() => {
-    if (mode !== "entry") {
-      setMode("entry");
-      setFormError(null);
-      return true;
-    }
-    return false;
-  });
-
   const openMode = (nextMode: Exclude<AuthMode, "entry">) => {
     setFormError(null);
     setMode(nextMode);
@@ -93,6 +92,35 @@ export default function LoginScreen() {
     },
     [],
   );
+
+  useScreenBackHandler(() => {
+    if (mode !== "entry") {
+      setMode("entry");
+      setFormError(null);
+      return true;
+    }
+    return false;
+  });
+
+  if (mode === "entry") {
+    return (
+      <TourismScreenFrame
+        backgroundColor={accountEntryColors.background}
+        immersive
+        onBack={canGoBack ? handleBack : undefined}
+        showHeader={false}
+        title="Cuenta"
+      >
+        <StatusBar style="light" />
+        <AccountEntryContent
+          onCreateAccount={() => openMode("register")}
+          onGuest={() => void handleGuest()}
+          onLogin={() => openMode("login")}
+          onBack={canGoBack ? handleBack : undefined}
+        />
+      </TourismScreenFrame>
+    );
+  }
 
   const handleSubmit = async () => {
     setFormError(null);
@@ -154,7 +182,7 @@ export default function LoginScreen() {
   return (
     <TourismScreenFrame
       onBack={canGoBack ? handleBack : undefined}
-      title={mode === "entry" ? "Turismo Vinculación" : modeLabel(mode)}
+      title={modeLabel(mode)}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -165,135 +193,271 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {mode === "entry" ? (
-            <EntryContent
-              colors={colors}
-              onCreateAccount={() => openMode("register")}
-              onGuest={() => void handleGuest()}
-              onLogin={() => openMode("login")}
-            />
-          ) : (
-            <FormContent
-              birthDate={birthDate}
-              colors={colors}
-              email={email}
-              gender={gender}
-              mode={mode}
-              name={name}
-              onBirthDateChange={handleBirthDateChange}
-              onCloseBirthDatePicker={() => setShowBirthDatePicker(false)}
-              onEmailChange={setEmail}
-              onGenderChange={setGender}
-              onNameChange={setName}
-              onOpenBirthDatePicker={() => setShowBirthDatePicker(true)}
-              onPasswordChange={setPassword}
-              onPasswordConfirmationChange={setPasswordConfirmation}
-              password={password}
-              passwordConfirmation={passwordConfirmation}
-              showBirthDatePicker={showBirthDatePicker}
-            />
-          )}
+          <FormContent
+            birthDate={birthDate}
+            colors={colors}
+            email={email}
+            gender={gender}
+            mode={mode}
+            name={name}
+            onBirthDateChange={handleBirthDateChange}
+            onCloseBirthDatePicker={() => setShowBirthDatePicker(false)}
+            onEmailChange={setEmail}
+            onGenderChange={setGender}
+            onNameChange={setName}
+            onOpenBirthDatePicker={() => setShowBirthDatePicker(true)}
+            onPasswordChange={setPassword}
+            onPasswordConfirmationChange={setPasswordConfirmation}
+            password={password}
+            passwordConfirmation={passwordConfirmation}
+            showBirthDatePicker={showBirthDatePicker}
+          />
 
-          {mode !== "entry" && (formError || auth.error) ? (
+          {formError || auth.error ? (
             <Text style={[styles.error, { color: colors.danger }]}>
               {formError ?? auth.error}
             </Text>
           ) : null}
 
-          {mode !== "entry" ? (
-            <>
-              <TourismActionButton
-                disabled={submitting || auth.status === "loading"}
-                label={
-                  submitting
-                    ? mode === "register"
-                      ? "Creando cuenta…"
-                      : "Iniciando sesión…"
-                    : mode === "register"
-                      ? "Crear cuenta"
-                      : "Iniciar sesión"
-                }
-                onPress={() => void handleSubmit()}
-              />
-              {submitting ? <ActivityIndicator color={colors.primary} /> : null}
-              <Pressable
-                accessibilityRole="button"
-                onPress={() =>
-                  openMode(mode === "login" ? "register" : "login")
-                }
-                style={styles.switchAction}
-              >
-                <Text
-                  style={[styles.switchText, { color: colors.primaryStrong }]}
-                >
-                  {mode === "login"
-                    ? "¿Aún no tienes cuenta? Crear cuenta"
-                    : "¿Ya tienes cuenta? Iniciar sesión"}
-                </Text>
-              </Pressable>
-            </>
-          ) : null}
+          <TourismActionButton
+            disabled={submitting || auth.status === "loading"}
+            label={
+              submitting
+                ? mode === "register"
+                  ? "Creando cuenta…"
+                  : "Iniciando sesión…"
+                : mode === "register"
+                  ? "Crear cuenta"
+                  : "Iniciar sesión"
+            }
+            onPress={() => void handleSubmit()}
+          />
+          {submitting ? <ActivityIndicator color={colors.primary} /> : null}
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => openMode(mode === "login" ? "register" : "login")}
+            style={styles.switchAction}
+          >
+            <Text style={[styles.switchText, { color: colors.primaryStrong }]}>
+              {mode === "login"
+                ? "¿Aún no tienes cuenta? Crear cuenta"
+                : "¿Ya tienes cuenta? Iniciar sesión"}
+            </Text>
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </TourismScreenFrame>
   );
 }
 
-function EntryContent({
-  colors,
+function AccountEntryContent({
   onCreateAccount,
   onGuest,
   onLogin,
+  onBack,
 }: Readonly<{
-  colors: ReturnType<typeof useTurismoPalette>;
   onCreateAccount: () => void;
   onGuest: () => void;
   onLogin: () => void;
+  onBack?: () => void;
+}>) {
+  const { height } = useWindowDimensions();
+  const heroHeight = Math.min(Math.max(height * 0.34, 250), 330);
+
+  return (
+    <ScrollView
+      contentContainerStyle={styles.accountScrollContent}
+      showsVerticalScrollIndicator={false}
+      style={styles.accountScroll}
+    >
+      <View
+        style={[
+          styles.accountEntry,
+          { backgroundColor: accountEntryColors.background },
+        ]}
+      >
+        <ImageBackground
+          imageStyle={styles.accountHeroImage}
+          resizeMode="cover"
+          source={accountHeroImage}
+          style={[styles.accountHero, { height: heroHeight }]}
+        >
+          <View pointerEvents="none" style={styles.accountHeroShade} />
+          <TourismHeader onBack={onBack} title="Cuenta" />
+        </ImageBackground>
+
+        <View
+          style={[
+            styles.accountBody,
+            {
+              backgroundColor: accountEntryColors.background,
+              minHeight: Math.max(height * 0.68, 520),
+            },
+          ]}
+        >
+          <View style={styles.accountIdentityBadge}>
+            <View
+              style={[
+                styles.accountIdentityBadgeInner,
+                { backgroundColor: accountEntryColors.primarySoft },
+              ]}
+            >
+              <TurismoIcon
+                color={accountEntryColors.primaryStrong}
+                name="mapPinned"
+                size={40}
+                strokeWidth={1.8}
+              />
+            </View>
+          </View>
+
+          <View style={styles.accountCopy}>
+            <Text accessibilityRole="header" style={styles.accountTitle}>
+              Descubre <Text style={styles.accountTitleAccent}>Ecuador</Text>
+            </Text>
+            <Text style={styles.accountSubtitle}>
+              Guarda lugares, consulta recomendaciones y planifica tus visitas
+              con tu cuenta turística.
+            </Text>
+          </View>
+
+          <View style={styles.accountBenefits}>
+            <AccountBenefit
+              icon="bookmark"
+              label={"Guarda tus\nlugares favoritos"}
+            />
+            <AccountBenefit
+              icon="map"
+              label={"Accede a rutas\npersonalizadas"}
+            />
+            <AccountBenefit
+              icon="bot"
+              label={"Accede a un\nagente IA turístico"}
+            />
+          </View>
+
+          <View style={styles.accountActions}>
+            <AccountEntryButton
+              icon="user"
+              label="Iniciar sesión"
+              onPress={onLogin}
+              variant="primary"
+            />
+            <AccountEntryButton
+              label="Crear cuenta"
+              onPress={onCreateAccount}
+              variant="outline"
+            />
+          </View>
+
+          <Pressable
+            accessibilityLabel="Explorar como invitado"
+            accessibilityRole="button"
+            onPress={onGuest}
+            style={({ pressed }) => [
+              styles.accountGuestLink,
+              { opacity: pressed ? 0.65 : 1 },
+            ]}
+          >
+            <Text style={styles.accountGuestText}>Explorar como invitado</Text>
+          </Pressable>
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
+
+function AccountBenefit({
+  icon,
+  label,
+}: Readonly<{
+  icon: "bookmark" | "bot" | "map";
+  label: string;
 }>) {
   return (
-    <View style={styles.entryContent}>
-      <View style={[styles.brandMark, { backgroundColor: colors.primarySoft }]}>
+    <View style={styles.accountBenefit}>
+      <View
+        style={[
+          styles.accountBenefitIcon,
+          { backgroundColor: accountEntryColors.primarySoft },
+        ]}
+      >
         <TurismoIcon
-          color={colors.primaryStrong}
-          name="mapPinned"
-          size={turismoIconSizes.xl}
+          color={accountEntryColors.primaryStrong}
+          name={icon}
+          size={24}
+          strokeWidth={1.9}
         />
       </View>
-      <View style={styles.intro}>
-        <Text style={[styles.title, { color: colors.text }]}>
-          Descubre Ecuador
-        </Text>
-        <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-          Guarda lugares, consulta recomendaciones y planifica tus visitas con
-          tu cuenta turística.
-        </Text>
-      </View>
-      <View style={styles.entryActions}>
-        <TourismActionButton
-          icon="user"
-          label="Iniciar sesión"
-          onPress={onLogin}
-        />
-        <TourismActionButton
-          label="Crear cuenta"
-          mode="outlined"
-          onPress={onCreateAccount}
-        />
-      </View>
-      <View style={styles.dividerRow}>
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-        <Text style={[styles.dividerText, { color: colors.textFaint }]}>o</Text>
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
-      </View>
-      <TourismActionButton
-        label="Explorar como invitado"
-        mode="ghost"
-        onPress={onGuest}
-      />
-      <Text style={[styles.guestHint, { color: colors.textFaint }]}>
-        El mapa, las fichas públicas y las rutas están disponibles sin cuenta.
-      </Text>
+      <Text style={styles.accountBenefitText}>{label}</Text>
     </View>
+  );
+}
+
+function AccountEntryButton({
+  icon,
+  label,
+  onPress,
+  variant,
+}: Readonly<{
+  icon?: "user";
+  label: string;
+  onPress: () => void;
+  variant: "outline" | "primary";
+}>) {
+  const primary = variant === "primary";
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      android_ripple={{
+        color: primary ? "rgba(0, 0, 0, 0.12)" : "rgba(34, 197, 94, 0.12)",
+      }}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.accountButton,
+        {
+          backgroundColor: primary ? accountEntryColors.primary : "transparent",
+          borderColor: primary
+            ? accountEntryColors.primary
+            : accountEntryColors.border,
+          opacity: pressed ? 0.84 : 1,
+        },
+      ]}
+    >
+      <View style={styles.accountButtonLabel}>
+        {icon ? (
+          <TurismoIcon
+            color={accountEntryColors.onPrimary}
+            name={icon}
+            size={22}
+            strokeWidth={2.2}
+          />
+        ) : null}
+        <Text
+          style={[
+            styles.accountButtonText,
+            {
+              color: primary
+                ? accountEntryColors.onPrimary
+                : accountEntryColors.primaryStrong,
+            },
+          ]}
+        >
+          {label}
+        </Text>
+      </View>
+      <TurismoIcon
+        color={
+          primary
+            ? accountEntryColors.onPrimary
+            : accountEntryColors.primaryStrong
+        }
+        name="chevronRight"
+        size={22}
+        strokeWidth={2.3}
+      />
+    </Pressable>
   );
 }
 
@@ -697,14 +861,131 @@ const styles = StyleSheet.create({
     paddingVertical: turismoSpacing.xl,
     paddingBottom: turismoSpacing.xxl,
   },
-  entryContent: { gap: turismoSpacing.lg },
-  brandMark: {
+  accountScroll: { flex: 1 },
+  accountScrollContent: { flexGrow: 1 },
+  accountEntry: { flexGrow: 1 },
+  accountHero: { overflow: "hidden", width: "100%" },
+  accountHeroImage: { opacity: 0.92 },
+  accountHeroShade: {
+    backgroundColor: "rgba(0, 0, 0, 0.24)",
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  accountBody: {
     alignItems: "center",
-    alignSelf: "center",
+    borderTopLeftRadius: 86,
+    borderTopRightRadius: 160,
+    marginTop: -58,
+    paddingBottom: turismoSpacing.xl,
+    paddingHorizontal: turismoSpacing.md,
+    position: "relative",
+    width: "100%",
+    zIndex: 1,
+  },
+  accountIdentityBadge: {
+    alignItems: "center",
+    backgroundColor: accountEntryColors.background,
     borderRadius: turismoRadii.pill,
-    height: 72,
+    height: 96,
     justifyContent: "center",
-    width: 72,
+    marginTop: -24,
+    width: 96,
+  },
+  accountIdentityBadgeInner: {
+    alignItems: "center",
+    borderRadius: turismoRadii.pill,
+    height: 80,
+    justifyContent: "center",
+    width: 80,
+  },
+  accountCopy: {
+    alignItems: "center",
+    gap: turismoSpacing.xs,
+    marginTop: turismoSpacing.xs,
+    maxWidth: 390,
+    width: "100%",
+  },
+  accountTitle: {
+    color: accountEntryColors.text,
+    fontSize: 27,
+    fontWeight: "700",
+    lineHeight: 34,
+    textAlign: "center",
+  },
+  accountTitleAccent: { color: accountEntryColors.primaryStrong },
+  accountSubtitle: {
+    color: accountEntryColors.textMuted,
+    fontSize: 16,
+    lineHeight: 23,
+    maxWidth: 360,
+    textAlign: "center",
+  },
+  accountBenefits: {
+    flexDirection: "row",
+    gap: turismoSpacing.xs,
+    marginTop: turismoSpacing.xl,
+    maxWidth: 430,
+    width: "100%",
+  },
+  accountBenefit: {
+    alignItems: "center",
+    flex: 1,
+    gap: turismoSpacing.xs,
+  },
+  accountBenefitIcon: {
+    alignItems: "center",
+    borderRadius: turismoRadii.pill,
+    height: 50,
+    justifyContent: "center",
+    width: 50,
+  },
+  accountBenefitText: {
+    color: accountEntryColors.textMuted,
+    fontSize: 14,
+    lineHeight: 18,
+    textAlign: "center",
+  },
+  accountActions: {
+    gap: turismoSpacing.sm,
+    marginTop: turismoSpacing.xl,
+    maxWidth: 500,
+    width: "100%",
+  },
+  accountButton: {
+    alignItems: "center",
+    borderRadius: turismoRadii.pill,
+    borderWidth: turismoMetrics.borderWidth,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    minHeight: turismoMetrics.controlLg,
+    paddingHorizontal: turismoSpacing.lg,
+    width: "100%",
+  },
+  accountButtonLabel: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: turismoSpacing.sm,
+  },
+  accountButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    lineHeight: 20,
+  },
+  accountGuestLink: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: turismoSpacing.xs,
+    minHeight: turismoMetrics.touchTarget,
+    paddingHorizontal: turismoSpacing.md,
+  },
+  accountGuestText: {
+    color: accountEntryColors.textFaint,
+    fontSize: 14,
+    fontWeight: "600",
+    lineHeight: 20,
   },
   intro: { gap: turismoSpacing.xs },
   title: { ...turismoTypography.title },

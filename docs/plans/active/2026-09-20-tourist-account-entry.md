@@ -19,6 +19,12 @@ deben llevar a esa pantalla sin bloquear el descubrimiento público.
   localmente para no mostrar la puerta de acceso en cada apertura.
 - Guardados y demás acciones protegidas redirigen a la entrada de autenticación.
 - El catálogo público, mapa, fichas y rutas siguen disponibles como invitado.
+- Rediseño visual de la entrada de cuenta para reflejar la referencia aprobada:
+  fondo fotográfico de Ecuador, presentación de beneficios y llamadas a la acción
+  diferenciadas para iniciar sesión y crear cuenta.
+- El fondo se incorpora como recurso local generado para el cliente móvil; los textos,
+  iconos y controles permanecen implementados en React Native para conservar navegación,
+  accesibilidad y acciones reales.
 
 ## Límites y seguridad
 
@@ -36,3 +42,19 @@ deben llevar a esa pantalla sin bloquear el descubrimiento público.
 - Export web del cliente.
 - Build del development client Android.
 - Prueba manual de entrada, invitado, login, registro y guardados en dispositivo.
+
+## Estado del rediseño visual
+
+- [x] Generar y guardar el fondo fotográfico local.
+- [x] Implementar la composición visual en la entrada de `login.tsx`.
+- [x] Revisar diff y export web; ejecutar verificaciones adicionales si el cambio afecta
+      comportamiento o navegación.
+
+## Resultado de esta iteración
+
+- Fondo generado con la herramienta integrada de imágenes y guardado en
+  `apps/mobile/assets/images/account-hero.png`.
+- Entrada de cuenta inmersiva con cabecera sobre la imagen, beneficios, acciones reales
+  y acceso de invitado conservado.
+- Verificado con `corepack pnpm --filter @turismo/mobile typecheck`, `lint`, `format` y
+  `build`.
