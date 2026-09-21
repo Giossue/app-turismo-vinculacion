@@ -38,6 +38,9 @@ type EndpointProperties = Readonly<{
   navigationActive?: boolean;
 }>;
 
+const navigationCameraLeadMeters = 30;
+const earthRadiusMeters = 6_371_000;
+
 export function RouteMap({
   currentLocation = null,
   destination,
@@ -227,7 +230,7 @@ export function RouteMap({
 
         cameraRef.current?.easeTo({
           bearing,
-          center: [center.longitude, center.latitude],
+          center: getNavigationCameraCenter(center, bearing),
           duration: 180,
           easing: "linear",
           pitch: 60,
@@ -266,7 +269,7 @@ export function RouteMap({
     if (!isFollowingRef.current || !center) return;
     cameraRef.current?.easeTo({
       bearing: headingRef.current,
-      center: [center.longitude, center.latitude],
+      center: getNavigationCameraCenter(center, headingRef.current),
       duration: 400,
       easing: "ease",
       pitch: 60,
@@ -281,7 +284,9 @@ export function RouteMap({
     isFollowingRef.current = true;
     cameraRef.current?.easeTo({
       bearing: headingRef.current,
-      center: [center.longitude, center.latitude],
+      center: navigationActive
+        ? getNavigationCameraCenter(center, headingRef.current)
+        : [center.longitude, center.latitude],
       duration: 400,
       easing: "ease",
       pitch: navigationActive ? 60 : 0,
@@ -447,6 +452,40 @@ export function RouteMap({
 function normalizeBearing(heading: number): number {
   const bearing = heading % 360;
   return bearing < 0 ? bearing + 360 : bearing;
+}
+
+function getNavigationCameraCenter(
+  coordinate: RouteCoordinate,
+  bearing: number,
+): [number, number] {
+  const angularDistance = navigationCameraLeadMeters / earthRadiusMeters;
+  const bearingRadians = (bearing * Math.PI) / 180;
+  const latitudeRadians = (coordinate.latitude * Math.PI) / 180;
+  const longitudeRadians = (coordinate.longitude * Math.PI) / 180;
+  const nextLatitude = Math.asin(
+    Math.sin(latitudeRadians) * Math.cos(angularDistance) +
+      Math.cos(latitudeRadians) *
+        Math.sin(angularDistance) *
+        Math.cos(bearingRadians),
+  );
+  const nextLongitude =
+    longitudeRadians +
+    Math.atan2(
+      Math.sin(bearingRadians) *
+        Math.sin(angularDistance) *
+        Math.cos(latitudeRadians),
+      Math.cos(angularDistance) -
+        Math.sin(latitudeRadians) * Math.sin(nextLatitude),
+    );
+
+  return [
+    normalizeLongitude((nextLongitude * 180) / Math.PI),
+    (nextLatitude * 180) / Math.PI,
+  ];
+}
+
+function normalizeLongitude(longitude: number): number {
+  return ((longitude + 540) % 360) - 180;
 }
 
 function getRouteBounds(

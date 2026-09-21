@@ -108,8 +108,10 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   de posición con flecha orientable, un control para recentrar y una barra inferior con
   tiempo restante, distancia y hora estimada. Mientras el seguimiento está activo, la cámara usa
   zoom 19 y una inclinación de 60 grados; su rumbo se orienta con la brújula del dispositivo
-  usando el rumbo verdadero cuando está disponible y el magnético como respaldo. Un gesto
-  manual libera el seguimiento y el control de recentrado lo restablece. El mapa permite
+  usando el rumbo verdadero cuando está disponible y el magnético como respaldo. El objetivo
+  geográfico de la cámara se adelanta 30 m en ese rumbo para que el icono quede detrás, en la
+  zona inferior de la pantalla, y la perspectiva mantenga visible el trayecto que viene delante.
+  Un gesto manual libera el seguimiento y el control de recentrado lo restablece. El mapa permite
   inclinación táctil de tres dedos y rotación
   para que la perspectiva se pueda ajustar sin otro control de brújula. Ese modo bloquea el
   gesto de salida y el Atrás del sistema; la `X` regresa a la vista previa. Desde la vista
