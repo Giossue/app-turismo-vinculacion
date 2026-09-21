@@ -70,5 +70,19 @@ Crear mediante migraciones cuando su feature se especifique:
 - Favoritos y opiniones del usuario.
 - Fuentes publicadas para IA.
 
+## Opiniones y moderación
+
+`opiniones` representa la relación lógica entre una cuenta y un centro o punto de
+interés. El contenido moderable vive en `opinion_versiones`: solo una versión con
+estado `APROBADA` puede estar referenciada por `opiniones.version_publicada_id` y ser
+visible públicamente. Una edición crea una nueva versión `PENDIENTE`; mientras se
+revisa, la versión aprobada anterior permanece publicada. Si la edición se rechaza,
+la versión anterior se conserva; si se aprueba, la anterior pasa a `REEMPLAZADA`.
+
+No existe el estado `OCULTA` en el flujo nuevo. Un rechazo inicial deja la opinión
+lógica fuera de la consulta pública y permite al visitante enviar otra opinión. Cada
+decisión se registra en `moderaciones_opinion` con el `opinion_version_id`, actor,
+acción y motivo.
+
 Cada consulta crítica debe acompañarse de `EXPLAIN (ANALYZE, BUFFERS)` con volumen
 representativo antes de optimizar.

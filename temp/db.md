@@ -1276,10 +1276,10 @@ activo BOOLEAN NOT NULL DEFAULT TRUE
 
 Los registros del catálogo son exactamente los criterios enumerados en la hoja `ficha_Accesibilidad`:
 
-- General: estacionamiento; estacionamiento para personas con discapacidad; rampas externas; gradas externas; vías peatonales; señalética informativa, direccional y preventiva; puertas automáticas; ascensor; recepción; puntos de concentración turística; baños comunales/sociales; indicador de baño libre/ocupado.  
-- Discapacidad física: rampas; pasamanos; recepción adaptada; baños adaptados; espacio de maniobra de 1,50 m; barras de apoyo; sistema de asistencia; espejo; grifería accesible; lavabo sin pedestal; accesorios de limpieza a altura accesible; puntos de concentración accesibles; salvaescaleras; vías peatonales accesibles.  
-- Discapacidad visual: recepción con braille/JAWS/formatos accesibles; sensores de voz o bucle magnético; rotulación braille, alto relieve o plano háptico; pasamanos; baños adaptados; espacio de maniobra; grifería accesible; bandas podotáctiles o contraste; sistema de asistencia; puntos con información autodescriptiva, braille o audio; maquetas táctiles; vías peatonales con bandas podotáctiles.  
-- Discapacidad auditiva: recepción con registros ilustrados, lengua de señas, personal capacitado, pantallas o subtitulado; alarmas visuales; rotulación visual; baños adaptados; sistema de asistencia; puntos con información gráfica o audiovisual; vías peatonales con rotulación e ilustraciones.  
+- General: estacionamiento; estacionamiento para personas con discapacidad; rampas externas; gradas externas; vías peatonales; señalética informativa, direccional y preventiva; puertas automáticas; ascensor; recepción; puntos de concentración turística; baños comunales/sociales; indicador de baño libre/ocupado.
+- Discapacidad física: rampas; pasamanos; recepción adaptada; baños adaptados; espacio de maniobra de 1,50 m; barras de apoyo; sistema de asistencia; espejo; grifería accesible; lavabo sin pedestal; accesorios de limpieza a altura accesible; puntos de concentración accesibles; salvaescaleras; vías peatonales accesibles.
+- Discapacidad visual: recepción con braille/JAWS/formatos accesibles; sensores de voz o bucle magnético; rotulación braille, alto relieve o plano háptico; pasamanos; baños adaptados; espacio de maniobra; grifería accesible; bandas podotáctiles o contraste; sistema de asistencia; puntos con información autodescriptiva, braille o audio; maquetas táctiles; vías peatonales con bandas podotáctiles.
+- Discapacidad auditiva: recepción con registros ilustrados, lengua de señas, personal capacitado, pantallas o subtitulado; alarmas visuales; rotulación visual; baños adaptados; sistema de asistencia; puntos con información gráfica o audiovisual; vías peatonales con rotulación e ilustraciones.
 - Discapacidad intelectual o psicosocial: recepción con personal capacitado; accesibilidad cognitiva; sistema de asistencia en baño; puntos con información gráfica/audiovisual y guías capacitados.
 
 ### `respuestas_accesibilidad`
@@ -1362,9 +1362,9 @@ activo BOOLEAN NOT NULL DEFAULT TRUE
 
 Grupos y tipos de la ficha:
 
-- Alojamiento: hotel, hostal, hostería, hacienda turística, lodge, resort, refugio, campamento turístico y casa de huéspedes; unidades establecimientos, habitaciones y plazas.  
-- Alimentos y bebidas: restaurantes, cafeterías, bares y fuentes de soda; unidades establecimientos, mesas y plazas.  
-- Agencias de viaje: mayorista, internacional y operadora; unidad establecimientos.  
+- Alojamiento: hotel, hostal, hostería, hacienda turística, lodge, resort, refugio, campamento turístico y casa de huéspedes; unidades establecimientos, habitaciones y plazas.
+- Alimentos y bebidas: restaurantes, cafeterías, bares y fuentes de soda; unidades establecimientos, mesas y plazas.
+- Agencias de viaje: mayorista, internacional y operadora; unidad establecimientos.
 - Guías: local, nacional, nacional especializado en cultura y nacional especializado en aventura; unidad personas.
 
 ### `planta_turistica_centro`
@@ -1603,9 +1603,9 @@ nombre VARCHAR(120) NOT NULL
 
 activo BOOLEAN NOT NULL DEFAULT TRUE
 
-- Agua: potable, pozo, tanquero, entubada, río/vertiente, lluvia y otro.  
-- Energía: red pública, panel solar, generador y otro.  
-- Saneamiento: red pública, pozo séptico, pozo ciego, descarga directa, letrina y otro.  
+- Agua: potable, pozo, tanquero, entubada, río/vertiente, lluvia y otro.
+- Energía: red pública, panel solar, generador y otro.
+- Saneamiento: red pública, pozo séptico, pozo ciego, descarga directa, letrina y otro.
 - Desechos: carro recolector, terreno baldío/quebrada, quema, entierra, río/canal y otro.
 
 ### `servicios_basicos_centro`
@@ -1644,10 +1644,10 @@ activo BOOLEAN NOT NULL DEFAULT TRUE
 
 Valores exactos del catálogo:
 
-- Áreas urbanas: pictograma de atractivos naturales, atractivos culturales, actividades turísticas, servicios de apoyo y restricción; tótem de atractivos turísticos, de sitio y direccional.  
-- Áreas naturales: los cinco pictogramas anteriores; señales turísticas de aproximación; paneles de direccionamiento hacia atractivos; panel informativo de atractivos; panel informativo de direccionamiento hacia atractivos, servicios y actividades; mesas interpretativas; tótem de sitio y de direccionamiento.  
-- Letreros informativos: información botánica y normativos de concienciación.  
-- Señalética interna de seguridad: protección de los elementos del atractivo.  
+- Áreas urbanas: pictograma de atractivos naturales, atractivos culturales, actividades turísticas, servicios de apoyo y restricción; tótem de atractivos turísticos, de sitio y direccional.
+- Áreas naturales: los cinco pictogramas anteriores; señales turísticas de aproximación; paneles de direccionamiento hacia atractivos; panel informativo de atractivos; panel informativo de direccionamiento hacia atractivos, servicios y actividades; mesas interpretativas; tótem de sitio y de direccionamiento.
+- Letreros informativos: información botánica y normativos de concienciación.
+- Señalética interna de seguridad: protección de los elementos del atractivo.
 - Otros: conserva su especificación en `senaletica_centro.detalle`.
 
 ### `materiales_senaletica`
@@ -1906,8 +1906,8 @@ activo BOOLEAN NOT NULL DEFAULT TRUE
 
 Catálogo natural de la ficha:
 
-- Agua: buceo, kayak de mar, kayak lacustre, kayak de río, surf, kite surf, rafting, snorkel, tubing, regata, paseo en panga, bote, lancha, moto acuática, parasailing, esquí acuático, banana, boya, pesca deportiva y otro.  
-- Aire: ala delta, canopy, parapente y otro.  
+- Agua: buceo, kayak de mar, kayak lacustre, kayak de río, surf, kite surf, rafting, snorkel, tubing, regata, paseo en panga, bote, lancha, moto acuática, parasailing, esquí acuático, banana, boya, pesca deportiva y otro.
+- Aire: ala delta, canopy, parapente y otro.
 - Tierra: montañismo, escalada, senderismo, cicloturismo, canyoning, exploración de cuevas, actividades recreativas, cabalgata, caminata, camping, picnic, observación de flora/fauna, observación de astros y otro.
 
 Catálogo cultural: recorridos guiados y autoguiados, visita/participación en talleres artísticos o artesanales, exposiciones, exhibición de piezas, actividades vivenciales/lúdicas, presentaciones en vivo, muestras audiovisuales, fotografía, degustación de platos tradicionales, participación en celebraciones, compra de artesanías, convivencia, medicina ancestral y otro.
@@ -2128,8 +2128,8 @@ activo BOOLEAN NOT NULL DEFAULT TRUE
 
 Grupos y opciones:
 
-- Educación: primaria, secundaria, tercer nivel, cuarto nivel y otro.  
-- Capacitación: primeros auxilios, hospitalidad, atención al cliente, guianza, sensibilización sobre discapacidad y otro.  
+- Educación: primaria, secundaria, tercer nivel, cuarto nivel y otro.
+- Capacitación: primeros auxilios, hospitalidad, atención al cliente, guianza, sensibilización sobre discapacidad y otro.
 - Idioma: inglés, alemán, francés, italiano, chino y otro.
 
 ### `formacion_personal_centro`
@@ -2328,18 +2328,18 @@ activo BOOLEAN NOT NULL DEFAULT TRUE
 
 Pesos encontrados en el XLSM:
 
-| Código | Criterio | Máximo |
-| :---- | :---- | ----: |
-| A | Accesibilidad y conectividad | 18 |
-| B | Planta turística y servicios | 18 |
-| C | Estado de conservación e integración | 14 |
-| D | Higiene y seguridad turística | 14 |
-| E | Políticas y regulaciones | 10 |
-| F | Actividades que se practican | 9 |
-| G | Difusión, medios de promoción y comercialización | 7 |
-| H | Registro de visitantes y afluencia | 5 |
-| I | Recurso humano | 5 |
-|  | **Total** | **100** |
+| Código | Criterio                                         |  Máximo |
+| :----- | :----------------------------------------------- | ------: |
+| A      | Accesibilidad y conectividad                     |      18 |
+| B      | Planta turística y servicios                     |      18 |
+| C      | Estado de conservación e integración             |      14 |
+| D      | Higiene y seguridad turística                    |      14 |
+| E      | Políticas y regulaciones                         |      10 |
+| F      | Actividades que se practican                     |       9 |
+| G      | Difusión, medios de promoción y comercialización |       7 |
+| H      | Registro de visitantes y afluencia               |       5 |
+| I      | Recurso humano                                   |       5 |
+|        | **Total**                                        | **100** |
 
 ## `indicadores_valoracion`
 
@@ -2421,13 +2421,13 @@ descripcion TEXT NULL
 
 activo BOOLEAN NOT NULL DEFAULT TRUE
 
-| Código | Jerarquía | Puntaje |
-| :---- | :---- | ----: |
-| `00` | Recurso | 0–10 |
-| `01` | I | mayor que 10 y hasta 35 |
-| `02` | II | mayor que 35 y hasta 60 |
-| `03` | III | mayor que 60 y hasta 85 |
-| `04` | IV | mayor que 85 y hasta 100 |
+| Código | Jerarquía |                  Puntaje |
+| :----- | :-------- | -----------------------: |
+| `00`   | Recurso   |                     0–10 |
+| `01`   | I         |  mayor que 10 y hasta 35 |
+| `02`   | II        |  mayor que 35 y hasta 60 |
+| `03`   | III       |  mayor que 60 y hasta 85 |
+| `04`   | IV        | mayor que 85 y hasta 100 |
 
 La `jerarquia_id` se selecciona automáticamente según `puntaje_total`.
 
@@ -2459,16 +2459,16 @@ pertenecen a una referencia anterior y no deben usarse como fixture del libro ac
 
 PP CC QQ CA TI ST JE NNN
 
-| Parte | Longitud | Procedencia |
-| :---- | ----: | :---- |
-| `PP` | 2 | `provincias.codigo_dpa` |
-| `CC` | 2 | `cantones.codigo_cton` |
-| `QQ` | 2 | `parroquias.codigo_pqa` |
-| `CA` | 2 | `categorias_atractivo.codigo` |
-| `TI` | 2 | `tipos_atractivo.codigo` |
-| `ST` | 2 | `subtipos_atractivo.codigo` |
-| `JE` | 2 | `rangos_jerarquia.codigo` |
-| `NNN` | 3 | `centros_turisticos.secuencial_atractivo`, rellenado con ceros |
+| Parte | Longitud | Procedencia                                                    |
+| :---- | -------: | :------------------------------------------------------------- |
+| `PP`  |        2 | `provincias.codigo_dpa`                                        |
+| `CC`  |        2 | `cantones.codigo_cton`                                         |
+| `QQ`  |        2 | `parroquias.codigo_pqa`                                        |
+| `CA`  |        2 | `categorias_atractivo.codigo`                                  |
+| `TI`  |        2 | `tipos_atractivo.codigo`                                       |
+| `ST`  |        2 | `subtipos_atractivo.codigo`                                    |
+| `JE`  |        2 | `rangos_jerarquia.codigo`                                      |
+| `NNN` |        3 | `centros_turisticos.secuencial_atractivo`, rellenado con ceros |
 
 Fórmula lógica:
 
@@ -2496,12 +2496,12 @@ El código completo **no es una entidad** y no requiere una tabla propia: identi
 
 En el XLSM, los tres últimos caracteres aparecen escritos como `001`; no existe una fórmula que busque el siguiente número. En el sistema sí deben generarse automáticamente:
 
-1. Se inicia una transacción de PostgreSQL.  
-2. Se bloquea la fila de la parroquia correspondiente antes de consultar el consecutivo. El bloqueo serializa únicamente las altas de esa parroquia.  
-3. Se consulta el mayor `secuencial_atractivo` de la parroquia, incluyendo centros inactivos para no reutilizar códigos históricos.  
-4. El nuevo valor es `mayor + 1`; si no existe otro centro, es `1`. Si el resultado supera `999`, la operación se rechaza.  
-5. Se inserta el centro dentro de la misma transacción.  
-6. Se presenta con `LPAD(..., 3, '0')`: `1 → 001`, `2 → 002`, …, `999 → 999`.  
+1. Se inicia una transacción de PostgreSQL.
+2. Se bloquea la fila de la parroquia correspondiente antes de consultar el consecutivo. El bloqueo serializa únicamente las altas de esa parroquia.
+3. Se consulta el mayor `secuencial_atractivo` de la parroquia, incluyendo centros inactivos para no reutilizar códigos históricos.
+4. El nuevo valor es `mayor + 1`; si no existe otro centro, es `1`. Si el resultado supera `999`, la operación se rechaza.
+5. Se inserta el centro dentro de la misma transacción.
+6. Se presenta con `LPAD(..., 3, '0')`: `1 → 001`, `2 → 002`, …, `999 → 999`.
 7. La restricción `UNIQUE (parroquia_id, secuencial_atractivo)` actúa como última defensa frente a duplicados.
 
 El usuario no escribe `001` a mano. `secuencial_atractivo` se almacena como número y los ceros se agregan únicamente al componer el código.
@@ -2538,45 +2538,45 @@ catálogos 1:N tablas operativas
 
 ## Reglas de integridad
 
-- Las tablas de detalle nunca utilizan `ficha_id`; todas apuntan a `centros_turisticos.id`.  
-- Todas las FK usan `ON UPDATE CASCADE`.  
-- Las FK hacia catálogos y registros históricos usan `ON DELETE RESTRICT`.  
-- Las FK de detalles exclusivos usan `ON DELETE CASCADE` como protección de integridad, aunque la aplicación no ofrece eliminación física de centros.  
-- Las referencias opcionales, como `revisado_por`, usan `ON DELETE SET NULL`.  
-- Los catálogos se desactivan con `activo = FALSE`; no se eliminan si ya fueron utilizados.  
-- Los centros turísticos utilizan exclusivamente eliminación lógica: `activo = FALSE` y estado `INACTIVO`. Sus detalles, opiniones, archivos, resultados y auditoría se conservan.  
-- Los usuarios también se desactivan mediante `activo = FALSE` para preservar la autoría y la auditoría.  
-- Los campos “otro” conservan su especificación en `detalle_otro` o `especificacion`.  
-- Una respuesta negativa también se almacena cuando la ficha necesita distinguir “No” de “sin información”.  
-- Las observaciones son `TEXT`, pertenecen al mismo centro y deben incluirse al preparar el contexto para la IA.  
+- Las tablas de detalle nunca utilizan `ficha_id`; todas apuntan a `centros_turisticos.id`.
+- Todas las FK usan `ON UPDATE CASCADE`.
+- Las FK hacia catálogos y registros históricos usan `ON DELETE RESTRICT`.
+- Las FK de detalles exclusivos usan `ON DELETE CASCADE` como protección de integridad, aunque la aplicación no ofrece eliminación física de centros.
+- Las referencias opcionales, como `revisado_por`, usan `ON DELETE SET NULL`.
+- Los catálogos se desactivan con `activo = FALSE`; no se eliminan si ya fueron utilizados.
+- Los centros turísticos utilizan exclusivamente eliminación lógica: `activo = FALSE` y estado `INACTIVO`. Sus detalles, opiniones, archivos, resultados y auditoría se conservan.
+- Los usuarios también se desactivan mediante `activo = FALSE` para preservar la autoría y la auditoría.
+- Los campos “otro” conservan su especificación en `detalle_otro` o `especificacion`.
+- Una respuesta negativa también se almacena cuando la ficha necesita distinguir “No” de “sin información”.
+- Las observaciones son `TEXT`, pertenecen al mismo centro y deben incluirse al preparar el contexto para la IA.
 - Los valores calculados se actualizan dentro de una transacción después de guardar toda la ficha.
 
 ## Índices requeridos
 
-- PostgreSQL crea automáticamente los índices de las claves primarias y restricciones `UNIQUE`.  
-- Se agrega un índice B-tree individual a todas las claves foráneas que no estén cubiertas como primera columna de otro índice.  
-- Se crean índices compuestos según las consultas principales: estado y actividad de los centros, ubicación territorial, clasificación, fecha de publicación, moderación de opiniones y orden de rutas.  
-- Se crean índices `GIST` para las ubicaciones PostGIS.  
-- Para buscar nombres y descripciones se utiliza `pg_trgm` con índices `GIN`, evitando depender de comparaciones lentas con comodines iniciales.  
+- PostgreSQL crea automáticamente los índices de las claves primarias y restricciones `UNIQUE`.
+- Se agrega un índice B-tree individual a todas las claves foráneas que no estén cubiertas como primera columna de otro índice.
+- Se crean índices compuestos según las consultas principales: estado y actividad de los centros, ubicación territorial, clasificación, fecha de publicación, moderación de opiniones y orden de rutas.
+- Se crean índices `GIST` para las ubicaciones PostGIS.
+- Para buscar nombres y descripciones se utiliza `pg_trgm` con índices `GIN`, evitando depender de comparaciones lentas con comodines iniciales.
 - Los índices se definirán al exportar las migraciones, después de confirmar las consultas reales de la aplicación.
 
 ## Flujo de revisión y publicación
 
-- Una ficha en `BORRADOR` puede editarse libremente por usuarios autorizados.  
-- El envío cambia el estado a `EN_REVISION` y crea una fila en `revisiones_publicacion`.  
-- El revisor puede llevarla a `APROBADO` o `RECHAZADO`, dejando una observación y la fecha de revisión.  
-- La publicación cambia el estado a `PUBLICADO`.  
-- Los cambios críticos de una ficha publicada —ubicación, clasificación, valoración, descripción, archivos principales o información de seguridad— requieren una nueva revisión antes de hacerse visibles.  
-- Los cambios críticos se guardan en `revisiones_publicacion.datos_propuestos`; la versión publicada continúa visible hasta su aprobación. Al aprobar, los cambios se aplican a las tablas normalizadas dentro de una sola transacción.  
+- Una ficha en `BORRADOR` puede editarse libremente por usuarios autorizados.
+- El envío cambia el estado a `EN_REVISION` y crea una fila en `revisiones_publicacion`.
+- El revisor puede llevarla a `APROBADO` o `RECHAZADO`, dejando una observación y la fecha de revisión.
+- La publicación cambia el estado a `PUBLICADO`.
+- Los cambios críticos de una ficha publicada —ubicación, clasificación, valoración, descripción, archivos principales o información de seguridad— requieren una nueva revisión antes de hacerse visibles.
+- Los cambios críticos se guardan en `revisiones_publicacion.datos_propuestos`; la versión publicada continúa visible hasta su aprobación. Al aprobar, los cambios se aplican a las tablas normalizadas dentro de una sola transacción.
 - Cada transición y modificación relevante genera una fila inmutable en `auditoria_fichas`.
 
 ## Orden de guardado recomendado
 
-1. Catálogos DPA, clasificación y catálogos de opciones.  
-2. `centros_turisticos` con el consecutivo automático; el código puede permanecer temporalmente nulo.  
-3. Secciones 2 a 14 y sus observaciones.  
-4. `resultados_indicador` y `resultados_criterio`.  
-5. `puntaje_total` y `jerarquia_id`.  
+1. Catálogos DPA, clasificación y catálogos de opciones.
+2. `centros_turisticos` con el consecutivo automático; el código puede permanecer temporalmente nulo.
+3. Secciones 2 a 14 y sus observaciones.
+4. `resultados_indicador` y `resultados_criterio`.
+5. `puntaje_total` y `jerarquia_id`.
 6. `codigo_atractivo` definitivo de 17 caracteres.
 
 Este orden evita calcular la jerarquía o el código con una ficha incompleta.

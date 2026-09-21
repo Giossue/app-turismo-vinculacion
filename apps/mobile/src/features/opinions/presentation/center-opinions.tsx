@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -28,7 +28,6 @@ import {
   useCenterOpinions,
   useOwnCenterOpinion,
 } from "../application/use-center-opinions";
-import type { OpinionContent } from "../domain/opinion";
 
 export function CenterOpinions({
   code,
@@ -53,12 +52,6 @@ export function CenterOpinions({
   const canOpenForm =
     auth.status === "authenticated" &&
     (ownState === null || ownState.canCreate || ownState.canEdit);
-
-  useEffect(() => {
-    if (!editing || !ownState?.current) return;
-    setRating(ownState.current.rating);
-    setComment(ownState.current.comment ?? "");
-  }, [editing, ownState?.current]);
 
   const averageLabel = useMemo(() => {
     const average = opinions.data?.summary.averageRating;
@@ -114,7 +107,9 @@ export function CenterOpinions({
       setComment("");
     } catch (cause) {
       setFormError(
-        cause instanceof Error ? cause.message : "No se pudo enviar la opinión.",
+        cause instanceof Error
+          ? cause.message
+          : "No se pudo enviar la opinión.",
       );
     }
   }
@@ -124,8 +119,10 @@ export function CenterOpinions({
       <TourismSurface style={styles.summary}>
         <View style={styles.summaryHeading}>
           <View>
-            <Text style={[styles.summaryTitle, { color: colors.text }]}>Opiniones</Text>
-            <Text style={[styles.summaryMeta, { color: colors.textMuted }]}> 
+            <Text style={[styles.summaryTitle, { color: colors.text }]}>
+              Opiniones
+            </Text>
+            <Text style={[styles.summaryMeta, { color: colors.textMuted }]}>
               {opinions.data?.summary.total ?? 0} publicadas · {averageLabel}
             </Text>
           </View>
@@ -136,18 +133,24 @@ export function CenterOpinions({
           />
         </View>
         {opinions.data?.summary.totalRatings ? (
-          <RatingDistribution distribution={opinions.data.summary.distribution} />
+          <RatingDistribution
+            distribution={opinions.data.summary.distribution}
+          />
         ) : null}
       </TourismSurface>
 
       {opinions.isPending ? (
         <View style={styles.stateRow}>
           <ActivityIndicator color={colors.primary} />
-          <Text style={[styles.stateText, { color: colors.textMuted }]}>Cargando opiniones…</Text>
+          <Text style={[styles.stateText, { color: colors.textMuted }]}>
+            Cargando opiniones…
+          </Text>
         </View>
       ) : opinions.error ? (
         <TourismSurface style={styles.stateSurface}>
-          <Text style={[styles.stateText, { color: colors.textMuted }]}>No pudimos cargar las opiniones.</Text>
+          <Text style={[styles.stateText, { color: colors.textMuted }]}>
+            No pudimos cargar las opiniones.
+          </Text>
           <TourismActionButton
             compact
             icon="refresh"
@@ -158,77 +161,137 @@ export function CenterOpinions({
         </TourismSurface>
       ) : opinions.data?.items.length ? (
         opinions.data.items.map((opinion, index) => (
-          <TourismSurface key={`${opinion.publishedAt}-${index}`} style={styles.opinionItem}>
+          <TourismSurface
+            key={`${opinion.publishedAt}-${index}`}
+            style={styles.opinionItem}
+          >
             <View style={styles.opinionHeader}>
-              <Text style={[styles.author, { color: colors.text }]}>{opinion.authorName}</Text>
+              <Text style={[styles.author, { color: colors.text }]}>
+                {opinion.authorName}
+              </Text>
               <Text style={[styles.date, { color: colors.textFaint }]}>
                 {formatDate(opinion.publishedAt)}
               </Text>
             </View>
-            {opinion.rating !== null ? <Stars rating={opinion.rating} readOnly /> : null}
+            {opinion.rating !== null ? (
+              <Stars rating={opinion.rating} readOnly />
+            ) : null}
             {opinion.comment ? (
-              <Text style={[styles.comment, { color: colors.textMuted }]}>{opinion.comment}</Text>
+              <Text style={[styles.comment, { color: colors.textMuted }]}>
+                {opinion.comment}
+              </Text>
             ) : null}
           </TourismSurface>
         ))
       ) : (
         <TourismSurface style={styles.stateSurface}>
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>Todavía no hay opiniones</Text>
-          <Text style={[styles.stateText, { color: colors.textMuted }]}>Sé la primera persona en compartir su experiencia.</Text>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            Todavía no hay opiniones
+          </Text>
+          <Text style={[styles.stateText, { color: colors.textMuted }]}>
+            Sé la primera persona en compartir su experiencia.
+          </Text>
         </TourismSurface>
       )}
 
       {auth.status === "loading" || own.isPending ? (
         <View style={styles.stateRow}>
           <ActivityIndicator color={colors.primary} />
-          <Text style={[styles.stateText, { color: colors.textMuted }]}>Revisando tu opinión…</Text>
+          <Text style={[styles.stateText, { color: colors.textMuted }]}>
+            Revisando tu opinión…
+          </Text>
         </View>
       ) : auth.status !== "authenticated" ? (
         <TourismSurface style={styles.composerNotice}>
-          <Text style={[styles.stateText, { color: colors.textMuted }]}>Inicia sesión para dejar tu opinión.</Text>
-          <TourismActionButton compact label="Iniciar sesión" onPress={requireAuth} />
+          <Text style={[styles.stateText, { color: colors.textMuted }]}>
+            Inicia sesión para dejar tu opinión.
+          </Text>
+          <TourismActionButton
+            compact
+            label="Iniciar sesión"
+            onPress={requireAuth}
+          />
         </TourismSurface>
       ) : own.error ? (
         <TourismSurface style={styles.composerNotice}>
-          <Text style={[styles.stateText, { color: colors.textMuted }]}>No pudimos consultar tu estado.</Text>
-          <TourismActionButton compact icon="refresh" label="Reintentar" mode="outlined" onPress={() => void own.refetch()} />
+          <Text style={[styles.stateText, { color: colors.textMuted }]}>
+            No pudimos consultar tu estado.
+          </Text>
+          <TourismActionButton
+            compact
+            icon="refresh"
+            label="Reintentar"
+            mode="outlined"
+            onPress={() => void own.refetch()}
+          />
         </TourismSurface>
       ) : ownState?.pending ? (
         <TourismSurface style={styles.composerNotice}>
-          <Text style={[styles.noticeTitle, { color: colors.text }]}>Tu opinión está en revisión</Text>
-          <Text style={[styles.stateText, { color: colors.textMuted }]}>La versión enviada será visible cuando un administrador la apruebe.</Text>
+          <Text style={[styles.noticeTitle, { color: colors.text }]}>
+            Tu opinión está en revisión
+          </Text>
+          <Text style={[styles.stateText, { color: colors.textMuted }]}>
+            La versión enviada será visible cuando un administrador la apruebe.
+          </Text>
           {ownState.current ? (
-            <Text style={[styles.stateText, { color: colors.textMuted }]}>Mientras tanto, tu versión publicada anterior permanece visible.</Text>
+            <Text style={[styles.stateText, { color: colors.textMuted }]}>
+              Mientras tanto, tu versión publicada anterior permanece visible.
+            </Text>
           ) : null}
         </TourismSurface>
       ) : ownState?.lastRejected ? (
         <TourismSurface style={styles.composerNotice}>
-          <Text style={[styles.noticeTitle, { color: colors.text }]}>La última versión fue rechazada</Text>
+          <Text style={[styles.noticeTitle, { color: colors.text }]}>
+            La última versión fue rechazada
+          </Text>
           {ownState.lastRejected.reason ? (
-            <Text style={[styles.stateText, { color: colors.textMuted }]}>Motivo: {ownState.lastRejected.reason}</Text>
+            <Text style={[styles.stateText, { color: colors.textMuted }]}>
+              Motivo: {ownState.lastRejected.reason}
+            </Text>
           ) : null}
           {ownState.current ? (
             <>
-              <Text style={[styles.stateText, { color: colors.textMuted }]}>Tu versión anterior sigue publicada.</Text>
-              <TourismActionButton compact label="Editar mi opinión" onPress={startEdit} />
+              <Text style={[styles.stateText, { color: colors.textMuted }]}>
+                Tu versión anterior sigue publicada.
+              </Text>
+              <TourismActionButton
+                compact
+                label="Editar mi opinión"
+                onPress={startEdit}
+              />
             </>
           ) : (
-            <TourismActionButton compact label="Escribir otra opinión" onPress={startCreate} />
+            <TourismActionButton
+              compact
+              label="Escribir otra opinión"
+              onPress={startCreate}
+            />
           )}
         </TourismSurface>
       ) : ownState?.current && !editing ? (
         <TourismSurface style={styles.composerNotice}>
-          <Text style={[styles.noticeTitle, { color: colors.text }]}>Tu opinión publicada</Text>
-          <Text style={[styles.stateText, { color: colors.textMuted }]}>Puedes editarla; el cambio volverá a revisión.</Text>
-          <TourismActionButton compact label="Editar mi opinión" onPress={startEdit} />
+          <Text style={[styles.noticeTitle, { color: colors.text }]}>
+            Tu opinión publicada
+          </Text>
+          <Text style={[styles.stateText, { color: colors.textMuted }]}>
+            Puedes editarla; el cambio volverá a revisión.
+          </Text>
+          <TourismActionButton
+            compact
+            label="Editar mi opinión"
+            onPress={startEdit}
+          />
         </TourismSurface>
-      ) : canOpenForm && (editing || ownState === null || ownState.canCreate) ? (
+      ) : canOpenForm &&
+        (editing || ownState === null || ownState.canCreate) ? (
         <OpinionComposer
           comment={comment}
           error={formError}
           loading={mutation.isPending}
           rating={rating}
-          title={formMode === "edit" ? "Editar mi opinión" : "Escribe una opinión"}
+          title={
+            formMode === "edit" ? "Editar mi opinión" : "Escribe una opinión"
+          }
           onCancel={formMode === "edit" ? () => setEditing(false) : undefined}
           onChangeComment={setComment}
           onChangeRating={setRating}
@@ -264,7 +327,9 @@ function OpinionComposer({
   return (
     <TourismSurface style={styles.composer}>
       <Text style={[styles.noticeTitle, { color: colors.text }]}>{title}</Text>
-      <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Calificación</Text>
+      <Text style={[styles.inputLabel, { color: colors.textMuted }]}>
+        Calificación
+      </Text>
       <Stars rating={rating} onChange={onChangeRating} />
       <TextInput
         accessibilityLabel="Comentario de la opinión"
@@ -273,14 +338,35 @@ function OpinionComposer({
         onChangeText={onChangeComment}
         placeholder="Cuenta qué te pareció este lugar…"
         placeholderTextColor={colors.textFaint}
-        style={[styles.input, { backgroundColor: colors.surfaceMuted, borderColor: colors.border, color: colors.text }]}
+        style={[
+          styles.input,
+          {
+            backgroundColor: colors.surfaceMuted,
+            borderColor: colors.border,
+            color: colors.text,
+          },
+        ]}
         textAlignVertical="top"
         value={comment}
       />
-      {error ? <Text style={[styles.error, { color: colors.danger }]}>{error}</Text> : null}
+      {error ? (
+        <Text style={[styles.error, { color: colors.danger }]}>{error}</Text>
+      ) : null}
       <View style={styles.composerActions}>
-        {onCancel ? <TourismActionButton compact label="Cancelar" mode="outlined" onPress={onCancel} /> : null}
-        <TourismActionButton compact disabled={loading} label={loading ? "Enviando…" : "Enviar a revisión"} onPress={onSubmit} />
+        {onCancel ? (
+          <TourismActionButton
+            compact
+            label="Cancelar"
+            mode="outlined"
+            onPress={onCancel}
+          />
+        ) : null}
+        <TourismActionButton
+          compact
+          disabled={loading}
+          label={loading ? "Enviando…" : "Enviar a revisión"}
+          onPress={onSubmit}
+        />
       </View>
     </TourismSurface>
   );
@@ -314,9 +400,19 @@ function Stars({
           hitSlop={turismoMetrics.chipHitSlop}
           key={value}
           onPress={() => onChange?.(rating === value ? null : value)}
-          style={({ pressed }) => [styles.starButton, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.starButton,
+            pressed && styles.pressed,
+          ]}
         >
-          <Text style={[styles.star, { color: value <= (rating ?? 0) ? colors.warm : colors.textFaint }]}>
+          <Text
+            style={[
+              styles.star,
+              {
+                color: value <= (rating ?? 0) ? colors.warm : colors.textFaint,
+              },
+            ]}
+          >
             {value <= (rating ?? 0) ? "★" : "☆"}
           </Text>
         </Pressable>
@@ -331,14 +427,22 @@ function RatingDistribution({
   distribution: Readonly<Record<"1" | "2" | "3" | "4" | "5", number>>;
 }>) {
   const colors = useTurismoPalette();
-  const total = Object.values(distribution).reduce((sum, value) => sum + value, 0);
+  const total = Object.values(distribution).reduce(
+    (sum, value) => sum + value,
+    0,
+  );
   return (
     <View style={styles.distribution}>
       {[5, 4, 3, 2, 1].map((value) => {
-        const count = distribution[String(value) as "1" | "2" | "3" | "4" | "5"];
+        const count =
+          distribution[String(value) as "1" | "2" | "3" | "4" | "5"];
         return (
           <View key={value} style={styles.distributionRow}>
-            <Text style={[styles.distributionLabel, { color: colors.textMuted }]}>{value}</Text>
+            <Text
+              style={[styles.distributionLabel, { color: colors.textMuted }]}
+            >
+              {value}
+            </Text>
             <View style={[styles.track, { backgroundColor: colors.border }]}>
               <View
                 style={[
@@ -350,7 +454,11 @@ function RatingDistribution({
                 ]}
               />
             </View>
-            <Text style={[styles.distributionCount, { color: colors.textFaint }]}>{count}</Text>
+            <Text
+              style={[styles.distributionCount, { color: colors.textFaint }]}
+            >
+              {count}
+            </Text>
           </View>
         );
       })}
@@ -379,11 +487,24 @@ const styles = StyleSheet.create({
   summaryTitle: { ...turismoTypography.heading },
   summaryMeta: { ...turismoTypography.caption, marginTop: turismoSpacing.xxs },
   distribution: { gap: turismoSpacing.xxs },
-  distributionRow: { alignItems: "center", flexDirection: "row", gap: turismoSpacing.xs },
+  distributionRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: turismoSpacing.xs,
+  },
   distributionLabel: { ...turismoTypography.caption, width: 12 },
-  track: { borderRadius: turismoRadii.pill, flex: 1, height: 6, overflow: "hidden" },
+  track: {
+    borderRadius: turismoRadii.pill,
+    flex: 1,
+    height: 6,
+    overflow: "hidden",
+  },
   trackValue: { borderRadius: turismoRadii.pill, height: "100%" },
-  distributionCount: { ...turismoTypography.caption, textAlign: "right", width: 24 },
+  distributionCount: {
+    ...turismoTypography.caption,
+    textAlign: "right",
+    width: 24,
+  },
   stateRow: {
     alignItems: "center",
     flexDirection: "row",

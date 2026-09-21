@@ -16,6 +16,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { Path, Svg } from "react-native-svg";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
@@ -24,7 +25,6 @@ import {
   TourismActionButton,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
-import { TourismHeader } from "@/core/ui/tourism-navigation";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
@@ -106,9 +106,8 @@ export default function LoginScreen() {
     return (
       <TourismScreenFrame
         backgroundColor={accountEntryColors.background}
-        immersive
+        fullBleed
         onBack={canGoBack ? handleBack : undefined}
-        showHeader={false}
         title="Cuenta"
       >
         <StatusBar style="light" />
@@ -116,7 +115,6 @@ export default function LoginScreen() {
           onCreateAccount={() => openMode("register")}
           onGuest={() => void handleGuest()}
           onLogin={() => openMode("login")}
-          onBack={canGoBack ? handleBack : undefined}
         />
       </TourismScreenFrame>
     );
@@ -254,12 +252,10 @@ function AccountEntryContent({
   onCreateAccount,
   onGuest,
   onLogin,
-  onBack,
 }: Readonly<{
   onCreateAccount: () => void;
   onGuest: () => void;
   onLogin: () => void;
-  onBack?: () => void;
 }>) {
   const { height } = useWindowDimensions();
   const heroHeight = Math.min(Math.max(height * 0.34, 250), 330);
@@ -283,84 +279,87 @@ function AccountEntryContent({
           style={[styles.accountHero, { height: heroHeight }]}
         >
           <View pointerEvents="none" style={styles.accountHeroShade} />
-          <TourismHeader onBack={onBack} title="Cuenta" />
         </ImageBackground>
 
         <View
           style={[
             styles.accountBody,
             {
-              backgroundColor: accountEntryColors.background,
               minHeight: Math.max(height * 0.68, 520),
             },
           ]}
         >
-          <View style={styles.accountIdentityBadge}>
-            <View
-              style={[
-                styles.accountIdentityBadgeInner,
-                { backgroundColor: accountEntryColors.primarySoft },
-              ]}
-            >
-              <TurismoIcon
-                color={accountEntryColors.primaryStrong}
-                name="mapPinned"
-                size={40}
-                strokeWidth={1.8}
-              />
-            </View>
-          </View>
+          <Svg
+            height={72}
+            pointerEvents="none"
+            style={styles.accountWave}
+            viewBox="0 0 400 80"
+            width="100%"
+          >
+            <Path
+              d="M0 40C55 18 92 20 135 26C177 32 206 55 245 55C290 56 314 56 340 43C365 30 380 17 400 18V80H0Z"
+              fill={accountEntryColors.background}
+            />
+          </Svg>
 
-          <View style={styles.accountCopy}>
-            <Text accessibilityRole="header" style={styles.accountTitle}>
-              Descubre <Text style={styles.accountTitleAccent}>Ecuador</Text>
-            </Text>
-            <Text style={styles.accountSubtitle}>
-              Guarda lugares, consulta recomendaciones y planifica tus visitas
-              con tu cuenta turística.
-            </Text>
-          </View>
-
-          <View style={styles.accountBenefits}>
-            <AccountBenefit
-              icon="bookmark"
-              label={"Guarda tus\nlugares favoritos"}
-            />
-            <AccountBenefit
-              icon="map"
-              label={"Accede a rutas\npersonalizadas"}
-            />
-            <AccountBenefit
-              icon="bot"
-              label={"Accede a un\nagente IA turístico"}
-            />
-          </View>
-
-          <View style={styles.accountActions}>
-            <AccountEntryButton
-              icon="user"
-              label="Iniciar sesión"
-              onPress={onLogin}
-              variant="primary"
-            />
-            <AccountEntryButton
-              label="Crear cuenta"
-              onPress={onCreateAccount}
-              variant="outline"
-            />
-          </View>
-
-          <Pressable
-            accessibilityLabel="Explorar como invitado"
-            accessibilityRole="button"
-            onPress={onGuest}
-            style={({ pressed }) => [
-              styles.accountGuestLink,
-              { opacity: pressed ? 0.65 : 1 },
+          <View
+            style={[
+              styles.accountBodyContent,
+              {
+                backgroundColor: accountEntryColors.background,
+                minHeight: Math.max(height * 0.68 - 72, 448),
+              },
             ]}
           >
-            <Text style={styles.accountGuestText}>Explorar como invitado</Text>
-          </Pressable>
+            <View style={styles.accountCopy}>
+              <Text accessibilityRole="header" style={styles.accountTitle}>
+                Descubre <Text style={styles.accountTitleAccent}>Ecuador</Text>
+              </Text>
+            </View>
+
+            <View style={styles.accountBenefits}>
+              <AccountBenefit
+                icon="bookmark"
+                label={"Guarda tus\nlugares favoritos"}
+              />
+              <AccountBenefit
+                icon="map"
+                label={"Accede a rutas\npersonalizadas"}
+              />
+              <AccountBenefit
+                icon="bot"
+                label={"Accede a un\nagente IA turístico"}
+              />
+            </View>
+
+            <View style={styles.accountActions}>
+              <AccountEntryButton
+                icon="user"
+                label="Iniciar sesión"
+                onPress={onLogin}
+                variant="primary"
+              />
+              <AccountEntryButton
+                label="Crear cuenta"
+                onPress={onCreateAccount}
+                variant="outline"
+              />
+            </View>
+
+            <Pressable
+              accessibilityLabel="Explorar como invitado"
+              accessibilityRole="button"
+              onPress={onGuest}
+              style={({ pressed }) => [
+                styles.accountGuestLink,
+                { opacity: pressed ? 0.65 : 1 },
+              ]}
+            >
+              <Text style={styles.accountGuestText}>
+                Explorar como invitado
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </ScrollView>
@@ -875,31 +874,18 @@ const styles = StyleSheet.create({
     top: 0,
   },
   accountBody: {
-    alignItems: "center",
-    borderTopLeftRadius: 86,
-    borderTopRightRadius: 160,
     marginTop: -58,
-    paddingBottom: turismoSpacing.xl,
-    paddingHorizontal: turismoSpacing.md,
     position: "relative",
     width: "100%",
     zIndex: 1,
   },
-  accountIdentityBadge: {
+  accountWave: { alignSelf: "stretch" },
+  accountBodyContent: {
     alignItems: "center",
-    backgroundColor: accountEntryColors.background,
-    borderRadius: turismoRadii.pill,
-    height: 96,
-    justifyContent: "center",
-    marginTop: -24,
-    width: 96,
-  },
-  accountIdentityBadgeInner: {
-    alignItems: "center",
-    borderRadius: turismoRadii.pill,
-    height: 80,
-    justifyContent: "center",
-    width: 80,
+    flexGrow: 1,
+    paddingBottom: turismoSpacing.xl,
+    paddingHorizontal: turismoSpacing.md,
+    width: "100%",
   },
   accountCopy: {
     alignItems: "center",
@@ -916,13 +902,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   accountTitleAccent: { color: accountEntryColors.primaryStrong },
-  accountSubtitle: {
-    color: accountEntryColors.textMuted,
-    fontSize: 16,
-    lineHeight: 23,
-    maxWidth: 360,
-    textAlign: "center",
-  },
   accountBenefits: {
     flexDirection: "row",
     gap: turismoSpacing.xs,

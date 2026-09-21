@@ -1362,9 +1362,7 @@ function PlaceOpinions({
   code: string;
   onRequireAuth: () => void;
 }>) {
-  return (
-    <CenterOpinions code={code} onRequireAuth={onRequireAuth} />
-  );
+  return <CenterOpinions code={code} onRequireAuth={onRequireAuth} />;
 }
 
 function resolveMediaUrl(path: string): string {

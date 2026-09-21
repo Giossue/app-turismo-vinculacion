@@ -15,8 +15,8 @@ import { turismoMetrics, turismoSpacing } from "./tokens";
 export function TourismScreenFrame({
   backgroundColor,
   children,
+  fullBleed = false,
   includeBottomInset = true,
-  immersive = false,
   onBack,
   onMenu,
   showHeader = true,
@@ -25,8 +25,8 @@ export function TourismScreenFrame({
 }: Readonly<{
   backgroundColor?: string;
   children: ReactNode;
+  fullBleed?: boolean;
   includeBottomInset?: boolean;
-  immersive?: boolean;
   onBack?: () => void;
   onMenu?: () => void;
   showHeader?: boolean;
@@ -43,7 +43,7 @@ export function TourismScreenFrame({
         { backgroundColor: backgroundColor ?? colors.background },
       ]}
     >
-      {showHeader && !immersive ? (
+      {showHeader ? (
         <View style={styles.headerWrap}>
           <TourismHeader
             onBack={onBack}
@@ -54,7 +54,7 @@ export function TourismScreenFrame({
         </View>
       ) : null}
       <View
-        style={[styles.contentFrame, immersive && styles.immersiveContentFrame]}
+        style={[styles.contentFrame, fullBleed && styles.fullBleedContentFrame]}
       >
         {children}
       </View>
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: turismoMetrics.contentMaxWidth,
   },
-  immersiveContentFrame: {
+  fullBleedContentFrame: {
     maxWidth: "100%",
     paddingHorizontal: 0,
   },

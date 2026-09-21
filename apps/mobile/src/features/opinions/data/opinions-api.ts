@@ -133,7 +133,9 @@ async function submitCenterOpinion(
     },
   );
   if (!response.ok) {
-    throw new Error(await readError(response, "No se pudo guardar tu opinión."));
+    throw new Error(
+      await readError(response, "No se pudo guardar tu opinión."),
+    );
   }
   const payload = ownSchema.safeParse(await response.json());
   if (!payload.success || !payload.data.data) {
@@ -142,9 +144,12 @@ async function submitCenterOpinion(
   return payload.data.data;
 }
 
-async function readError(response: Response, fallback: string): Promise<string> {
-  const body = (await response.json().catch(() => null)) as
-    | { error?: { message?: string } }
-    | null;
+async function readError(
+  response: Response,
+  fallback: string,
+): Promise<string> {
+  const body = (await response.json().catch(() => null)) as {
+    error?: { message?: string };
+  } | null;
   return body?.error?.message ?? fallback;
 }

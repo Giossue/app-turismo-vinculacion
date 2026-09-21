@@ -73,3 +73,9 @@ El módulo `files` valida multimedia multipart (límite, MIME y firma), genera c
 escribe en almacenamiento local de desarrollo o S3/MinIO, y conserva en PostgreSQL solo
 metadatos, checksum, estado y auditoría. La lectura pública exige simultáneamente archivo
 `PUBLICADO` y centro publicado/activo.
+
+El módulo `opinions` expone la lectura pública de versiones aprobadas y separa las
+operaciones autenticadas del visitante (`GET/POST/PATCH /opinions/...`) de la cola
+administrativa (`GET/PATCH /admin/opinions`). El servicio autoriza por identidad antes de
+editar, usa transacciones para cambiar la versión publicada y registra cada aprobación o
+rechazo en `moderaciones_opinion`.
