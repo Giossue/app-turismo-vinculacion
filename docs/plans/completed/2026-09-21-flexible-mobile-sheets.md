@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Unificar todas las sheets del mapa, excepto la ficha de centro turístico, con interacción
+Unificar todas las sheets del mapa, incluida la ficha de centro turístico, con interacción
 nativa continua: arrastre desde el controlador o el contenido, estado parcial, estado
 expandido y cierre al bajar.
 
@@ -13,7 +13,8 @@ expandido y cierre al bajar.
 - Ficha de establecimiento/POI.
 - Agente turístico.
 - Eliminar los botones `X` de esas sheets.
-- Mantener intacta la ficha de centro turístico.
+- Conservar el contenido y las acciones de la ficha de centro turístico dentro del nuevo
+  contenedor flexible.
 
 ## Verificación
 
@@ -26,4 +27,6 @@ expandido y cierre al bajar.
 
 - [x] Centralizar configuración flexible.
 - [x] Aplicar comportamiento y retirar cierres redundantes.
+- [x] Sustituir la sheet de Expo UI por la integración gestual de Gorhom para que el primer
+      arrastre funcione también sobre espacios vacíos.
 - [x] Verificar el móvil con lint, TypeScript y 38 pruebas automatizadas.

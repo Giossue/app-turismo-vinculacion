@@ -33,8 +33,20 @@ const environmentSchema = z.object({
     .default(900),
   AUTH_REFRESH_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(30),
   AUTH_REFRESH_COOKIE_NAME: z.string().trim().min(1).default("turismo_refresh"),
-  AI_PROVIDER: z.enum(["openai", "anthropic"]).default("openai"),
-  AI_MODEL: z.string().trim().min(1).default("gpt-5-mini"),
+  AI_PROVIDER: z.enum(["openai", "anthropic"]).default("anthropic"),
+  AI_MODEL: z.string().trim().min(1).default("claude-sonnet-4-5"),
+  AI_MAX_OUTPUT_TOKENS: z.coerce
+    .number()
+    .int()
+    .min(256)
+    .max(4_000)
+    .default(1_200),
+  AI_REQUEST_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .min(5_000)
+    .max(60_000)
+    .default(30_000),
   OPENAI_API_KEY: z.string().trim().min(1).optional(),
   ANTHROPIC_API_KEY: z.string().trim().min(1).optional(),
   MEDIA_STORAGE_PROVIDER: z.enum(["LOCAL", "S3"]).default("LOCAL"),

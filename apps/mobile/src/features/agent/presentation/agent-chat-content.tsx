@@ -1,7 +1,7 @@
 import {
   BottomSheetScrollView,
   BottomSheetTextInput,
-} from "@expo/ui/community/bottom-sheet";
+} from "@gorhom/bottom-sheet";
 import { useRef, useState } from "react";
 import {
   Pressable,
@@ -191,6 +191,7 @@ const styles = StyleSheet.create({
   },
   messagesScroll: { flex: 1 },
   content: {
+    flexGrow: 1,
     paddingBottom: turismoSpacing.xs,
   },
   messages: { gap: turismoSpacing.lg },

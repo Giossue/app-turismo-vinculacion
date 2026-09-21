@@ -107,6 +107,13 @@ Handler para mantener panel, scrim y gesto en un único progreso nativo. React N
 conserva las interacciones y animaciones propias de sus controles. La animación no añade
 entradas al historial ni sustituye el estado visible declarado por la pantalla.
 
+Las bottom sheets interactivas del mapa usan `@gorhom/bottom-sheet` 5 sobre Gesture Handler
+y Reanimated. Se eligió porque su gesto de contenido empieza desde el primer contacto y
+coordina el arrastre con sus scrollables; `@expo/ui/community/bottom-sheet` se descartó para
+este flujo porque su puente `RNHostView` en Android consumía el primer gesto iniciado sobre
+espacio vacío. La dependencia es MIT, se limita a overlays móviles y no define la identidad
+visual, que continúa centralizada en los componentes y tokens `Tourism*`.
+
 ### Historial de navegación
 
 El stack de Expo Router representa pantallas, no snapshots de la UI. Zoom, paneo, scroll,

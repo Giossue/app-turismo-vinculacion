@@ -1,7 +1,8 @@
-import ExpoBottomSheet, {
+import BottomSheet, {
+  BottomSheetModal,
   BottomSheetScrollView,
   BottomSheetView,
-} from "@expo/ui/community/bottom-sheet";
+} from "@gorhom/bottom-sheet";
 import {
   useCallback,
   useEffect,
@@ -20,21 +21,10 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from "react-native-reanimated";
 import { Defs, LinearGradient, Rect, Stop, Svg } from "react-native-svg";
 import { Redirect, Stack, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   TourismActionButton,
@@ -161,8 +151,8 @@ function ExploreMapScreen() {
   const { closeMenu, menuVisible, openMenu } = useTourismMenu();
   const { height, width } = useWindowDimensions();
   const isLandscape = width > height;
-  const sheetRef = useRef<ExpoBottomSheet>(null);
-  const agentSheetRef = useRef<ExpoBottomSheet>(null);
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const agentSheetRef = useRef<BottomSheetModal>(null);
   const searchSheetOpenRef = useRef(false);
   const preserveSelectionOnSearchCloseRef = useRef(false);
   const agentSheetOpenRef = useRef(false);
@@ -184,7 +174,6 @@ function ExploreMapScreen() {
   >(null);
   const [mapFeatureFocusSelection, setMapFeatureFocusSelection] =
     useState<MapFeatureSelection | null>(null);
-  const [selectedCenterExpanded, setSelectedCenterExpanded] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
   const [focusLocationKey, setFocusLocationKey] = useState(0);
   const [confirmedLocationFocusKey, setConfirmedLocationFocusKey] = useState<
@@ -319,11 +308,9 @@ function ExploreMapScreen() {
     setSelectedEstablishment(null);
     setMapFeatureSelection(null);
     setMapFeatureFocusSelection(null);
-    setSelectedCenterExpanded(false);
     dismissSearchSheet();
   }, [dismissSearchSheet]);
   const closeSelectedCenter = useCallback(() => {
-    setSelectedCenterExpanded(false);
     if (submittedQuery) {
       setSelectedCenterCode(null);
       dismissSearchSheet();
@@ -334,15 +321,11 @@ function ExploreMapScreen() {
   const closeSelectedEstablishment = useCallback(() => {
     setSelectedEstablishment(null);
   }, []);
-  const expandSelectedCenter = useCallback(() => {
-    setSelectedCenterExpanded(true);
-  }, []);
   const selectCenter = useCallback(
     (center: PublicCenter) => {
       setMapFeatureFocusSelection(null);
       preserveSelectionOnSearchCloseRef.current = searchSheetOpenRef.current;
       dismissSearchSheet();
-      setSelectedCenterExpanded(false);
       setSelectedEstablishment(null);
       setSelectedCenterCode(center.code);
     },
@@ -354,7 +337,6 @@ function ExploreMapScreen() {
       preserveSelectionOnSearchCloseRef.current = searchSheetOpenRef.current;
       dismissSearchSheet();
       setSelectedCenterCode(null);
-      setSelectedCenterExpanded(false);
       setSelectedEstablishment(establishment);
     },
     [dismissSearchSheet],
@@ -379,7 +361,6 @@ function ExploreMapScreen() {
       setSelectedCenterCode(null);
       setSelectedEstablishment(null);
       setMapFeatureFocusSelection(null);
-      setSelectedCenterExpanded(false);
       setMapFeatureSelection(selections);
     },
     [dismissSearchSheet, handleMapFeatureSelection],
@@ -472,7 +453,6 @@ function ExploreMapScreen() {
     // cambiar de pantalla para no quedar montada sobre la ruta.
     dismissSearchSheet();
     setSelectedCenterCode(null);
-    setSelectedCenterExpanded(false);
     router.push({
       pathname: "/route",
       params: {
@@ -516,7 +496,6 @@ function ExploreMapScreen() {
     setSelectedEstablishment(null);
     setMapFeatureSelection(null);
     setMapFeatureFocusSelection(null);
-    setSelectedCenterExpanded(false);
   }, [auth.status, dismissSearchSheet, router]);
 
   const openAuth = useCallback(() => {
@@ -725,11 +704,11 @@ function ExploreMapScreen() {
         />
       </View>
       {!selectedCenterCode && !selectedEstablishment && !mapFeatureSelection ? (
-        <ExpoBottomSheet
+        <BottomSheetModal
           {...tourismFlexibleSheetBehavior}
           backgroundStyle={{ backgroundColor: colors.surface }}
-          index={-1}
-          onClose={() => {
+          index={0}
+          onDismiss={() => {
             const preserveSelection = preserveSelectionOnSearchCloseRef.current;
             preserveSelectionOnSearchCloseRef.current = false;
             searchSheetOpenRef.current = false;
@@ -785,7 +764,7 @@ function ExploreMapScreen() {
               />
             </BottomSheetScrollView>
           ) : null}
-        </ExpoBottomSheet>
+        </BottomSheetModal>
       ) : null}
       {mapFeatureSelection ? (
         <MapFeatureSelectionSheet
@@ -800,10 +779,7 @@ function ExploreMapScreen() {
           detail={selectedCenterDetail}
           detailError={selectedCenterDetailError}
           detailPending={isSelectedCenterDetailPending}
-          expanded={selectedCenterExpanded}
-          isLandscape={isLandscape}
           onClose={closeSelectedCenter}
-          onExpand={expandSelectedCenter}
           onOpenRoute={openRoute}
           onRequireAuth={openAuth}
           onRetryDetail={() => void refetchSelectedCenterDetail()}
@@ -828,11 +804,11 @@ function ExploreMapScreen() {
           }}
         />
       ) : null}
-      <ExpoBottomSheet
+      <BottomSheetModal
         {...tourismFlexibleSheetBehavior}
         backgroundStyle={{ backgroundColor: colors.surface }}
-        index={-1}
-        onClose={() => {
+        index={0}
+        onDismiss={() => {
           agentSheetOpenRef.current = false;
           setAgentOpen(false);
         }}
@@ -842,30 +818,17 @@ function ExploreMapScreen() {
         <BottomSheetView style={styles.agentSheetView}>
           <AgentChatContent onOpenCenter={openAgentCenter} />
         </BottomSheetView>
-      </ExpoBottomSheet>
+      </BottomSheetModal>
     </View>
   );
 }
-
-const CENTER_SHEET_SPRING = {
-  damping: 30,
-  mass: 0.8,
-  overshootClamping: true,
-  stiffness: 280,
-} as const;
-const CENTER_SHEET_EXPAND_THRESHOLD = 0.34;
-const CENTER_SHEET_DISMISS_DISTANCE = 96;
-const CENTER_SHEET_DISMISS_VELOCITY = 700;
 
 function CenterDetailSheet({
   center,
   detail,
   detailError,
   detailPending,
-  expanded,
-  isLandscape,
   onClose,
-  onExpand,
   onOpenRoute,
   onRequireAuth,
   onRetryDetail,
@@ -874,142 +837,46 @@ function CenterDetailSheet({
   detail?: PublicCenterDetail;
   detailError: Error | null;
   detailPending: boolean;
-  expanded: boolean;
-  isLandscape: boolean;
   onClose: () => void;
-  onExpand: () => void;
   onOpenRoute: () => void;
   onRequireAuth: () => void;
   onRetryDetail: () => void;
 }>) {
   const colors = useTurismoPalette();
-  const insets = useSafeAreaInsets();
-  const { height } = useWindowDimensions();
-  const fullOffset = Math.max(0, insets.top);
-  const compactHeight = Math.min(
-    Math.max(height * 0.52, 420),
-    Math.max(360, height - fullOffset - 24),
-  );
-  const compactOffset = Math.max(fullOffset, height - compactHeight);
-  const sheetOffset = useSharedValue(expanded ? fullOffset : compactOffset);
-  const sheetEntryOffset = useSharedValue(
-    expanded ? height - fullOffset : height - compactOffset,
-  );
-  const scrimOpacity = useSharedValue(0);
-  const dragStartOffset = useSharedValue(compactOffset);
-
-  useEffect(() => {
-    sheetEntryOffset.value = withSpring(0, CENTER_SHEET_SPRING);
-    scrimOpacity.value = withTiming(1, { duration: 220 });
-  }, [
-    compactOffset,
-    expanded,
-    fullOffset,
-    height,
-    scrimOpacity,
-    sheetEntryOffset,
-  ]);
-
-  const panGesture = Gesture.Pan()
-    .activeOffsetY([-8, 8])
-    .enabled(!expanded)
-    .onBegin(() => {
-      dragStartOffset.value = sheetOffset.value;
-    })
-    .onUpdate((event) => {
-      const next = dragStartOffset.value + event.translationY;
-      sheetOffset.value = Math.max(fullOffset, Math.min(height, next));
-    })
-    .onEnd((event) => {
-      const dismissByDistance =
-        sheetOffset.value - compactOffset >= CENTER_SHEET_DISMISS_DISTANCE;
-      const dismissByVelocity =
-        event.velocityY >= CENTER_SHEET_DISMISS_VELOCITY;
-      if (dismissByDistance || dismissByVelocity) {
-        sheetOffset.value = withSpring(
-          height,
-          {
-            damping: 32,
-            mass: 0.8,
-            overshootClamping: true,
-            stiffness: 260,
-          },
-          (finished) => {
-            if (finished) runOnJS(onClose)();
-          },
-        );
-        return;
-      }
-      const travel = compactOffset - fullOffset;
-      const progress =
-        travel <= 0 ? 1 : (compactOffset - sheetOffset.value) / travel;
-      const shouldExpand =
-        progress >= CENTER_SHEET_EXPAND_THRESHOLD || event.velocityY < -650;
-      sheetOffset.value = withSpring(
-        shouldExpand ? fullOffset : compactOffset,
-        CENTER_SHEET_SPRING,
-      );
-      if (shouldExpand) runOnJS(onExpand)();
-    });
-  const sheetAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: sheetOffset.value + sheetEntryOffset.value }],
-  }));
-  const scrimAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: scrimOpacity.value,
-  }));
+  const { height, width } = useWindowDimensions();
+  const isLandscape = width > height;
 
   return (
-    <View pointerEvents="box-none" style={styles.centerSheetOverlay}>
-      <Animated.View
-        pointerEvents={expanded ? "none" : "auto"}
-        style={[
-          styles.centerSheetScrim,
-          { backgroundColor: colors.scrim },
-          scrimAnimatedStyle,
+    <BottomSheet
+      {...tourismFlexibleSheetBehavior}
+      backgroundStyle={{ backgroundColor: colors.surface }}
+      index={0}
+      onClose={onClose}
+      snapPoints={tourismFlexibleSheetSnapPoints}
+    >
+      <BottomSheetScrollView
+        contentContainerStyle={[
+          styles.sheetView,
+          styles.centerSheetContent,
+          isLandscape && styles.sheetViewLandscape,
         ]}
+        key={center.code}
+        showsVerticalScrollIndicator={false}
+        style={styles.centerSheetScroll}
       >
-        <Pressable
-          accessibilityLabel="Cerrar ficha turística"
-          accessibilityRole="button"
-          onPress={onClose}
-          style={StyleSheet.absoluteFill}
+        <PlaceSheet
+          center={center}
+          code={center.code}
+          detail={detail}
+          detailError={detailError}
+          detailPending={detailPending}
+          onClose={onClose}
+          onOpenRoute={onOpenRoute}
+          onRequireAuth={onRequireAuth}
+          onRetryDetail={onRetryDetail}
         />
-      </Animated.View>
-      <GestureDetector gesture={panGesture}>
-        <Animated.View
-          style={[
-            styles.centerSheetSurface,
-            isLandscape && styles.centerSheetSurfaceLandscape,
-            { backgroundColor: colors.surface },
-            sheetAnimatedStyle,
-          ]}
-        >
-          <ScrollView
-            contentContainerStyle={[
-              styles.sheetView,
-              styles.centerSheetContent,
-              isLandscape && styles.sheetViewLandscape,
-            ]}
-            key={center.code}
-            scrollEnabled={expanded}
-            showsVerticalScrollIndicator={false}
-            style={styles.centerSheetScroll}
-          >
-            <PlaceSheet
-              center={center}
-              code={center.code}
-              detail={detail}
-              detailError={detailError}
-              detailPending={detailPending}
-              onClose={onClose}
-              onOpenRoute={onOpenRoute}
-              onRequireAuth={onRequireAuth}
-              onRetryDetail={onRetryDetail}
-            />
-          </ScrollView>
-        </Animated.View>
-      </GestureDetector>
-    </View>
+      </BottomSheetScrollView>
+    </BottomSheet>
   );
 }
 
@@ -1724,38 +1591,6 @@ const styles = StyleSheet.create({
   },
   flexibleSheetScroll: { flex: 1 },
   sheetViewLandscape: { maxWidth: turismoMetrics.sheetMaxWidth },
-  centerSheetOverlay: {
-    bottom: 0,
-    left: 0,
-    position: "absolute",
-    right: 0,
-    top: 0,
-    zIndex: 30,
-  },
-  centerSheetScrim: {
-    bottom: 0,
-    left: 0,
-    position: "absolute",
-    right: 0,
-    top: 0,
-  },
-  centerSheetSurface: {
-    borderTopLeftRadius: turismoRadii.lg,
-    borderTopRightRadius: turismoRadii.lg,
-    bottom: 0,
-    elevation: 24,
-    left: 0,
-    overflow: "hidden",
-    position: "absolute",
-    right: 0,
-    top: 0,
-    zIndex: 1,
-  },
-  centerSheetSurfaceLandscape: {
-    alignSelf: "center",
-    maxWidth: turismoMetrics.sheetMaxWidth,
-    width: "100%",
-  },
   centerSheetContent: {
     paddingBottom: turismoSpacing.xxl + turismoMetrics.iconButtonLg,
     paddingTop: 0,

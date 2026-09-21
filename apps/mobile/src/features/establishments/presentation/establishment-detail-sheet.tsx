@@ -1,6 +1,4 @@
-import ExpoBottomSheet, {
-  BottomSheetScrollView,
-} from "@expo/ui/community/bottom-sheet";
+import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { StyleSheet, Text, View } from "react-native";
 
 import {
@@ -32,7 +30,7 @@ export function EstablishmentDetailSheet({
   const colors = useTurismoPalette();
 
   return (
-    <ExpoBottomSheet
+    <BottomSheet
       {...tourismFlexibleSheetBehavior}
       backgroundStyle={{ backgroundColor: colors.surface }}
       index={0}
@@ -79,7 +77,7 @@ export function EstablishmentDetailSheet({
           onPress={onOpenRoute}
         />
       </BottomSheetScrollView>
-    </ExpoBottomSheet>
+    </BottomSheet>
   );
 }
 

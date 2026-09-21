@@ -16,6 +16,8 @@
 - Zustand para estado local efímero; React Hook Form y Zod para formularios.
 - React Native Paper como kit externo de componentes; los tokens y componentes `Tourism*`
   mantienen la identidad visual, mientras `StyleSheet` resuelve el layout nativo.
+- `@gorhom/bottom-sheet` sobre Gesture Handler/Reanimated para sheets con arrastre continuo
+  desde el contenido y scroll coordinado; no actúa como kit visual.
 - expo-secure-store para credenciales mínimas; caché/drafts solo cuando se especifique.
 - expo-notifications y Sentry cuando la feature los requiera.
 

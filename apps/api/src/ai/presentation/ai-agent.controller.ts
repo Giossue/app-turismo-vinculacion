@@ -4,11 +4,15 @@ import {
   Controller,
   Inject,
   Post,
-  Res,
   UseGuards,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiOkResponse, ApiTags } from "@nestjs/swagger";
-import type { FastifyReply } from "fastify";
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiServiceUnavailableResponse,
+  ApiTags,
+} from "@nestjs/swagger";
 
 import { Roles } from "../../auth/auth.decorators";
 import { AuthGuard } from "../../auth/auth.guard";
@@ -18,6 +22,7 @@ import {
   AiAgentService,
   agentChatSchema,
 } from "../application/ai-agent.service";
+import { agentResponseSchema } from "../application/ai-agent.contracts";
 
 @ApiTags("ai-agent")
 @ApiBearerAuth()
@@ -29,26 +34,30 @@ export class AiAgentController {
 
   @Post("chat")
   @ApiOkResponse({
-    description: "Respuesta de texto en streaming del agente turístico.",
+    description:
+      "Respuesta estructurada con texto, tarjetas, acciones propuestas y fuentes.",
+    schema: {
+      type: "object",
+      required: ["text", "cards", "actions", "sources"],
+      properties: {
+        text: { type: "string" },
+        cards: { type: "array", items: { type: "object" } },
+        actions: { type: "array", items: { type: "object" } },
+        sources: { type: "array", items: { type: "object" } },
+      },
+    },
   })
-  async chat(@Body() body: unknown, @Res() reply: FastifyReply): Promise<void> {
+  @ApiBadRequestResponse({ description: "El mensaje o ubicación no es válido." })
+  @ApiServiceUnavailableResponse({
+    description: "El proveedor o el catálogo del agente no está disponible.",
+  })
+  async chat(@Body() body: unknown) {
     const parsed = agentChatSchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException(
         parsed.error.issues.map((issue) => issue.message).join(" "),
       );
     }
-    const result = this.agent.stream(parsed.data);
-    reply.hijack();
-    reply.raw.setHeader("Content-Type", "text/plain; charset=utf-8");
-    reply.raw.setHeader("Cache-Control", "no-cache");
-    reply.raw.setHeader("X-Content-Type-Options", "nosniff");
-    try {
-      for await (const chunk of result.textStream) reply.raw.write(chunk);
-      reply.raw.end();
-    } catch (error) {
-      reply.raw.end();
-      throw error;
-    }
+    return agentResponseSchema.parse(await this.agent.generate(parsed.data));
   }
 }

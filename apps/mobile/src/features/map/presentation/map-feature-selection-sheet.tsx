@@ -1,6 +1,4 @@
-import ExpoBottomSheet, {
-  BottomSheetScrollView,
-} from "@expo/ui/community/bottom-sheet";
+import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
@@ -28,7 +26,7 @@ export function MapFeatureSelectionSheet({
   const colors = useTurismoPalette();
 
   return (
-    <ExpoBottomSheet
+    <BottomSheet
       {...tourismFlexibleSheetBehavior}
       backgroundStyle={{ backgroundColor: colors.surface }}
       index={0}
@@ -113,7 +111,7 @@ export function MapFeatureSelectionSheet({
           })}
         </View>
       </BottomSheetScrollView>
-    </ExpoBottomSheet>
+    </BottomSheet>
   );
 }
 

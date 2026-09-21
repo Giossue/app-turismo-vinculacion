@@ -6,6 +6,7 @@ import * as SystemUI from "expo-system-ui";
 import { StatusBar } from "expo-status-bar";
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { useTurismoTheme, TurismoThemeProvider } from "@/core/ui/theme-context";
@@ -68,7 +69,9 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AppProviders>
-        <AppNavigation />
+        <BottomSheetModalProvider>
+          <AppNavigation />
+        </BottomSheetModalProvider>
       </AppProviders>
     </GestureHandlerRootView>
   );
