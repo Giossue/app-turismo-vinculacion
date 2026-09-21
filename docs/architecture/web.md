@@ -80,7 +80,9 @@ se registran en la tabla de auditoría existente con el discriminador `ESTABLISH
 la taxonomía se consulta como actividad → clasificación → categoría y no reutiliza
 `categorias_atractivo`; la importación nacional queda para una fase posterior.
 La sección Catálogos permite administrar las opciones técnicas mediante la API y muestra
-estados activos/inactivos sin conexión directa a PostgreSQL.
+estados activos/inactivos sin conexión directa a PostgreSQL. Las categorías de catastro
+además conservan un código de icono y un color hexadecimal controlados por la API para
+representar establecimientos en el mapa móvil.
 El editor también carga fotografías como multipart hacia `/admin/centers/:code/media`; la
 API guarda el binario en el proveedor configurado, registra metadatos en PostgreSQL y solo
 expone una imagen cuando la ficha se publica.

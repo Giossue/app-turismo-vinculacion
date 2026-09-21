@@ -16,6 +16,7 @@ import { RolesGuard } from "../auth/roles.guard";
 import type { AuthenticatedUser } from "../auth/auth.types";
 import {
   AdminEstablishmentsQueryDto,
+  PublicEstablishmentsMapQueryDto,
   PublicEstablishmentsQueryDto,
   SaveEstablishmentDto,
 } from "./establishments.dto";
@@ -88,6 +89,11 @@ export class AdminEstablishmentsController {
 @Controller("establishments")
 export class PublicEstablishmentsController {
   constructor(private readonly establishments: EstablishmentsService) {}
+
+  @Get("map")
+  async map(@Query() query: PublicEstablishmentsMapQueryDto) {
+    return { data: await this.establishments.map(query) };
+  }
 
   @Get("nearby")
   async nearby(@Query() query: PublicEstablishmentsQueryDto) {

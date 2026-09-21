@@ -37,12 +37,19 @@ import {
 type JsonRecord = Record<string, unknown>;
 type CatalogKey =
   "ACCESSIBILITY" | "ACTIVITY" | "FACILITY" | "ESTABLISHMENT_CATEGORY";
-
-const CATALOG_TARGETS: Record<CatalogKey, { table: string }> = {
+const DEFAULT_ESTABLISHMENT_CATEGORY_ICON = "mapPin";
+const DEFAULT_ESTABLISHMENT_CATEGORY_COLOR = "#2563eb";
+const CATALOG_TARGETS: Record<
+  CatalogKey,
+  { table: string; supportsVisual?: boolean }
+> = {
   ACCESSIBILITY: { table: "tipos_accesibilidad" },
   ACTIVITY: { table: "actividades_turisticas" },
   FACILITY: { table: "tipos_facilidad" },
-  ESTABLISHMENT_CATEGORY: { table: "catalogo_catastro_categorias" },
+  ESTABLISHMENT_CATEGORY: {
+    table: "catalogo_catastro_categorias",
+    supportsVisual: true,
+  },
 };
 
 type CenterDraft = {
@@ -2003,6 +2010,7 @@ export class AdminCentersService {
       this.dataSource.query(
         `SELECT category.id, category.codigo AS code, category.nombre AS name,
                 category.activo AS active, category.orden AS "order",
+                category.icono AS icon, category.color AS color,
                 classification.id AS "classificationId",
                 activity.id AS "activityId",
                 classification.nombre AS "classificationName",
@@ -2352,27 +2360,68 @@ export class AdminCentersService {
   ) {
     const target = CATALOG_TARGETS[catalog as CatalogKey];
     if (!target) throw new ConflictException("El catálogo no está disponible.");
-    if (input.name === undefined && input.active === undefined) {
+    if (
+      input.name === undefined &&
+      input.active === undefined &&
+      input.icon === undefined &&
+      input.color === undefined
+    ) {
       throw new ConflictException("Debes indicar un cambio para el catálogo.");
     }
+    if (
+      !target.supportsVisual &&
+      (input.icon !== undefined || input.color !== undefined)
+    ) {
+      throw new ConflictException(
+        "Icono y color solo están disponibles para categorías de catastro.",
+      );
+    }
     return this.dataSource.transaction(async (manager) => {
+      const visualSelect = target.supportsVisual
+        ? ", icono AS icon, color"
+        : "";
       const rows = (await manager.query(
-        `SELECT id, codigo AS code, nombre AS name, activo AS active
+        `SELECT id, codigo AS code, nombre AS name, activo AS active${visualSelect}
            FROM ${target.table} WHERE id = $1 FOR UPDATE`,
         [id],
-      )) as Array<{ id: string; code: string; name: string; active: boolean }>;
+      )) as Array<{
+        id: string;
+        code: string;
+        name: string;
+        active: boolean;
+        icon?: string;
+        color?: string;
+      }>;
       const current = rows[0];
       if (!current)
         throw new NotFoundException("No se encontró la opción del catálogo.");
       const nextName = input.name?.trim() || current.name;
       const nextActive = input.active ?? current.active;
-      if (nextName === current.name && nextActive === current.active) {
+      const nextIcon = target.supportsVisual
+        ? (input.icon ?? current.icon ?? DEFAULT_ESTABLISHMENT_CATEGORY_ICON)
+        : undefined;
+      const nextColor = target.supportsVisual
+        ? (input.color ?? current.color ?? DEFAULT_ESTABLISHMENT_CATEGORY_COLOR)
+        : undefined;
+      const visualUnchanged =
+        !target.supportsVisual ||
+        (nextIcon === (current.icon ?? DEFAULT_ESTABLISHMENT_CATEGORY_ICON) &&
+          nextColor ===
+            (current.color ?? DEFAULT_ESTABLISHMENT_CATEGORY_COLOR));
+      if (
+        nextName === current.name &&
+        nextActive === current.active &&
+        visualUnchanged
+      ) {
         return {
           catalog,
           id: Number(current.id),
           code: current.code,
           name: current.name,
           active: current.active,
+          ...(target.supportsVisual
+            ? { icon: nextIcon, color: nextColor }
+            : {}),
         };
       }
       const duplicate = await manager.query(
@@ -2393,13 +2442,31 @@ export class AdminCentersService {
       if (duplicate[0]) {
         throw new ConflictException("Ya existe otra opción con ese nombre.");
       }
+      const visualSet = target.supportsVisual ? ", icono = $4, color = $5" : "";
       await manager.query(
         `UPDATE ${target.table}
-            SET nombre = $2, activo = $3
+            SET nombre = $2, activo = $3${visualSet}
           WHERE id = $1
           RETURNING id, codigo AS code, nombre AS name, activo AS active`,
-        [id, nextName, nextActive],
+        target.supportsVisual
+          ? [id, nextName, nextActive, nextIcon, nextColor]
+          : [id, nextName, nextActive],
       );
+      const previousAudit = {
+        name: current.name,
+        active: current.active,
+        ...(target.supportsVisual
+          ? {
+              icon: current.icon ?? DEFAULT_ESTABLISHMENT_CATEGORY_ICON,
+              color: current.color ?? DEFAULT_ESTABLISHMENT_CATEGORY_COLOR,
+            }
+          : {}),
+      };
+      const nextAudit = {
+        name: nextName,
+        active: nextActive,
+        ...(target.supportsVisual ? { icon: nextIcon, color: nextColor } : {}),
+      };
       await manager.query(
         `INSERT INTO auditoria_catalogos
           (usuario_id, catalogo_codigo, registro_id, accion, datos_anteriores, datos_nuevos)
@@ -2413,8 +2480,8 @@ export class AdminCentersService {
             : nextActive
               ? "ACTIVAR"
               : "DESACTIVAR",
-          JSON.stringify({ name: current.name, active: current.active }),
-          JSON.stringify({ name: nextName, active: nextActive }),
+          JSON.stringify(previousAudit),
+          JSON.stringify(nextAudit),
         ],
       );
       return {
@@ -2423,6 +2490,7 @@ export class AdminCentersService {
         code: current.code,
         name: nextName,
         active: nextActive,
+        ...(target.supportsVisual ? { icon: nextIcon, color: nextColor } : {}),
       };
     });
   }

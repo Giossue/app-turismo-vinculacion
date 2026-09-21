@@ -22,6 +22,7 @@ import { getTurismoMapColors } from "@/core/ui/tokens";
 import { useTurismoTheme } from "@/core/ui/theme-context";
 import type { UserLocationCoordinate } from "@/core/location/use-user-location";
 import type { PublicCenter } from "@/features/centers/domain/public-center";
+import type { PublicMapEstablishment } from "@/features/establishments/domain/establishment";
 
 type BoundingBox = Readonly<{
   west: number;
@@ -32,6 +33,7 @@ type BoundingBox = Readonly<{
 export type BasemapMode = "streets" | "navigation";
 type CenterMapProps = Readonly<{
   centers: readonly PublicCenter[];
+  establishments?: readonly PublicMapEstablishment[];
   basemapMode?: BasemapMode;
   focusLocationKey?: number;
   onAttributionChange?: (handler: (() => void) | null) => void;
@@ -52,6 +54,28 @@ type UserLocationFeatureCollection = GeoJSON.FeatureCollection<
   GeoJSON.Point,
   Record<string, never>
 >;
+type EstablishmentProperties = Readonly<{
+  category: string | null;
+  color: string;
+  icon: string;
+  iconGlyph: string;
+  approximate: boolean;
+}>;
+type EstablishmentFeatureCollection = GeoJSON.FeatureCollection<
+  GeoJSON.Point,
+  EstablishmentProperties
+>;
+
+const establishmentIconGlyphs: Record<string, string> = {
+  mapPin: "•",
+  hotel: "⌂",
+  restaurant: "R",
+  coffee: "C",
+  store: "S",
+  bus: "B",
+  ticket: "★",
+  briefcase: "A",
+};
 
 const tourismPinLight = require("../../../../assets/images/tourism-pin-light.png");
 const tourismPinDark = require("../../../../assets/images/tourism-pin-dark.png");
@@ -79,6 +103,7 @@ type PendingLocationFocus = Readonly<{
 export function CenterMap({
   basemapMode = "streets",
   centers,
+  establishments = [],
   focusLocationKey,
   onAttributionChange,
   onBearingChange,
@@ -137,6 +162,28 @@ export function CenterMap({
         : [],
     }),
     [userLocation],
+  );
+  const establishmentFeatures = useMemo<EstablishmentFeatureCollection>(
+    () => ({
+      type: "FeatureCollection",
+      features: establishments.map((establishment) => ({
+        type: "Feature",
+        properties: {
+          category: establishment.category,
+          color: establishment.color,
+          icon: establishment.icon,
+          iconGlyph:
+            establishmentIconGlyphs[establishment.icon] ??
+            establishmentIconGlyphs.mapPin,
+          approximate: establishment.approximate,
+        },
+        geometry: {
+          type: "Point",
+          coordinates: [establishment.longitude, establishment.latitude],
+        },
+      })),
+    }),
+    [establishments],
   );
   // Con pocos puntos mostramos cada pin de forma estable. El clustering nativo
   // se reserva para catálogos grandes, evitando que un zoom corto cambie un
@@ -425,6 +472,67 @@ export function CenterMap({
                   : "tourism-pin-selected-light",
               "icon-size": 0.6,
             }}
+            type="symbol"
+          />
+        </GeoJSONSource>
+        <GeoJSONSource
+          cluster
+          clusterMaxZoom={14}
+          clusterMinPoints={2}
+          clusterRadius={48}
+          data={establishmentFeatures}
+          id="tourism-establishments-source"
+        >
+          <Layer
+            filter={["has", "point_count"]}
+            id="tourism-establishment-cluster-circles"
+            paint={{
+              "circle-color": colors.info,
+              "circle-radius": [
+                "step",
+                ["get", "point_count"],
+                16,
+                10,
+                19,
+                30,
+                22,
+              ],
+              "circle-stroke-color": colors.surface,
+              "circle-stroke-width": 2,
+            }}
+            type="circle"
+          />
+          <Layer
+            filter={["has", "point_count"]}
+            id="tourism-establishment-cluster-count"
+            layout={{
+              "text-field": ["get", "point_count_abbreviated"],
+              "text-size": 12,
+            }}
+            paint={{ "text-color": colors.onPrimary }}
+            type="symbol"
+          />
+          <Layer
+            filter={["!", ["has", "point_count"]]}
+            id="tourism-establishment-circles"
+            paint={{
+              "circle-color": ["get", "color"],
+              "circle-radius": 11,
+              "circle-stroke-color": colors.surface,
+              "circle-stroke-width": 2,
+            }}
+            type="circle"
+          />
+          <Layer
+            filter={["!", ["has", "point_count"]]}
+            id="tourism-establishment-icons"
+            layout={{
+              "text-allow-overlap": true,
+              "text-field": ["get", "iconGlyph"],
+              "text-ignore-placement": true,
+              "text-size": 12,
+            }}
+            paint={{ "text-color": colors.surface }}
             type="symbol"
           />
         </GeoJSONSource>

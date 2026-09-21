@@ -35,6 +35,47 @@ const row = {
 };
 
 describe("EstablishmentsService", () => {
+  it("returns active map markers with category visuals and locality fallback", async () => {
+    const query = vi.fn().mockResolvedValue([
+      {
+        name: "Hotel de prueba",
+        category: "2 Estrellas",
+        latitude: "-1.59263",
+        longitude: "-79.00098",
+        approximate: true,
+        icon: "hotel",
+        color: "#2563eb",
+      },
+    ]);
+    const service = new EstablishmentsService({ query } as never);
+
+    await expect(service.map({ limit: 500 })).resolves.toEqual({
+      items: [
+        {
+          name: "Hotel de prueba",
+          category: "2 Estrellas",
+          latitude: -1.59263,
+          longitude: -79.00098,
+          approximate: true,
+          icon: "hotel",
+          color: "#2563eb",
+        },
+      ],
+    });
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("e.activo = TRUE"),
+      [500],
+    );
+  });
+
+  it("rejects an incomplete map viewport", async () => {
+    const service = new EstablishmentsService({ query: vi.fn() } as never);
+
+    await expect(service.map({ west: -79, limit: 500 })).rejects.toThrow(
+      "cuatro límites",
+    );
+  });
+
   it("rejects a public search without an activity or location", async () => {
     const service = new EstablishmentsService({ query: vi.fn() } as never);
 

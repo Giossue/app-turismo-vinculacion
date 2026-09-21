@@ -9,6 +9,7 @@ import { DataSource, EntityManager } from "typeorm";
 
 import type {
   AdminEstablishmentsQueryDto,
+  PublicEstablishmentsMapQueryDto,
   PublicEstablishmentsQueryDto,
   SaveEstablishmentDto,
 } from "./establishments.dto";
@@ -344,6 +345,77 @@ export class EstablishmentsService {
       [numericId],
     );
     return { items: rows };
+  }
+
+  async map(query: PublicEstablishmentsMapQueryDto) {
+    const bounds = [query.west, query.south, query.east, query.north];
+    const hasAnyBound = bounds.some((value) => value !== undefined);
+    const hasAllBounds = bounds.every((value) => value !== undefined);
+    if (hasAnyBound && !hasAllBounds) {
+      throw new BadRequestException(
+        "El mapa requiere los cuatro límites del viewport.",
+      );
+    }
+
+    const params: unknown[] = [];
+    const add = (value: unknown) => {
+      params.push(value);
+      return `$${params.length}`;
+    };
+    const latitudeExpression =
+      "COALESCE(CASE WHEN e.latitud IS NOT NULL AND e.longitud IS NOT NULL THEN e.latitud END, l.latitud)";
+    const longitudeExpression =
+      "COALESCE(CASE WHEN e.latitud IS NOT NULL AND e.longitud IS NOT NULL THEN e.longitud END, l.longitud)";
+    const where = [
+      "e.activo = TRUE",
+      `${latitudeExpression} IS NOT NULL`,
+      `${longitudeExpression} IS NOT NULL`,
+    ];
+    if (hasAllBounds) {
+      const west = add(query.west);
+      const south = add(query.south);
+      const east = add(query.east);
+      const north = add(query.north);
+      where.push(
+        `${longitudeExpression} BETWEEN ${west} AND ${east}`,
+        `${latitudeExpression} BETWEEN ${south} AND ${north}`,
+      );
+    }
+    const limit = add(Math.min(query.limit ?? 500, 500));
+    const rows = (await this.dataSource.query(
+      `SELECT e.nombre_comercial AS name,
+              COALESCE(category_catalog.nombre, e.categoria) AS category,
+              ${latitudeExpression}::double precision AS latitude,
+              ${longitudeExpression}::double precision AS longitude,
+              NOT (e.latitud IS NOT NULL AND e.longitud IS NOT NULL) AS approximate,
+              COALESCE(category_catalog.icono, 'mapPin') AS icon,
+              COALESCE(category_catalog.color, '#2563eb') AS color
+         ${establishmentJoin}
+        WHERE ${where.join(" AND ")}
+        ORDER BY e.nombre_comercial, e.id
+        LIMIT ${limit}`,
+      params,
+    )) as Array<{
+      name: string;
+      category: string | null;
+      latitude: string | number;
+      longitude: string | number;
+      approximate: boolean;
+      icon: string;
+      color: string;
+    }>;
+
+    return {
+      items: rows.map((row) => ({
+        name: row.name,
+        category: row.category,
+        latitude: Number(row.latitude),
+        longitude: Number(row.longitude),
+        approximate: row.approximate,
+        icon: row.icon,
+        color: row.color,
+      })),
+    };
   }
 
   async nearby(query: PublicEstablishmentsQueryDto) {

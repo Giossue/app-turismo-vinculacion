@@ -82,11 +82,13 @@ export default function RouteScreen() {
   const [navigationActive, setNavigationActive] = useState(false);
   const [navigationNotice, setNavigationNotice] = useState<string | null>(null);
   const [recenterKey, setRecenterKey] = useState(0);
+  const [routeSheetGeneration, setRouteSheetGeneration] = useState(0);
   const navigationActiveRef = useRef(false);
   const navigationStartInFlightRef = useRef(false);
   const pendingLoginAfterCloseRef = useRef(false);
   const screenFocusedRef = useRef(false);
   const routeSheetRef = useRef<ExpoBottomSheet>(null);
+  const routeSheetGenerationRef = useRef(0);
   const {
     message: locationMessage,
     requestLocation,
@@ -119,8 +121,16 @@ export default function RouteScreen() {
     [teardownNavigation],
   );
 
-  const handleRouteSheetClose = useCallback(() => {
-    if (navigationActiveRef.current) return;
+  const handleRouteSheetClose = useCallback((sheetGeneration: number) => {
+    // The preview sheet is unmounted when navigation starts. A native close
+    // callback from that old instance must not pop the route screen after the
+    // user later returns from active navigation.
+    if (
+      navigationActiveRef.current ||
+      sheetGeneration !== routeSheetGenerationRef.current
+    ) {
+      return;
+    }
     finishNavigation(null);
     if (pendingLoginAfterCloseRef.current) {
       pendingLoginAfterCloseRef.current = false;
@@ -316,6 +326,9 @@ export default function RouteScreen() {
       }
 
       setNavigationNotice(nextNotice);
+      const nextSheetGeneration = routeSheetGenerationRef.current + 1;
+      routeSheetGenerationRef.current = nextSheetGeneration;
+      setRouteSheetGeneration(nextSheetGeneration);
       navigationActiveRef.current = true;
       setRecenterKey((current) => current + 1);
       setNavigationActive(true);
@@ -369,7 +382,8 @@ export default function RouteScreen() {
           enablePanDownToClose
           handleComponent={null}
           index={0}
-          onClose={handleRouteSheetClose}
+          key={`route-preview-${routeSheetGeneration}`}
+          onClose={() => handleRouteSheetClose(routeSheetGeneration)}
           ref={routeSheetRef}
           snapPoints={["38%", "84%"]}
         >

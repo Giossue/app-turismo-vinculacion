@@ -419,6 +419,17 @@ export class SaveAdminSectionDto {
   version?: number;
 }
 
+export const ESTABLISHMENT_CATEGORY_ICON_CODES = [
+  "mapPin",
+  "hotel",
+  "restaurant",
+  "coffee",
+  "store",
+  "bus",
+  "ticket",
+  "briefcase",
+] as const;
+
 export class AdminCatalogsQueryDto {
   @IsOptional()
   @IsString()
@@ -441,4 +452,14 @@ export class AdminCatalogUpdateDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(ESTABLISHMENT_CATEGORY_ICON_CODES)
+  icon?: (typeof ESTABLISHMENT_CATEGORY_ICON_CODES)[number];
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^#[0-9A-Fa-f]{6}$/)
+  color?: string;
 }

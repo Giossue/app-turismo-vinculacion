@@ -95,7 +95,6 @@ export default function SavedScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-
           {savedCenters.data.length > 0 ? (
             <View style={styles.list}>
               {savedCenters.data.map((center) => (

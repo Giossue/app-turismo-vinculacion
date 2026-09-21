@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { getApiUrl } from "@/core/api/api-url";
 import type {
+  MapEstablishmentsResult,
   NearbyEstablishmentsQuery,
   NearbyEstablishmentsResult,
 } from "../domain/establishment";
@@ -35,6 +36,40 @@ const responseSchema = z.object({
       .nullable(),
   }),
 });
+const mapResponseSchema = z.object({
+  data: z.object({
+    items: z.array(
+      z.object({
+        name: z.string().min(1),
+        category: z.string().nullable(),
+        latitude: z.number().finite(),
+        longitude: z.number().finite(),
+        approximate: z.boolean(),
+        icon: z.string().min(1),
+        color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+      }),
+    ),
+  }),
+});
+
+export async function getMapEstablishments(
+  fetcher: typeof fetch = fetch,
+  apiUrl = getApiUrl(),
+): Promise<MapEstablishmentsResult> {
+  const response = await fetcher(`${apiUrl}/establishments/map`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) {
+    throw new Error("No pudimos cargar los establecimientos del mapa.");
+  }
+  const payload = mapResponseSchema.safeParse(await response.json());
+  if (!payload.success) {
+    throw new Error(
+      "Los establecimientos del mapa tienen un formato inválido.",
+    );
+  }
+  return payload.data.data;
+}
 
 export async function getNearbyEstablishments(
   query: NearbyEstablishmentsQuery,

@@ -103,7 +103,8 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   navegación, la hoja se desmonta y aparece un modo activo independiente con la próxima
   maniobra, la posición actual, un control para recentrar y una barra inferior con tiempo
   restante, distancia y hora estimada. Ese modo bloquea el gesto de salida y el Atrás del
-  sistema; solo la `X` lo cierra.
+  sistema; la `X` regresa a la vista previa. Desde la vista previa, Atrás o tocar el mapa
+  fuera de la hoja cierra la ruta y regresa a la ficha del atractivo.
 - Al abrir “Cómo llegar” desde un atractivo publicado, el cliente solicita la ubicación
   puntual y calcula automáticamente la primera ruta; iniciar la navegación sigue siendo
   una acción explícita. Si la ubicación o el cálculo fallan, el panel permite reintentar.
@@ -145,6 +146,10 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   árbol React mientras el usuario hace zoom o panea. Los pines individuales usan un
   recurso de icono estático, sin una vista React ni un círculo de fondo. Los clusters sí
   usan una capa separada con conteo y se expanden mediante `getClusterExpansionZoom`.
+  Los establecimientos activos del catastro llegan desde `GET /api/v1/establishments/map`
+  en una fuente GeoJSON separada, limitada y agrupada; reciben el icono y color de su
+  categoría. Cuando un registro antiguo no tiene coordenadas propias, el endpoint usa la
+  coordenada de su localidad y marca el punto como aproximado.
   En el mapa en línea, ese conjunto proviene exclusivamente de una respuesta exitosa de
   `GET /api/v1/centers`; si la respuesta remota está vacía, no se crean pines de ejemplo ni
   se reutiliza el manifiesto offline.

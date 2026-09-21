@@ -11,6 +11,20 @@ export type PublicEstablishment = Readonly<{
   localityName: string;
 }>;
 
+export type PublicMapEstablishment = Readonly<{
+  name: string;
+  category: string | null;
+  latitude: number;
+  longitude: number;
+  approximate: boolean;
+  icon: string;
+  color: string;
+}>;
+
+export type MapEstablishmentsResult = Readonly<{
+  items: readonly PublicMapEstablishment[];
+}>;
+
 export type NearbyEstablishmentsResult = Readonly<{
   items: readonly PublicEstablishment[];
   fallbackApplied: boolean;

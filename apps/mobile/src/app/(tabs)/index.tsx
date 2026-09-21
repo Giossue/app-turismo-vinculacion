@@ -59,6 +59,7 @@ import {
 } from "@/core/ui/tokens";
 import { useDiscoveryCatalog } from "@/features/centers/application/use-discovery-catalog";
 import { usePublishedCenters } from "@/features/centers/application/use-published-centers";
+import { useMapEstablishments } from "@/features/establishments/application/use-map-establishments";
 import { useNearbyEstablishments } from "@/features/establishments/application/use-nearby-establishments";
 import { EstablishmentResultsSheet } from "@/features/establishments/presentation/establishment-results-sheet";
 import type {
@@ -207,6 +208,7 @@ function ExploreMapScreen() {
   const nearbyEstablishments = useNearbyEstablishments(
     establishmentSearchQuery,
   );
+  const mapEstablishments = useMapEstablishments();
   const query = useMemo(
     () => ({
       ...filters,
@@ -460,6 +462,7 @@ function ExploreMapScreen() {
       <CenterMap
         basemapMode="streets"
         centers={visibleCenters}
+        establishments={mapEstablishments.data?.items ?? []}
         onAttributionChange={handleAttributionChange}
         onBearingChange={setMapBearing}
         onCenterPress={(center) => {

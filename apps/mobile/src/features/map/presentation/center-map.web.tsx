@@ -10,9 +10,11 @@ import {
 } from "@/core/ui/tokens";
 import type { UserLocationCoordinate } from "@/core/location/use-user-location";
 import type { PublicCenter } from "@/features/centers/domain/public-center";
+import type { PublicMapEstablishment } from "@/features/establishments/domain/establishment";
 
 type CenterMapProps = Readonly<{
   centers: readonly PublicCenter[];
+  establishments?: readonly PublicMapEstablishment[];
   focusLocationKey?: number;
   onAttributionChange?: (handler: (() => void) | null) => void;
   onCenterPress: (center: PublicCenter) => void;

@@ -1,6 +1,52 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { getNearbyEstablishments } from "./establishments-api";
+import {
+  getMapEstablishments,
+  getNearbyEstablishments,
+} from "./establishments-api";
+
+describe("getMapEstablishments", () => {
+  it("loads category visuals for public map markers", async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          items: [
+            {
+              name: "Hotel Guaranda",
+              category: "2 Estrellas",
+              latitude: -1.59,
+              longitude: -79.01,
+              approximate: true,
+              icon: "hotel",
+              color: "#2563eb",
+            },
+          ],
+        },
+      }),
+    });
+
+    await expect(
+      getMapEstablishments(fetcher, "http://api.test/api/v1"),
+    ).resolves.toEqual({
+      items: [
+        {
+          name: "Hotel Guaranda",
+          category: "2 Estrellas",
+          latitude: -1.59,
+          longitude: -79.01,
+          approximate: true,
+          icon: "hotel",
+          color: "#2563eb",
+        },
+      ],
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      "http://api.test/api/v1/establishments/map",
+      expect.objectContaining({ headers: { Accept: "application/json" } }),
+    );
+  });
+});
 
 describe("getNearbyEstablishments", () => {
   it("sends the activity and point without exposing internal identifiers", async () => {
