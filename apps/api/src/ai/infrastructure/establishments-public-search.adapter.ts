@@ -8,9 +8,7 @@ import {
 } from "../application/public-establishment-search";
 
 @Injectable()
-export class EstablishmentsPublicSearchAdapter
-  implements PublicEstablishmentSearch
-{
+export class EstablishmentsPublicSearchAdapter implements PublicEstablishmentSearch {
   constructor(
     @Inject(EstablishmentsService)
     private readonly establishments: EstablishmentsService,

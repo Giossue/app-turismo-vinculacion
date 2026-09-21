@@ -8,15 +8,13 @@ import type {
 export type TrustedAgentEntity = Readonly<{
   ref: string;
   card: AgentCard;
-  destination:
-    | Readonly<{
-        type: "center" | "establishment";
-        code?: string;
-        name: string;
-        latitude: number;
-        longitude: number;
-      }>
-    | null;
+  destination: Readonly<{
+    type: "center" | "establishment";
+    code?: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+  }> | null;
   source: AgentSource;
 }>;
 

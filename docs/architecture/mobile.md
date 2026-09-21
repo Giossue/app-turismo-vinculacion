@@ -26,8 +26,12 @@ una ficha rápida nativa; el `Agente` se abre como un botón flotante sobre el m
 sheet nativa de conversación; `Cómo llegar` representa la ruta activa sin solicitar GPS
 en la vista previa. El planificador de itinerarios queda fuera de la app móvil hasta que
 exista un modelo persistente y un contrato público.
-Los datos de ejemplo se identifican visualmente como demostración y se sustituyen por
-consultas de la API cuando esos módulos se conecten.
+El agente turístico consulta la API autenticada y valida una respuesta estructurada con
+texto, tarjetas, acciones propuestas y fuentes. Las tarjetas de centros publicados abren su
+ficha; las tarjetas de catastro muestran únicamente campos públicos. Una acción de ruta se
+presenta como propuesta y requiere confirmación explícita antes de navegar a `/route`. La
+app puede enviar una ubicación puntual redondeada para consultas cercanas, sin historial ni
+seguimiento en segundo plano.
 
 La preferencia de apariencia se administra desde `Menú > Configuración`. El proveedor de
 tema mantiene una única fuente de verdad (`system`, `light` o `dark`), la persiste en

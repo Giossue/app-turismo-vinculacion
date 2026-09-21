@@ -47,7 +47,9 @@ export class AiAgentController {
       },
     },
   })
-  @ApiBadRequestResponse({ description: "El mensaje o ubicación no es válido." })
+  @ApiBadRequestResponse({
+    description: "El mensaje o ubicación no es válido.",
+  })
   @ApiServiceUnavailableResponse({
     description: "El proveedor o el catálogo del agente no está disponible.",
   })

@@ -3,10 +3,15 @@ import { describe, expect, it, vi } from "vitest";
 import { askTourismAgent } from "./agent-api";
 
 describe("askTourismAgent", () => {
-  it("sends only the conversation contract and returns streamed text", async () => {
+  it("sends approximate location and returns the structured response", async () => {
     const fetcher = vi.fn().mockResolvedValue({
+      json: async () => ({
+        text: "Hay un mirador publicado en Guaranda.",
+        cards: [],
+        actions: [],
+        sources: [],
+      }),
       ok: true,
-      text: async () => "Hay un mirador publicado en Guaranda.",
     });
 
     await expect(
@@ -15,16 +20,31 @@ describe("askTourismAgent", () => {
         [{ role: "user", content: "Estoy en Guaranda" }],
         fetcher,
         "http://api.test/api/v1",
+        { latitude: -1.59234, longitude: -79.00123, accuracyMeters: 35 },
       ),
-    ).resolves.toContain("mirador publicado");
+    ).resolves.toMatchObject({ text: expect.stringContaining("mirador") });
     expect(fetcher).toHaveBeenCalledWith("http://api.test/api/v1/ai/chat", {
       body: JSON.stringify({
         message: "Quiero una buena vista",
         history: [{ role: "user", content: "Estoy en Guaranda" }],
+        location: { latitude: -1.592, longitude: -79.001, accuracyMeters: 35 },
       }),
-      headers: { Accept: "text/plain", "Content-Type": "application/json" },
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
       method: "POST",
     });
+  });
+
+  it("rejects malformed structured responses", async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      json: async () => ({ text: "solo texto" }),
+      ok: true,
+    });
+    await expect(
+      askTourismAgent("Hola", [], fetcher, "http://api.test/api/v1"),
+    ).rejects.toThrow("formato inválido");
   });
 
   it("surfaces provider errors without exposing response details", async () => {

@@ -65,6 +65,7 @@ type RouteParams = Readonly<{
   destinationLatitude?: string | string[];
   destinationLongitude?: string | string[];
   destinationName?: string | string[];
+  mode?: string | string[];
 }>;
 
 const modeOptions: readonly Readonly<{
@@ -83,7 +84,9 @@ export default function RouteScreen() {
   const auth = useAuth();
   const params = useLocalSearchParams<RouteParams>();
   const router = useRouter();
-  const [mode, setMode] = useState<RouteMode>("car");
+  const [mode, setMode] = useState<RouteMode>(
+    () => parseRouteMode(firstParam(params.mode)) ?? "car",
+  );
   const [origin, setOrigin] = useState<RouteCoordinate | null>(null);
   const [routeRequested, setRouteRequested] = useState(false);
   const [navigationActive, setNavigationActive] = useState(false);
@@ -1110,6 +1113,11 @@ function ActiveNavigationOverlay({
 function firstParam(value: string | string[] | undefined): string | undefined {
   const result = Array.isArray(value) ? value[0] : value;
   return result?.trim() || undefined;
+}
+
+function parseRouteMode(value: string | undefined): RouteMode | null {
+  if (value === "car" || value === "bicycle" || value === "foot") return value;
+  return null;
 }
 
 function parseDestination(

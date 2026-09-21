@@ -1,17 +1,6 @@
-export type AgentDemoCard = Readonly<{
-  category: string;
-  code: string;
-  name: string;
-  summary: string;
-}>;
+import type { AgentMessage } from "./agent";
 
-export type AgentDemoMessage = Readonly<{
-  id: string;
-  role: "assistant" | "user";
-  text: string;
-  cards?: readonly AgentDemoCard[];
-  sources?: readonly string[];
-}>;
+export type AgentDemoMessage = AgentMessage;
 
 export const agentDemoMessages: readonly AgentDemoMessage[] = [
   {
@@ -25,12 +14,19 @@ export const agentDemoMessages: readonly AgentDemoMessage[] = [
     text: "Encontré un atractivo publicado que puede encajar con tu plan:",
     cards: [
       {
+        type: "center",
         category: "Naturaleza",
         code: "GUA-NAT-001",
+        latitude: -1.59,
+        longitude: -79,
+        distanceMeters: null,
         name: "Mirador El Calvario",
         summary: "Vista panorámica de Guaranda y su entorno andino.",
       },
     ],
-    sources: ["Ficha pública del atractivo", "Catálogo territorial aprobado"],
+    sources: [
+      { type: "center", label: "Ficha pública del atractivo" },
+      { type: "center", label: "Catálogo territorial aprobado" },
+    ],
   },
 ];

@@ -75,6 +75,11 @@ import {
   type DiscoveryFilterValues,
 } from "@/features/centers/presentation/discovery-filters";
 import { SearchResultsSheet } from "@/features/centers/presentation/search-results-sheet";
+import {
+  clearSearchHistory,
+  listSearchHistory,
+  rememberSearch,
+} from "@/features/centers/data/search-history-storage";
 import { usePublishedCenter } from "@/features/centers/application/use-published-center";
 import {
   useSavedCenterMutation,
@@ -86,6 +91,7 @@ import type { MapFeatureSelection } from "@/features/map/domain/map-feature-sele
 import { CenterMap } from "@/features/map/presentation/center-map";
 import { MapAttributionButton } from "@/features/map/presentation/map-attribution-button";
 import { MapFeatureSelectionSheet } from "@/features/map/presentation/map-feature-selection-sheet";
+import type { AgentRouteDestination } from "@/features/agent/domain/agent";
 import { AgentChatContent } from "@/features/agent/presentation/agent-chat-content";
 import { useAuth } from "@/features/auth/application/auth-context";
 import {
@@ -161,6 +167,7 @@ function ExploreMapScreen() {
   const [submittedText, setSubmittedText] = useState("");
   const [searchMode, setSearchMode] = useState<ExploreSearchMode>("CENTERS");
   const [searchFocused, setSearchFocused] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<readonly string[]>([]);
   const [nearbyOnly, setNearbyOnly] = useState(false);
   const [mapBearing, setMapBearing] = useState(0);
   const [resetNorthKey, setResetNorthKey] = useState(0);
@@ -203,6 +210,16 @@ function ExploreMapScreen() {
     locationFocusInitializedRef.current = true;
     setFocusLocationKey((value) => value + 1);
   }, [locationStatus, userLocation]);
+
+  useEffect(() => {
+    let active = true;
+    void listSearchHistory().then((history) => {
+      if (active) setSearchHistory(history);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const [filters, setFilters] = useState<DiscoveryFilterValues>({});
   const handleAttributionChange = useCallback(
@@ -515,16 +532,67 @@ function ExploreMapScreen() {
     },
     [closeAgent, router],
   );
+  const openAgentRoute = useCallback(
+    (destination: AgentRouteDestination, mode: "car" | "bicycle" | "foot") => {
+      closeAgent();
+      router.push({
+        pathname: "/route",
+        params: {
+          destinationLatitude: String(destination.latitude),
+          destinationLongitude: String(destination.longitude),
+          destinationName: destination.name,
+          mode,
+        },
+      } as never);
+    },
+    [closeAgent, router],
+  );
 
   const handleSubmitSearch = useCallback(() => {
     const nextQuery = text.trim();
     if (nextQuery.length < 2) return;
+    void rememberSearch(nextQuery).then(() => {
+      setSearchHistory((current) => [
+        nextQuery,
+        ...current.filter(
+          (item) => item.toLocaleLowerCase() !== nextQuery.toLocaleLowerCase(),
+        ),
+      ].slice(0, 8));
+    });
     setSubmittedText(nextQuery);
     setSearchFocused(false);
     setNearbyOnly(false);
     setSelectedCenterCode(null);
     setSelectedEstablishment(null);
   }, [text]);
+
+  const handleClearSearchInput = useCallback(() => {
+    setText("");
+    setSubmittedText("");
+    dismissSearchSheet();
+    setSearchFocused(true);
+  }, [dismissSearchSheet]);
+
+  const handleRecentSearch = useCallback(
+    (recentQuery: string) => {
+      setText(recentQuery);
+      setSubmittedText(recentQuery);
+      setSearchFocused(false);
+      void rememberSearch(recentQuery);
+    },
+    [],
+  );
+
+  const searchSuggestions = useMemo(() => {
+    const normalized = text.trim().toLocaleLowerCase();
+    if (!normalized || searchMode !== "CENTERS") return [];
+    return visibleCenters
+      .filter((center) => {
+        const haystack = `${center.name} ${center.category} ${center.type} ${center.subtype}`.toLocaleLowerCase();
+        return haystack.includes(normalized);
+      })
+      .slice(0, 8);
+  }, [searchMode, text, visibleCenters]);
 
   const handleNearbyToggle = useCallback(() => {
     if (!userLocation) return;
@@ -596,7 +664,7 @@ function ExploreMapScreen() {
                 }
                 onBlur={() => setSearchFocused(false)}
                 onChangeText={setText}
-                onClear={clearSearch}
+                onClear={handleClearSearchInput}
                 onFocus={() => setSearchFocused(true)}
                 onSubmitEditing={handleSubmitSearch}
                 placeholder="Buscar aquí"
@@ -629,6 +697,21 @@ function ExploreMapScreen() {
                 selected={searchMode === "ESTABLISHMENTS"}
               />
             </View>
+          ) : null}
+          {searchFocused ? (
+            <SearchSuggestionsPanel
+              history={searchHistory}
+              onClearHistory={() => {
+                void clearSearchHistory().then(() => setSearchHistory([]));
+              }}
+              onRecentPress={handleRecentSearch}
+              onSuggestionPress={(center) => {
+                void rememberSearch(center.name);
+                selectCenter(center);
+              }}
+              query={text}
+              suggestions={searchSuggestions}
+            />
           ) : null}
           {!isSearchMode ? (
             <>
@@ -816,7 +899,10 @@ function ExploreMapScreen() {
         snapPoints={tourismFlexibleSheetSnapPoints}
       >
         <BottomSheetView style={styles.agentSheetView}>
-          <AgentChatContent onOpenCenter={openAgentCenter} />
+          <AgentChatContent
+            onOpenCenter={openAgentCenter}
+            onStartRoute={openAgentRoute}
+          />
         </BottomSheetView>
       </BottomSheetModal>
     </View>

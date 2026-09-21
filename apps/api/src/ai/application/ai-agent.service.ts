@@ -22,7 +22,10 @@ import {
   type AgentChatInput,
   type AgentResponse,
 } from "./ai-agent.contracts";
-import { sanitizeAgentResponse } from "../infrastructure/ai-agent-trusted-data";
+import {
+  sanitizeAgentResponse,
+  type TrustedAgentEntity,
+} from "../infrastructure/ai-agent-trusted-data";
 import {
   PUBLIC_ESTABLISHMENT_SEARCH,
   type PublicEstablishmentSearch,
@@ -79,15 +82,7 @@ export class AiAgentService {
   ) {}
 
   async generate(input: AgentChatInput): Promise<AgentResponse> {
-    const entities = new Map<
-      string,
-      Parameters<typeof sanitizeAgentResponse>[1] extends ReadonlyMap<
-        string,
-        infer Entity
-      >
-        ? Entity
-        : never
-    >();
+    const entities = new Map<string, TrustedAgentEntity>();
     const approximateLocation = input.location
       ? {
           latitude: roundCoordinate(input.location.latitude),
@@ -206,9 +201,9 @@ export class AiAgentService {
             "Respuesta turística con texto y referencias verificables a resultados de herramientas.",
         }),
         stopWhen: stepCountIs(4),
-        maxOutputTokens: this.config.get<number>("AI_MAX_OUTPUT_TOKENS") ?? 1_200,
-        timeout:
-          this.config.get<number>("AI_REQUEST_TIMEOUT_MS") ?? 30_000,
+        maxOutputTokens:
+          this.config.get<number>("AI_MAX_OUTPUT_TOKENS") ?? 1_200,
+        timeout: this.config.get<number>("AI_REQUEST_TIMEOUT_MS") ?? 30_000,
         tools: {
           searchPublishedCenters: tool({
             description:
@@ -216,7 +211,10 @@ export class AiAgentService {
             inputSchema: searchCentersInputSchema,
             execute: async ({ text, limit }) => {
               try {
-                const result = await this.centers.listPublished({ text, limit });
+                const result = await this.centers.listPublished({
+                  text,
+                  limit,
+                });
                 return {
                   total: result.total,
                   results: result.items.map((center) => {
