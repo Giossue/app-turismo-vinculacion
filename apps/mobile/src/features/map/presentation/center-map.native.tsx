@@ -79,15 +79,6 @@ const establishmentIconImages: Record<string, number> = {
   ticket: require("../../../../assets/images/establishment-icons/ticket.png"),
   briefcase: require("../../../../assets/images/establishment-icons/briefcase.png"),
 };
-const establishmentDarkIconImages: Record<string, number> = {
-  hotel: require("../../../../assets/images/establishment-icons/hotel-dark.png"),
-  restaurant: require("../../../../assets/images/establishment-icons/restaurant-dark.png"),
-  coffee: require("../../../../assets/images/establishment-icons/coffee-dark.png"),
-  store: require("../../../../assets/images/establishment-icons/store-dark.png"),
-  bus: require("../../../../assets/images/establishment-icons/bus-dark.png"),
-  ticket: require("../../../../assets/images/establishment-icons/ticket-dark.png"),
-  briefcase: require("../../../../assets/images/establishment-icons/briefcase-dark.png"),
-};
 const establishmentPinImages: Record<string, string> = {
   "#2563eb": "tourism-establishment-pin-blue",
   "#0891b2": "tourism-establishment-pin-cyan",
@@ -98,15 +89,116 @@ const establishmentPinImages: Record<string, string> = {
   "#dc2626": "tourism-establishment-pin-red",
   "#4f46e5": "tourism-establishment-pin-indigo",
 };
-const establishmentDarkIconImageNames: Record<string, string> = {
-  hotel: "tourism-establishment-icon-hotel-dark",
-  restaurant: "tourism-establishment-icon-restaurant-dark",
-  coffee: "tourism-establishment-icon-coffee-dark",
-  store: "tourism-establishment-icon-store-dark",
-  bus: "tourism-establishment-icon-bus-dark",
-  ticket: "tourism-establishment-icon-ticket-dark",
-  briefcase: "tourism-establishment-icon-briefcase-dark",
+const establishmentPinColorKeys: Record<string, string> = {
+  "#2563eb": "blue",
+  "#0891b2": "cyan",
+  "#7c3aed": "violet",
+  "#c026d3": "fuchsia",
+  "#ea580c": "orange",
+  "#d97706": "amber",
+  "#dc2626": "red",
+  "#4f46e5": "indigo",
 };
+const establishmentIconImagesByColor: Record<
+  string,
+  Record<string, number>
+> = {
+  blue: {
+    hotel: require("../../../../assets/images/establishment-icons/hotel-blue-dark.png"),
+    restaurant: require("../../../../assets/images/establishment-icons/restaurant-blue-dark.png"),
+    coffee: require("../../../../assets/images/establishment-icons/coffee-blue-dark.png"),
+    store: require("../../../../assets/images/establishment-icons/store-blue-dark.png"),
+    bus: require("../../../../assets/images/establishment-icons/bus-blue-dark.png"),
+    ticket: require("../../../../assets/images/establishment-icons/ticket-blue-dark.png"),
+    briefcase: require("../../../../assets/images/establishment-icons/briefcase-blue-dark.png"),
+  },
+  cyan: {
+    hotel: require("../../../../assets/images/establishment-icons/hotel-cyan-dark.png"),
+    restaurant: require("../../../../assets/images/establishment-icons/restaurant-cyan-dark.png"),
+    coffee: require("../../../../assets/images/establishment-icons/coffee-cyan-dark.png"),
+    store: require("../../../../assets/images/establishment-icons/store-cyan-dark.png"),
+    bus: require("../../../../assets/images/establishment-icons/bus-cyan-dark.png"),
+    ticket: require("../../../../assets/images/establishment-icons/ticket-cyan-dark.png"),
+    briefcase: require("../../../../assets/images/establishment-icons/briefcase-cyan-dark.png"),
+  },
+  violet: {
+    hotel: require("../../../../assets/images/establishment-icons/hotel-violet-dark.png"),
+    restaurant: require("../../../../assets/images/establishment-icons/restaurant-violet-dark.png"),
+    coffee: require("../../../../assets/images/establishment-icons/coffee-violet-dark.png"),
+    store: require("../../../../assets/images/establishment-icons/store-violet-dark.png"),
+    bus: require("../../../../assets/images/establishment-icons/bus-violet-dark.png"),
+    ticket: require("../../../../assets/images/establishment-icons/ticket-violet-dark.png"),
+    briefcase: require("../../../../assets/images/establishment-icons/briefcase-violet-dark.png"),
+  },
+  fuchsia: {
+    hotel: require("../../../../assets/images/establishment-icons/hotel-fuchsia-dark.png"),
+    restaurant: require("../../../../assets/images/establishment-icons/restaurant-fuchsia-dark.png"),
+    coffee: require("../../../../assets/images/establishment-icons/coffee-fuchsia-dark.png"),
+    store: require("../../../../assets/images/establishment-icons/store-fuchsia-dark.png"),
+    bus: require("../../../../assets/images/establishment-icons/bus-fuchsia-dark.png"),
+    ticket: require("../../../../assets/images/establishment-icons/ticket-fuchsia-dark.png"),
+    briefcase: require("../../../../assets/images/establishment-icons/briefcase-fuchsia-dark.png"),
+  },
+  orange: {
+    hotel: require("../../../../assets/images/establishment-icons/hotel-orange-dark.png"),
+    restaurant: require("../../../../assets/images/establishment-icons/restaurant-orange-dark.png"),
+    coffee: require("../../../../assets/images/establishment-icons/coffee-orange-dark.png"),
+    store: require("../../../../assets/images/establishment-icons/store-orange-dark.png"),
+    bus: require("../../../../assets/images/establishment-icons/bus-orange-dark.png"),
+    ticket: require("../../../../assets/images/establishment-icons/ticket-orange-dark.png"),
+    briefcase: require("../../../../assets/images/establishment-icons/briefcase-orange-dark.png"),
+  },
+  amber: {
+    hotel: require("../../../../assets/images/establishment-icons/hotel-amber-dark.png"),
+    restaurant: require("../../../../assets/images/establishment-icons/restaurant-amber-dark.png"),
+    coffee: require("../../../../assets/images/establishment-icons/coffee-amber-dark.png"),
+    store: require("../../../../assets/images/establishment-icons/store-amber-dark.png"),
+    bus: require("../../../../assets/images/establishment-icons/bus-amber-dark.png"),
+    ticket: require("../../../../assets/images/establishment-icons/ticket-amber-dark.png"),
+    briefcase: require("../../../../assets/images/establishment-icons/briefcase-amber-dark.png"),
+  },
+  red: {
+    hotel: require("../../../../assets/images/establishment-icons/hotel-red-dark.png"),
+    restaurant: require("../../../../assets/images/establishment-icons/restaurant-red-dark.png"),
+    coffee: require("../../../../assets/images/establishment-icons/coffee-red-dark.png"),
+    store: require("../../../../assets/images/establishment-icons/store-red-dark.png"),
+    bus: require("../../../../assets/images/establishment-icons/bus-red-dark.png"),
+    ticket: require("../../../../assets/images/establishment-icons/ticket-red-dark.png"),
+    briefcase: require("../../../../assets/images/establishment-icons/briefcase-red-dark.png"),
+  },
+  indigo: {
+    hotel: require("../../../../assets/images/establishment-icons/hotel-indigo-dark.png"),
+    restaurant: require("../../../../assets/images/establishment-icons/restaurant-indigo-dark.png"),
+    coffee: require("../../../../assets/images/establishment-icons/coffee-indigo-dark.png"),
+    store: require("../../../../assets/images/establishment-icons/store-indigo-dark.png"),
+    bus: require("../../../../assets/images/establishment-icons/bus-indigo-dark.png"),
+    ticket: require("../../../../assets/images/establishment-icons/ticket-indigo-dark.png"),
+    briefcase: require("../../../../assets/images/establishment-icons/briefcase-indigo-dark.png"),
+  },
+};
+const establishmentIconImageNamesByColor: Record<
+  string,
+  Record<string, string>
+> = Object.fromEntries(
+  Object.keys(establishmentIconImagesByColor).map((colorKey) => [
+    colorKey,
+    Object.fromEntries(
+      Object.keys(establishmentIconImages).map((icon) => [
+        icon,
+        `tourism-establishment-icon-${icon}-${colorKey}`,
+      ]),
+    ),
+  ]),
+) as Record<string, Record<string, string>>;
+const establishmentColorIconImages: Record<string, number> = Object.fromEntries(
+  Object.entries(establishmentIconImagesByColor).flatMap(
+    ([colorKey, icons]) =>
+      Object.entries(icons).map(([icon, image]) => [
+        `tourism-establishment-icon-${icon}-${colorKey}`,
+        image,
+      ]),
+  ),
+) as Record<string, number>;
 const establishmentDefaultPinImage = "tourism-establishment-pin-blue";
 const establishmentDefaultIcon = "hotel";
 
@@ -207,6 +299,7 @@ export function CenterMap({
         const icon = establishmentIconImages[establishment.icon]
           ? establishment.icon
           : establishmentDefaultIcon;
+        const colorKey = establishmentPinColorKeys[color] ?? "blue";
         return {
           type: "Feature",
           id: featureKey,
@@ -215,7 +308,7 @@ export function CenterMap({
             color,
             featureKey,
             icon,
-            iconImage: establishmentDarkIconImageNames[icon],
+            iconImage: establishmentIconImageNamesByColor[colorKey][icon],
             name: establishment.name,
             approximate: establishment.approximate,
             pinImage:

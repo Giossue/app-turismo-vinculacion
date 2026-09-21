@@ -1070,60 +1070,63 @@ function PlaceSheet({
           />
         </View>
       </View>
-      <View style={styles.placeActions}>
-        <Pressable
-          accessibilityLabel="Compartir ficha turística"
-          accessibilityRole="button"
-          hitSlop={4}
-          onPress={() =>
-            void Share.share({
-              message: `${center.name} · ${location}`,
-            })
-          }
-          style={({ pressed }) => [
-            styles.placeAction,
-            pressed && styles.placeActionPressed,
-          ]}
-        >
-          <TurismoIcon
-            color={colors.text}
-            name="share"
-            size={turismoIconSizes.md}
-          />
-        </Pressable>
-        <Pressable
-          accessibilityLabel={
-            saved ? "Quitar de guardados" : "Guardar centro turístico"
-          }
-          accessibilityRole="button"
-          accessibilityState={{ selected: saved }}
-          hitSlop={4}
-          onPress={() => {
-            if (auth.status !== "authenticated") {
-              onRequireAuth();
-              return;
-            }
-            savedMutation.mutate({ center, saved });
-          }}
-          style={({ pressed }) => [
-            styles.placeAction,
-            pressed && styles.placeActionPressed,
-          ]}
-        >
-          <TurismoIcon
-            color={saved ? colors.primaryStrong : colors.primary}
-            name="bookmark"
-            size={turismoIconSizes.md}
-          />
-        </Pressable>
-        <CenterRatingSummary
-          onPress={() => changeTab("opinions")}
-          summary={opinions.data?.summary}
-        />
-      </View>
       <Text style={[styles.placeTitle, { color: colors.text }]}>
         {center.name}
       </Text>
+      <View style={styles.placeActions}>
+        <CenterRatingSummary
+          inline
+          onPress={() => changeTab("opinions")}
+          summary={opinions.data?.summary}
+        />
+        <View style={styles.placeActionGroup}>
+          <Pressable
+            accessibilityLabel="Compartir ficha turística"
+            accessibilityRole="button"
+            hitSlop={4}
+            onPress={() =>
+              void Share.share({
+                message: `${center.name} · ${location}`,
+              })
+            }
+            style={({ pressed }) => [
+              styles.placeAction,
+              pressed && styles.placeActionPressed,
+            ]}
+          >
+            <TurismoIcon
+              color={colors.text}
+              name="share"
+              size={turismoIconSizes.md}
+            />
+          </Pressable>
+          <Pressable
+            accessibilityLabel={
+              saved ? "Quitar de guardados" : "Guardar centro turístico"
+            }
+            accessibilityRole="button"
+            accessibilityState={{ selected: saved }}
+            hitSlop={4}
+            onPress={() => {
+              if (auth.status !== "authenticated") {
+                onRequireAuth();
+                return;
+              }
+              savedMutation.mutate({ center, saved });
+            }}
+            style={({ pressed }) => [
+              styles.placeAction,
+              pressed && styles.placeActionPressed,
+            ]}
+          >
+            <TurismoIcon
+              color={saved ? colors.primaryStrong : colors.primary}
+              name="bookmark"
+              size={turismoIconSizes.md}
+            />
+          </Pressable>
+        </View>
+      </View>
       <View style={styles.actions}>
         <TourismActionButton
           icon="route"
@@ -1199,9 +1202,11 @@ function PlaceSheet({
 }
 
 function CenterRatingSummary({
+  inline = false,
   onPress,
   summary,
 }: Readonly<{
+  inline?: boolean;
   onPress: () => void;
   summary?: OpinionRatingSummary;
 }>) {
@@ -1218,6 +1223,7 @@ function CenterRatingSummary({
       onPress={onPress}
       style={({ pressed }) => [
         styles.ratingSummary,
+        inline && styles.ratingSummaryInline,
         { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
         pressed && styles.ratingPressed,
       ]}
@@ -1693,6 +1699,11 @@ const styles = StyleSheet.create({
   placeActions: {
     alignItems: "center",
     flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  placeActionGroup: {
+    alignItems: "center",
+    flexDirection: "row",
     gap: turismoSpacing.xs,
   },
   placeAction: {
@@ -1713,6 +1724,7 @@ const styles = StyleSheet.create({
     minHeight: turismoMetrics.chipHeight,
     paddingHorizontal: turismoSpacing.xs,
   },
+  ratingSummaryInline: { alignSelf: "center" },
   ratingValue: { ...turismoTypography.label },
   ratingCount: { ...turismoTypography.caption },
   ratingPressed: { opacity: 0.72 },
