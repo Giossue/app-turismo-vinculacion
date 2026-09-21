@@ -161,8 +161,8 @@ BEGIN
     UNION ALL SELECT 1 FROM tipos_responsabilidad_ficha WHERE codigo IN ('ELABORO', 'VALIDO')
   ) AS required_catalogs;
 
-  IF required_catalog_count <> 30 THEN
-    RAISE EXCEPTION 'Faltan opciones de catálogo para completar la ficha; se resolvieron % de 30', required_catalog_count;
+  IF required_catalog_count <> 35 THEN
+    RAISE EXCEPTION 'Faltan opciones de catálogo para completar la ficha; se resolvieron % de 35', required_catalog_count;
   END IF;
 
   demo_sections := jsonb_build_object(
