@@ -99,13 +99,15 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   No se guarda un historial de coordenadas ni se reinicia automáticamente una navegación
   después de forzar el cierre de la app.
 - En móvil, la pantalla de ruta usa MapLibre a pantalla completa: la geometría y los
-  extremos se dibujan como capas sobre el mapa. La vista previa de «Cómo llegar» mantiene
-  el `BottomSheet` nativo desplazable con modo, tiempo e indicaciones. Al iniciar la
-  navegación, la hoja se desmonta y aparece un modo activo independiente con la próxima
+  extremos se dibujan como capas sobre el mapa. La vista previa de «Cómo llegar» usa un
+  panel inline sobre el mapa con modo, tiempo e indicaciones; el mapa sigue siendo
+  manipulable y una interacción del usuario contrae el panel sin desmontar ni cerrar la
+  ruta. El resumen superior conserva el origen «Tu ubicación» y el destino. Al iniciar la
+  navegación, el panel se desmonta y aparece un modo activo independiente con la próxima
   maniobra, la posición actual, un control para recentrar y una barra inferior con tiempo
   restante, distancia y hora estimada. Ese modo bloquea el gesto de salida y el Atrás del
-  sistema; la `X` regresa a la vista previa. Desde la vista previa, Atrás o tocar el mapa
-  fuera de la hoja cierra la ruta y regresa a la ficha del atractivo.
+  sistema; la `X` regresa a la vista previa. Desde la vista previa, Atrás o el control
+  explícito de cierre cierra la ruta y regresa a la ficha del atractivo.
 - Al abrir “Cómo llegar” desde un atractivo publicado, el cliente solicita la ubicación
   puntual y calcula automáticamente la primera ruta; iniciar la navegación sigue siendo
   una acción explícita. Si la ubicación o el cálculo fallan, el panel permite reintentar.

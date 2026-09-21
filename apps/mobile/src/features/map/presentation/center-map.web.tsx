@@ -16,6 +16,7 @@ import type { MapFeatureSelection } from "../domain/map-feature-selection";
 type CenterMapProps = Readonly<{
   centers: readonly PublicCenter[];
   establishments?: readonly PublicMapEstablishment[];
+  focusSelection?: MapFeatureSelection | null;
   focusLocationKey?: number;
   onAttributionChange?: (handler: (() => void) | null) => void;
   onCenterPress: (center: PublicCenter) => void;

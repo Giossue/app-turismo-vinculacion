@@ -3,8 +3,11 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,9 +17,13 @@ import {
   useLocalSearchParams,
   useRouter,
 } from "expo-router";
-import ExpoBottomSheet, {
-  BottomSheetScrollView,
-} from "@expo/ui/community/bottom-sheet";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 
 import { useUserLocation } from "@/core/location/use-user-location";
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
@@ -82,13 +89,10 @@ export default function RouteScreen() {
   const [navigationActive, setNavigationActive] = useState(false);
   const [navigationNotice, setNavigationNotice] = useState<string | null>(null);
   const [recenterKey, setRecenterKey] = useState(0);
-  const [routeSheetGeneration, setRouteSheetGeneration] = useState(0);
+  const [previewExpanded, setPreviewExpanded] = useState(true);
   const navigationActiveRef = useRef(false);
   const navigationStartInFlightRef = useRef(false);
-  const pendingLoginAfterCloseRef = useRef(false);
   const screenFocusedRef = useRef(false);
-  const routeSheetRef = useRef<ExpoBottomSheet>(null);
-  const routeSheetGenerationRef = useRef(0);
   const {
     message: locationMessage,
     requestLocation,
@@ -101,6 +105,7 @@ export default function RouteScreen() {
       parseDestination(params.destinationLatitude, params.destinationLongitude),
     [params.destinationLatitude, params.destinationLongitude],
   );
+  const destinationName = firstParam(params.destinationName) ?? "Destino";
 
   const teardownNavigation = useCallback(() => {
     navigationActiveRef.current = false;
@@ -121,25 +126,14 @@ export default function RouteScreen() {
     [teardownNavigation],
   );
 
-  const handleRouteSheetClose = useCallback((sheetGeneration: number) => {
-    // The preview sheet is unmounted when navigation starts. A native close
-    // callback from that old instance must not pop the route screen after the
-    // user later returns from active navigation.
+  const handleRouteClose = useCallback(() => {
     if (
       navigationActiveRef.current ||
-      sheetGeneration !== routeSheetGenerationRef.current
+      navigationStartInFlightRef.current
     ) {
       return;
     }
     finishNavigation(null);
-    if (pendingLoginAfterCloseRef.current) {
-      pendingLoginAfterCloseRef.current = false;
-      router.push({
-        pathname: "/login",
-        params: { returnTo: "/route" },
-      } as never);
-      return;
-    }
     if (router.canGoBack()) {
       router.back();
     } else {
@@ -150,7 +144,6 @@ export default function RouteScreen() {
   useFocusEffect(
     useCallback(() => {
       screenFocusedRef.current = true;
-      routeSheetRef.current?.present();
 
       return () => {
         screenFocusedRef.current = false;
@@ -173,11 +166,6 @@ export default function RouteScreen() {
     }, []),
   );
 
-  useEffect(() => {
-    if (!navigationActive && screenFocusedRef.current) {
-      routeSheetRef.current?.present();
-    }
-  }, [navigationActive]);
 
   useEffect(() => {
     setForegroundTrackingSuspended(navigationActive);
@@ -261,8 +249,11 @@ export default function RouteScreen() {
 
     if (auth.status !== "authenticated") {
       if (auth.status === "anonymous") {
-        pendingLoginAfterCloseRef.current = true;
-        routeSheetRef.current?.close();
+        finishNavigation(null);
+        router.push({
+          pathname: "/login",
+          params: { returnTo: "/route" },
+        } as never);
       }
       return;
     }
@@ -326,9 +317,6 @@ export default function RouteScreen() {
       }
 
       setNavigationNotice(nextNotice);
-      const nextSheetGeneration = routeSheetGenerationRef.current + 1;
-      routeSheetGenerationRef.current = nextSheetGeneration;
-      setRouteSheetGeneration(nextSheetGeneration);
       navigationActiveRef.current = true;
       setRecenterKey((current) => current + 1);
       setNavigationActive(true);
@@ -341,13 +329,19 @@ export default function RouteScreen() {
     navigationActive,
     requestLocation,
     auth.status,
+    finishNavigation,
     routeQuery.data,
+    router,
   ]);
 
-  const handleStopNavigation = useCallback(
-    () => finishNavigation(null),
-    [finishNavigation],
-  );
+  const handleMapInteraction = useCallback(() => {
+    if (!navigationActiveRef.current) setPreviewExpanded(false);
+  }, []);
+
+  const handleStopNavigation = useCallback(() => {
+    setPreviewExpanded(true);
+    finishNavigation(null);
+  }, [finishNavigation]);
 
   const modeLabel =
     modeOptions.find((option) => option.mode === mode)?.label ?? "Auto";
@@ -364,6 +358,9 @@ export default function RouteScreen() {
           currentLocation={navigationSession.currentLocation}
           destination={destination}
           fullScreen
+          onUserInteraction={
+            !navigationActive ? handleMapInteraction : undefined
+          }
           origin={origin}
           recenterKey={recenterKey}
           route={routeQuery.data ?? null}
@@ -377,173 +374,23 @@ export default function RouteScreen() {
         />
       )}
       {destination && !navigationActive ? (
-        <ExpoBottomSheet
-          backgroundStyle={{ backgroundColor: colors.surface }}
-          enablePanDownToClose
-          handleComponent={null}
-          index={0}
-          key={`route-preview-${routeSheetGeneration}`}
-          onClose={() => handleRouteSheetClose(routeSheetGeneration)}
-          ref={routeSheetRef}
-          snapPoints={["38%", "84%"]}
-        >
-          <BottomSheetScrollView
-            contentContainerStyle={styles.panelContent}
-            key="route-preview"
-            showsVerticalScrollIndicator={false}
-          >
-            <TourismSurface style={styles.modeCard}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Modo de transporte
-              </Text>
-              <View style={styles.modeOptions}>
-                {modeOptions.map((option) => (
-                  <View key={option.mode} style={styles.modeOption}>
-                    <TurismoIcon
-                      color={
-                        mode === option.mode
-                          ? colors.primaryStrong
-                          : colors.textMuted
-                      }
-                      name={option.icon}
-                      size={turismoIconSizes.md}
-                    />
-                    <TourismChoiceChip
-                      label={option.label}
-                      onPress={() => setMode(option.mode)}
-                      selected={mode === option.mode}
-                    />
-                  </View>
-                ))}
-              </View>
-            </TourismSurface>
-
-            {destination && !routeQuery.data ? (
-              <TourismActionButton
-                disabled={isCalculating || locationStatus === "requesting"}
-                icon={
-                  isCalculating || locationStatus === "requesting"
-                    ? undefined
-                    : "navigation"
-                }
-                label={
-                  isCalculating
-                    ? "Calculando ruta…"
-                    : locationStatus === "requesting"
-                      ? "Obteniendo ubicación…"
-                      : routeQuery.isError
-                        ? "Reintentar ruta"
-                        : "Calcular ruta"
-                }
-                onPress={() => void handleCalculateRoute()}
-              />
-            ) : null}
-
-            {routeQuery.data && !isCalculating ? (
-              <TourismActionButton
-                icon="navigation"
-                label="Iniciar navegación"
-                onPress={() => void handleStartNavigation()}
-              />
-            ) : null}
-
-            {isCalculating ? (
-              <View style={styles.loadingRow}>
-                <ActivityIndicator color={colors.primary} />
-                <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-                  Buscando una ruta sin tráfico en tiempo real…
-                </Text>
-              </View>
-            ) : null}
-
-            {navigationNotice || locationMessage || routeError ? (
-              <TourismSurface style={styles.noticeCard}>
-                <TurismoIcon
-                  color={colors.danger}
-                  name="circleHelp"
-                  size={turismoIconSizes.md}
-                />
-                <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-                  {navigationNotice ?? routeError ?? locationMessage}
-                </Text>
-              </TourismSurface>
-            ) : null}
-
-            {routeQuery.data ? (
-              <>
-                <View style={styles.metrics}>
-                  <Metric
-                    label="Tiempo estimado"
-                    value={formatDuration(routeQuery.data.durationSeconds)}
-                  />
-                  <Metric
-                    label="Distancia"
-                    value={formatDistance(routeQuery.data.distanceMeters)}
-                  />
-                  <Metric label="Modo" value={modeLabel} />
-                </View>
-                <TourismSurface style={styles.stepsCard}>
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                    Indicaciones
-                  </Text>
-                  {routeQuery.data.steps.length ? (
-                    routeQuery.data.steps.map((step, index) => (
-                      <View
-                        key={`${step.instruction}-${index}`}
-                        style={styles.stepRow}
-                      >
-                        <View
-                          style={[
-                            styles.stepIcon,
-                            { backgroundColor: colors.primarySoft },
-                          ]}
-                        >
-                          <TurismoIcon
-                            color={colors.primaryStrong}
-                            name={index === 0 ? "locate" : "navigation"}
-                            size={turismoIconSizes.sm}
-                          />
-                        </View>
-                        <View style={styles.stepCopy}>
-                          <Text
-                            style={[
-                              styles.stepInstruction,
-                              { color: colors.text },
-                            ]}
-                          >
-                            {step.instruction}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.stepDistance,
-                              { color: colors.textFaint },
-                            ]}
-                          >
-                            {formatDistance(step.distanceMeters)}
-                          </Text>
-                        </View>
-                        {index < routeQuery.data.steps.length - 1 ? (
-                          <View
-                            style={[
-                              styles.stepLine,
-                              { backgroundColor: colors.border },
-                            ]}
-                          />
-                        ) : null}
-                      </View>
-                    ))
-                  ) : (
-                    <Text
-                      style={[styles.noticeText, { color: colors.textMuted }]}
-                    >
-                      No hay indicaciones detalladas para este trayecto.
-                    </Text>
-                  )}
-                </TourismSurface>
-              </>
-            ) : null}
-          </BottomSheetScrollView>
-        </ExpoBottomSheet>
+        <RoutePreviewPanel
+          destinationName={destinationName}
+          expanded={previewExpanded}
+          isCalculating={isCalculating}
+          locationMessage={locationMessage}
+          locationRequesting={locationStatus === "requesting"}
+          mode={mode}
+          modeLabel={modeLabel}
+          navigationNotice={navigationNotice}
+          onCalculateRoute={() => void handleCalculateRoute()}
+          onClose={handleRouteClose}
+          onExpandedChange={setPreviewExpanded}
+          onModeChange={setMode}
+          onStartNavigation={() => void handleStartNavigation()}
+          route={routeQuery.data ?? null}
+          routeError={routeError}
+        />
       ) : null}
       {destination && navigationActive && routeQuery.data ? (
         <ActiveNavigationOverlay
@@ -558,6 +405,434 @@ export default function RouteScreen() {
           notice={navigationNotice ?? routeError}
         />
       ) : null}
+    </View>
+  );
+}
+
+const ROUTE_PANEL_SPRING = {
+  damping: 30,
+  mass: 0.8,
+  overshootClamping: true,
+  stiffness: 280,
+} as const;
+const ROUTE_PANEL_EXPAND_THRESHOLD = 0.34;
+const ROUTE_PANEL_EXPAND_VELOCITY = 650;
+
+type RoutePreviewPanelProps = Readonly<{
+  destinationName: string;
+  expanded: boolean;
+  isCalculating: boolean;
+  locationMessage: string | null;
+  locationRequesting: boolean;
+  mode: RouteMode;
+  modeLabel: string;
+  navigationNotice: string | null;
+  onCalculateRoute: () => void;
+  onClose: () => void;
+  onExpandedChange: (expanded: boolean) => void;
+  onModeChange: (mode: RouteMode) => void;
+  onStartNavigation: () => void;
+  route: CalculatedRoute | null;
+  routeError: string | null;
+}>;
+
+function RoutePreviewPanel({
+  destinationName,
+  expanded,
+  isCalculating,
+  locationMessage,
+  locationRequesting,
+  mode,
+  modeLabel,
+  navigationNotice,
+  onCalculateRoute,
+  onClose,
+  onExpandedChange,
+  onModeChange,
+  onStartNavigation,
+  route,
+  routeError,
+}: RoutePreviewPanelProps) {
+  const colors = useTurismoPalette();
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const expandedHeight = Math.max(
+    1,
+    height -
+      insets.top -
+      (turismoMetrics.controlLg * 2 + turismoSpacing.lg + turismoSpacing.sm),
+  );
+  const compactHeight = Math.min(
+    expandedHeight,
+    turismoMetrics.controlLg * 3 + turismoSpacing.xl + insets.bottom,
+  );
+  const panelHeight = useSharedValue(expanded ? expandedHeight : compactHeight);
+  const dragStartHeight = useSharedValue(
+    expanded ? expandedHeight : compactHeight,
+  );
+
+  useEffect(() => {
+    panelHeight.value = withSpring(
+      expanded ? expandedHeight : compactHeight,
+      ROUTE_PANEL_SPRING,
+    );
+  }, [compactHeight, expanded, expandedHeight, panelHeight]);
+
+  const panGesture = Gesture.Pan()
+    .activeOffsetY([-8, 8])
+    .enabled(!expanded)
+    .onBegin(() => {
+      dragStartHeight.value = panelHeight.value;
+    })
+    .onUpdate((event) => {
+      const nextHeight = dragStartHeight.value - event.translationY;
+      panelHeight.value = Math.max(
+        compactHeight,
+        Math.min(expandedHeight, nextHeight),
+      );
+    })
+    .onEnd((event) => {
+      const travel = expandedHeight - compactHeight;
+      const progress =
+        travel <= 0 ? 0 : (panelHeight.value - compactHeight) / travel;
+      const shouldExpand =
+        progress >= ROUTE_PANEL_EXPAND_THRESHOLD ||
+        event.velocityY < -ROUTE_PANEL_EXPAND_VELOCITY;
+      panelHeight.value = withSpring(
+        shouldExpand ? expandedHeight : compactHeight,
+        ROUTE_PANEL_SPRING,
+      );
+      runOnJS(onExpandedChange)(shouldExpand);
+    });
+  const panelAnimatedStyle = useAnimatedStyle(() => ({
+    height: panelHeight.value,
+  }));
+
+  return (
+    <View pointerEvents="box-none" style={styles.routePreviewOverlay}>
+      <View
+        style={[
+          styles.routeSummaryCard,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            top: insets.top + turismoSpacing.md,
+          },
+        ]}
+      >
+        <View style={styles.routeSummaryHeader}>
+          <Text style={[styles.routeSummaryTitle, { color: colors.text }]}>
+            Cómo llegar
+          </Text>
+          <TourismIconAction
+            accessibilityLabel="Cerrar ruta"
+            icon="close"
+            onPress={onClose}
+            style={{
+              backgroundColor: colors.surfaceMuted,
+              borderColor: colors.border,
+            }}
+          />
+        </View>
+        <View style={styles.routeSummaryStops}>
+          <View style={styles.routeSummaryStop}>
+            <View
+              style={[
+                styles.routeSummaryDot,
+                { backgroundColor: colors.location },
+              ]}
+            />
+            <View style={styles.routeSummaryCopy}>
+              <Text
+                style={[styles.routeSummaryLabel, { color: colors.textMuted }]}
+              >
+                Tu ubicación
+              </Text>
+            </View>
+          </View>
+          <View
+            style={[
+              styles.routeSummaryLine,
+              { backgroundColor: colors.border },
+            ]}
+          />
+          <View style={styles.routeSummaryStop}>
+            <View
+              style={[
+                styles.routeSummaryDot,
+                { backgroundColor: colors.primary },
+              ]}
+            />
+            <View style={styles.routeSummaryCopy}>
+              <Text style={[styles.routeSummaryLabel, { color: colors.textMuted }]}>
+                Destino
+              </Text>
+              <Text style={[styles.routeSummaryValue, { color: colors.text }]}>
+                {destinationName}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      <GestureDetector gesture={panGesture}>
+        <Animated.View
+          style={[
+            styles.routePreviewSurface,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+            panelAnimatedStyle,
+          ]}
+        >
+          <Pressable
+            accessibilityLabel={
+              expanded ? "Ocultar detalles de la ruta" : "Mostrar detalles de la ruta"
+            }
+            accessibilityRole="button"
+            accessibilityState={{ expanded }}
+            onPress={() => onExpandedChange(!expanded)}
+            style={styles.routePanelHeader}
+          >
+            <View
+              style={[styles.routePanelHandle, { backgroundColor: colors.border }]}
+            />
+            <View style={styles.routePanelHeaderRow}>
+              <View style={styles.routePanelTitleCopy}>
+                <Text
+                  style={[styles.routePanelEyebrow, { color: colors.textMuted }]}
+                >
+                  Ruta hacia
+                </Text>
+                <Text style={[styles.routePanelTitle, { color: colors.text }]}>
+                  {destinationName}
+                </Text>
+              </View>
+              <TurismoIcon
+                color={colors.textMuted}
+                name={expanded ? "chevronDown" : "chevronUp"}
+                size={turismoIconSizes.md}
+              />
+            </View>
+          </Pressable>
+
+          {expanded ? (
+            <ScrollView
+              contentContainerStyle={styles.panelContent}
+              showsVerticalScrollIndicator={false}
+              style={styles.routePanelScroll}
+            >
+              <TourismSurface style={styles.modeCard}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  Modo de transporte
+                </Text>
+                <View style={styles.modeOptions}>
+                  {modeOptions.map((option) => (
+                    <View key={option.mode} style={styles.modeOption}>
+                      <TurismoIcon
+                        color={
+                          mode === option.mode
+                            ? colors.primaryStrong
+                            : colors.textMuted
+                        }
+                        name={option.icon}
+                        size={turismoIconSizes.md}
+                      />
+                      <TourismChoiceChip
+                        label={option.label}
+                        onPress={() => onModeChange(option.mode)}
+                        selected={mode === option.mode}
+                      />
+                    </View>
+                  ))}
+                </View>
+              </TourismSurface>
+
+              {!route ? (
+                <TourismActionButton
+                  disabled={isCalculating || locationRequesting}
+                  icon={
+                    isCalculating || locationRequesting
+                      ? undefined
+                      : "navigation"
+                  }
+                  label={
+                    isCalculating
+                      ? "Calculando ruta…"
+                      : locationRequesting
+                        ? "Obteniendo ubicación…"
+                        : routeError
+                          ? "Reintentar ruta"
+                          : "Calcular ruta"
+                  }
+                  onPress={onCalculateRoute}
+                />
+              ) : null}
+
+              {route && !isCalculating ? (
+                <TourismActionButton
+                  icon="navigation"
+                  label="Iniciar navegación"
+                  onPress={onStartNavigation}
+                />
+              ) : null}
+
+              {isCalculating ? (
+                <View style={styles.loadingRow}>
+                  <ActivityIndicator color={colors.primary} />
+                  <Text style={[styles.noticeText, { color: colors.textMuted }]}>
+                    Buscando una ruta sin tráfico en tiempo real…
+                  </Text>
+                </View>
+              ) : null}
+
+              {navigationNotice || locationMessage || routeError ? (
+                <TourismSurface style={styles.noticeCard}>
+                  <TurismoIcon
+                    color={colors.danger}
+                    name="circleHelp"
+                    size={turismoIconSizes.md}
+                  />
+                  <Text style={[styles.noticeText, { color: colors.textMuted }]}>
+                    {navigationNotice ?? routeError ?? locationMessage}
+                  </Text>
+                </TourismSurface>
+              ) : null}
+
+              {route ? (
+                <>
+                  <View style={styles.metrics}>
+                    <Metric
+                      label="Tiempo estimado"
+                      value={formatDuration(route.durationSeconds)}
+                    />
+                    <Metric
+                      label="Distancia"
+                      value={formatDistance(route.distanceMeters)}
+                    />
+                    <Metric label="Modo" value={modeLabel} />
+                  </View>
+                  <TourismSurface style={styles.stepsCard}>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      Indicaciones
+                    </Text>
+                    {route.steps.length ? (
+                      route.steps.map((step, index) => (
+                        <View
+                          key={`${step.instruction}-${index}`}
+                          style={styles.stepRow}
+                        >
+                          <View
+                            style={[
+                              styles.stepIcon,
+                              { backgroundColor: colors.primarySoft },
+                            ]}
+                          >
+                            <TurismoIcon
+                              color={colors.primaryStrong}
+                              name={index === 0 ? "locate" : "navigation"}
+                              size={turismoIconSizes.sm}
+                            />
+                          </View>
+                          <View style={styles.stepCopy}>
+                            <Text
+                              style={[
+                                styles.stepInstruction,
+                                { color: colors.text },
+                              ]}
+                            >
+                              {step.instruction}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.stepDistance,
+                                { color: colors.textFaint },
+                              ]}
+                            >
+                              {formatDistance(step.distanceMeters)}
+                            </Text>
+                          </View>
+                          {index < route.steps.length - 1 ? (
+                            <View
+                              style={[
+                                styles.stepLine,
+                                { backgroundColor: colors.border },
+                              ]}
+                            />
+                          ) : null}
+                        </View>
+                      ))
+                    ) : (
+                      <Text
+                        style={[styles.noticeText, { color: colors.textMuted }]}
+                      >
+                        No hay indicaciones detalladas para este trayecto.
+                      </Text>
+                    )}
+                  </TourismSurface>
+                </>
+              ) : null}
+            </ScrollView>
+          ) : (
+            <View
+              style={[
+                styles.routeCompactContent,
+                { paddingBottom: Math.max(insets.bottom, turismoSpacing.sm) },
+              ]}
+            >
+              {isCalculating ? (
+                <View style={styles.loadingRow}>
+                  <ActivityIndicator color={colors.primary} />
+                  <Text style={[styles.noticeText, { color: colors.textMuted }]}>
+                    Calculando ruta…
+                  </Text>
+                </View>
+              ) : route ? (
+                <View style={styles.routeCompactSummary}>
+                  <Text
+                    style={[
+                      styles.routeCompactValue,
+                      { color: colors.primaryStrong },
+                    ]}
+                  >
+                    {formatDuration(route.durationSeconds)}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.routeCompactMeta,
+                      { color: colors.textMuted },
+                    ]}
+                  >
+                    {formatDistance(route.distanceMeters)} · {modeLabel}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={[styles.noticeText, { color: colors.textMuted }]}>
+                  {routeError ?? locationMessage ?? "Prepara tu ruta"}
+                </Text>
+              )}
+              {!isCalculating && route ? (
+                <TourismActionButton
+                  icon="navigation"
+                  label="Iniciar navegación"
+                  onPress={onStartNavigation}
+                />
+              ) : !isCalculating ? (
+                <TourismActionButton
+                  disabled={locationRequesting}
+                  icon={locationRequesting ? undefined : "navigation"}
+                  label={
+                    locationRequesting
+                      ? "Obteniendo ubicación…"
+                      : routeError
+                        ? "Reintentar ruta"
+                        : "Calcular ruta"
+                  }
+                  onPress={onCalculateRoute}
+                />
+              ) : null}
+            </View>
+          )}
+        </Animated.View>
+      </GestureDetector>
     </View>
   );
 }
@@ -639,10 +914,7 @@ function ActiveNavigationOverlay({
           />
         </View>
         <View style={styles.activeGuidanceCopy}>
-          <Text
-            numberOfLines={2}
-            style={[styles.activeGuidanceText, { color: colors.text }]}
-          >
+          <Text style={[styles.activeGuidanceText, { color: colors.text }]}>
             {instruction}
           </Text>
           {activeGuidance && !isRecalculating && !message ? (
@@ -656,10 +928,7 @@ function ActiveNavigationOverlay({
             </Text>
           ) : null}
           {notice ? (
-            <Text
-              numberOfLines={2}
-              style={[styles.activeNotice, { color: colors.textMuted }]}
-            >
+            <Text style={[styles.activeNotice, { color: colors.textMuted }]}>
               {notice}
             </Text>
           ) : null}
@@ -679,10 +948,7 @@ function ActiveNavigationOverlay({
           <Text style={[styles.activeNextLabel, { color: colors.onPrimary }]}>
             Luego
           </Text>
-          <Text
-            numberOfLines={1}
-            style={[styles.activeNextText, { color: colors.onPrimary }]}
-          >
+          <Text style={[styles.activeNextText, { color: colors.onPrimary }]}>
             {nextStep.instruction}
           </Text>
         </View>
@@ -823,6 +1089,99 @@ function confirmBackgroundNavigation(): Promise<boolean> {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   mapPlaceholder: { flex: 1 },
+  routePreviewOverlay: {
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+    zIndex: 20,
+  },
+  routeSummaryCard: {
+    borderRadius: turismoRadii.md,
+    borderWidth: turismoMetrics.borderWidth,
+    elevation: 12,
+    left: turismoSpacing.md,
+    padding: turismoSpacing.md,
+    position: "absolute",
+    right: turismoSpacing.md,
+  },
+  routeSummaryHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: turismoSpacing.sm,
+    justifyContent: "space-between",
+  },
+  routeSummaryTitle: { ...turismoTypography.heading, flex: 1 },
+  routeSummaryStops: { gap: turismoSpacing.xxs, paddingTop: turismoSpacing.sm },
+  routeSummaryStop: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: turismoSpacing.sm,
+    minWidth: 0,
+  },
+  routeSummaryDot: {
+    borderRadius: turismoRadii.pill,
+    height: turismoSpacing.sm,
+    marginTop: turismoSpacing.xs,
+    width: turismoSpacing.sm,
+  },
+  routeSummaryLine: {
+    height: turismoSpacing.sm,
+    marginLeft: turismoSpacing.xs,
+    width: 1,
+  },
+  routeSummaryCopy: { flex: 1, minWidth: 0 },
+  routeSummaryLabel: { ...turismoTypography.caption },
+  routeSummaryValue: { ...turismoTypography.body, flexShrink: 1 },
+  routePreviewSurface: {
+    borderTopLeftRadius: turismoRadii.lg,
+    borderTopRightRadius: turismoRadii.lg,
+    borderWidth: turismoMetrics.borderWidth,
+    bottom: 0,
+    elevation: 24,
+    left: 0,
+    overflow: "hidden",
+    position: "absolute",
+    right: 0,
+  },
+  routePanelHeader: {
+    gap: turismoSpacing.xs,
+    paddingHorizontal: turismoSpacing.md,
+    paddingTop: turismoSpacing.xs,
+    paddingBottom: turismoSpacing.sm,
+  },
+  routePanelHandle: {
+    alignSelf: "center",
+    borderRadius: turismoRadii.pill,
+    height: turismoSpacing.xxs,
+    width: turismoSpacing.xxl,
+  },
+  routePanelHeaderRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: turismoSpacing.sm,
+  },
+  routePanelTitleCopy: { flex: 1, gap: turismoSpacing.xxs, minWidth: 0 },
+  routePanelEyebrow: { ...turismoTypography.caption },
+  routePanelTitle: { ...turismoTypography.heading, flexShrink: 1 },
+  routePanelScroll: { flex: 1 },
+  routeCompactContent: {
+    gap: turismoSpacing.sm,
+    paddingHorizontal: turismoSpacing.md,
+    paddingTop: turismoSpacing.xs,
+  },
+  routeCompactSummary: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  routeCompactValue: {
+    fontSize: 24,
+    fontWeight: "700",
+    lineHeight: 30,
+  },
+  routeCompactMeta: { ...turismoTypography.caption },
   panelContent: {
     gap: turismoSpacing.lg,
     paddingHorizontal: turismoSpacing.md,
@@ -870,9 +1229,12 @@ const styles = StyleSheet.create({
   activeGuidanceCopy: {
     flex: 1,
     gap: turismoSpacing.xxs,
+    minWidth: 0,
   },
   activeGuidanceText: {
     ...turismoTypography.heading,
+    flexShrink: 1,
+    minWidth: 0,
   },
   activeGuidanceDistance: {
     ...turismoTypography.caption,
@@ -897,6 +1259,7 @@ const styles = StyleSheet.create({
   activeNextText: {
     ...turismoTypography.caption,
     flexShrink: 1,
+    minWidth: 0,
   },
   activeRecenter: {
     left: turismoSpacing.md,
@@ -946,6 +1309,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: turismoSpacing.sm,
     minHeight: 58,
+    minWidth: 0,
     position: "relative",
   },
   stepIcon: {
@@ -955,9 +1319,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: turismoMetrics.controlSm,
   },
-  stepCopy: { flex: 1, gap: turismoSpacing.xxs },
-  stepInstruction: { ...turismoTypography.body },
-  stepDistance: { ...turismoTypography.caption },
+  stepCopy: { flex: 1, gap: turismoSpacing.xxs, minWidth: 0 },
+  stepInstruction: {
+    ...turismoTypography.body,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  stepDistance: { ...turismoTypography.caption, flexShrink: 1, minWidth: 0 },
   stepLine: {
     bottom: -turismoSpacing.sm,
     left: turismoMetrics.controlSm / 2,

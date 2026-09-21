@@ -23,7 +23,11 @@ import { useTurismoTheme } from "@/core/ui/theme-context";
 import type { UserLocationCoordinate } from "@/core/location/use-user-location";
 import type { PublicCenter } from "@/features/centers/domain/public-center";
 import type { PublicMapEstablishment } from "@/features/establishments/domain/establishment";
-import type { MapFeatureSelection } from "../domain/map-feature-selection";
+import {
+  getMapFeatureCoordinate,
+  getNearbyMapFeatureSelections,
+  type MapFeatureSelection,
+} from "../domain/map-feature-selection";
 
 type BoundingBox = Readonly<{
   west: number;
@@ -37,6 +41,7 @@ type CenterMapProps = Readonly<{
   establishments?: readonly PublicMapEstablishment[];
   basemapMode?: BasemapMode;
   focusLocationKey?: number;
+  focusSelection?: MapFeatureSelection | null;
   onAttributionChange?: (handler: (() => void) | null) => void;
   onBearingChange?: (bearing: number) => void;
   onCenterPress: (center: PublicCenter) => void;
@@ -200,7 +205,6 @@ const tourismPinSelectedDark = require("../../../../assets/images/tourism-pin-se
 const selectedCenterZoom = 15;
 const selectedCenterCameraDuration = 500;
 const establishmentPinMinZoom = 13;
-const mapFeatureQueryRadius = 24;
 const mapFeatureLayerIds = [
   "tourism-center-cluster-circles",
   "tourism-center-icons",
@@ -217,8 +221,8 @@ const selfHostedStylePromiseCache = new Map<
   Promise<StyleSpecification>
 >();
 
-type PendingCenterSelection = Readonly<{
-  center: PublicCenter;
+type PendingMapFeatureSelection = Readonly<{
+  selections: readonly MapFeatureSelection[];
   target: [number, number];
 }>;
 type PendingLocationFocus = Readonly<{
@@ -230,6 +234,7 @@ export function CenterMap({
   centers,
   establishments = [],
   focusLocationKey,
+  focusSelection = null,
   onAttributionChange,
   onBearingChange,
   onCenterPress,
@@ -244,7 +249,8 @@ export function CenterMap({
   const cameraRef = useRef<CameraRef>(null);
   const mapRef = useRef<MapRef>(null);
   const sourceRef = useRef<GeoJSONSourceRef>(null);
-  const pendingCenterSelectionRef = useRef<PendingCenterSelection | null>(null);
+  const pendingMapFeatureSelectionRef =
+    useRef<PendingMapFeatureSelection | null>(null);
   const pendingLocationFocusRef = useRef<PendingLocationFocus | null>(null);
   const focusedLocationKeyRef = useRef<number | undefined>(undefined);
   const { scheme } = useTurismoTheme();
@@ -389,6 +395,7 @@ export function CenterMap({
   const handleRenderedFeaturePress = useCallback(
     async (event: NativeSyntheticEvent<PressEventWithFeatures>) => {
       pendingLocationFocusRef.current = null;
+      pendingMapFeatureSelectionRef.current = null;
       onLocationFocusChange?.(false);
 
       const nativeEvent = event?.nativeEvent;
@@ -400,19 +407,21 @@ export function CenterMap({
       let renderedFeatures: GeoJSON.Feature[] = [];
       try {
         renderedFeatures =
-          (await mapRef.current?.queryRenderedFeatures(
-            [
-              [pointX - mapFeatureQueryRadius, pointY - mapFeatureQueryRadius],
-              [pointX + mapFeatureQueryRadius, pointY + mapFeatureQueryRadius],
-            ],
-            { layers: mapFeatureLayerIds },
-          )) ?? [];
+          (await mapRef.current?.queryRenderedFeatures([pointX, pointY], {
+            layers: mapFeatureLayerIds,
+          })) ?? [];
       } catch {
         // Mientras el estilo termina de cargar, el evento de la fuente sigue
         // permitiendo abrir el marcador que recibió el toque.
       }
 
-      const features = [...sourceFeatures, ...renderedFeatures];
+      // La consulta renderizada sirve solo para reconocer el pin ancla. Los
+      // lugares relacionados se calculan luego por distancia geográfica, no
+      // por el tamaño del hitbox ni por el nivel de zoom actual.
+      const features =
+        renderedFeatures.length > 0
+          ? [...sourceFeatures.slice(0, 1), ...renderedFeatures]
+          : sourceFeatures.slice(0, 1);
       const clusterFeature = features.find(
         (feature) => typeof feature.properties?.cluster_id === "number",
       );
@@ -430,73 +439,75 @@ export function CenterMap({
         return;
       }
 
-      const centerCodes = Array.from(
-        new Set(
-          features.flatMap((feature) => {
-            const code = feature.properties?.code;
-            return typeof code === "string" ? [code] : [];
-          }),
-        ),
+      const anchor = features.reduce<MapFeatureSelection | null>(
+        (selection, feature) => {
+          if (selection) return selection;
+          const code = feature.properties?.code;
+          if (typeof code === "string") {
+            const center = centersByCode.get(code);
+            if (center) return { kind: "center", center };
+          }
+          const featureKey = feature.properties?.featureKey;
+          if (typeof featureKey === "string") {
+            const establishment = establishmentsByFeatureKey.get(featureKey);
+            if (establishment) return { kind: "establishment", establishment };
+          }
+          return null;
+        },
+        null,
       );
-      const establishmentFeatureKeys = Array.from(
-        new Set(
-          features.flatMap((feature) => {
-            const featureKey = feature.properties?.featureKey;
-            return typeof featureKey === "string" ? [featureKey] : [];
-          }),
-        ),
+      if (!anchor) return;
+
+      const selections = getNearbyMapFeatureSelections(
+        anchor,
+        centers,
+        establishments,
       );
-      const selections: MapFeatureSelection[] = [
-        ...centerCodes.flatMap((code) => {
-          const center = centersByCode.get(code);
-          return center ? [{ kind: "center" as const, center }] : [];
-        }),
-        ...establishmentFeatureKeys.flatMap((featureKey) => {
-          const establishment = establishmentsByFeatureKey.get(featureKey);
-          return establishment
-            ? [{ kind: "establishment" as const, establishment }]
-            : [];
-        }),
-      ];
-
-      if (selections.length === 0) return;
-      if (selections.length > 1) {
-        onOverlappingFeaturePress(selections);
-        return;
-      }
-
-      const [selection] = selections;
-      if (selection.kind === "center") {
-        const target: [number, number] = [
-          selection.center.longitude,
-          selection.center.latitude,
-        ];
-        // La selección se confirma cuando MapLibre termina el enfoque. Así el
-        // cambio de pin y la apertura del bottom sheet no compiten con la
-        // animación de la cámara en el mismo frame.
-        pendingCenterSelectionRef.current = {
-          center: selection.center,
-          target,
-        };
-        cameraRef.current?.easeTo({
-          center: target,
-          duration: selectedCenterCameraDuration,
-          easing: "ease",
-          zoom: selectedCenterZoom,
-        });
-        return;
-      }
-
-      onEstablishmentPress(selection.establishment);
+      const target = [...getMapFeatureCoordinate(anchor)] as [number, number];
+      // La selección se confirma cuando MapLibre termina el enfoque. Así el
+      // zoom siempre sucede antes de abrir la ficha o las opciones cercanas.
+      pendingMapFeatureSelectionRef.current = { selections, target };
+      cameraRef.current?.easeTo({
+        center: target,
+        duration: selectedCenterCameraDuration,
+        easing: "ease",
+        zoom: selectedCenterZoom,
+      });
     },
     [
       centersByCode,
+      centers,
+      establishments,
       establishmentsByFeatureKey,
-      onEstablishmentPress,
       onLocationFocusChange,
-      onOverlappingFeaturePress,
     ],
   );
+
+  useEffect(() => {
+    if (!focusSelection) return;
+    const target = [...getMapFeatureCoordinate(focusSelection)] as [
+      number,
+      number,
+    ];
+    pendingMapFeatureSelectionRef.current = {
+      selections: [focusSelection],
+      target,
+    };
+    cameraRef.current?.easeTo({
+      center: target,
+      duration: selectedCenterCameraDuration,
+      easing: "ease",
+      zoom: selectedCenterZoom,
+    });
+
+    return () => {
+      if (
+        pendingMapFeatureSelectionRef.current?.selections[0] === focusSelection
+      ) {
+        pendingMapFeatureSelectionRef.current = null;
+      }
+    };
+  }, [focusSelection]);
 
   useEffect(() => {
     if (!userLocation || focusLocationKey === undefined) return;
@@ -552,7 +563,7 @@ export function CenterMap({
         onRegionDidChange={(event) => {
           const { bounds, center, userInteraction, zoom } = event.nativeEvent;
           onBearingChange?.(event.nativeEvent.bearing);
-          const pendingSelection = pendingCenterSelectionRef.current;
+          const pendingSelection = pendingMapFeatureSelectionRef.current;
           const pendingLocationFocus = pendingLocationFocusRef.current;
 
           if (pendingLocationFocus && !userInteraction) {
@@ -579,8 +590,17 @@ export function CenterMap({
               Math.abs(zoom - selectedCenterZoom) <= cameraZoomTolerance;
 
             if (reachedTarget) {
-              pendingCenterSelectionRef.current = null;
-              onCenterPress(pendingSelection.center);
+              pendingMapFeatureSelectionRef.current = null;
+              if (pendingSelection.selections.length > 1) {
+                onOverlappingFeaturePress(pendingSelection.selections);
+              } else if (pendingSelection.selections[0]?.kind === "center") {
+                onCenterPress(pendingSelection.selections[0].center);
+              } else {
+                const selection = pendingSelection.selections[0];
+                if (selection?.kind === "establishment") {
+                  onEstablishmentPress(selection.establishment);
+                }
+              }
             }
           }
 
@@ -588,7 +608,7 @@ export function CenterMap({
             // Si el turista retoma el gesto durante el enfoque, cancela la
             // ficha y el enfoque GPS pendientes: la selección ya no representa
             // el centro visible y la cámara tampoco llegó a la ubicación.
-            pendingCenterSelectionRef.current = null;
+            pendingMapFeatureSelectionRef.current = null;
             pendingLocationFocusRef.current = null;
             onLocationFocusChange?.(false);
             const [west, south, east, north] = bounds;

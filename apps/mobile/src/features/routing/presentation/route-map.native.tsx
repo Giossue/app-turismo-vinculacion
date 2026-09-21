@@ -23,6 +23,7 @@ export type RouteMapProps = Readonly<{
   currentLocation?: RouteCoordinate | null;
   destination: RouteCoordinate;
   fullScreen?: boolean;
+  onUserInteraction?: () => void;
   origin: RouteCoordinate | null;
   recenterKey?: number;
   route: CalculatedRoute | null;
@@ -36,6 +37,7 @@ export function RouteMap({
   currentLocation = null,
   destination,
   fullScreen = false,
+  onUserInteraction,
   origin,
   recenterKey = 0,
   route,
@@ -194,6 +196,11 @@ export function RouteMap({
         onDidFailLoadingMap={() => setMapLoadState("ready")}
         onDidFinishLoadingMap={() => setMapLoadState("ready")}
         onDidFinishLoadingStyle={() => setMapLoadState("ready")}
+        onRegionWillChange={(event) => {
+          if (event.nativeEvent.userInteraction) {
+            onUserInteraction?.();
+          }
+        }}
         ref={mapRef}
         style={styles.map}
       >
@@ -208,7 +215,7 @@ export function RouteMap({
             id="calculated-route-line"
             layout={{ "line-cap": "round", "line-join": "round" }}
             paint={{
-              "line-color": colors.info,
+              "line-color": colors.location,
               "line-opacity": 0.92,
               "line-width": 5,
             }}
@@ -220,7 +227,7 @@ export function RouteMap({
             filter={["==", ["get", "kind"], "origin"]}
             id="calculated-route-origin"
             paint={{
-              "circle-color": colors.info,
+              "circle-color": colors.location,
               "circle-radius": 7,
               "circle-stroke-color": colors.surface,
               "circle-stroke-width": 3,

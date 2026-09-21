@@ -167,6 +167,8 @@ function ExploreMapScreen() {
   const [mapFeatureSelection, setMapFeatureSelection] = useState<
     readonly MapFeatureSelection[] | null
   >(null);
+  const [mapFeatureFocusSelection, setMapFeatureFocusSelection] =
+    useState<MapFeatureSelection | null>(null);
   const [selectedCenterExpanded, setSelectedCenterExpanded] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
   const [focusLocationKey, setFocusLocationKey] = useState(0);
@@ -278,6 +280,7 @@ function ExploreMapScreen() {
     setSelectedCenterCode(null);
     setSelectedEstablishment(null);
     setMapFeatureSelection(null);
+    setMapFeatureFocusSelection(null);
     setSelectedCenterExpanded(false);
     dismissSearchSheet();
   }, [dismissSearchSheet]);
@@ -298,6 +301,7 @@ function ExploreMapScreen() {
   }, []);
   const selectCenter = useCallback(
     (center: PublicCenter) => {
+      setMapFeatureFocusSelection(null);
       preserveSelectionOnSearchCloseRef.current = searchSheetOpenRef.current;
       dismissSearchSheet();
       setSelectedCenterExpanded(false);
@@ -308,6 +312,7 @@ function ExploreMapScreen() {
   );
   const selectEstablishment = useCallback(
     (establishment: PublicMapEstablishment) => {
+      setMapFeatureFocusSelection(null);
       preserveSelectionOnSearchCloseRef.current = searchSheetOpenRef.current;
       dismissSearchSheet();
       setSelectedCenterCode(null);
@@ -319,13 +324,9 @@ function ExploreMapScreen() {
   const handleMapFeatureSelection = useCallback(
     (selection: MapFeatureSelection) => {
       setMapFeatureSelection(null);
-      if (selection.kind === "center") {
-        selectCenter(selection.center);
-      } else {
-        selectEstablishment(selection.establishment);
-      }
+      setMapFeatureFocusSelection(selection);
     },
-    [selectCenter, selectEstablishment],
+    [],
   );
   const handleOverlappingMapFeatures = useCallback(
     (selections: readonly MapFeatureSelection[]) => {
@@ -339,6 +340,7 @@ function ExploreMapScreen() {
       dismissSearchSheet();
       setSelectedCenterCode(null);
       setSelectedEstablishment(null);
+      setMapFeatureFocusSelection(null);
       setSelectedCenterExpanded(false);
       setMapFeatureSelection(selections);
     },
@@ -362,6 +364,10 @@ function ExploreMapScreen() {
     }
     if (mapFeatureSelection) {
       setMapFeatureSelection(null);
+      return true;
+    }
+    if (mapFeatureFocusSelection) {
+      setMapFeatureFocusSelection(null);
       return true;
     }
     if (selectedEstablishment) {
@@ -390,6 +396,7 @@ function ExploreMapScreen() {
     menuVisible,
     agentOpen,
     mapFeatureSelection,
+    mapFeatureFocusSelection,
     selectedCenterCode,
     selectedEstablishment,
     searchMode,
@@ -468,6 +475,7 @@ function ExploreMapScreen() {
     setSelectedCenterCode(null);
     setSelectedEstablishment(null);
     setMapFeatureSelection(null);
+    setMapFeatureFocusSelection(null);
     setSelectedCenterExpanded(false);
   }, [auth.status, dismissSearchSheet, router]);
 
@@ -533,6 +541,7 @@ function ExploreMapScreen() {
         basemapMode="streets"
         centers={visibleCenters}
         establishments={mapEstablishments.data?.items ?? []}
+        focusSelection={mapFeatureFocusSelection}
         onAttributionChange={handleAttributionChange}
         onBearingChange={setMapBearing}
         onCenterPress={(center) => {

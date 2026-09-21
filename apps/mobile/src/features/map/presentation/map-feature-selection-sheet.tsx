@@ -54,7 +54,7 @@ export function MapFeatureSelectionSheet({
           />
         </View>
         <View style={styles.options}>
-          {selections.map((selection) => {
+          {selections.map((selection, index) => {
             const isCenter = selection.kind === "center";
             const title = isCenter
               ? selection.center.name
@@ -70,7 +70,7 @@ export function MapFeatureSelectionSheet({
               <Pressable
                 accessibilityLabel={`Abrir ${title}`}
                 accessibilityRole="button"
-                key={getSelectionKey(selection)}
+                key={`${getSelectionKey(selection)}:${index}`}
                 onPress={() => onSelect(selection)}
                 style={({ pressed }) => [
                   styles.option,

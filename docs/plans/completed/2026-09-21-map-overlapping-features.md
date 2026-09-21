@@ -8,7 +8,8 @@ tocó.
 
 ## Alcance
 
-- Consultar las capas renderizadas de centros y establecimientos en un área táctil pequeña.
+- Usar el marcador tocado como ancla y buscar centros y establecimientos dentro de un
+  radio geográfico de 50 metros.
 - Mantener el flujo actual cuando solo exista un candidato.
 - Presentar una bottom sheet accesible con los candidatos cuando existan varios.
 - Abrir la ficha correspondiente después de elegir un candidato.
@@ -31,14 +32,14 @@ tocó.
 ## Pasos
 
 1. Modelar la selección común de centros y establecimientos.
-2. Consultar features renderizadas en el área del toque y deduplicar capas repetidas.
+2. Resolver el pin ancla, calcular candidatos por distancia geográfica y enfocar la cámara.
 3. Integrar la sheet controlada por estado y sus acciones de selección/cierre.
 4. Verificar formato, typecheck, lint, pruebas y diff.
 
 ## Riesgos
 
-- Un marcador cercano pero no superpuesto podría entrar en el área de selección; el radio se
-  mantiene alineado con el hitbox táctil del mapa.
+- El radio debe representar lugares caminables realmente cercanos sin depender del zoom ni
+  del tamaño del marcador.
 - Una capa de cluster debe seguir expandiéndose antes de ofrecer candidatos individuales.
 - La consulta puede fallar mientras el estilo carga; en ese caso se conserva el feature del
   evento de la fuente como fallback.
@@ -54,4 +55,7 @@ No aplica.
 - [x] Ejecutar verificaciones móviles.
 
 Resultado: la sheet abre en modo parcial con el controlador nativo visible; la persona puede
-arrastrarla hasta la vista completa cuando la lista de candidatos lo necesita.
+arrastrarla hasta la vista completa cuando la lista de candidatos lo necesita. La selección
+múltiple usa un radio geográfico fijo de 50 metros alrededor del pin tocado. La cámara hace
+zoom primero y, al terminar, abre la ficha si solo existe un candidato o la sheet con todos
+los lugares cercanos cuando existen varios.
