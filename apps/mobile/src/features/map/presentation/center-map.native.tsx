@@ -99,10 +99,7 @@ const establishmentPinColorKeys: Record<string, string> = {
   "#dc2626": "red",
   "#4f46e5": "indigo",
 };
-const establishmentIconImagesByColor: Record<
-  string,
-  Record<string, number>
-> = {
+const establishmentIconImagesByColor: Record<string, Record<string, number>> = {
   blue: {
     hotel: require("../../../../assets/images/establishment-icons/hotel-blue-dark.png"),
     restaurant: require("../../../../assets/images/establishment-icons/restaurant-blue-dark.png"),
@@ -191,12 +188,11 @@ const establishmentIconImageNamesByColor: Record<
   ]),
 ) as Record<string, Record<string, string>>;
 const establishmentColorIconImages: Record<string, number> = Object.fromEntries(
-  Object.entries(establishmentIconImagesByColor).flatMap(
-    ([colorKey, icons]) =>
-      Object.entries(icons).map(([icon, image]) => [
-        `tourism-establishment-icon-${icon}-${colorKey}`,
-        image,
-      ]),
+  Object.entries(establishmentIconImagesByColor).flatMap(([colorKey, icons]) =>
+    Object.entries(icons).map(([icon, image]) => [
+      `tourism-establishment-icon-${icon}-${colorKey}`,
+      image,
+    ]),
   ),
 ) as Record<string, number>;
 const establishmentDefaultPinImage = "tourism-establishment-pin-blue";
@@ -560,29 +556,7 @@ export function CenterMap({
             "tourism-establishment-pin-amber": require("../../../../assets/images/establishment-icons/pin-amber.png"),
             "tourism-establishment-pin-red": require("../../../../assets/images/establishment-icons/pin-red.png"),
             "tourism-establishment-pin-indigo": require("../../../../assets/images/establishment-icons/pin-indigo.png"),
-            "tourism-establishment-icon-hotel": establishmentIconImages.hotel,
-            "tourism-establishment-icon-restaurant":
-              establishmentIconImages.restaurant,
-            "tourism-establishment-icon-coffee": establishmentIconImages.coffee,
-            "tourism-establishment-icon-store": establishmentIconImages.store,
-            "tourism-establishment-icon-bus": establishmentIconImages.bus,
-            "tourism-establishment-icon-ticket": establishmentIconImages.ticket,
-            "tourism-establishment-icon-briefcase":
-              establishmentIconImages.briefcase,
-            "tourism-establishment-icon-hotel-dark":
-              establishmentDarkIconImages.hotel,
-            "tourism-establishment-icon-restaurant-dark":
-              establishmentDarkIconImages.restaurant,
-            "tourism-establishment-icon-coffee-dark":
-              establishmentDarkIconImages.coffee,
-            "tourism-establishment-icon-store-dark":
-              establishmentDarkIconImages.store,
-            "tourism-establishment-icon-bus-dark":
-              establishmentDarkIconImages.bus,
-            "tourism-establishment-icon-ticket-dark":
-              establishmentDarkIconImages.ticket,
-            "tourism-establishment-icon-briefcase-dark":
-              establishmentDarkIconImages.briefcase,
+            ...establishmentColorIconImages,
             "tourism-pin-dark": tourismPinDark,
             "tourism-pin-light": tourismPinLight,
             "tourism-pin-selected-dark": tourismPinSelectedDark,
@@ -699,7 +673,7 @@ export function CenterMap({
               "icon-ignore-placement": true,
               "icon-image": ["get", "iconImage"],
               "icon-offset": [0, -40],
-              "icon-size": 0.60,
+              "icon-size": 0.6,
             }}
             minzoom={establishmentPinMinZoom}
             type="symbol"
