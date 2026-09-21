@@ -15,6 +15,7 @@ Permitir que una categoría de catastro administre un icono y un color, y mostra
 - Exponer un endpoint público acotado para establecimientos activos georreferenciados, con filtros de viewport y límites.
 - Añadir una capa nativa al mapa móvil para esos establecimientos, separada de los centros turísticos y usando el icono/color de su categoría.
 - Mantener los establecimientos sin agrupación visual: mostrar un punto del color de su categoría a escala amplia y reemplazarlo por el pin del centro turístico desde un zoom cercano (`minzoom`), evitando círculos con cantidades.
+- Abrir una ficha inferior al pulsar un punto o pin de catastro, con su nombre, categoría, precisión de ubicación y acceso a la ruta.
 - Mantener los centros publicados, búsquedas y estados sin ubicación funcionando como antes;
   los establecimientos con coordenada territorial conservan su marca de aproximación.
 
