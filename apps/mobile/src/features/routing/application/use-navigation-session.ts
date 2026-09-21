@@ -105,6 +105,7 @@ export function useNavigationSession({
   const lastLocationRef = useRef<PersistedNavigationLocation | null>(null);
   const notificationKeyRef = useRef<string | null>(null);
   const ownsActiveSessionRef = useRef(false);
+  const speechRequestRef = useRef(0);
 
   useEffect(() => {
     routeRef.current = route;
@@ -134,7 +135,7 @@ export function useNavigationSession({
     routeKeyRef.current = nextRouteKey;
 
     if (!voiceEnabled) {
-      void Speech.stop();
+      cancelSpeech(speechRequestRef);
       announcedStepRef.current = -1;
       return;
     }
@@ -142,7 +143,7 @@ export function useNavigationSession({
     if (routeChanged || announcedStepRef.current < 0) {
       const firstStep = route.steps[0];
       if (firstStep) {
-        speak(firstStep.instruction);
+        replaceSpeech(speechRequestRef, getSpeechInstructions(route, 0));
         announcedStepRef.current = 0;
       }
     }
@@ -175,7 +176,7 @@ export function useNavigationSession({
 
   useEffect(() => {
     if (!active) {
-      void Speech.stop();
+      cancelSpeech(speechRequestRef);
       lastRerouteAtRef.current = 0;
       routeKeyRef.current = null;
       announcedStepRef.current = -1;
@@ -239,7 +240,7 @@ export function useNavigationSession({
         !arrivedRef.current
       ) {
         arrivedRef.current = true;
-        speak("Has llegado a tu destino");
+        replaceSpeech(speechRequestRef, ["Has llegado a tu destino"]);
         setState((current) => ({
           ...current,
           message: "Has llegado a tu destino.",
@@ -265,7 +266,10 @@ export function useNavigationSession({
           (guidance.stepIndex === 0 ||
             guidance.distanceMeters <= voiceTriggerDistanceMeters)
         ) {
-          speak(guidance.instruction);
+          replaceSpeech(
+            speechRequestRef,
+            getSpeechInstructions(currentRoute, guidance.stepIndex),
+          );
           announcedStepRef.current = guidance.stepIndex;
         }
       }
@@ -439,7 +443,7 @@ export function useNavigationSession({
       // La pantalla puede desmontarse cuando Android manda la actividad a segundo
       // plano. La tarea del sistema y la sesión persistida solo se detienen desde
       // la transición explícita a active=false (detener o llegar).
-      void Speech.stop();
+      cancelSpeech(speechRequestRef);
     };
   }, [active]);
 
@@ -458,10 +462,42 @@ function getRouteKey(route: CalculatedRoute): string {
   ].join("|");
 }
 
-function speak(text: string): void {
-  void Speech.stop();
-  Speech.speak(text, {
-    language: "es-ES",
-    rate: 0.95,
-  });
+function replaceSpeech(
+  speechRequestRef: { current: number },
+  messages: readonly string[],
+): void {
+  const requestId = speechRequestRef.current + 1;
+  speechRequestRef.current = requestId;
+
+  void Speech.stop()
+    .catch(() => undefined)
+    .then(() => {
+      if (speechRequestRef.current !== requestId) return;
+      for (const message of messages) {
+        const text = message.trim();
+        if (!text) continue;
+        Speech.speak(text, {
+          language: "es-ES",
+          rate: 0.95,
+        });
+      }
+    });
+}
+
+function cancelSpeech(speechRequestRef: { current: number }): void {
+  speechRequestRef.current += 1;
+  void Speech.stop().catch(() => undefined);
+}
+
+function getSpeechInstructions(
+  route: CalculatedRoute,
+  stepIndex: number,
+): readonly string[] {
+  const currentInstruction = route.steps[stepIndex]?.instruction;
+  if (!currentInstruction) return [];
+
+  const nextInstruction = route.steps[stepIndex + 1]?.instruction;
+  return nextInstruction && nextInstruction !== currentInstruction
+    ? [`Ahora: ${currentInstruction}`, `Luego: ${nextInstruction}`]
+    : [`Ahora: ${currentInstruction}`];
 }

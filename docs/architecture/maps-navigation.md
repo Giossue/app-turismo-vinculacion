@@ -108,7 +108,8 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   de posición con flecha orientable, un control para recentrar y una barra inferior con
   tiempo restante, distancia y hora estimada. Mientras el seguimiento está activo, la cámara usa
   zoom 19 y una inclinación de 60 grados; su rumbo se orienta con la brújula del dispositivo
-  usando el rumbo verdadero cuando está disponible y el magnético como respaldo. El objetivo
+  usando el rumbo verdadero cuando está disponible y el magnético como respaldo, con un suavizado
+  circular para evitar saltos bruscos sin cambiar la fuente del sensor. El objetivo
   geográfico de la cámara se adelanta 30 m en ese rumbo para que el icono quede detrás, en la
   zona inferior de la pantalla, y la perspectiva mantenga visible el trayecto que viene delante.
   Un gesto manual libera el seguimiento y el control de recentrado lo restablece. El mapa permite
@@ -128,8 +129,9 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 - El botón de ubicación solicita un enfoque animado, pero solo se oculta cuando el evento
   final del mapa confirma la coordenada y el zoom objetivo. Si la persona interrumpe el
   movimiento con un gesto, el enfoque pendiente se cancela y el botón permanece visible.
-- Las instrucciones se leen en español con `expo-speech`. Si la posición queda a más de
-  60 m del trazado, la API recalcula usando la ubicación actual como nuevo origen; no se
+- Las instrucciones se leen en español con `expo-speech`; cada aviso encola la maniobra actual
+  y la siguiente, y descarta una secuencia anterior cuando cambia la ruta. Si la posición queda
+  a más de 60 m del trazado, la API recalcula usando la ubicación actual como nuevo origen; no se
   guarda un historial de coordenadas.
 - Advertir que horarios/precios de transporte registrado son informativos.
 - No prometer rutas accesibles sin datos verificables.

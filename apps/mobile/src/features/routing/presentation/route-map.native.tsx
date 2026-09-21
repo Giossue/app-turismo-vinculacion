@@ -39,6 +39,8 @@ type EndpointProperties = Readonly<{
 }>;
 
 const navigationCameraLeadMeters = 30;
+const navigationHeadingSmoothingFactor = 0.18;
+const navigationCameraAnimationDurationMs = 260;
 const earthRadiusMeters = 6_371_000;
 
 export function RouteMap({
@@ -63,6 +65,7 @@ export function RouteMap({
   const isFollowingRef = useRef(navigationActive);
   const wasNavigationActiveRef = useRef(navigationActive);
   const headingRef = useRef(0);
+  const hasHeadingRef = useRef(false);
   const headingSubscriptionRef = useRef<Location.LocationSubscription | null>(
     null,
   );
@@ -206,6 +209,7 @@ export function RouteMap({
     if (!navigationActive || !nativeMapReady) {
       if (!navigationActive) {
         headingRef.current = 0;
+        hasHeadingRef.current = false;
         headingSubscriptionRef.current?.remove();
         headingSubscriptionRef.current = null;
       }
@@ -221,7 +225,15 @@ export function RouteMap({
         const nextHeading = trueHeading >= 0 ? trueHeading : magHeading;
         if (!Number.isFinite(nextHeading) || nextHeading < 0) return;
 
-        const bearing = normalizeBearing(nextHeading);
+        const targetBearing = normalizeBearing(nextHeading);
+        const bearing = hasHeadingRef.current
+          ? smoothBearing(
+              headingRef.current,
+              targetBearing,
+              navigationHeadingSmoothingFactor,
+            )
+          : targetBearing;
+        hasHeadingRef.current = true;
         headingRef.current = bearing;
         setNavigationHeading(bearing);
         if (!isFollowingRef.current) return;
@@ -231,7 +243,7 @@ export function RouteMap({
         cameraRef.current?.easeTo({
           bearing,
           center: getNavigationCameraCenter(center, bearing),
-          duration: 180,
+          duration: navigationCameraAnimationDurationMs,
           easing: "linear",
           pitch: 60,
           zoom: 19,
@@ -452,6 +464,15 @@ export function RouteMap({
 function normalizeBearing(heading: number): number {
   const bearing = heading % 360;
   return bearing < 0 ? bearing + 360 : bearing;
+}
+
+function smoothBearing(
+  currentBearing: number,
+  targetBearing: number,
+  factor: number,
+): number {
+  const delta = ((targetBearing - currentBearing + 540) % 360) - 180;
+  return normalizeBearing(currentBearing + delta * factor);
 }
 
 function getNavigationCameraCenter(
