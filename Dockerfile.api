@@ -5,7 +5,7 @@ FROM node:24-bookworm-slim AS build
 ENV PNPM_HOME=/pnpm
 ENV PATH=${PNPM_HOME}:${PATH}
 
-RUN corepack enable && corepack prepare pnpm@11.24.0 --activate
+RUN corepack enable && corepack prepare pnpm@12.5.1 --activate
 
 WORKDIR /app
 
@@ -20,7 +20,7 @@ RUN pnpm install --frozen-lockfile --filter @turismo/api...
 COPY apps/api apps/api
 
 RUN pnpm --filter @turismo/api build
-RUN pnpm deploy --legacy --filter @turismo/api --prod /out
+RUN pnpm --filter @turismo/api --prod deploy /out
 RUN cp -R apps/api/dist /out/dist
 
 FROM node:24-bookworm-slim AS runtime

@@ -936,6 +936,148 @@ function ExploreMapScreen() {
   );
 }
 
+function SearchSuggestionsPanel({
+  history,
+  onClearHistory,
+  onRecentPress,
+  onSuggestionPress,
+  query,
+  suggestions,
+}: Readonly<{
+  history: readonly string[];
+  onClearHistory: () => void;
+  onRecentPress: (query: string) => void;
+  onSuggestionPress: (center: PublicCenter) => void;
+  query: string;
+  suggestions: readonly PublicCenter[];
+}>) {
+  const colors = useTurismoPalette();
+  const hasQuery = query.trim().length > 0;
+  const showHistory = !hasQuery && history.length > 0;
+  const showSuggestions = suggestions.length > 0;
+
+  if (!showHistory && !showSuggestions && !hasQuery) return null;
+
+  return (
+    <View
+      accessibilityLabel="Sugerencias e historial de búsqueda"
+      style={[
+        styles.searchSuggestionsPanel,
+        { backgroundColor: colors.surface, borderColor: colors.border },
+      ]}
+    >
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled
+        showsVerticalScrollIndicator={false}
+        style={styles.searchSuggestionsScroll}
+      >
+        {showSuggestions ? (
+          <View>
+            <Text
+              style={[styles.searchSuggestionsTitle, { color: colors.textMuted }]}
+            >
+              Coincidencias rápidas
+            </Text>
+            {suggestions.map((center) => (
+              <Pressable
+                accessibilityLabel={`Abrir ${center.name}`}
+                accessibilityRole="button"
+                key={center.code}
+                onPress={() => onSuggestionPress(center)}
+                style={({ pressed }) => [
+                  styles.searchSuggestionRow,
+                  pressed && styles.searchSuggestionRowPressed,
+                ]}
+              >
+                <TurismoIcon
+                  color={colors.primaryStrong}
+                  name="mapPin"
+                  size={turismoIconSizes.sm}
+                />
+                <View style={styles.searchSuggestionTextWrap}>
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.searchSuggestionName, { color: colors.text }]}
+                  >
+                    {center.name}
+                  </Text>
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.searchSuggestionMeta, { color: colors.textMuted }]}
+                  >
+                    {[center.category, center.type].filter(Boolean).join(" · ")}
+                  </Text>
+                </View>
+                <TurismoIcon
+                  color={colors.textFaint}
+                  name="chevronRight"
+                  size={turismoIconSizes.sm}
+                />
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
+        {showHistory ? (
+          <View>
+            <View style={styles.searchSuggestionsHeader}>
+              <Text
+                style={[styles.searchSuggestionsTitle, { color: colors.textMuted }]}
+              >
+                Búsquedas recientes
+              </Text>
+              <Pressable
+                accessibilityLabel="Borrar búsquedas recientes"
+                accessibilityRole="button"
+                hitSlop={6}
+                onPress={onClearHistory}
+                style={styles.searchSuggestionsClear}
+              >
+                <Text
+                  style={[styles.searchSuggestionsClearText, { color: colors.primaryStrong }]}
+                >
+                  Borrar
+                </Text>
+              </Pressable>
+            </View>
+            {history.map((recentQuery) => (
+              <Pressable
+                accessibilityLabel={`Repetir búsqueda ${recentQuery}`}
+                accessibilityRole="button"
+                key={recentQuery}
+                onPress={() => onRecentPress(recentQuery)}
+                style={({ pressed }) => [
+                  styles.searchSuggestionRow,
+                  pressed && styles.searchSuggestionRowPressed,
+                ]}
+              >
+                <TurismoIcon
+                  color={colors.textMuted}
+                  name="history"
+                  size={turismoIconSizes.sm}
+                />
+                <Text
+                  numberOfLines={1}
+                  style={[styles.searchSuggestionName, { color: colors.text }]}
+                >
+                  {recentQuery}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
+        {hasQuery && !showSuggestions ? (
+          <Text style={[styles.searchSuggestionsEmpty, { color: colors.textMuted }]}>
+            Presiona buscar para ver todos los resultados.
+          </Text>
+        ) : null}
+      </ScrollView>
+    </View>
+  );
+}
+
 function CenterDetailSheet({
   center,
   detail,

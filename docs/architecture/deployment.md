@@ -37,8 +37,11 @@ aplicación nunca posee el único ejemplar de datos.
 Variables validadas al inicio. Proporcionar `.env.example`, nunca `.env` real. Separar
 credenciales por entorno y rotar rutas/tiles privados, IA, correo, JWT y almacenamiento.
 
-La API se construye desde el contexto raíz con `Dockerfile.api`, que instala únicamente la
-distribución de producción de `@turismo/api` y escucha en `0.0.0.0:3000`. En Dokploy, el
+La API se construye desde el contexto raíz con `Dockerfile.api`, que usa la versión pnpm
+`12.5.1` fijada por el workspace y `pnpm deploy` moderno para instalar únicamente la
+distribución de producción de `@turismo/api` y escuchar en `0.0.0.0:3000`. No usar
+`deploy --legacy`: el workspace contiene parches exclusivos del móvil y la implementación
+antigua puede rechazarlos como no utilizados aunque la API no los dependa. En Dokploy, el
 servicio debe usar ese Dockerfile y conservar el contexto raíz del monorepo.
 
 ## Backups
