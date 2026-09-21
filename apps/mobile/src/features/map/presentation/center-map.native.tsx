@@ -60,8 +60,10 @@ type EstablishmentProperties = Readonly<{
   color: string;
   featureKey: string;
   icon: string;
+  iconImage: string;
   name: string;
   approximate: boolean;
+  pinImage: string;
 }>;
 type EstablishmentFeatureCollection = GeoJSON.FeatureCollection<
   GeoJSON.Point,
@@ -77,6 +79,46 @@ const establishmentIconImages: Record<string, number> = {
   ticket: require("../../../../assets/images/establishment-icons/ticket.png"),
   briefcase: require("../../../../assets/images/establishment-icons/briefcase.png"),
 };
+const establishmentDarkIconImages: Record<string, number> = {
+  hotel: require("../../../../assets/images/establishment-icons/hotel-dark.png"),
+  restaurant: require("../../../../assets/images/establishment-icons/restaurant-dark.png"),
+  coffee: require("../../../../assets/images/establishment-icons/coffee-dark.png"),
+  store: require("../../../../assets/images/establishment-icons/store-dark.png"),
+  bus: require("../../../../assets/images/establishment-icons/bus-dark.png"),
+  ticket: require("../../../../assets/images/establishment-icons/ticket-dark.png"),
+  briefcase: require("../../../../assets/images/establishment-icons/briefcase-dark.png"),
+};
+const establishmentPinImages: Record<string, string> = {
+  "#2563eb": "tourism-establishment-pin-blue",
+  "#0891b2": "tourism-establishment-pin-cyan",
+  "#7c3aed": "tourism-establishment-pin-violet",
+  "#c026d3": "tourism-establishment-pin-fuchsia",
+  "#ea580c": "tourism-establishment-pin-orange",
+  "#d97706": "tourism-establishment-pin-amber",
+  "#dc2626": "tourism-establishment-pin-red",
+  "#4f46e5": "tourism-establishment-pin-indigo",
+};
+const establishmentIconImageNames: Record<string, string> = {
+  hotel: "tourism-establishment-icon-hotel",
+  restaurant: "tourism-establishment-icon-restaurant",
+  coffee: "tourism-establishment-icon-coffee",
+  store: "tourism-establishment-icon-store",
+  bus: "tourism-establishment-icon-bus",
+  ticket: "tourism-establishment-icon-ticket",
+  briefcase: "tourism-establishment-icon-briefcase",
+};
+const establishmentDarkIconImageNames: Record<string, string> = {
+  hotel: "tourism-establishment-icon-hotel-dark",
+  restaurant: "tourism-establishment-icon-restaurant-dark",
+  coffee: "tourism-establishment-icon-coffee-dark",
+  store: "tourism-establishment-icon-store-dark",
+  bus: "tourism-establishment-icon-bus-dark",
+  ticket: "tourism-establishment-icon-ticket-dark",
+  briefcase: "tourism-establishment-icon-briefcase-dark",
+};
+const establishmentDefaultPinImage = "tourism-establishment-pin-blue";
+const establishmentDefaultIcon = "hotel";
+const establishmentDarkIconColor = "#d97706";
 
 const tourismPinLight = require("../../../../assets/images/tourism-pin-light.png");
 const tourismPinDark = require("../../../../assets/images/tourism-pin-dark.png");
@@ -171,19 +213,26 @@ export function CenterMap({
       type: "FeatureCollection",
       features: establishments.map((establishment, index) => {
         const featureKey = getEstablishmentFeatureKey(establishment, index);
+        const color = establishment.color.toLowerCase();
         const icon = establishmentIconImages[establishment.icon]
           ? establishment.icon
-          : "hotel";
+          : establishmentDefaultIcon;
         return {
           type: "Feature",
           id: featureKey,
           properties: {
             category: establishment.category,
-            color: establishment.color,
+            color,
             featureKey,
             icon,
+            iconImage:
+              color === establishmentDarkIconColor
+                ? establishmentDarkIconImageNames[icon]
+                : establishmentIconImageNames[icon],
             name: establishment.name,
             approximate: establishment.approximate,
+            pinImage:
+              establishmentPinImages[color] ?? establishmentDefaultPinImage,
           },
           geometry: {
             type: "Point",
@@ -423,15 +472,37 @@ export function CenterMap({
         />
         <Images
           images={{
-            "tourism-establishment-hotel": establishmentIconImages.hotel,
-            "tourism-establishment-restaurant":
+            "tourism-establishment-pin-blue": require("../../../../assets/images/establishment-icons/pin-blue.png"),
+            "tourism-establishment-pin-cyan": require("../../../../assets/images/establishment-icons/pin-cyan.png"),
+            "tourism-establishment-pin-violet": require("../../../../assets/images/establishment-icons/pin-violet.png"),
+            "tourism-establishment-pin-fuchsia": require("../../../../assets/images/establishment-icons/pin-fuchsia.png"),
+            "tourism-establishment-pin-orange": require("../../../../assets/images/establishment-icons/pin-orange.png"),
+            "tourism-establishment-pin-amber": require("../../../../assets/images/establishment-icons/pin-amber.png"),
+            "tourism-establishment-pin-red": require("../../../../assets/images/establishment-icons/pin-red.png"),
+            "tourism-establishment-pin-indigo": require("../../../../assets/images/establishment-icons/pin-indigo.png"),
+            "tourism-establishment-icon-hotel": establishmentIconImages.hotel,
+            "tourism-establishment-icon-restaurant":
               establishmentIconImages.restaurant,
-            "tourism-establishment-coffee": establishmentIconImages.coffee,
-            "tourism-establishment-store": establishmentIconImages.store,
-            "tourism-establishment-bus": establishmentIconImages.bus,
-            "tourism-establishment-ticket": establishmentIconImages.ticket,
-            "tourism-establishment-briefcase":
+            "tourism-establishment-icon-coffee": establishmentIconImages.coffee,
+            "tourism-establishment-icon-store": establishmentIconImages.store,
+            "tourism-establishment-icon-bus": establishmentIconImages.bus,
+            "tourism-establishment-icon-ticket": establishmentIconImages.ticket,
+            "tourism-establishment-icon-briefcase":
               establishmentIconImages.briefcase,
+            "tourism-establishment-icon-hotel-dark":
+              establishmentDarkIconImages.hotel,
+            "tourism-establishment-icon-restaurant-dark":
+              establishmentDarkIconImages.restaurant,
+            "tourism-establishment-icon-coffee-dark":
+              establishmentDarkIconImages.coffee,
+            "tourism-establishment-icon-store-dark":
+              establishmentDarkIconImages.store,
+            "tourism-establishment-icon-bus-dark":
+              establishmentDarkIconImages.bus,
+            "tourism-establishment-icon-ticket-dark":
+              establishmentDarkIconImages.ticket,
+            "tourism-establishment-icon-briefcase-dark":
+              establishmentDarkIconImages.briefcase,
             "tourism-pin-dark": tourismPinDark,
             "tourism-pin-light": tourismPinLight,
             "tourism-pin-selected-dark": tourismPinSelectedDark,
@@ -529,13 +600,16 @@ export function CenterMap({
           onPress={handleEstablishmentSourcePress}
         >
           <Layer
-            id="tourism-establishment-markers"
-            minzoom={establishmentPinMinZoom}
-            paint={{
-              "circle-color": ["get", "color"],
-              "circle-radius": 8,
+            id="tourism-establishment-pins"
+            layout={{
+              "icon-allow-overlap": true,
+              "icon-anchor": "bottom",
+              "icon-ignore-placement": true,
+              "icon-image": ["get", "pinImage"],
+              "icon-size": 0.75,
             }}
-            type="circle"
+            minzoom={establishmentPinMinZoom}
+            type="symbol"
           />
           <Layer
             id="tourism-establishment-icons"
@@ -543,12 +617,9 @@ export function CenterMap({
               "icon-allow-overlap": true,
               "icon-anchor": "center",
               "icon-ignore-placement": true,
-              "icon-image": [
-                "concat",
-                "tourism-establishment-",
-                ["get", "icon"],
-              ],
-              "icon-size": 0.55,
+              "icon-image": ["get", "iconImage"],
+              "icon-offset": [0, -20],
+              "icon-size": 0.3,
             }}
             minzoom={establishmentPinMinZoom}
             type="symbol"
