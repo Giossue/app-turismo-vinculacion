@@ -15,10 +15,12 @@ pregunta -> policy/rate limit -> herramientas del backend
          -> verificación y citas -> usuario
 ```
 
-La primera integración expone `POST /api/v1/ai/chat` como JSON estructurado. El backend
-usa AI SDK Core (`generateText` + `Output.object`) y selecciona OpenAI o Anthropic con
-`AI_PROVIDER` y `AI_MODEL`; las claves `OPENAI_API_KEY` y `ANTHROPIC_API_KEY` nunca llegan a
-la aplicación móvil. La respuesta contiene `text`, `cards`, `itinerary` opcional, `actions` y `sources`.
+La integración expone `POST /api/v1/ai/chat` como JSON estructurado y
+`POST /api/v1/ai/chat/stream` como SSE para el chat móvil. El backend usa AI SDK Core
+(`streamText` + `Output.object`) y selecciona OpenAI o Anthropic con `AI_PROVIDER` y
+`AI_MODEL`; las claves `OPENAI_API_KEY` y `ANTHROPIC_API_KEY` nunca llegan a la aplicación
+móvil. La respuesta final contiene `text`, `cards`, `itinerary` opcional, `actions` y
+`sources`.
 
 Las herramientas allowlisted de esta unidad son `searchPublishedCenters`,
 `findItineraryCandidates`, `getPublishedCenter`, `searchNearbyEstablishments`,
@@ -27,12 +29,13 @@ Las herramientas allowlisted de esta unidad son `searchPublishedCenters`,
 POI activos y establecimientos activos; `searchNearbyPublishedPlaces` recibe únicamente radio,
 límite y categoría opcional, mientras que las coordenadas se toman del contexto aproximado del
 request. La intención cercana detectada en español obliga a ejecutar esa herramienta en el
-primer paso para evitar convertir “cerca de mí” en una búsqueda textual. El modelo solo recibe
-referencias de resultados y el backend rehidrata/sanitiza tarjetas, itinerarios, fuentes y
-destinos; no acepta coordenadas ni detalles escritos por el modelo. `calculateRoadRoute` solo
-recibe referencias emitidas por otras tools y delega el cálculo al proveedor vial existente;
-devuelve distancia, duración e instrucciones acotadas, sin exponer geometría al modelo. Desde la
-ubicación del visitante marca el origen como aproximado y la app recalcula antes de navegar.
+primer paso para evitar convertir “cerca de mí” en una búsqueda textual. Las primeras tools
+delegan en repositorios públicos y el modelo solo recibe referencias opacas de resultados; el
+backend rehidrata/sanitiza tarjetas, itinerarios, fuentes y destinos y no acepta coordenadas ni
+detalles escritos por el modelo. `calculateRoadRoute` solo recibe referencias emitidas por otras
+tools y delega el cálculo al proveedor vial existente; devuelve distancia, duración e
+instrucciones acotadas, sin exponer geometría al modelo. Desde la ubicación del visitante marca
+el origen como aproximado y la app recalcula antes de navegar.
 
 Los POI no tienen código público en el esquema actual: se representan internamente con una
 referencia opaca por solicitud y la respuesta solo contiene nombre, descripción, localidad y
@@ -43,6 +46,10 @@ Las herramientas de transporte consultan rutas, cooperativas, tipos, paradas, ho
 asociaciones reales. Si las tablas operativas no tienen registros, devuelven una ausencia
 explícita (“no hay rutas/paradas/horarios publicados”) y nunca inventan frecuencia, precio ni
 duración.
+
+El endpoint SSE solo transmite el campo de texto parcial acumulado (`text-delta`) y, al final,
+la respuesta completa ya sanitizada (`complete`); nunca transmite tarjetas, coordenadas o
+acciones parciales del modelo.
 Las acciones son intenciones: `start_route` siempre exige confirmación explícita en el
 móvil y no ejecuta navegación desde la API.
 

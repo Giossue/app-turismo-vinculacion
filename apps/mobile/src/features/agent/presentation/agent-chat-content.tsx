@@ -10,6 +10,14 @@ import {
   Text,
   View,
 } from "react-native";
+import Animated, {
+  ReduceMotion,
+  useAnimatedStyle,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 
 import {
   TourismIconAction,
@@ -25,7 +33,7 @@ import {
 } from "@/core/ui/tokens";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import { useUserLocation } from "@/core/location/use-user-location";
-import { askTourismAgent } from "@/features/agent/data/agent-api";
+import { askTourismAgentStream } from "@/features/agent/data/agent-api";
 import type {
   AgentAction,
   AgentMessage,
@@ -59,6 +67,7 @@ export function AgentChatContent({
     { type: "start_route" }
   > | null>(null);
   const [sending, setSending] = useState(false);
+  const [streamingTextReceived, setStreamingTextReceived] = useState(false);
   const messagesScrollRef = useRef<ScrollView>(null);
 
   const sendMessage = async () => {
@@ -67,6 +76,7 @@ export function AgentChatContent({
     setDraft("");
     setPendingRouteAction(null);
     setSending(true);
+    setStreamingTextReceived(false);
     const history = messages.slice(-12).map((item) => ({
       role: item.role,
       content: item.text.slice(0, 2_000),
@@ -76,9 +86,32 @@ export function AgentChatContent({
       { id: `user-${Date.now()}`, role: "user", text: message },
     ]);
     try {
-      const answer = await askTourismAgent(
+      let streamedAssistantId: string | null = null;
+      const answer = await askTourismAgentStream(
         message,
         history,
+        (text) => {
+          if (!text) return;
+          setStreamingTextReceived(true);
+          const assistantId =
+            (streamedAssistantId ??= `assistant-${Date.now()}`);
+          setMessages((current) => {
+            const existing = current.some((item) => item.id === assistantId);
+            if (!existing) {
+              return [
+                ...current,
+                {
+                  id: assistantId,
+                  role: "assistant",
+                  text,
+                },
+              ];
+            }
+            return current.map((item) =>
+              item.id === assistantId ? { ...item, text } : item,
+            );
+          });
+        },
         auth.request,
         undefined,
         coordinate
@@ -89,18 +122,35 @@ export function AgentChatContent({
             }
           : undefined,
       );
-      setMessages((current) => [
-        ...current,
-        {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          text: answer.text,
-          cards: answer.cards,
-          itinerary: answer.itinerary,
-          actions: answer.actions,
-          sources: answer.sources,
-        },
-      ]);
+      if (streamedAssistantId) {
+        setMessages((current) =>
+          current.map((item) =>
+            item.id === streamedAssistantId
+              ? {
+                  ...item,
+                  text: answer.text,
+                  cards: answer.cards,
+                  itinerary: answer.itinerary,
+                  actions: answer.actions,
+                  sources: answer.sources,
+                }
+              : item,
+          ),
+        );
+      } else {
+        setMessages((current) => [
+          ...current,
+          {
+            id: `assistant-${Date.now()}`,
+            role: "assistant",
+            text: answer.text,
+            cards: answer.cards,
+            itinerary: answer.itinerary,
+            actions: answer.actions,
+            sources: answer.sources,
+          },
+        ]);
+      }
     } catch (error) {
       setMessages((current) => [
         ...current,
@@ -115,6 +165,7 @@ export function AgentChatContent({
       ]);
     } finally {
       setSending(false);
+      setStreamingTextReceived(false);
     }
   };
 
@@ -469,6 +520,9 @@ export function AgentChatContent({
               </View>
             </View>
           ))}
+          {sending && !streamingTextReceived ? (
+            <AgentThinkingIndicator />
+          ) : null}
         </View>
       </BottomSheetScrollView>
 
@@ -492,6 +546,66 @@ export function AgentChatContent({
         />
       </TourismSurface>
     </View>
+  );
+}
+
+function AgentThinkingIndicator() {
+  const colors = useTurismoPalette();
+
+  return (
+    <View
+      accessible
+      accessibilityLabel="El agente está preparando una respuesta"
+      accessibilityLiveRegion="polite"
+      accessibilityRole="progressbar"
+      style={styles.assistantMessageRow}
+    >
+      <View style={styles.assistantIcon}>
+        <TurismoIcon
+          color={colors.primaryStrong}
+          name="bot"
+          size={turismoIconSizes.md}
+        />
+      </View>
+      <View style={styles.thinkingDots}>
+        <ThinkingDot color={colors.primaryStrong} delayMs={0} />
+        <ThinkingDot color={colors.primaryStrong} delayMs={160} />
+        <ThinkingDot color={colors.primaryStrong} delayMs={320} />
+      </View>
+    </View>
+  );
+}
+
+function ThinkingDot({
+  color,
+  delayMs,
+}: Readonly<{ color: string; delayMs: number }>) {
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: withDelay(
+      delayMs,
+      withRepeat(
+        withSequence(
+          withTiming(1, {
+            duration: 420,
+            reduceMotion: ReduceMotion.System,
+          }),
+          withTiming(0.35, {
+            duration: 420,
+            reduceMotion: ReduceMotion.System,
+          }),
+        ),
+        -1,
+        false,
+        undefined,
+        ReduceMotion.System,
+      ),
+    ),
+  }));
+
+  return (
+    <Animated.View
+      style={[styles.thinkingDot, { backgroundColor: color }, animatedStyle]}
+    />
   );
 }
 
@@ -608,6 +722,20 @@ const styles = StyleSheet.create({
   },
   confirmationButtonText: { ...turismoTypography.caption },
   sourcesText: { ...turismoTypography.caption, marginTop: turismoSpacing.xs },
+  thinkingDots: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: turismoSpacing.xxs,
+    height: turismoIconSizes.md,
+    justifyContent: "center",
+    marginTop: turismoSpacing.xs,
+    minWidth: turismoIconSizes.md * 1.2,
+  },
+  thinkingDot: {
+    borderRadius: turismoRadii.pill,
+    height: turismoSpacing.xxs + 2,
+    width: turismoSpacing.xxs + 2,
+  },
   composerCard: {
     alignItems: "flex-end",
     borderRadius: turismoRadii.md,

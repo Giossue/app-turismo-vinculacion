@@ -7,7 +7,7 @@ import { ConfigService } from "@nestjs/config";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import {
-  generateText,
+  streamText,
   Output,
   stepCountIs,
   tool,
@@ -140,7 +140,10 @@ export class AiAgentService {
     private readonly calculateRoute: CalculateRouteUseCase,
   ) {}
 
-  async generate(input: AgentChatInput): Promise<AgentResponse> {
+  async generate(
+    input: AgentChatInput,
+    onText?: (text: string) => Promise<void> | void,
+  ): Promise<AgentResponse> {
     const entities = new Map<string, TrustedAgentEntity>();
     const trustedSources = new Map<string, AgentSource>();
     const approximateLocation = input.location
@@ -271,7 +274,7 @@ export class AiAgentService {
     ];
 
     try {
-      const result = await generateText({
+      const result = streamText({
         model: this.model(),
         system: [
           "Eres el agente turístico institucional de Turismo Vinculación.",
@@ -776,7 +779,17 @@ export class AiAgentService {
         },
       });
 
-      return sanitizeAgentResponse(result.output, entities, [
+      if (onText) {
+        let lastText = "";
+        for await (const partial of result.partialOutputStream) {
+          if (typeof partial.text !== "string" || partial.text === lastText)
+            continue;
+          lastText = partial.text;
+          await onText(lastText);
+        }
+      }
+
+      return sanitizeAgentResponse(await result.output, entities, [
         ...trustedSources.values(),
       ]);
     } catch (error) {

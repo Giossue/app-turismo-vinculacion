@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { askTourismAgent } from "./agent-api";
+import { askTourismAgent, askTourismAgentStream } from "./agent-api";
 
 describe("askTourismAgent", () => {
   it("sends approximate location and returns the structured response", async () => {
@@ -107,6 +107,77 @@ describe("askTourismAgent", () => {
       actions: [{ destination: { type: "poi" } }],
     });
     expect(fetcher.mock.calls[0]?.[1]).not.toHaveProperty("id");
+  });
+
+  it("reconstructs fragmented SSE events and forwards cumulative text", async () => {
+    const chunks = [
+      'data: {"type":"text-delta","text":"Ho',
+      'la"}\n\n' +
+        'data: {"type":"complete","response":{"text":"Hola viajero.","cards":[],"actions":[],"sources":[]}}\n\n' +
+        "data: [DONE]\n\n",
+    ];
+    const encoder = new TextEncoder();
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            for (const chunk of chunks)
+              controller.enqueue(encoder.encode(chunk));
+            controller.close();
+          },
+        }),
+        { headers: { "content-type": "text/event-stream" }, status: 200 },
+      ),
+    );
+    const textParts: string[] = [];
+
+    await expect(
+      askTourismAgentStream(
+        "Hola",
+        [],
+        (text) => {
+          textParts.push(text);
+        },
+        fetcher,
+        "http://api.test/api/v1",
+      ),
+    ).resolves.toEqual({
+      text: "Hola viajero.",
+      cards: [],
+      actions: [],
+      sources: [],
+    });
+
+    expect(textParts).toEqual(["Hola"]);
+    expect(fetcher).toHaveBeenCalledWith(
+      "http://api.test/api/v1/ai/chat/stream",
+      expect.objectContaining({
+        headers: {
+          Accept: "text/event-stream",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      }),
+    );
+  });
+
+  it("rejects a stream without a final response", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response('data: {"type":"text-delta","text":"Hola"}\n\n', {
+        headers: { "content-type": "text/event-stream" },
+        status: 200,
+      }),
+    );
+
+    await expect(
+      askTourismAgentStream(
+        "Hola",
+        [],
+        vi.fn(),
+        fetcher,
+        "http://api.test/api/v1",
+      ),
+    ).rejects.toThrow("respuesta incompleta");
   });
 
   it("rejects malformed structured responses", async () => {

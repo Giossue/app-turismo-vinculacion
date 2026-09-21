@@ -4,11 +4,12 @@
 
 Implementada la primera rebanada vertical para visitantes autenticados, incluyendo
 propuestas no persistentes de recorrido con lugares publicados. La búsqueda cercana ahora
-consulta centros, POI y establecimientos mediante PostGIS, y el agente dispone de tools de
-transporte que degradan explícitamente cuando no hay registros operativos. La integración
-queda lista para validarse con credenciales Anthropic y una prueba desde dispositivo real. El
-agente ahora puede delegar el cálculo vial en el proveedor OSRM existente usando referencias
-confiables y métricas verificables; itinerarios persistentes y voz quedan para unidades
+consulta centros, POI y establecimientos mediante PostGIS, el agente dispone de tools de
+transporte que degradan explícitamente cuando no hay registros operativos y puede delegar el
+cálculo vial en el proveedor OSRM existente usando referencias confiables y métricas
+verificables. El chat móvil también cuenta con streaming SSE de texto parcial y conserva la
+respuesta estructurada final. La integración queda lista para validarse con credenciales
+Anthropic y datos publicados reales; itinerarios persistentes y voz quedan para unidades
 posteriores.
 
 ## Objetivo
@@ -61,7 +62,7 @@ tarjetas de lugares y propuestas de acción.
 
 ## Contrato y transporte
 
-`POST /api/v1/ai/chat` deja de ser texto en streaming y devuelve JSON:
+`POST /api/v1/ai/chat` devuelve JSON estructurado para clientes compatibles:
 
 ```text
 {
@@ -73,9 +74,24 @@ tarjetas de lugares y propuestas de acción.
 }
 ```
 
-El modelo solo selecciona referencias opacas devueltas por las herramientas. El servidor
-rehidrata tarjetas, destinos, coordenadas y fuentes desde resultados confiables y descarta
-referencias inexistentes.
+`POST /api/v1/ai/chat/stream` devuelve Server-Sent Events. Los eventos de texto contienen
+el valor acumulado de `text` mientras AI SDK puede reconstruir parcialmente el objeto; el
+evento `complete` contiene el mismo `AgentResponse` final sanitizado y `[DONE]` cierra el
+flujo:
+
+```text
+data: {"type":"text-delta","text":"..."}
+
+data: {"type":"complete","response":{...}}
+
+data: [DONE]
+```
+
+Si falla el proveedor o el catálogo después de enviar cabeceras, el servidor emite un evento
+`error` genérico sin detalles internos. El modelo solo selecciona referencias opacas devueltas
+por las herramientas. El servidor rehidrata tarjetas, destinos, coordenadas y fuentes desde
+resultados confiables y descarta referencias inexistentes.
+El endpoint de streaming nunca emite tarjetas, acciones ni coordenadas parciales.
 
 ## Límites y degradación
 
@@ -104,7 +120,8 @@ referencias inexistentes.
 - El backend solo devuelve tarjetas/itinerarios/acciones que correspondan a resultados de
   herramientas.
 - Coordenadas y detalles de acciones no provienen de texto generado por el modelo.
-- La app móvil valida el JSON, muestra tarjetas y fuentes, y maneja respuesta inválida/error.
+- La app móvil consume texto parcial del SSE, valida la respuesta final, muestra tarjetas y
+  fuentes, y maneja respuesta inválida/error.
 - `start_route` muestra confirmación explícita y solo después navega a `/route`.
 - No se alteran los cambios existentes de navegación por voz, cámara o seguimiento.
 
@@ -112,9 +129,10 @@ referencias inexistentes.
 
 - [x] Pruebas unitarias de esquemas, adaptación de herramientas y sanitización.
 - [x] Pruebas del controlador para respuesta JSON y entrada inválida.
-- [x] Pruebas del parser móvil y de la solicitud de ubicación aproximada.
-- [x] Typecheck, lint, Prettier y `git diff --check` en API; 25 suites y 122 tests pasan.
-- [x] Tests, typecheck y Prettier del móvil; 12 suites y 40 tests pasan.
+- [x] Pruebas del parser móvil, del stream SSE y de la solicitud de ubicación aproximada.
+- [x] Pruebas del controlador para respuesta JSON y eventos SSE.
+- [x] Typecheck, lint, Prettier y `git diff --check` en API y móvil.
+- [x] Tests de API completos según la última ejecución.
 - [x] Lint móvil sin errores; permanece un warning previo sobre la dependencia de
       `visibleCenters` en un `useMemo` del shell del mapa.
 - [x] Smoke SQL contra PostgreSQL: 1 centro publicado, 2 POI, 51 establecimientos y 0 rutas,
@@ -122,6 +140,8 @@ referencias inexistentes.
       establecimientos para las consultas de radio.
 - [x] Tool de cálculo vial sobre el puerto OSRM existente: referencias confiables, origen
       aproximado redondeado, degradación de proveedor/no-route y confirmación móvil intacta.
+- [ ] El test móvil preexistente de `poi` en `sources` debe alinear su fixture con el contrato
+      móvil actual antes de marcar la suite completa como verde.
 
 ## Siguiente unidad
 
