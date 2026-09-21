@@ -49,6 +49,9 @@ No aplica.
 
 ## Estado
 
-- [ ] Implementar modelo y consulta de candidatos.
-- [ ] Implementar bottom sheet de selección.
-- [ ] Ejecutar verificaciones móviles.
+- [x] Implementar modelo y consulta de candidatos.
+- [x] Implementar bottom sheet de selección.
+- [x] Ejecutar verificaciones móviles.
+
+Resultado: la sheet abre en modo parcial con el controlador nativo visible; la persona puede
+arrastrarla hasta la vista completa cuando la lista de candidatos lo necesita.

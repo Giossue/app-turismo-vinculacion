@@ -391,7 +391,12 @@ export function CenterMap({
       pendingLocationFocusRef.current = null;
       onLocationFocusChange?.(false);
 
-      const [pointX, pointY] = event.nativeEvent.point;
+      const nativeEvent = event?.nativeEvent;
+      if (!nativeEvent?.point) return;
+      const [pointX, pointY] = nativeEvent.point;
+      const sourceFeatures = Array.isArray(nativeEvent.features)
+        ? nativeEvent.features
+        : [];
       let renderedFeatures: GeoJSON.Feature[] = [];
       try {
         renderedFeatures =
@@ -407,7 +412,7 @@ export function CenterMap({
         // permitiendo abrir el marcador que recibió el toque.
       }
 
-      const features = [...event.nativeEvent.features, ...renderedFeatures];
+      const features = [...sourceFeatures, ...renderedFeatures];
       const clusterFeature = features.find(
         (feature) => typeof feature.properties?.cluster_id === "number",
       );
@@ -418,7 +423,7 @@ export function CenterMap({
           await sourceRef.current?.getClusterExpansionZoom(clusterId);
         if (expansionZoom === undefined) return;
         cameraRef.current?.easeTo({
-          center: event.nativeEvent.lngLat,
+          center: nativeEvent.lngLat,
           duration: 350,
           zoom: expansionZoom,
         });

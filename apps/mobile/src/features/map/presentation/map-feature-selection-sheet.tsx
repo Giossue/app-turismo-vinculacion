@@ -30,7 +30,6 @@ export function MapFeatureSelectionSheet({
     <ExpoBottomSheet
       backgroundStyle={{ backgroundColor: colors.surface }}
       enablePanDownToClose
-      handleComponent={null}
       index={0}
       onClose={onClose}
       snapPoints={["34%", "64%"]}
