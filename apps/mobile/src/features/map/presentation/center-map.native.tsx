@@ -70,6 +70,7 @@ type EstablishmentProperties = Readonly<{
   featureKey: string;
   icon: string;
   iconImage: string;
+  iconOffset: readonly [number, number];
   name: string;
   approximate: boolean;
   pinImage: string;
@@ -196,6 +197,15 @@ const establishmentColorIconImages: Record<string, number> = Object.fromEntries(
 ) as Record<string, number>;
 const establishmentDefaultPinImage = "tourism-establishment-pin-violet";
 const establishmentDefaultIcon = "hotel";
+const establishmentIconOffsets: Record<string, readonly [number, number]> = {
+  hotel: [0, -40],
+  restaurant: [0, -36.5],
+  coffee: [0, -36],
+  store: [0, -37.5],
+  bus: [0, -38],
+  ticket: [0, -37.5],
+  briefcase: [0, -37],
+};
 
 const tourismPinLight = require("../../../../assets/images/tourism-pin-light.png");
 const tourismPinDark = require("../../../../assets/images/tourism-pin-dark.png");
@@ -318,6 +328,9 @@ export function CenterMap({
             featureKey,
             icon,
             iconImage: establishmentIconImageNamesByColor[colorKey][icon],
+            iconOffset:
+              establishmentIconOffsets[icon] ??
+              establishmentIconOffsets[establishmentDefaultIcon],
             name: establishment.name,
             approximate: establishment.approximate,
             pinImage:
@@ -752,7 +765,7 @@ export function CenterMap({
               "icon-anchor": "center",
               "icon-ignore-placement": true,
               "icon-image": ["get", "iconImage"],
-              "icon-offset": [0, -40],
+              "icon-offset": ["get", "iconOffset"],
               "icon-size": 0.6,
             }}
             minzoom={establishmentPinMinZoom}

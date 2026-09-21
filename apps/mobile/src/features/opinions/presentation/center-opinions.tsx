@@ -66,6 +66,8 @@ export function CenterOpinions({
     const average = opinions.data?.summary.averageRating;
     return average === null || average === undefined ? "—" : average.toFixed(1);
   }, [opinions.data?.summary.averageRating]);
+  const opinionCount = opinions.data?.summary.total ?? 0;
+  const opinionLabel = opinionCount === 1 ? "opinión" : "opiniones";
 
   const visibleOpinions = useMemo(() => {
     const items = opinions.data?.items ?? [];
@@ -156,7 +158,7 @@ export function CenterOpinions({
               readOnly
             />
             <Text style={[styles.summaryMeta, { color: colors.textMuted }]}>
-              {opinions.data?.summary.total ?? 0} opiniones
+              {opinionCount} {opinionLabel}
             </Text>
           </View>
           <View

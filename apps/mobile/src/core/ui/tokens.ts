@@ -85,7 +85,7 @@ export const turismoColors = {
     info: "#0369a1",
     infoSoft: "rgba(3, 105, 161, 0.16)",
     mapBackground: "#E2ECE6",
-    mapSearchIcon: "#ffffff",
+    mapSearchIcon: "#52605a",
     scrim: "rgba(0, 0, 0, 0.42)",
     onPrimary: "#ffffff",
     map: {

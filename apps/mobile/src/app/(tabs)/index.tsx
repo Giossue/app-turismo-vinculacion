@@ -1756,6 +1756,7 @@ const styles = StyleSheet.create({
   },
   centerSheetContent: {
     paddingBottom: turismoSpacing.xxl + turismoMetrics.iconButtonLg,
+    paddingTop: 0,
   },
   centerSheetScroll: { flex: 1 },
   agentSheetView: {
@@ -1769,7 +1770,7 @@ const styles = StyleSheet.create({
     aspectRatio: 1.35,
     alignSelf: "stretch",
     marginHorizontal: -turismoSpacing.lg,
-    marginTop: -turismoSpacing.lg,
+    marginTop: 0,
     overflow: "hidden",
     position: "relative",
   },
