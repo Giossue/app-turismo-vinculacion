@@ -24,6 +24,7 @@ import {
   TourismActionButton,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
+import { TourismHeader } from "@/core/ui/tourism-navigation";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
@@ -106,12 +107,13 @@ export default function LoginScreen() {
       <TourismScreenFrame
         backgroundColor={accountEntryColors.background}
         fullBleed
-        onBack={canGoBack ? handleBack : undefined}
+        showHeader={false}
         title="Cuenta"
       >
         <StatusBar style="light" />
         <AccountEntryContent
           onCreateAccount={() => openMode("register")}
+          onBack={canGoBack ? handleBack : undefined}
           onGuest={() => void handleGuest()}
           onLogin={() => openMode("login")}
         />
@@ -136,6 +138,10 @@ export default function LoginScreen() {
         setFormError("Selecciona tu género.");
         return;
       }
+      if (!birthDate || !isValidBirthDate(birthDate)) {
+        setFormError("Fecha inválida.");
+        return;
+      }
       if (password.length < 12) {
         setFormError("La contraseña debe tener al menos 12 caracteres.");
         return;
@@ -149,11 +155,16 @@ export default function LoginScreen() {
       return;
     }
 
+    const formattedBirthDate =
+      mode === "register" && birthDate
+        ? formatDateForApi(birthDate)
+        : undefined;
+
     setSubmitting(true);
     try {
       if (mode === "register") {
         await auth.register({
-          birthDate: birthDate ? formatDateForApi(birthDate) : undefined,
+          birthDate: formattedBirthDate,
           email: trimmedEmail,
           gender: gender as TouristGender,
           name: trimmedName,
@@ -249,10 +260,12 @@ export default function LoginScreen() {
 
 function AccountEntryContent({
   onCreateAccount,
+  onBack,
   onGuest,
   onLogin,
 }: Readonly<{
   onCreateAccount: () => void;
+  onBack?: () => void;
   onGuest: () => void;
   onLogin: () => void;
 }>) {
@@ -278,6 +291,9 @@ function AccountEntryContent({
           style={[styles.accountHero, { height: heroHeight }]}
         >
           <View pointerEvents="none" style={styles.accountHeroShade} />
+          <View style={styles.accountHeaderOverlay}>
+            <TourismHeader onBack={onBack} title="Cuenta" />
+          </View>
         </ImageBackground>
 
         <View
@@ -312,7 +328,6 @@ function AccountEntryContent({
 
           <View style={styles.accountActions}>
             <AccountEntryButton
-              icon="user"
               label="Iniciar sesión"
               onPress={onLogin}
               variant="primary"
@@ -477,26 +492,13 @@ function FormContent({
 }>) {
   return (
     <View style={styles.formContent}>
-      <View style={styles.intro}>
-        <Text style={[styles.title, { color: colors.text }]}>
-          {mode === "register"
-            ? "Crea tu cuenta turística"
-            : "Vuelve a tus lugares"}
-        </Text>
-        <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-          {mode === "register"
-            ? "Usaremos estos datos para identificar tu cuenta y sincronizar tus guardados."
-            : "Inicia sesión para continuar con tus funciones personales."}
-        </Text>
-      </View>
-
       <View style={styles.form}>
         {mode === "register" ? (
           <Field
             accessibilityLabel="Nombre completo"
             autoCapitalize="words"
             colors={colors}
-            label="Nombre completo"
+            label="Nombre completo *"
             onChangeText={onNameChange}
             placeholder="Tu nombre"
             value={name}
@@ -509,7 +511,7 @@ function FormContent({
           autoCorrect={false}
           colors={colors}
           keyboardType="email-address"
-          label="Correo electrónico"
+          label="Correo electrónico *"
           onChangeText={onEmailChange}
           placeholder="tu@correo.com"
           value={email}
@@ -535,7 +537,7 @@ function FormContent({
           accessibilityLabel="Contraseña"
           autoComplete={mode === "register" ? "new-password" : "password"}
           colors={colors}
-          label="Contraseña"
+          label="Contraseña *"
           onChangeText={onPasswordChange}
           placeholder="Tu contraseña"
           secureTextEntry
@@ -546,7 +548,7 @@ function FormContent({
             accessibilityLabel="Repetir contraseña"
             autoComplete="new-password"
             colors={colors}
-            label="Repetir contraseña"
+            label="Repetir contraseña *"
             onChangeText={onPasswordConfirmationChange}
             placeholder="Repite tu contraseña"
             secureTextEntry
@@ -596,6 +598,11 @@ function GenderOptions({
                 },
               ]}
             >
+              <TurismoIcon
+                color={selected ? colors.primaryStrong : colors.textMuted}
+                name={option === "Masculino" ? "genderMale" : "genderFemale"}
+                size={turismoIconSizes.md}
+              />
               <Text
                 style={[
                   styles.genderOptionText,
@@ -604,13 +611,6 @@ function GenderOptions({
               >
                 {option}
               </Text>
-              {selected ? (
-                <TurismoIcon
-                  color={colors.primaryStrong}
-                  name="check"
-                  size={turismoIconSizes.sm}
-                />
-              ) : null}
             </Pressable>
           );
         })}
@@ -634,13 +634,14 @@ function BirthDateField({
   onOpen: () => void;
   showPicker: boolean;
 }>) {
-  const maximumDate = new Date();
-  const pickerValue = birthDate ?? new Date(2000, 0, 1);
+  const { maximumDate, minimumDate } = getBirthDateBounds();
+  const pickerValue =
+    birthDate && isValidBirthDate(birthDate) ? birthDate : maximumDate;
 
   return (
     <View style={styles.field}>
       <Text style={[styles.label, { color: colors.text }]}>
-        Fecha de nacimiento · opcional
+        Fecha de nacimiento *
       </Text>
       <Pressable
         accessibilityLabel="Elegir fecha de nacimiento"
@@ -674,6 +675,7 @@ function BirthDateField({
         <DateTimePicker
           display="calendar"
           maximumDate={maximumDate}
+          minimumDate={minimumDate}
           mode="date"
           onDismiss={onClose}
           onValueChange={onChange}
@@ -723,6 +725,7 @@ function BirthDateField({
               <DateTimePicker
                 display="inline"
                 maximumDate={maximumDate}
+                minimumDate={minimumDate}
                 mode="date"
                 onDismiss={onClose}
                 onValueChange={onChange}
@@ -799,6 +802,33 @@ function formatDateForApi(date: Date): string {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
+function getBirthDateBounds(referenceDate = new Date()): {
+  maximumDate: Date;
+  minimumDate: Date;
+} {
+  const today = new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate(),
+  );
+  return {
+    maximumDate: shiftDateByYears(today, -11),
+    minimumDate: shiftDateByYears(today, -100),
+  };
+}
+
+function isValidBirthDate(date: Date, referenceDate = new Date()): boolean {
+  const { maximumDate, minimumDate } = getBirthDateBounds(referenceDate);
+  const value = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return value >= minimumDate && value <= maximumDate;
+}
+
+function shiftDateByYears(date: Date, years: number): Date {
+  const shifted = new Date(date);
+  shifted.setFullYear(shifted.getFullYear() + years);
+  return shifted;
+}
+
 function formatDateForDisplay(date: Date): string {
   const monthNames = [
     "enero",
@@ -831,8 +861,7 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     gap: turismoSpacing.lg,
-    justifyContent: "center",
-    paddingVertical: turismoSpacing.xl,
+    paddingTop: turismoSpacing.md,
     paddingBottom: turismoSpacing.xxl,
   },
   accountScroll: { flex: 1, width: "100%" },
@@ -844,6 +873,10 @@ const styles = StyleSheet.create({
   accountEntry: { alignSelf: "stretch", flexGrow: 1, width: "100%" },
   accountHero: { overflow: "hidden", width: "100%" },
   accountHeroImage: { opacity: 0.92 },
+  accountHeaderOverlay: {
+    paddingHorizontal: turismoSpacing.md,
+    width: "100%",
+  },
   accountHeroShade: {
     backgroundColor: "rgba(0, 0, 0, 0.24)",
     bottom: 0,
@@ -855,6 +888,7 @@ const styles = StyleSheet.create({
   accountBodyContent: {
     alignItems: "center",
     flexGrow: 1,
+    marginTop: -14,
     paddingBottom: turismoSpacing.xl,
     paddingHorizontal: turismoSpacing.md,
     width: "100%",
@@ -919,6 +953,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     gap: turismoSpacing.sm,
+    flex: 1,
+    justifyContent: "center",
   },
   accountButtonText: {
     fontSize: 16,
@@ -938,9 +974,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     lineHeight: 20,
   },
-  intro: { gap: turismoSpacing.xs },
-  title: { ...turismoTypography.title },
-  subtitle: { ...turismoTypography.body },
   entryActions: { gap: turismoSpacing.sm },
   dividerRow: {
     alignItems: "center",
