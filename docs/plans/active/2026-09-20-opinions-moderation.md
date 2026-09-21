@@ -62,3 +62,9 @@ una opinión oculta ni se muestra como tal al turista.
 Implementación local completada y verificada. Migración aplicada a la base remota el
 20 de septiembre de 2026; no había opiniones ni moderaciones existentes para convertir.
 Respaldo previo verificado en `/tmp/turismo-vinculacion-backups-20260920/turismo_vinculacion_app-before-opinions.dump`.
+
+El 21 de septiembre de 2026 se ajustó la presentación móvil de la pestaña: el resumen
+usa calificación, estrellas y distribución porcentual; la lista incorpora filtros
+visuales; y el formulario autenticado queda visible mientras se consulta el estado
+propio, sin mostrar un estado ambiguo de “revisando”. La sesión anónima recibe una
+acción explícita para iniciar sesión antes de escribir.

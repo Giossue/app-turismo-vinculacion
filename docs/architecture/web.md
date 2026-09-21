@@ -77,7 +77,8 @@ catálogo activo de localidades y mantiene sus establecimientos separados de las
 centros. La consulta pública de catastro aplica fallback por actividad a la localidad activa
 más cercana que tenga resultados y lo marca explícitamente. Las mutaciones del catastro
 se registran en la tabla de auditoría existente con el discriminador `ESTABLISHMENT`;
-la importación nacional queda para una fase posterior.
+la taxonomía se consulta como actividad → clasificación → categoría y no reutiliza
+`categorias_atractivo`; la importación nacional queda para una fase posterior.
 La sección Catálogos permite administrar las opciones técnicas mediante la API y muestra
 estados activos/inactivos sin conexión directa a PostgreSQL.
 El editor también carga fotografías como multipart hacia `/admin/centers/:code/media`; la

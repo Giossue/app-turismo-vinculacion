@@ -27,7 +27,7 @@ import {
 import type { UserLocationCoordinate } from "@/core/location/use-user-location";
 import type { DiscoveryCatalog, PublicCenter } from "../domain/public-center";
 import {
-  AdvancedDiscoveryFilters,
+  uniqueFilterOptions,
   type DiscoveryFilterValues,
 } from "./discovery-filters";
 
@@ -44,9 +44,7 @@ export function SearchResultsSheet({
   onNearbyToggle,
   onRetry,
   onSelectCenter,
-  onToggleFilters,
   query,
-  showFilters,
   userLocation,
 }: Readonly<{
   catalog?: DiscoveryCatalog;
@@ -61,9 +59,7 @@ export function SearchResultsSheet({
   onNearbyToggle: () => void;
   onRetry: () => void;
   onSelectCenter: (center: PublicCenter) => void;
-  onToggleFilters: () => void;
   query: string;
-  showFilters: boolean;
   userLocation: UserLocationCoordinate | null;
 }>) {
   const colors = useTurismoPalette();
@@ -94,16 +90,11 @@ export function SearchResultsSheet({
       </View>
 
       <ScrollView
-        accessibilityLabel="Filtros de búsqueda turística"
+        accessibilityLabel="Categorías de búsqueda turística"
         contentContainerStyle={styles.filterChips}
         horizontal
         showsHorizontalScrollIndicator={false}
       >
-        <TourismChoiceChip
-          label="Filtros"
-          onPress={onToggleFilters}
-          selected={showFilters}
-        />
         <TourismChoiceChip
           label="Todo"
           onPress={() =>
@@ -111,7 +102,7 @@ export function SearchResultsSheet({
           }
           selected={!filters.categoryCode}
         />
-        {(catalog?.categories ?? []).map((category) => (
+        {uniqueFilterOptions(catalog?.categories ?? []).map((category) => (
           <TourismChoiceChip
             key={category.code}
             label={category.name}
@@ -134,15 +125,6 @@ export function SearchResultsSheet({
           />
         ) : null}
       </ScrollView>
-
-      {showFilters ? (
-        <AdvancedDiscoveryFilters
-          catalog={catalog}
-          filters={filters}
-          onChange={onChangeFilters}
-          onClose={onToggleFilters}
-        />
-      ) : null}
 
       {isFetching || isPlaceholderData ? (
         <View style={styles.statusRow}>

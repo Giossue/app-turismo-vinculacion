@@ -92,6 +92,24 @@ export class SaveEstablishmentDto {
   @Type(() => Number)
   @IsInt()
   @IsPositive()
+  activityId?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @IsPositive()
+  classificationId?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @IsPositive()
+  categoryId?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @IsPositive()
   localityId?: number;
 
   @IsOptional()

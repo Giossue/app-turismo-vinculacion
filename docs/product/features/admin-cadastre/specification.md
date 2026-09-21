@@ -10,11 +10,13 @@ la ficha técnica de un centro turístico.
 
 - Listado administrativo paginado mediante la API, con búsqueda por texto, filtros
   territoriales en cascada (provincia, cantón y localidad) y estado activo.
-- Alta, edición y activación/desactivación lógica utilizando únicamente las columnas ya
-  existentes en `establecimientos_turisticos`.
+- Alta, edición y activación/desactivación lógica utilizando los datos de
+  `establecimientos_turisticos` y la taxonomía jerárquica del catastro.
 - Auditoría inmutable de altas, ediciones, activaciones y desactivaciones mediante la
   tabla existente `auditoria_catalogos`, identificada con `ESTABLISHMENT`.
 - Catálogo activo de `localidades` para seleccionar la ciudad o poblado de referencia.
+- Catálogos dependientes de actividad, clasificación y categoría; las categorías de
+  atractivos turísticos no se mezclan con las categorías del catastro.
 - Consulta pública por actividad y localidad/posición, con orden por distancia cuando existe
   ubicación.
 - Fallback por actividad a la localidad activa más cercana con resultados; la respuesta
@@ -57,5 +59,7 @@ Las rutas administrativas requieren `ADMINISTRADOR`. La consulta pública devuel
 - La auditoría reutiliza la tabla existente y no añade columnas ni tablas; la migración
   `20260920_establishment_audit.sql` solo amplía sus restricciones para aceptar el
   discriminador `ESTABLISHMENT` y las acciones del catastro.
-- Las taxonomías de actividad, clasificación y categoría seguirán siendo texto hasta que
-  producto apruebe catálogos/fuentes canónicas compatibles con los datos ecuatorianos.
+- Las columnas de texto `actividad`, `clasificacion` y `categoria` se conservan por
+  compatibilidad y trazabilidad. Sus relaciones canónicas viven en los catálogos
+  `catalogo_catastro_actividades`, `catalogo_catastro_clasificaciones` y
+  `catalogo_catastro_categorias`; los aliases permiten resolver variantes del consolidado.

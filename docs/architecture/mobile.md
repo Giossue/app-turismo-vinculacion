@@ -80,8 +80,9 @@ Referencias: [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/), [Expo Locat
 La app presenta una entrada única de identidad con `Iniciar sesión`, `Crear cuenta` y
 `Explorar como invitado`. El menú principal ofrece `Cuenta`: abre la cuenta del turista
 autenticado o lleva a la entrada de autenticación cuando no hay sesión. Mapa, fichas
-públicas y rutas funcionan como invitado; guardar, abrir Guardados, el agente y futuras
-opiniones/itinerarios llevan a la autenticación. El access token vive en memoria y el
+públicas y la vista previa de rutas funcionan como invitado; iniciar navegación, descargar
+mapas sin conexión, guardar, abrir Guardados, el agente y futuras opiniones/itinerarios
+llevan a la autenticación. El access token vive en memoria y el
 refresh token en SecureStore. Una cuenta nueva se crea con rol `TURISTA` mediante
 `/auth/mobile/register`; el género es obligatorio y usa las opciones `Masculino` o
 `Femenino`, mientras que la fecha de nacimiento se elige con el calendario nativo. Los
@@ -117,18 +118,17 @@ abren con `push` porque sí representan una pantalla que puede cerrarse.
 ## Caché y funcionamiento sin conexión
 
 TanStack Query persiste el catálogo público en AsyncStorage durante un máximo de 24 horas.
-El mapa en línea revalida los centros publicados al montar y solo dibuja los pines después de
-una respuesta exitosa de la API. Una respuesta vacía no se completa con datos persistidos y
-los datos anteriores se ocultan mientras la consulta está pendiente; así la caché no sustituye
-la fuente remota PostgreSQL. Los manifiestos guardados se usan únicamente desde el flujo
-explícito de mapas sin conexión.
+El mapa en línea revalida los centros publicados al montar. Los centros confirmados en caché
+permanecen visibles mientras se ejecuta una revalidación en segundo plano; una respuesta vacía
+los reemplaza al completarse y la caché nunca sustituye la fuente remota PostgreSQL. Los
+manifiestos guardados se usan únicamente desde el flujo explícito de mapas sin conexión.
 
-Los paquetes de mapa se descargan por ciudad desde `Mapas sin conexión`. MapLibre
-`OfflineManager` persiste tiles del estilo de calles y Expo SQLite conserva el manifiesto,
-fichas y rutas publicadas. Si la API no está disponible, el descubrimiento y la ficha básica
-se hidratan desde ese manifiesto local. Solo las ciudades con un paquete institucional
-PUBLICADO aparecen como descargables; sus límites proceden de una fuente oficial y no se
-editan en el móvil.
+Los paquetes de mapa se descargan por ciudad desde `Mapas sin conexión` y requieren una
+sesión turística autenticada. MapLibre `OfflineManager` persiste tiles del estilo de calles
+y Expo SQLite conserva el manifiesto, fichas y rutas publicadas. Si la API no está
+disponible, el descubrimiento y la ficha básica se hidratan desde ese manifiesto local.
+Solo las ciudades con un paquete institucional PUBLICADO aparecen como descargables; sus
+límites proceden de una fuente oficial y no se editan en el móvil.
 
 ## Ubicación
 

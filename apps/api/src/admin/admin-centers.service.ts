@@ -35,12 +35,14 @@ import {
 } from "./valuation";
 
 type JsonRecord = Record<string, unknown>;
-type CatalogKey = "ACCESSIBILITY" | "ACTIVITY" | "FACILITY";
+type CatalogKey =
+  "ACCESSIBILITY" | "ACTIVITY" | "FACILITY" | "ESTABLISHMENT_CATEGORY";
 
 const CATALOG_TARGETS: Record<CatalogKey, { table: string }> = {
   ACCESSIBILITY: { table: "tipos_accesibilidad" },
   ACTIVITY: { table: "actividades_turisticas" },
   FACILITY: { table: "tipos_facilidad" },
+  ESTABLISHMENT_CATEGORY: { table: "catalogo_catastro_categorias" },
 };
 
 type CenterDraft = {
@@ -1934,6 +1936,9 @@ export class AdminCentersService {
     const like = search ? `%${search}%` : null;
     const activeCondition = query.includeInactive ? "TRUE" : "activo = TRUE";
     const [
+      establishmentActivities,
+      establishmentClassifications,
+      establishmentCategories,
       categories,
       types,
       subtypes,
@@ -1980,6 +1985,38 @@ export class AdminCentersService {
       facilityCategories,
       facilities,
     ] = await Promise.all([
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, activo AS active
+           FROM catalogo_catastro_actividades
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT id, codigo AS code, nombre AS name, activo AS active,
+                actividad_id AS "activityId"
+           FROM catalogo_catastro_clasificaciones
+          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          ORDER BY nombre`,
+        [like],
+      ),
+      this.dataSource.query(
+        `SELECT category.id, category.codigo AS code, category.nombre AS name,
+                category.activo AS active, category.orden AS "order",
+                classification.id AS "classificationId",
+                activity.id AS "activityId",
+                classification.nombre AS "classificationName",
+                activity.nombre AS "activityName"
+           FROM catalogo_catastro_categorias category
+           JOIN catalogo_catastro_clasificaciones classification
+             ON classification.id = category.clasificacion_id
+           JOIN catalogo_catastro_actividades activity
+             ON activity.id = classification.actividad_id
+          WHERE ${query.includeInactive ? "TRUE" : "category.activo = TRUE AND classification.activo = TRUE AND activity.activo = TRUE"}
+            AND ($1::text IS NULL OR category.nombre ILIKE $1)
+          ORDER BY activity.nombre, classification.nombre, category.orden, category.nombre`,
+        [like],
+      ),
       this.dataSource.query(
         `SELECT id, codigo AS code, nombre AS name FROM categorias_atractivo WHERE activo AND ($1::text IS NULL OR nombre ILIKE $1) ORDER BY nombre`,
         [like],
@@ -2256,6 +2293,9 @@ export class AdminCentersService {
       ),
     ]);
     return {
+      establishmentActivities,
+      establishmentClassifications,
+      establishmentCategories,
       categories,
       types,
       subtypes,
@@ -2336,9 +2376,18 @@ export class AdminCentersService {
         };
       }
       const duplicate = await manager.query(
-        `SELECT 1 FROM ${target.table}
-          WHERE lower(nombre) = lower($1) AND id <> $2
-          LIMIT 1`,
+        catalog === "ESTABLISHMENT_CATEGORY"
+          ? `SELECT 1
+               FROM ${target.table} candidate
+               JOIN ${target.table} current_option
+                 ON current_option.id = $2
+                AND current_option.clasificacion_id = candidate.clasificacion_id
+              WHERE lower(candidate.nombre) = lower($1)
+                AND candidate.id <> $2
+              LIMIT 1`
+          : `SELECT 1 FROM ${target.table}
+              WHERE lower(nombre) = lower($1) AND id <> $2
+              LIMIT 1`,
         [nextName, id],
       );
       if (duplicate[0]) {

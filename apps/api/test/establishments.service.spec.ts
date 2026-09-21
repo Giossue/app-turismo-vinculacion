@@ -149,6 +149,70 @@ describe("EstablishmentsService", () => {
     );
   });
 
+  it("resolves the dependent establishment taxonomy before inserting", async () => {
+    const managerQuery = vi
+      .fn()
+      .mockResolvedValueOnce([{ 1: 1 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { id: "10", name: "ALIMENTOS, BEBIDAS Y ENTRETENIMIENTO" },
+      ])
+      .mockResolvedValueOnce([
+        { id: "11", activityId: "10", name: "CAFETERÍA" },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: "12",
+          classificationId: "11",
+          activityId: "10",
+          categoryName: "2 Tazas",
+          classificationName: "CAFETERÍA",
+          activityName: "ALIMENTOS, BEBIDAS Y ENTRETENIMIENTO",
+        },
+      ])
+      .mockResolvedValueOnce([{ id: "13" }])
+      .mockResolvedValueOnce([
+        {
+          ...row,
+          id: "13",
+          activityId: "10",
+          classificationId: "11",
+          categoryId: "12",
+          actividad: "ALIMENTOS, BEBIDAS Y ENTRETENIMIENTO",
+          clasificacion: "CAFETERÍA",
+          categoria: "2 Tazas",
+        },
+      ])
+      .mockResolvedValueOnce([]);
+    const manager = { query: managerQuery };
+    const transaction = vi.fn(
+      async (callback: (value: typeof manager) => unknown) => callback(manager),
+    );
+    const service = new EstablishmentsService({ transaction } as never);
+
+    await service.create(7, {
+      localityId: 1,
+      numeroRegistro: "CAT-13",
+      nombreComercial: "Cafetería catalogada",
+      actividad: "ALIMENTOS, BEBIDAS Y ENTRETENIMIENTO",
+      activityId: 10,
+      classificationId: 11,
+      categoryId: 12,
+    });
+
+    expect(managerQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO establecimientos_turisticos"),
+      expect.arrayContaining([
+        "ALIMENTOS, BEBIDAS Y ENTRETENIMIENTO",
+        "CAFETERÍA",
+        "2 Tazas",
+        10,
+        11,
+        12,
+      ]),
+    );
+  });
+
   it("audits activation changes and locks the establishment first", async () => {
     const managerQuery = vi
       .fn()

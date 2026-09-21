@@ -445,8 +445,6 @@ export function CenterMap({
             paint={{
               "circle-color": colors.location,
               "circle-radius": 7,
-              "circle-stroke-color": colors.surface,
-              "circle-stroke-width": 3,
             }}
             type="circle"
           />

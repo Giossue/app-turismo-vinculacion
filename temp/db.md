@@ -270,6 +270,12 @@ clasificacion VARCHAR(120) NULL
 
 categoria VARCHAR(120) NULL
 
+actividad_catalogo_id BIGINT (FK → catalogo_catastro_actividades.id) NULL
+
+clasificacion_catalogo_id BIGINT (FK → catalogo_catastro_clasificaciones.id) NULL
+
+categoria_catalogo_id BIGINT (FK → catalogo_catastro_categorias.id) NULL
+
 direccion TEXT NULL
 
 telefono VARCHAR(25) NULL
@@ -285,6 +291,10 @@ activo BOOLEAN NOT NULL DEFAULT TRUE
 created\_at TIMESTAMPTZ NOT NULL
 
 updated\_at TIMESTAMPTZ NOT NULL
+
+Las columnas de texto conservan el valor del consolidado. Las tres relaciones opcionales
+resuelven la taxonomía canónica actividad → clasificación → categoría y permiten una
+normalización progresiva sin perder aliases del origen.
 
 &nbsp;
 

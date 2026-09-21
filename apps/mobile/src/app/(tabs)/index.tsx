@@ -66,7 +66,6 @@ import type {
   PublicCenterDetail,
 } from "@/features/centers/domain/public-center";
 import {
-  AdvancedDiscoveryFilters,
   FilterChips,
   type DiscoveryFilterValues,
 } from "@/features/centers/presentation/discovery-filters";
@@ -109,7 +108,10 @@ export default function HomeScreen() {
     };
   }, []);
 
-  if (auth.status === "loading" || entryChoice === undefined) {
+  if (
+    entryChoice === undefined ||
+    (auth.status === "loading" && entryChoice !== "guest")
+  ) {
     return (
       <View
         style={[styles.entryLoading, { backgroundColor: colors.background }]}
@@ -146,7 +148,6 @@ function ExploreMapScreen() {
   const [submittedText, setSubmittedText] = useState("");
   const [searchMode, setSearchMode] = useState<ExploreSearchMode>("CENTERS");
   const [searchFocused, setSearchFocused] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
   const [nearbyOnly, setNearbyOnly] = useState(false);
   const [mapBearing, setMapBearing] = useState(0);
   const [resetNorthKey, setResetNorthKey] = useState(0);
@@ -221,11 +222,10 @@ function ExploreMapScreen() {
     refetch,
   } = usePublishedCenters(query);
   const { data: catalog } = useDiscoveryCatalog();
-  // No conservamos pines mientras una consulta remota está en curso ni cuando
-  // terminó con error. Así una respuesta remota vacía también elimina los
-  // centros que pudieran haber quedado persistidos de una sesión anterior.
+  // Conservamos los centros ya confirmados mientras se revalida la consulta;
+  // una respuesta remota vacía sí los reemplaza al terminar correctamente.
   const visibleCenters =
-    searchMode === "CENTERS" && (error || isFetching) ? [] : centers;
+    searchMode === "CENTERS" && error && centers.length === 0 ? [] : centers;
 
   const selectedCenter = selectedCenterCode
     ? (visibleCenters.find((center) => center.code === selectedCenterCode) ??
@@ -260,7 +260,6 @@ function ExploreMapScreen() {
     setSubmittedText("");
     setSearchMode("CENTERS");
     setSearchFocused(false);
-    setShowFilters(false);
     setNearbyOnly(false);
     setSelectedCenterCode(null);
     setSelectedCenterExpanded(false);
@@ -303,10 +302,6 @@ function ExploreMapScreen() {
       closeAgent();
       return true;
     }
-    if (showFilters) {
-      setShowFilters(false);
-      return true;
-    }
     if (selectedCenterCode) {
       closeSelectedCenter();
       return true;
@@ -330,7 +325,6 @@ function ExploreMapScreen() {
     selectedCenterCode,
     searchMode,
     submittedQuery,
-    showFilters,
     text,
   ]);
 
@@ -401,7 +395,6 @@ function ExploreMapScreen() {
     setSubmittedText("");
     setSearchMode("CENTERS");
     setSearchFocused(false);
-    setShowFilters(false);
     setNearbyOnly(false);
     setSelectedCenterCode(null);
     setSelectedCenterExpanded(false);
@@ -432,7 +425,6 @@ function ExploreMapScreen() {
     setSearchFocused(false);
     setNearbyOnly(false);
     setSelectedCenterCode(null);
-    setShowFilters(false);
   }, [text]);
 
   const handleNearbyToggle = useCallback(() => {
@@ -549,18 +541,7 @@ function ExploreMapScreen() {
                     subtypeCode: undefined,
                   }))
                 }
-                onFilterAction={() => setShowFilters((value) => !value)}
-                filterActionSelected={showFilters}
-                showFilterAction
               />
-              {showFilters ? (
-                <AdvancedDiscoveryFilters
-                  catalog={catalog}
-                  filters={filters}
-                  onChange={setFilters}
-                  onClose={() => setShowFilters(false)}
-                />
-              ) : null}
             </>
           ) : null}
           {searchMode === "CENTERS" && isFetching ? (
@@ -569,20 +550,9 @@ function ExploreMapScreen() {
               accessibilityLabel="Actualizando lugares turísticos"
               accessibilityRole="progressbar"
               pointerEvents="none"
-              style={[
-                styles.refreshNotice,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                },
-              ]}
+              style={styles.refreshIndicator}
             >
               <ActivityIndicator color={colors.primaryStrong} size="small" />
-              <Text
-                style={[styles.refreshNoticeText, { color: colors.textMuted }]}
-              >
-                Actualizando lugares…
-              </Text>
             </View>
           ) : null}
         </View>
@@ -673,9 +643,7 @@ function ExploreMapScreen() {
                 onNearbyToggle={handleNearbyToggle}
                 onRetry={() => void refetch()}
                 onSelectCenter={selectCenter}
-                onToggleFilters={() => setShowFilters((value) => !value)}
                 query={submittedQuery}
-                showFilters={showFilters}
                 userLocation={userLocation}
               />
             </BottomSheetScrollView>
@@ -895,31 +863,12 @@ function CenterDetailSheet({
               detail={detail}
               detailError={detailError}
               detailPending={detailPending}
+              onClose={onClose}
               onOpenRoute={onOpenRoute}
               onRequireAuth={onRequireAuth}
               onRetryDetail={onRetryDetail}
             />
           </ScrollView>
-          {expanded ? (
-            <View
-              pointerEvents="box-none"
-              style={[
-                styles.centerSheetClose,
-                {
-                  bottom: Math.max(
-                    insets.bottom + turismoSpacing.xl,
-                    turismoMetrics.controlLg,
-                  ),
-                },
-              ]}
-            >
-              <TourismIconAction
-                accessibilityLabel="Cerrar ficha turística"
-                icon="close"
-                onPress={onClose}
-              />
-            </View>
-          ) : null}
         </Animated.View>
       </GestureDetector>
     </View>
@@ -932,6 +881,7 @@ function PlaceSheet({
   detail,
   detailError,
   detailPending,
+  onClose,
   onOpenRoute,
   onRequireAuth,
   onRetryDetail,
@@ -941,6 +891,7 @@ function PlaceSheet({
   detail?: PublicCenterDetail;
   detailError: Error | null;
   detailPending: boolean;
+  onClose: () => void;
   onOpenRoute: () => void;
   onRequireAuth: () => void;
   onRetryDetail: () => void;
@@ -1056,6 +1007,13 @@ function PlaceSheet({
               y="0"
             />
           </Svg>
+        </View>
+        <View style={styles.placeHeroClose}>
+          <TourismIconAction
+            accessibilityLabel="Cerrar ficha turística"
+            icon="close"
+            onPress={onClose}
+          />
         </View>
       </View>
       <View style={styles.placeActions}>
@@ -1532,17 +1490,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: turismoSpacing.xs,
   },
-  refreshNotice: {
-    alignSelf: "center",
-    alignItems: "center",
-    borderRadius: turismoRadii.pill,
-    borderWidth: turismoMetrics.borderWidth,
-    flexDirection: "row",
-    gap: turismoSpacing.xs,
-    paddingHorizontal: turismoSpacing.md,
-    paddingVertical: turismoSpacing.xs,
-  },
-  refreshNoticeText: { ...turismoTypography.caption },
+  refreshIndicator: { alignSelf: "center" },
   mapActionLayer: {
     alignItems: "flex-end",
     bottom: turismoSpacing.md,
@@ -1620,11 +1568,6 @@ const styles = StyleSheet.create({
     paddingBottom: turismoSpacing.xxl + turismoMetrics.iconButtonLg,
   },
   centerSheetScroll: { flex: 1 },
-  centerSheetClose: {
-    position: "absolute",
-    right: turismoSpacing.md,
-    zIndex: 10,
-  },
   agentSheetView: {
     flex: 1,
     minHeight: 360,
@@ -1652,6 +1595,12 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 0,
     top: 0,
+  },
+  placeHeroClose: {
+    position: "absolute",
+    right: turismoSpacing.xxl,
+    top: turismoSpacing.md,
+    zIndex: 2,
   },
   placeActions: {
     alignItems: "center",

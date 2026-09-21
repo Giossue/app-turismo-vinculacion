@@ -65,7 +65,8 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 - La primera versión online calcula auto, bicicleta y caminata con OSRM sin tráfico en
   tiempo real. El modo bus usa rutas institucionales publicadas en PostgreSQL, no un perfil
   OSRM genérico.
-- La navegación activa se inicia explícitamente desde una ruta calculada. En primer plano
+- La navegación activa requiere una sesión turística autenticada y se inicia explícitamente
+  desde una ruta calculada. La vista previa de la ruta permanece disponible como invitado. En primer plano
   usa `Location.watchPositionAsync` para actualizar el mapa de inmediato y, mientras existe
   una sesión activa, `expo-location` mantiene una tarea de ubicación en segundo plano con
   el servicio foreground de Android. La tarea conserva únicamente la última posición en

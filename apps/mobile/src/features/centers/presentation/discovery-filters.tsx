@@ -1,7 +1,6 @@
 import { ScrollView, StyleSheet, View } from "react-native";
 
 import {
-  TourismActionButton,
   TourismChoiceChip,
   TourismIconAction,
   TourismSectionTitle,
@@ -14,24 +13,25 @@ export type DiscoveryFilterValues = Omit<CenterFilters, "text">;
 
 type FilterOption = Readonly<{ code: string; name: string }>;
 
+export function uniqueFilterOptions<T extends FilterOption>(
+  options: readonly T[],
+): readonly T[] {
+  return [...new Map(options.map((option) => [option.code, option])).values()];
+}
+
 export function FilterChips({
   label,
   onChange,
-  onFilterAction,
   options,
-  filterActionSelected = false,
   selected,
-  showFilterAction = false,
 }: Readonly<{
   label: string;
   options: readonly FilterOption[];
   selected?: string;
   onChange: (value: string | undefined) => void;
-  onFilterAction?: () => void;
-  filterActionSelected?: boolean;
-  showFilterAction?: boolean;
 }>) {
-  if (!options.length && !showFilterAction) return null;
+  if (!options.length) return null;
+  const uniqueOptions = uniqueFilterOptions(options);
   return (
     <ScrollView
       accessibilityLabel={label}
@@ -45,7 +45,7 @@ export function FilterChips({
         onPress={() => onChange(undefined)}
         selected={!selected}
       />
-      {options.map((option) => (
+      {uniqueOptions.map((option) => (
         <TourismChoiceChip
           key={option.code}
           label={option.name}
@@ -53,15 +53,6 @@ export function FilterChips({
           selected={selected === option.code}
         />
       ))}
-      {showFilterAction && onFilterAction ? (
-        <TourismActionButton
-          compact
-          icon="sliders"
-          label="Filtros"
-          mode={filterActionSelected ? "contained" : "outlined"}
-          onPress={onFilterAction}
-        />
-      ) : null}
     </ScrollView>
   );
 }

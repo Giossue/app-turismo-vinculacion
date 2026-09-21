@@ -11,7 +11,7 @@ deben llevar a esa pantalla sin bloquear el descubrimiento público.
 - Registro móvil mediante `POST /auth/mobile/register`.
 - Sesión móvil con refresh rotatorio ya existente, usando `SecureStore` en el dispositivo.
 - Campos de `usuarios`: nombre, email, género obligatorio (`Masculino` o `Femenino`),
-  fecha de nacimiento opcional mediante calendario nativo y
+  fecha de nacimiento obligatoria mediante calendario nativo y
   contraseña; el backend asigna el rol `TURISTA`.
 - El menú principal incluye `Cuenta`; una sesión activa abre su resumen y un visitante es
   dirigido a la pantalla única de autenticación.
@@ -25,6 +25,9 @@ deben llevar a esa pantalla sin bloquear el descubrimiento público.
 - El fondo se incorpora como recurso local generado para el cliente móvil; los textos,
   iconos y controles permanecen implementados en React Native para conservar navegación,
   accesibilidad y acciones reales.
+- La entrada como invitado conserva la elección en memoria y almacenamiento; cuando el login
+  se abre sobre una pantalla existente vuelve a ella sin reconstruir el mapa. Los centros
+  confirmados se reutilizan durante cinco minutos y se revalidan en segundo plano.
 
 ## Límites y seguridad
 

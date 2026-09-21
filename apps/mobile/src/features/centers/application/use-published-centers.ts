@@ -18,8 +18,8 @@ export function usePublishedCenters(filters: CenterFilters = {}) {
     // pueden introducir pines en Explorar.
     queryFn: () => getPublishedCenters(filters),
     gcTime: 24 * 60 * 60 * 1000,
-    refetchOnMount: "always",
-    staleTime: 0,
+    refetchOnMount: true,
+    staleTime: 5 * 60 * 1000,
     retry: 1,
   });
 }

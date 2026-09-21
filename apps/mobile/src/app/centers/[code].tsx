@@ -170,6 +170,11 @@ export default function CenterDetailScreen() {
                     })
                   }
                 />
+                <TourismIconAction
+                  accessibilityLabel="Cerrar ficha turística"
+                  icon="close"
+                  onPress={() => router.back()}
+                />
               </View>
             </View>
           </View>

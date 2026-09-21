@@ -11,12 +11,11 @@ import { useRouter } from "expo-router";
 
 import {
   TourismActionButton,
+  TourismChoiceChip,
   TourismSurface,
   useTurismoPalette,
 } from "@/core/ui/tourism-controls";
-import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
-  turismoIconSizes,
   turismoMetrics,
   turismoRadii,
   turismoSpacing,
@@ -46,6 +45,7 @@ export function CenterOpinions({
   const [rating, setRating] = useState<number | null>(null);
   const [comment, setComment] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [reviewFilter, setReviewFilter] = useState<"all" | "recent">("all");
 
   const ownState = own.data ?? null;
   const formMode = ownState?.canEdit && editing ? "edit" : "create";
@@ -55,10 +55,13 @@ export function CenterOpinions({
 
   const averageLabel = useMemo(() => {
     const average = opinions.data?.summary.averageRating;
-    return average === null || average === undefined
-      ? "Sin calificaciones"
-      : `${average.toFixed(1)} / 5`;
+    return average === null || average === undefined ? "—" : average.toFixed(1);
   }, [opinions.data?.summary.averageRating]);
+
+  const visibleOpinions = useMemo(() => {
+    const items = opinions.data?.items ?? [];
+    return reviewFilter === "recent" ? items.slice(0, 3) : items;
+  }, [opinions.data?.items, reviewFilter]);
 
   function requireAuth() {
     if (onRequireAuth) {
@@ -117,27 +120,42 @@ export function CenterOpinions({
   return (
     <View style={styles.container}>
       <TourismSurface style={styles.summary}>
-        <View style={styles.summaryHeading}>
-          <View>
-            <Text style={[styles.summaryTitle, { color: colors.text }]}>
-              Opiniones
+        <View style={styles.summaryContent}>
+          <View style={styles.averageBlock}>
+            <Text style={[styles.averageValue, { color: colors.text }]}>
+              {averageLabel}
             </Text>
+            <Stars
+              compact
+              rating={opinions.data?.summary.averageRating ?? null}
+              readOnly
+            />
             <Text style={[styles.summaryMeta, { color: colors.textMuted }]}>
-              {opinions.data?.summary.total ?? 0} publicadas · {averageLabel}
+              {opinions.data?.summary.total ?? 0} opiniones
             </Text>
           </View>
-          <TurismoIcon
-            color={colors.primaryStrong}
-            name="message"
-            size={turismoIconSizes.md}
+          <RatingDistribution
+            distribution={
+              opinions.data?.summary.distribution ?? emptyDistribution
+            }
           />
         </View>
-        {opinions.data?.summary.totalRatings ? (
-          <RatingDistribution
-            distribution={opinions.data.summary.distribution}
-          />
-        ) : null}
       </TourismSurface>
+
+      {opinions.data?.total ? (
+        <View style={styles.filters}>
+          <TourismChoiceChip
+            label="Todas"
+            onPress={() => setReviewFilter("all")}
+            selected={reviewFilter === "all"}
+          />
+          <TourismChoiceChip
+            label="Recientes"
+            onPress={() => setReviewFilter("recent")}
+            selected={reviewFilter === "recent"}
+          />
+        </View>
+      ) : null}
 
       {opinions.isPending ? (
         <View style={styles.stateRow}>
@@ -159,8 +177,8 @@ export function CenterOpinions({
             onPress={() => void opinions.refetch()}
           />
         </TourismSurface>
-      ) : opinions.data?.items.length ? (
-        opinions.data.items.map((opinion, index) => (
+      ) : visibleOpinions.length ? (
+        visibleOpinions.map((opinion, index) => (
           <TourismSurface
             key={`${opinion.publishedAt}-${index}`}
             style={styles.opinionItem}
@@ -174,7 +192,7 @@ export function CenterOpinions({
               </Text>
             </View>
             {opinion.rating !== null ? (
-              <Stars rating={opinion.rating} readOnly />
+              <Stars compact rating={opinion.rating} readOnly />
             ) : null}
             {opinion.comment ? (
               <Text style={[styles.comment, { color: colors.textMuted }]}>
@@ -183,39 +201,26 @@ export function CenterOpinions({
             ) : null}
           </TourismSurface>
         ))
-      ) : (
-        <TourismSurface style={styles.stateSurface}>
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            Todavía no hay opiniones
-          </Text>
-          <Text style={[styles.stateText, { color: colors.textMuted }]}>
-            Sé la primera persona en compartir su experiencia.
-          </Text>
-        </TourismSurface>
-      )}
+      ) : null}
 
-      {auth.status === "loading" || own.isPending ? (
-        <View style={styles.stateRow}>
-          <ActivityIndicator color={colors.primary} />
-          <Text style={[styles.stateText, { color: colors.textMuted }]}>
-            Revisando tu opinión…
-          </Text>
-        </View>
-      ) : auth.status !== "authenticated" ? (
+      {auth.status === "anonymous" ? (
         <TourismSurface style={styles.composerNotice}>
+          <Text style={[styles.noticeTitle, { color: colors.text }]}>
+            Comparte tu experiencia
+          </Text>
           <Text style={[styles.stateText, { color: colors.textMuted }]}>
-            Inicia sesión para dejar tu opinión.
+            Inicia sesión para calificar y escribir una opinión.
           </Text>
           <TourismActionButton
             compact
-            label="Iniciar sesión"
+            label="Escribir una opinión"
             onPress={requireAuth}
           />
         </TourismSurface>
-      ) : own.error ? (
+      ) : auth.status === "authenticated" && own.error ? (
         <TourismSurface style={styles.composerNotice}>
           <Text style={[styles.stateText, { color: colors.textMuted }]}>
-            No pudimos consultar tu estado.
+            No pudimos consultar tu opinión.
           </Text>
           <TourismActionButton
             compact
@@ -225,7 +230,7 @@ export function CenterOpinions({
             onPress={() => void own.refetch()}
           />
         </TourismSurface>
-      ) : ownState?.pending ? (
+      ) : auth.status === "authenticated" && ownState?.pending ? (
         <TourismSurface style={styles.composerNotice}>
           <Text style={[styles.noticeTitle, { color: colors.text }]}>
             Tu opinión está en revisión
@@ -239,7 +244,7 @@ export function CenterOpinions({
             </Text>
           ) : null}
         </TourismSurface>
-      ) : ownState?.lastRejected ? (
+      ) : auth.status === "authenticated" && ownState?.lastRejected ? (
         <TourismSurface style={styles.composerNotice}>
           <Text style={[styles.noticeTitle, { color: colors.text }]}>
             La última versión fue rechazada
@@ -268,7 +273,7 @@ export function CenterOpinions({
             />
           )}
         </TourismSurface>
-      ) : ownState?.current && !editing ? (
+      ) : auth.status === "authenticated" && ownState?.current && !editing ? (
         <TourismSurface style={styles.composerNotice}>
           <Text style={[styles.noticeTitle, { color: colors.text }]}>
             Tu opinión publicada
@@ -282,8 +287,7 @@ export function CenterOpinions({
             onPress={startEdit}
           />
         </TourismSurface>
-      ) : canOpenForm &&
-        (editing || ownState === null || ownState.canCreate) ? (
+      ) : auth.status === "authenticated" && canOpenForm ? (
         <OpinionComposer
           comment={comment}
           error={formError}
@@ -331,6 +335,9 @@ function OpinionComposer({
         Calificación
       </Text>
       <Stars rating={rating} onChange={onChangeRating} />
+      <Text style={[styles.inputLabel, { color: colors.textMuted }]}>
+        Descripción
+      </Text>
       <TextInput
         accessibilityLabel="Comentario de la opinión"
         editable={!loading}
@@ -373,30 +380,48 @@ function OpinionComposer({
 }
 
 function Stars({
+  compact = false,
   rating,
   onChange,
   readOnly = false,
 }: Readonly<{
+  compact?: boolean;
   rating: number | null;
   onChange?: (rating: number | null) => void;
   readOnly?: boolean;
 }>) {
   const colors = useTurismoPalette();
+  const filledStars = Math.round(rating ?? 0);
+  const stars = [1, 2, 3, 4, 5]
+    .map((value) => (value <= filledStars ? "★" : "☆"))
+    .join("");
+
+  if (readOnly) {
+    return (
+      <View
+        accessibilityLabel={`Calificación ${rating ?? "sin calificación"} de 5`}
+        style={styles.stars}
+      >
+        <Text
+          style={[
+            styles.star,
+            compact && styles.starCompact,
+            { color: rating ? colors.warm : colors.textFaint },
+          ]}
+        >
+          {stars}
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <View
-      accessibilityLabel={
-        readOnly
-          ? `Calificación ${rating ?? "sin calificación"} de 5`
-          : "Seleccionar calificación"
-      }
-      style={styles.stars}
-    >
+    <View accessibilityLabel="Seleccionar calificación" style={styles.stars}>
       {[1, 2, 3, 4, 5].map((value) => (
         <Pressable
           accessibilityLabel={`${value} estrellas`}
-          accessibilityRole={readOnly ? undefined : "button"}
+          accessibilityRole="button"
           accessibilityState={rating === value ? { selected: true } : undefined}
-          disabled={readOnly}
           hitSlop={turismoMetrics.chipHitSlop}
           key={value}
           onPress={() => onChange?.(rating === value ? null : value)}
@@ -436,6 +461,7 @@ function RatingDistribution({
       {[5, 4, 3, 2, 1].map((value) => {
         const count =
           distribution[String(value) as "1" | "2" | "3" | "4" | "5"];
+        const percentage = total ? Math.round((count / total) * 100) : 0;
         return (
           <View key={value} style={styles.distributionRow}>
             <Text
@@ -457,7 +483,7 @@ function RatingDistribution({
             <Text
               style={[styles.distributionCount, { color: colors.textFaint }]}
             >
-              {count}
+              {percentage}%
             </Text>
           </View>
         );
@@ -465,6 +491,14 @@ function RatingDistribution({
     </View>
   );
 }
+
+const emptyDistribution = {
+  "1": 0,
+  "2": 0,
+  "3": 0,
+  "4": 0,
+  "5": 0,
+} as const;
 
 function formatDate(value: string): string {
   const date = new Date(value);
@@ -478,15 +512,27 @@ function formatDate(value: string): string {
 
 const styles = StyleSheet.create({
   container: { gap: turismoSpacing.md },
-  summary: { gap: turismoSpacing.md, padding: turismoSpacing.md },
-  summaryHeading: {
+  summary: { borderWidth: 0, padding: turismoSpacing.md },
+  summaryContent: {
     alignItems: "center",
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: turismoSpacing.lg,
   },
-  summaryTitle: { ...turismoTypography.heading },
+  averageBlock: {
+    alignItems: "center",
+    minWidth: 100,
+  },
+  averageValue: {
+    fontSize: 30,
+    fontWeight: "700",
+    lineHeight: 36,
+  },
   summaryMeta: { ...turismoTypography.caption, marginTop: turismoSpacing.xxs },
-  distribution: { gap: turismoSpacing.xxs },
+  filters: {
+    flexDirection: "row",
+    gap: turismoSpacing.xs,
+  },
+  distribution: { flex: 1, gap: turismoSpacing.xxs },
   distributionRow: {
     alignItems: "center",
     flexDirection: "row",
@@ -503,7 +549,7 @@ const styles = StyleSheet.create({
   distributionCount: {
     ...turismoTypography.caption,
     textAlign: "right",
-    width: 24,
+    width: 32,
   },
   stateRow: {
     alignItems: "center",
@@ -536,6 +582,7 @@ const styles = StyleSheet.create({
     minWidth: turismoMetrics.touchTarget,
   },
   star: { fontSize: 28, lineHeight: 32 },
+  starCompact: { fontSize: 16, lineHeight: 20 },
   pressed: { opacity: 0.65 },
   input: {
     borderRadius: turismoRadii.md,

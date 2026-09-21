@@ -64,6 +64,8 @@ export default function LoginScreen() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const targetPath = safeReturnPath(returnTo);
+  const returnToPath = Array.isArray(returnTo) ? returnTo[0] : returnTo;
+  const returningToRoute = returnToPath === "/route";
   const canGoBack = mode !== "entry" || Boolean(returnTo);
 
   const handleBack = useCallback(() => {
@@ -81,8 +83,13 @@ export default function LoginScreen() {
   };
 
   const handleGuest = async () => {
-    await chooseGuestAccess();
-    router.replace("/" as never);
+    const persistChoice = chooseGuestAccess();
+    if (returnTo) {
+      router.back();
+    } else {
+      router.replace("/" as never);
+    }
+    await persistChoice;
   };
 
   const handleBirthDateChange = useCallback(
@@ -173,7 +180,11 @@ export default function LoginScreen() {
       } else {
         await auth.login(trimmedEmail, password);
       }
-      router.replace(targetPath as never);
+      if (returningToRoute && router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace(targetPath as never);
+      }
     } catch (error) {
       setFormError(
         error instanceof Error
@@ -286,7 +297,7 @@ function AccountEntryContent({
       >
         <ImageBackground
           imageStyle={styles.accountHeroImage}
-          resizeMode="cover"
+          resizeMode="contain"
           source={accountHeroImage}
           style={[styles.accountHero, { height: heroHeight }]}
         >

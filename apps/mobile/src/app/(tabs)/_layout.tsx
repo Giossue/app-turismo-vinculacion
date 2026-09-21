@@ -19,7 +19,16 @@ export default function TabsLayout() {
               } as never),
         )
       }
-      onOfflineMaps={() => router.push("/offline" as never)}
+      onOfflineMaps={() =>
+        router.push(
+          auth.status === "authenticated"
+            ? ("/offline" as never)
+            : ({
+                pathname: "/login",
+                params: { returnTo: "/offline" },
+              } as never),
+        )
+      }
       onSaved={() =>
         router.push(
           auth.status === "authenticated"

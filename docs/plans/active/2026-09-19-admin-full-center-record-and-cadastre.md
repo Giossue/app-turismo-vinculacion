@@ -387,9 +387,10 @@ El formulario utilizará únicamente columnas existentes de `establecimientos_tu
 - latitud y longitud;
 - estado activo.
 
-Como `actividad`, `clasificacion` y `categoria` son texto en el esquema actual, la API deberá
-validar valores canónicos y normalizar mayúsculas, espacios y variantes durante alta e
-importación. No se agregará una FK como parte de este trabajo.
+Las columnas de texto `actividad`, `clasificacion` y `categoria` se mantienen por
+compatibilidad y trazabilidad. La migración `20260921_establishment_taxonomy.sql` agrega
+relaciones opcionales con la taxonomía canónica del catastro y aliases para normalizar
+variantes del consolidado durante alta y futuras importaciones.
 
 La importación masiva Excel/CSV se implementará después del CRUD, usando el flujo persistente
 de importaciones previsto por la arquitectura. No se bloqueará el CRUD inicial por esa fase.
@@ -484,8 +485,8 @@ restringidos. Las firmas y documentos no compartirán el flujo de URL pública d
 
 ## Preparación de catálogos y datos
 
-No habrá migración de esquema, pero antes de confiar en el código generado se requiere una
-corrección idempotente de datos de catálogo:
+Además de las correcciones idempotentes de datos de catálogo, la taxonomía del catastro se
+carga mediante `20260921_establishment_taxonomy.sql`:
 
 1. comparar `provincias`, `cantones` y `parroquias` con el DPA oficial;
 2. corregir Guaranda como cantón `01` de Bolívar y cargar Ángel Polibio Cháves como parroquia
@@ -494,7 +495,8 @@ corrección idempotente de datos de catálogo:
 4. alinear categorías, tipos y subtipos con `Valores` y `Clas_AT`;
 5. preservar referencias existentes o reparar los datos demo dentro de una transacción;
 6. recalcular códigos afectados después de corregir las relaciones;
-7. inventariar los códigos anteriores y verificar que no queden referencias huérfanas.
+7. inventariar los códigos anteriores y verificar que no queden referencias huérfanas;
+8. comprobar los aliases de actividad, clasificación y categoría del consolidado.
 
 Esta operación es una corrección de datos versionada, no una modificación del modelo. Se
 preparará con inventario, respaldo y rollback explícitos antes de ejecutarla en producción.
@@ -609,7 +611,8 @@ Salida: revisión operativa con trazabilidad visual de la propuesta.
 
 El CRUD, filtros territoriales, selección de localidad y activación lógica ya están
 disponibles. La muestra reproducible de 50 registros ya está cargada en la base remota y
-las mutaciones del CRUD quedan auditadas mediante la tabla existente; la importación
+las mutaciones del CRUD quedan auditadas mediante la tabla existente. La actividad,
+clasificación y categoría se seleccionan desde catálogos dependientes; la importación
 nacional completa queda fuera del alcance actual.
 
 Salida: establecimientos administrables por ciudad/localidad sin mezclarse con centros.
@@ -647,7 +650,7 @@ locales.
 - nuevo módulo de establecimientos bajo `apps/api/src/establishments/`
 - repositorios públicos de búsqueda espacial
 - pruebas de servicio, contrato y workflow bajo `apps/api/test/`
-- seeds versionados para DPA y clasificación, sin DDL
+- migraciones/seeds versionados para DPA, clasificación y taxonomía del catastro
 
 ### Repositorio administrativo
 
@@ -675,7 +678,7 @@ locales.
 
 ## Fuera de alcance
 
-- Cambiar el esquema PostgreSQL/PostGIS.
+- Cambiar el esquema PostgreSQL/PostGIS fuera de la migración versionada de taxonomía.
 - Reemplazar PostgreSQL como fuente de verdad.
 - Conectar la web directamente a la base.
 - Reservas, pagos o disponibilidad comercial en tiempo real.

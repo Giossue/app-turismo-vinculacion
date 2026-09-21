@@ -27,6 +27,9 @@ type EstablishmentRow = {
   actividad: string;
   clasificacion: string | null;
   categoria: string | null;
+  activityId: string | null;
+  classificationId: string | null;
+  categoryId: string | null;
   direccion: string | null;
   telefono: string | null;
   latitude: string | null;
@@ -60,6 +63,9 @@ type AdminEstablishmentItem = {
   actividad: string;
   clasificacion: string | null;
   categoria: string | null;
+  activityId: number | null;
+  classificationId: number | null;
+  categoryId: number | null;
   direccion: string | null;
   telefono: string | null;
   latitude: number | null;
@@ -67,6 +73,15 @@ type AdminEstablishmentItem = {
   active: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+type ResolvedTaxonomy = {
+  activityId: number | null;
+  classificationId: number | null;
+  categoryId: number | null;
+  activity: string;
+  classification: string | null;
+  category: string | null;
 };
 
 const establishmentSelect = `
@@ -80,9 +95,12 @@ const establishmentSelect = `
          e.ruc,
          e.nombre_comercial AS "nombreComercial",
          e.razon_social AS "razonSocial",
-         e.actividad,
-         e.clasificacion,
-         e.categoria,
+         COALESCE(activity_catalog.nombre, e.actividad) AS actividad,
+         COALESCE(classification_catalog.nombre, e.clasificacion) AS clasificacion,
+         COALESCE(category_catalog.nombre, e.categoria) AS categoria,
+         e.actividad_catalogo_id AS "activityId",
+         e.clasificacion_catalogo_id AS "classificationId",
+         e.categoria_catalogo_id AS "categoryId",
          e.direccion,
          e.telefono,
          e.latitud AS latitude,
@@ -95,7 +113,13 @@ const establishmentJoin = `
     FROM establecimientos_turisticos e
     JOIN localidades l ON l.id = e.localidad_id
     JOIN cantones co ON co.id = l.canton_id
-    JOIN provincias p ON p.id = co.provincia_id`;
+    JOIN provincias p ON p.id = co.provincia_id
+    LEFT JOIN catalogo_catastro_actividades activity_catalog
+      ON activity_catalog.id = e.actividad_catalogo_id
+    LEFT JOIN catalogo_catastro_clasificaciones classification_catalog
+      ON classification_catalog.id = e.clasificacion_catalogo_id
+    LEFT JOIN catalogo_catastro_categorias category_catalog
+      ON category_catalog.id = e.categoria_catalogo_id`;
 
 @Injectable()
 export class EstablishmentsService {
@@ -118,15 +142,21 @@ export class EstablishmentsService {
     if (query.cantonId !== undefined)
       where.push(`l.canton_id = ${add(query.cantonId)}`);
     if (query.activity)
-      where.push(`e.actividad ILIKE ${add(`%${query.activity}%`)}`);
+      where.push(
+        `COALESCE(activity_catalog.nombre, e.actividad) ILIKE ${add(`%${query.activity}%`)}`,
+      );
     if (query.classification)
-      where.push(`e.clasificacion ILIKE ${add(`%${query.classification}%`)}`);
+      where.push(
+        `COALESCE(classification_catalog.nombre, e.clasificacion) ILIKE ${add(`%${query.classification}%`)}`,
+      );
     if (query.category)
-      where.push(`e.categoria ILIKE ${add(`%${query.category}%`)}`);
+      where.push(
+        `COALESCE(category_catalog.nombre, e.categoria) ILIKE ${add(`%${query.category}%`)}`,
+      );
     if (query.q) {
       const term = add(`%${query.q}%`);
       where.push(
-        `(e.nombre_comercial ILIKE ${term} OR e.numero_registro ILIKE ${term} OR e.actividad ILIKE ${term} OR e.direccion ILIKE ${term})`,
+        `(e.nombre_comercial ILIKE ${term} OR e.numero_registro ILIKE ${term} OR COALESCE(activity_catalog.nombre, e.actividad) ILIKE ${term} OR e.direccion ILIKE ${term})`,
       );
     }
 
@@ -168,7 +198,8 @@ export class EstablishmentsService {
     return this.dataSource.transaction(async (manager) => {
       await this.assertLocality(manager, required.localityId);
       await this.assertUniqueRegistration(manager, input.numeroRegistro);
-      const row = await this.insert(manager, input, required);
+      const taxonomy = await this.resolveTaxonomy(manager, input);
+      const row = await this.insert(manager, input, taxonomy, required);
       const created = await this.findWithManager(manager, row.id);
       await this.audit(
         manager,
@@ -207,6 +238,7 @@ export class EstablishmentsService {
           numericId,
         );
       }
+      const taxonomy = await this.resolveTaxonomy(manager, input, current);
 
       const values = [
         nextLocalityId,
@@ -218,13 +250,12 @@ export class EstablishmentsService {
         input.razonSocial !== undefined
           ? input.razonSocial || null
           : current.razonSocial,
-        input.actividad?.trim() || current.actividad,
-        input.clasificacion !== undefined
-          ? input.clasificacion || null
-          : current.clasificacion,
-        input.categoria !== undefined
-          ? input.categoria || null
-          : current.categoria,
+        taxonomy.activity,
+        taxonomy.classification,
+        taxonomy.category,
+        taxonomy.activityId,
+        taxonomy.classificationId,
+        taxonomy.categoryId,
         input.direccion !== undefined
           ? input.direccion || null
           : current.direccion,
@@ -245,16 +276,19 @@ export class EstablishmentsService {
                 actividad = $6,
                 clasificacion = $7,
                 categoria = $8,
-                direccion = $9,
-                telefono = $10,
-                latitud = $11,
-                longitud = $12,
-                ubicacion = CASE WHEN $11::numeric IS NULL OR $12::numeric IS NULL
+                actividad_catalogo_id = $9,
+                clasificacion_catalogo_id = $10,
+                categoria_catalogo_id = $11,
+                direccion = $12,
+                telefono = $13,
+                latitud = $14,
+                longitud = $15,
+                ubicacion = CASE WHEN $14::numeric IS NULL OR $15::numeric IS NULL
                                  THEN NULL
-                                 ELSE ST_SetSRID(ST_MakePoint($12::double precision, $11::double precision), 4326)::geography
+                                 ELSE ST_SetSRID(ST_MakePoint($15::double precision, $14::double precision), 4326)::geography
                             END,
                 updated_at = CURRENT_TIMESTAMP
-          WHERE id = $13`,
+          WHERE id = $16`,
         values,
       );
       const saved = await this.findWithManager(manager, numericId);
@@ -408,10 +442,10 @@ export class EstablishmentsService {
   private async insert(
     manager: EntityManager,
     input: SaveEstablishmentDto,
+    taxonomy: ResolvedTaxonomy,
     required: {
       localityId: number;
       nombreComercial: string;
-      actividad: string;
     },
   ) {
     const latitude = input.latitude ?? null;
@@ -424,12 +458,13 @@ export class EstablishmentsService {
     const rows = (await manager.query(
       `INSERT INTO establecimientos_turisticos (
          localidad_id, numero_registro, ruc, nombre_comercial, razon_social,
-         actividad, clasificacion, categoria, direccion, telefono,
-         latitud, longitud, ubicacion, activo, created_at, updated_at
+         actividad, clasificacion, categoria,
+         actividad_catalogo_id, clasificacion_catalogo_id, categoria_catalogo_id,
+         direccion, telefono, latitud, longitud, ubicacion, activo, created_at, updated_at
        ) VALUES (
-         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
-         CASE WHEN $11::numeric IS NULL OR $12::numeric IS NULL THEN NULL
-              ELSE ST_SetSRID(ST_MakePoint($12::double precision, $11::double precision), 4326)::geography END,
+         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
+         CASE WHEN $14::numeric IS NULL OR $15::numeric IS NULL THEN NULL
+              ELSE ST_SetSRID(ST_MakePoint($15::double precision, $14::double precision), 4326)::geography END,
          TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
        ) RETURNING id`,
       [
@@ -438,9 +473,12 @@ export class EstablishmentsService {
         input.ruc || null,
         required.nombreComercial,
         input.razonSocial || null,
-        required.actividad,
-        input.clasificacion || null,
-        input.categoria || null,
+        taxonomy.activity,
+        taxonomy.classification,
+        taxonomy.category,
+        taxonomy.activityId,
+        taxonomy.classificationId,
+        taxonomy.categoryId,
         input.direccion || null,
         input.telefono || null,
         latitude,
@@ -448,6 +486,178 @@ export class EstablishmentsService {
       ],
     )) as Array<{ id: string }>;
     return rows[0];
+  }
+
+  private async resolveTaxonomy(
+    manager: EntityManager,
+    input: SaveEstablishmentDto,
+    current?: AdminEstablishmentItem,
+  ): Promise<ResolvedTaxonomy> {
+    const changed = (
+      value: string | undefined,
+      previous: string | null | undefined,
+    ) =>
+      value !== undefined &&
+      this.normalizedValue(value) !== this.normalizedValue(previous);
+    const activityChanged = Boolean(
+      current &&
+      ((input.activityId !== undefined &&
+        input.activityId !== current.activityId) ||
+        (input.activityId === undefined &&
+          changed(input.actividad, current.actividad))),
+    );
+    const classificationChanged = Boolean(
+      current &&
+      ((input.classificationId !== undefined &&
+        input.classificationId !== current.classificationId) ||
+        (input.classificationId === undefined &&
+          changed(input.clasificacion, current.clasificacion))),
+    );
+
+    let activityId =
+      activityChanged && input.activityId === undefined
+        ? null
+        : (input.activityId ?? current?.activityId ?? null);
+    let classificationId =
+      activityChanged && input.classificationId === undefined
+        ? null
+        : (input.classificationId ?? current?.classificationId ?? null);
+    let categoryId =
+      (activityChanged || classificationChanged) &&
+      input.categoryId === undefined
+        ? null
+        : (input.categoryId ?? current?.categoryId ?? null);
+    let activity = input.actividad?.trim() || current?.actividad || "";
+    let classification =
+      input.clasificacion !== undefined
+        ? input.clasificacion.trim() || null
+        : (current?.clasificacion ?? null);
+    let category =
+      input.categoria !== undefined
+        ? input.categoria.trim() || null
+        : (current?.categoria ?? null);
+
+    let activityRow: { id: string; name: string } | undefined;
+    if (activityId !== null) {
+      const rows = (await manager.query(
+        `SELECT id, nombre AS name
+           FROM catalogo_catastro_actividades
+          WHERE id = $1${input.activityId !== undefined ? " AND activo = TRUE" : ""}`,
+        [activityId],
+      )) as Array<{ id: string; name: string }>;
+      activityRow = rows[0];
+      if (!activityRow) {
+        throw new BadRequestException(
+          "La actividad seleccionada no existe o está inactiva.",
+        );
+      }
+      activityId = Number(activityRow.id);
+      activity = activityRow.name;
+    }
+
+    let classificationRow:
+      { id: string; activityId: string; name: string } | undefined;
+    if (classificationId !== null) {
+      const rows = (await manager.query(
+        `SELECT id, actividad_id AS "activityId", nombre AS name
+           FROM catalogo_catastro_clasificaciones
+          WHERE id = $1
+            AND ($2::bigint IS NULL OR actividad_id = $2)
+            ${input.classificationId !== undefined ? "AND activo = TRUE" : ""}`,
+        [classificationId, activityId],
+      )) as Array<{ id: string; activityId: string; name: string }>;
+      classificationRow = rows[0];
+      if (!classificationRow) {
+        throw new BadRequestException(
+          "La clasificación no pertenece a la actividad seleccionada o está inactiva.",
+        );
+      }
+      classificationId = Number(classificationRow.id);
+      if (activityId === null)
+        activityId = Number(classificationRow.activityId);
+      classification = classificationRow.name;
+    }
+
+    let categoryRow:
+      | {
+          id: string;
+          classificationId: string;
+          activityId: string;
+          categoryName: string;
+          classificationName: string;
+          activityName: string;
+        }
+      | undefined;
+    if (categoryId !== null) {
+      const rows = (await manager.query(
+        `SELECT category.id,
+                category.clasificacion_id AS "classificationId",
+                classification.actividad_id AS "activityId",
+                category.nombre AS "categoryName",
+                classification.nombre AS "classificationName",
+                activity.nombre AS "activityName"
+           FROM catalogo_catastro_categorias category
+           JOIN catalogo_catastro_clasificaciones classification
+             ON classification.id = category.clasificacion_id
+           JOIN catalogo_catastro_actividades activity
+             ON activity.id = classification.actividad_id
+          WHERE category.id = $1
+            AND ($2::bigint IS NULL OR category.clasificacion_id = $2)
+            AND ($3::bigint IS NULL OR classification.actividad_id = $3)
+            ${input.categoryId !== undefined ? "AND category.activo = TRUE" : ""}`,
+        [categoryId, classificationId, activityId],
+      )) as Array<{
+        id: string;
+        classificationId: string;
+        activityId: string;
+        categoryName: string;
+        classificationName: string;
+        activityName: string;
+      }>;
+      categoryRow = rows[0];
+      if (!categoryRow) {
+        throw new BadRequestException(
+          "La categoría no pertenece a la clasificación seleccionada o está inactiva.",
+        );
+      }
+      categoryId = Number(categoryRow.id);
+      classificationId = Number(categoryRow.classificationId);
+      activityId = Number(categoryRow.activityId);
+      activity = categoryRow.activityName;
+      classification = categoryRow.classificationName;
+      category = categoryRow.categoryName;
+    }
+
+    if (activityId !== null && !activityRow) {
+      const rows = (await manager.query(
+        `SELECT id, nombre AS name FROM catalogo_catastro_actividades WHERE id = $1`,
+        [activityId],
+      )) as Array<{ id: string; name: string }>;
+      activityRow = rows[0];
+      if (activityRow) activity = activityRow.name;
+    }
+    if (classificationId !== null && !classificationRow && !categoryRow) {
+      const rows = (await manager.query(
+        `SELECT id, actividad_id AS "activityId", nombre AS name
+           FROM catalogo_catastro_clasificaciones WHERE id = $1`,
+        [classificationId],
+      )) as Array<{ id: string; activityId: string; name: string }>;
+      classificationRow = rows[0];
+      if (classificationRow) {
+        classification = classificationRow.name;
+        if (activityId === null)
+          activityId = Number(classificationRow.activityId);
+      }
+    }
+
+    return {
+      activityId,
+      classificationId,
+      categoryId,
+      activity,
+      classification,
+      category,
+    };
   }
 
   private async assertLocality(manager: EntityManager, localityId: number) {
@@ -482,7 +692,7 @@ export class EstablishmentsService {
     if (
       !input.localityId ||
       !input.nombreComercial?.trim() ||
-      !input.actividad?.trim()
+      (!input.actividad?.trim() && !input.activityId)
     ) {
       throw new BadRequestException(
         "La localidad, el nombre comercial y la actividad son obligatorios.",
@@ -491,7 +701,6 @@ export class EstablishmentsService {
     return {
       localityId: input.localityId,
       nombreComercial: input.nombreComercial.trim(),
-      actividad: input.actividad.trim(),
     };
   }
 
@@ -606,10 +815,14 @@ export class EstablishmentsService {
   ) {
     return `
       SELECT 1 FROM establecimientos_turisticos e_match
+       LEFT JOIN catalogo_catastro_actividades activity_match
+         ON activity_match.id = e_match.actividad_catalogo_id
+       LEFT JOIN catalogo_catastro_categorias category_match
+         ON category_match.id = e_match.categoria_catalogo_id
        WHERE e_match.localidad_id = l.id
          AND e_match.activo = TRUE
-         AND ${this.normalizedSql("e_match.actividad")} = ${this.normalizedSql(activityParam)}
-         AND (${categoryParam}::text IS NULL OR ${this.normalizedSql("e_match.categoria")} = ${this.normalizedSql(categoryParam)})`;
+         AND ${this.normalizedSql("COALESCE(activity_match.nombre, e_match.actividad)")} = ${this.normalizedSql(activityParam)}
+         AND (${categoryParam}::text IS NULL OR ${this.normalizedSql("COALESCE(category_match.nombre, e_match.categoria)")} = ${this.normalizedSql(categoryParam)})`;
   }
 
   private matchingActivitySql(
@@ -617,8 +830,8 @@ export class EstablishmentsService {
     activityParam: string,
     categoryParam: string,
   ) {
-    return `${this.normalizedSql(`${alias}.actividad`)} = ${this.normalizedSql(activityParam)}
-            AND (${categoryParam}::text IS NULL OR ${this.normalizedSql(`${alias}.categoria`)} = ${this.normalizedSql(categoryParam)})`;
+    return `${this.normalizedSql(`COALESCE(activity_catalog.nombre, ${alias}.actividad)`)} = ${this.normalizedSql(activityParam)}
+            AND (${categoryParam}::text IS NULL OR ${this.normalizedSql(`COALESCE(category_catalog.nombre, ${alias}.categoria)`)} = ${this.normalizedSql(categoryParam)})`;
   }
 
   private normalizedSql(expression: string) {
@@ -686,8 +899,11 @@ export class EstablishmentsService {
       nombreComercial: item.nombreComercial,
       razonSocial: item.razonSocial,
       actividad: item.actividad,
+      activityId: item.activityId,
       clasificacion: item.clasificacion,
+      classificationId: item.classificationId,
       categoria: item.categoria,
+      categoryId: item.categoryId,
       direccion: item.direccion,
       telefono: item.telefono,
       latitude: item.latitude,
@@ -711,6 +927,9 @@ export class EstablishmentsService {
       actividad: row.actividad,
       clasificacion: row.clasificacion,
       categoria: row.categoria,
+      activityId: this.toNullableInteger(row.activityId),
+      classificationId: this.toNullableInteger(row.classificationId),
+      categoryId: this.toNullableInteger(row.categoryId),
       direccion: row.direccion,
       telefono: row.telefono,
       latitude: this.toNullableNumber(row.latitude),
@@ -742,6 +961,21 @@ export class EstablishmentsService {
     if (value === null || value === undefined || value === "") return null;
     const number = Number(value);
     return Number.isFinite(number) ? number : null;
+  }
+
+  private toNullableInteger(value: string | number | null | undefined) {
+    if (value === null || value === undefined || value === "") return null;
+    const number = Number(value);
+    return Number.isSafeInteger(number) ? number : null;
+  }
+
+  private normalizedValue(value: string | null | undefined) {
+    return (value ?? "")
+      .trim()
+      .toLocaleLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ");
   }
 
   private parseId(value: string) {

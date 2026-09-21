@@ -19,6 +19,7 @@ import ExpoBottomSheet, {
 
 import { useUserLocation } from "@/core/location/use-user-location";
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
+import { useAuth } from "@/features/auth/application/auth-context";
 import {
   TourismActionButton,
   TourismChoiceChip,
@@ -71,6 +72,7 @@ const modeOptions: readonly Readonly<{
 
 export default function RouteScreen() {
   const colors = useTurismoPalette();
+  const auth = useAuth();
   const params = useLocalSearchParams<RouteParams>();
   const router = useRouter();
   const [mode, setMode] = useState<RouteMode>("car");
@@ -230,6 +232,16 @@ export default function RouteScreen() {
       return;
     }
 
+    if (auth.status !== "authenticated") {
+      if (auth.status === "anonymous") {
+        router.push({
+          pathname: "/login",
+          params: { returnTo: "/route" },
+        } as never);
+      }
+      return;
+    }
+
     if (!screenFocusedRef.current) return;
     navigationStartInFlightRef.current = true;
 
@@ -299,7 +311,9 @@ export default function RouteScreen() {
     isCalculating,
     navigationActive,
     requestLocation,
+    auth.status,
     routeQuery.data,
+    router,
   ]);
 
   const handleStopNavigation = useCallback(

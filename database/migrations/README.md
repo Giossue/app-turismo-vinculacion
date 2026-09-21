@@ -94,6 +94,13 @@ tabla inmutable existente `auditoria_catalogos` para registrar mutaciones de
 `establecimientos_turisticos` con el discriminador `ESTABLISHMENT`. No crea tablas ni
 columnas nuevas; conserva el trigger de inmutabilidad y los JSONB de antes/después.
 
+La migración `20260921_establishment_taxonomy.sql` agrega la taxonomía jerárquica del
+catastro: actividad, clasificación y categoría. Se genera desde el consolidado nacional
+con `scripts/generate-establishment-taxonomy-migration.py`, normaliza las etiquetas de
+categoría conocidas y conserva aliases de los valores fuente. Añade relaciones opcionales
+por ID a `establecimientos_turisticos` sin borrar sus columnas de texto, para permitir una
+normalización progresiva y trazable.
+
 La migración `20260920_opinions_versions.sql` separa la opinión lógica de sus versiones
 moderables. Convierte el contenido histórico de la tabla `opiniones` en la versión 1,
 elimina el estado `OCULTA`, conserva una versión aprobada mientras una edición está

@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -43,8 +43,9 @@ export default function OfflineMapsScreen() {
     progress: number;
   } | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
-  const citiesQuery = useOfflineCities();
+  const citiesQuery = useOfflineCities(auth.status === "authenticated");
   const storedQuery = useQuery({
+    enabled: auth.status === "authenticated",
     queryKey: ["offline-stored-cities"],
     queryFn: listStoredOfflineCities,
     staleTime: 0,
@@ -56,6 +57,30 @@ export default function OfflineMapsScreen() {
     return true;
   }, [menuVisible]);
   useScreenBackHandler(handleBeforeBack);
+
+  useEffect(() => {
+    if (auth.status !== "anonymous") return;
+    router.replace({
+      pathname: "/login",
+      params: { returnTo: "/offline" },
+    } as never);
+  }, [auth.status, router]);
+
+  if (auth.status !== "authenticated") {
+    return (
+      <TourismScreenFrame
+        onBack={() => router.back()}
+        title="Mapas sin conexión"
+      >
+        <View style={styles.state}>
+          <ActivityIndicator color={colors.primary} size="large" />
+          <Text style={[styles.stateText, { color: colors.textMuted }]}>
+            Preparando tus mapas sin conexión…
+          </Text>
+        </View>
+      </TourismScreenFrame>
+    );
+  }
 
   const download = async (city: OfflineCity) => {
     if (activeDownload || !city.package) return;
