@@ -12,6 +12,8 @@ NestJS, que es la única frontera con PostgreSQL.
   rotatorio almacenado como hash en PostgreSQL.
 - Cookie HttpOnly para el refresh del navegador; el access token solo vive en memoria
   del cliente administrativo.
+- Si expira el access token con el panel abierto, el cliente renueva la sesión y reintenta
+  una sola solicitud `401`; si falla, limpia la sesión en memoria.
 - Guards de autenticación y el rol institucional `ADMINISTRADOR`; `TURISTA` queda fuera
   del panel.
 - Listado de fichas y revisión aprobar/rechazar con transacción y auditoría.
@@ -33,6 +35,8 @@ NestJS, que es la única frontera con PostgreSQL.
 - Admin: format, lint, typecheck y build.
 - Revisar que el refresh no aparezca en `localStorage`, que los roles se validen en API
   y que aprobar/rechazar genere auditoría.
+- Verificar recuperación automática después de dejar expirar el access token sin recargar
+  el panel.
 
 ## Estado
 

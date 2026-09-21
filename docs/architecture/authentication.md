@@ -38,6 +38,9 @@ la pestaña y, cuando el navegador lo soporta, toma un Web Lock exclusivo entre 
 La API tolera durante diez segundos la repetición de un token recién reemplazado para
 absorber una carrera legítima de recarga sin revocar la familia; una reutilización fuera
 de esa ventana mantiene la revocación por seguridad.
+Si un access token expira mientras el panel permanece abierto, el cliente administrativo
+renueva la sesión y repite una sola solicitud que recibió `401`; si la renovación falla,
+limpia el access token en memoria y devuelve al inicio de sesión.
 
 ## Autorización
 
