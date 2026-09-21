@@ -3025,6 +3025,51 @@ export class AdminCentersService {
       this.readPublishedAnnexesSection(manager, center.id),
     ]);
     const publishedSections: Record<string, unknown> = {};
+    if (
+      published.name &&
+      published.subtypeId &&
+      published.touristZoneId &&
+      published.parishId &&
+      published.productLineId &&
+      published.scenarioId
+    ) {
+      publishedSections.identificacion = {
+        schemaVersion: 1,
+        response: "SI",
+        observation: "",
+      };
+    }
+    if (
+      Number.isFinite(published.latitude) &&
+      Number.isFinite(published.longitude)
+    ) {
+      publishedSections["ubicacion-admin"] = {
+        schemaVersion: 1,
+        response: "SI",
+        observation: "",
+      };
+    }
+    if (published.productLineId && published.scenarioId) {
+      publishedSections.caracteristicas = {
+        schemaVersion: 1,
+        response: "SI",
+        observation: "",
+      };
+    }
+    if (published.activities?.some((activity) => activity.active)) {
+      publishedSections.actividades = {
+        schemaVersion: 1,
+        response: "SI",
+        observation: "",
+      };
+    }
+    if (published.description?.trim()) {
+      publishedSections.descripcion = {
+        schemaVersion: 1,
+        response: "SI",
+        observation: "",
+      };
+    }
     if (publishedAccessibility)
       publishedSections.accesibilidad = publishedAccessibility;
     if (publishedPlant) publishedSections.planta = publishedPlant;

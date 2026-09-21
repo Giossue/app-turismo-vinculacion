@@ -18,6 +18,7 @@ type CenterMapProps = Readonly<{
   focusLocationKey?: number;
   onAttributionChange?: (handler: (() => void) | null) => void;
   onCenterPress: (center: PublicCenter) => void;
+  onEstablishmentPress: (establishment: PublicMapEstablishment) => void;
   onViewportChange: (bounds: {
     west: number;
     south: number;

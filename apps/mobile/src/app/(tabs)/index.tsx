@@ -61,6 +61,8 @@ import { useDiscoveryCatalog } from "@/features/centers/application/use-discover
 import { usePublishedCenters } from "@/features/centers/application/use-published-centers";
 import { useMapEstablishments } from "@/features/establishments/application/use-map-establishments";
 import { useNearbyEstablishments } from "@/features/establishments/application/use-nearby-establishments";
+import type { PublicMapEstablishment } from "@/features/establishments/domain/establishment";
+import { EstablishmentDetailSheet } from "@/features/establishments/presentation/establishment-detail-sheet";
 import { EstablishmentResultsSheet } from "@/features/establishments/presentation/establishment-results-sheet";
 import type {
   PublicCenter,
@@ -155,6 +157,8 @@ function ExploreMapScreen() {
   const [selectedCenterCode, setSelectedCenterCode] = useState<string | null>(
     null,
   );
+  const [selectedEstablishment, setSelectedEstablishment] =
+    useState<PublicMapEstablishment | null>(null);
   const [selectedCenterExpanded, setSelectedCenterExpanded] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
   const [focusLocationKey, setFocusLocationKey] = useState(0);
@@ -264,6 +268,7 @@ function ExploreMapScreen() {
     setSearchFocused(false);
     setNearbyOnly(false);
     setSelectedCenterCode(null);
+    setSelectedEstablishment(null);
     setSelectedCenterExpanded(false);
     dismissSearchSheet();
   }, [dismissSearchSheet]);
@@ -276,6 +281,9 @@ function ExploreMapScreen() {
     }
     clearSearch();
   }, [clearSearch, dismissSearchSheet, submittedQuery]);
+  const closeSelectedEstablishment = useCallback(() => {
+    setSelectedEstablishment(null);
+  }, []);
   const expandSelectedCenter = useCallback(() => {
     setSelectedCenterExpanded(true);
   }, []);
@@ -284,7 +292,18 @@ function ExploreMapScreen() {
       preserveSelectionOnSearchCloseRef.current = searchSheetOpenRef.current;
       dismissSearchSheet();
       setSelectedCenterExpanded(false);
+      setSelectedEstablishment(null);
       setSelectedCenterCode(center.code);
+    },
+    [dismissSearchSheet],
+  );
+  const selectEstablishment = useCallback(
+    (establishment: PublicMapEstablishment) => {
+      preserveSelectionOnSearchCloseRef.current = searchSheetOpenRef.current;
+      dismissSearchSheet();
+      setSelectedCenterCode(null);
+      setSelectedCenterExpanded(false);
+      setSelectedEstablishment(establishment);
     },
     [dismissSearchSheet],
   );
@@ -304,6 +323,10 @@ function ExploreMapScreen() {
       closeAgent();
       return true;
     }
+    if (selectedEstablishment) {
+      closeSelectedEstablishment();
+      return true;
+    }
     if (selectedCenterCode) {
       closeSelectedCenter();
       return true;
@@ -320,11 +343,13 @@ function ExploreMapScreen() {
   }, [
     clearSearch,
     closeSelectedCenter,
+    closeSelectedEstablishment,
     closeAgent,
     closeMenu,
     menuVisible,
     agentOpen,
     selectedCenterCode,
+    selectedEstablishment,
     searchMode,
     submittedQuery,
     text,
@@ -399,6 +424,7 @@ function ExploreMapScreen() {
     setSearchFocused(false);
     setNearbyOnly(false);
     setSelectedCenterCode(null);
+    setSelectedEstablishment(null);
     setSelectedCenterExpanded(false);
   }, [auth.status, dismissSearchSheet, router]);
 
@@ -427,6 +453,7 @@ function ExploreMapScreen() {
     setSearchFocused(false);
     setNearbyOnly(false);
     setSelectedCenterCode(null);
+    setSelectedEstablishment(null);
   }, [text]);
 
   const handleNearbyToggle = useCallback(() => {
@@ -468,6 +495,7 @@ function ExploreMapScreen() {
         onCenterPress={(center) => {
           selectCenter(center);
         }}
+        onEstablishmentPress={selectEstablishment}
         onLocationFocusChange={handleLocationFocusChange}
         onViewportChange={handleViewportChange}
         resetNorthKey={resetNorthKey}
@@ -609,7 +637,7 @@ function ExploreMapScreen() {
           onPress={() => mapAttributionHandlerRef.current?.()}
         />
       </View>
-      {!selectedCenterCode ? (
+      {!selectedCenterCode && !selectedEstablishment ? (
         <ExpoBottomSheet
           backgroundStyle={{ backgroundColor: colors.surface }}
           enablePanDownToClose
@@ -687,6 +715,24 @@ function ExploreMapScreen() {
           onRequireAuth={openAuth}
           onRetryDetail={() => void refetchSelectedCenterDetail()}
           key={`${selectedCenter.code}-${isLandscape ? "landscape" : "portrait"}`}
+        />
+      ) : null}
+      {selectedEstablishment ? (
+        <EstablishmentDetailSheet
+          establishment={selectedEstablishment}
+          onClose={closeSelectedEstablishment}
+          onOpenRoute={() => {
+            const establishment = selectedEstablishment;
+            closeSelectedEstablishment();
+            router.push({
+              pathname: "/route",
+              params: {
+                destinationLatitude: String(establishment.latitude),
+                destinationLongitude: String(establishment.longitude),
+                destinationName: establishment.name,
+              },
+            } as never);
+          }}
         />
       ) : null}
       <ExpoBottomSheet

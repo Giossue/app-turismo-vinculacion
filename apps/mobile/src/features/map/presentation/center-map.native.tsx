@@ -39,6 +39,7 @@ type CenterMapProps = Readonly<{
   onAttributionChange?: (handler: (() => void) | null) => void;
   onBearingChange?: (bearing: number) => void;
   onCenterPress: (center: PublicCenter) => void;
+  onEstablishmentPress: (establishment: PublicMapEstablishment) => void;
   onLocationFocusChange?: (focused: boolean) => void;
   onViewportChange: (bounds: BoundingBox) => void;
   resetNorthKey?: number;
@@ -57,8 +58,10 @@ type UserLocationFeatureCollection = GeoJSON.FeatureCollection<
 type EstablishmentProperties = Readonly<{
   category: string | null;
   color: string;
+  featureKey: string;
   icon: string;
   iconGlyph: string;
+  name: string;
   approximate: boolean;
 }>;
 type EstablishmentFeatureCollection = GeoJSON.FeatureCollection<
@@ -109,6 +112,7 @@ export function CenterMap({
   onAttributionChange,
   onBearingChange,
   onCenterPress,
+  onEstablishmentPress,
   onLocationFocusChange,
   onViewportChange,
   resetNorthKey,
@@ -167,23 +171,39 @@ export function CenterMap({
   const establishmentFeatures = useMemo<EstablishmentFeatureCollection>(
     () => ({
       type: "FeatureCollection",
-      features: establishments.map((establishment) => ({
-        type: "Feature",
-        properties: {
-          category: establishment.category,
-          color: establishment.color,
-          icon: establishment.icon,
-          iconGlyph:
-            establishmentIconGlyphs[establishment.icon] ??
-            establishmentIconGlyphs.mapPin,
-          approximate: establishment.approximate,
-        },
-        geometry: {
-          type: "Point",
-          coordinates: [establishment.longitude, establishment.latitude],
-        },
-      })),
+      features: establishments.map((establishment, index) => {
+        const featureKey = getEstablishmentFeatureKey(establishment, index);
+        return {
+          type: "Feature",
+          id: featureKey,
+          properties: {
+            category: establishment.category,
+            color: establishment.color,
+            featureKey,
+            icon: establishment.icon,
+            iconGlyph:
+              establishmentIconGlyphs[establishment.icon] ??
+              establishmentIconGlyphs.mapPin,
+            name: establishment.name,
+            approximate: establishment.approximate,
+          },
+          geometry: {
+            type: "Point",
+            coordinates: [establishment.longitude, establishment.latitude],
+          },
+        };
+      }),
     }),
+    [establishments],
+  );
+  const establishmentsByFeatureKey = useMemo(
+    () =>
+      new Map(
+        establishments.map((establishment, index) => [
+          getEstablishmentFeatureKey(establishment, index),
+          establishment,
+        ]),
+      ),
     [establishments],
   );
   // Con pocos puntos mostramos cada pin de forma estable. El clustering nativo
@@ -278,6 +298,20 @@ export function CenterMap({
       });
     },
     [centersByCode, onLocationFocusChange],
+  );
+  const handleEstablishmentSourcePress = useCallback(
+    (event: NativeSyntheticEvent<PressEventWithFeatures>) => {
+      pendingLocationFocusRef.current = null;
+      onLocationFocusChange?.(false);
+      const featureKey = event.nativeEvent.features.find(
+        (feature) => typeof feature.properties?.featureKey === "string",
+      )?.properties?.featureKey;
+      if (typeof featureKey !== "string") return;
+      const establishment = establishmentsByFeatureKey.get(featureKey);
+      if (!establishment) return;
+      onEstablishmentPress(establishment);
+    },
+    [establishmentsByFeatureKey, onEstablishmentPress, onLocationFocusChange],
   );
 
   useEffect(() => {
@@ -483,7 +517,9 @@ export function CenterMap({
         <GeoJSONSource
           cluster={false}
           data={establishmentFeatures}
+          hitbox={{ bottom: 22, left: 22, right: 22, top: 22 }}
           id="tourism-establishments-source"
+          onPress={handleEstablishmentSourcePress}
         >
           <Layer
             key="tourism-establishment-icons"
@@ -505,9 +541,7 @@ export function CenterMap({
             maxzoom={establishmentPinMinZoom}
             paint={{
               "circle-color": ["get", "color"],
-              "circle-radius": 4.5,
-              "circle-stroke-color": colors.surface,
-              "circle-stroke-width": 1.5,
+              "circle-radius": 3,
             }}
             type="circle"
           />
@@ -547,6 +581,13 @@ export function CenterMap({
       ) : null}
     </View>
   );
+}
+
+function getEstablishmentFeatureKey(
+  establishment: PublicMapEstablishment,
+  index: number,
+): string {
+  return `${index}:${establishment.name}:${establishment.latitude}:${establishment.longitude}`;
 }
 
 const selfHostedStyleUrlFromEnv =
