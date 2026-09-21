@@ -485,7 +485,9 @@ function ExploreMapScreen() {
 
   const handleLocateUser = useCallback(async () => {
     setConfirmedLocationFocusKey(null);
-    await requestLocation();
+    const coordinate = await requestLocation();
+    if (!coordinate) return;
+    setFocusLocationKey((value) => value + 1);
   }, [requestLocation]);
 
   const handleLocationFocusChange = useCallback(

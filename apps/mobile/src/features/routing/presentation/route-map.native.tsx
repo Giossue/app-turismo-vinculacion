@@ -313,6 +313,11 @@ export function RouteMap({
             onUserInteraction?.();
           }
         }}
+        onRegionDidChange={(event) => {
+          if (!event.nativeEvent.userInteraction) return;
+          isFollowingRef.current = false;
+          onUserInteraction?.();
+        }}
         ref={mapRef}
         style={styles.map}
         touchPitch
@@ -396,7 +401,9 @@ export function RouteMap({
               "icon-image": "tourism-navigation-mode",
               "icon-pitch-alignment": "viewport",
               "icon-rotate": ["get", "heading"],
-              "icon-rotation-alignment": "viewport",
+              // El rumbo de la flecha usa el mismo marco que la cámara:
+              // al orientar el mapa hacia delante, la punta queda arriba.
+              "icon-rotation-alignment": "map",
               "icon-size": 0.15,
             }}
             type="symbol"

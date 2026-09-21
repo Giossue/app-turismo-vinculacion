@@ -76,6 +76,7 @@ const modeOptions: readonly Readonly<{
   { icon: "bike", label: "Bicicleta", mode: "bicycle" },
   { icon: "foot", label: "A pie", mode: "foot" },
 ];
+const navigationFollowDelayMs = 7_000;
 
 export default function RouteScreen() {
   const colors = useTurismoPalette();
@@ -89,7 +90,11 @@ export default function RouteScreen() {
   const [navigationNotice, setNavigationNotice] = useState<string | null>(null);
   const [recenterKey, setRecenterKey] = useState(0);
   const [previewExpanded, setPreviewExpanded] = useState(true);
+  const [navigationFollowing, setNavigationFollowing] = useState(false);
   const navigationActiveRef = useRef(false);
+  const navigationFollowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const navigationStartInFlightRef = useRef(false);
   const screenFocusedRef = useRef(false);
   const {
@@ -107,7 +112,37 @@ export default function RouteScreen() {
   );
   const destinationName = firstParam(params.destinationName) ?? "Destino";
 
+  const clearNavigationFollowTimer = useCallback(() => {
+    if (navigationFollowTimerRef.current === null) return;
+    clearTimeout(navigationFollowTimerRef.current);
+    navigationFollowTimerRef.current = null;
+  }, []);
+
+  const scheduleNavigationFollow = useCallback(() => {
+    clearNavigationFollowTimer();
+    navigationFollowTimerRef.current = setTimeout(() => {
+      navigationFollowTimerRef.current = null;
+      if (!navigationActiveRef.current) return;
+      setNavigationFollowing(true);
+      setRecenterKey((current) => current + 1);
+    }, navigationFollowDelayMs);
+  }, [clearNavigationFollowTimer]);
+
+  const handleNavigationMapInteraction = useCallback(() => {
+    if (!navigationActiveRef.current) return;
+    setNavigationFollowing(false);
+    scheduleNavigationFollow();
+  }, [scheduleNavigationFollow]);
+
+  const handleNavigationRecenter = useCallback(() => {
+    if (!navigationActiveRef.current) return;
+    clearNavigationFollowTimer();
+    setNavigationFollowing(true);
+    setRecenterKey((current) => current + 1);
+  }, [clearNavigationFollowTimer]);
+
   const teardownNavigation = useCallback(() => {
+    clearNavigationFollowTimer();
     navigationActiveRef.current = false;
     navigationStartInFlightRef.current = false;
 
@@ -115,15 +150,17 @@ export default function RouteScreen() {
     // while the route screen is being removed.
     void clearNavigationSession();
     void stopNavigationLocationTask();
-  }, []);
+  }, [clearNavigationFollowTimer]);
 
   const finishNavigation = useCallback(
     (notice: string | null) => {
+      clearNavigationFollowTimer();
+      setNavigationFollowing(false);
       teardownNavigation();
       setNavigationActive(false);
       setNavigationNotice(notice);
     },
-    [teardownNavigation],
+    [clearNavigationFollowTimer, teardownNavigation],
   );
 
   const handleRouteClose = useCallback(() => {
@@ -168,8 +205,11 @@ export default function RouteScreen() {
   }, [navigationActive, setForegroundTrackingSuspended]);
 
   useEffect(
-    () => () => setForegroundTrackingSuspended(false),
-    [setForegroundTrackingSuspended],
+    () => () => {
+      clearNavigationFollowTimer();
+      setForegroundTrackingSuspended(false);
+    },
+    [clearNavigationFollowTimer, setForegroundTrackingSuspended],
   );
 
   const request = useMemo<RouteRequest | null>(() => {
@@ -325,6 +365,8 @@ export default function RouteScreen() {
 
       setNavigationNotice(nextNotice);
       navigationActiveRef.current = true;
+      setNavigationFollowing(true);
+      clearNavigationFollowTimer();
       setRecenterKey((current) => current + 1);
       setNavigationActive(true);
     } finally {
@@ -336,6 +378,7 @@ export default function RouteScreen() {
     navigationActive,
     requestLocation,
     auth.status,
+    clearNavigationFollowTimer,
     finishNavigation,
     routeQuery.data,
     router,
@@ -354,6 +397,9 @@ export default function RouteScreen() {
     modeOptions.find((option) => option.mode === mode)?.label ?? "Auto";
   const routeError =
     routeQuery.error instanceof Error ? routeQuery.error.message : null;
+  const navigationMapLocation = navigationActive
+    ? (navigationSession.currentLocation ?? currentLocation ?? origin)
+    : null;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.mapBackground }]}>
@@ -362,12 +408,14 @@ export default function RouteScreen() {
       />
       {destination ? (
         <RouteMap
-          currentLocation={navigationSession.currentLocation}
+          currentLocation={navigationMapLocation}
           destination={destination}
           fullScreen
           navigationActive={navigationActive}
           onUserInteraction={
-            !navigationActive ? handleMapInteraction : undefined
+            navigationActive
+              ? handleNavigationMapInteraction
+              : handleMapInteraction
           }
           origin={origin}
           recenterKey={recenterKey}
@@ -404,9 +452,10 @@ export default function RouteScreen() {
       {destination && navigationActive && routeQuery.data ? (
         <ActiveNavigationOverlay
           guidance={navigationSession.nextInstruction}
+          isFollowing={navigationFollowing}
           isRecalculating={isCalculating}
           message={navigationSession.message}
-          onRecenter={() => setRecenterKey((current) => current + 1)}
+          onRecenter={handleNavigationRecenter}
           onStop={handleStopNavigation}
           remainingDistanceMeters={navigationSession.remainingDistanceMeters}
           remainingDurationSeconds={navigationSession.remainingDurationSeconds}
@@ -889,6 +938,7 @@ function RoutePreviewPanel({
 
 type ActiveNavigationOverlayProps = Readonly<{
   guidance: NavigationGuidance | null;
+  isFollowing: boolean;
   isRecalculating: boolean;
   message: string | null;
   notice: string | null;
@@ -901,6 +951,7 @@ type ActiveNavigationOverlayProps = Readonly<{
 
 function ActiveNavigationOverlay({
   guidance,
+  isFollowing,
   isRecalculating,
   message,
   notice,
@@ -1038,12 +1089,17 @@ function ActiveNavigationOverlay({
           </Text>
         </View>
         <TourismIconAction
-          accessibilityLabel="Centrar y seguir mi ubicación"
+          accessibilityLabel={
+            isFollowing
+              ? "Siguiendo mi ubicación"
+              : "Centrar y seguir mi ubicación"
+          }
           icon="locate"
           onPress={onRecenter}
+          selected={isFollowing}
           style={{
-            backgroundColor: colors.background,
-            borderColor: colors.textFaint,
+            backgroundColor: isFollowing ? colors.primary : colors.background,
+            borderColor: isFollowing ? colors.primary : colors.textFaint,
           }}
         />
       </View>
