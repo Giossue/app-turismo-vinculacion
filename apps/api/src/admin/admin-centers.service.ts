@@ -2808,12 +2808,13 @@ export class AdminCentersService {
       const center = rows[0];
       if (!center)
         throw new NotFoundException("No se encontró la ficha turística.");
-      const draft = await this.getDraft(manager, center.id);
+      const detail = await this.mapDetail(manager, center);
+      const effectiveDraft = detail.draft ?? detail.published;
       return {
-        code: center.code ?? code,
-        version: draft?.version ?? 0,
-        sections: draft?.data.sections ?? {},
-        progress: buildAdminSectionProgress(draft?.data),
+        code: detail.code ?? code,
+        version: detail.version,
+        sections: effectiveDraft.sections ?? {},
+        progress: buildAdminSectionProgress(effectiveDraft),
       };
     });
   }
@@ -3038,6 +3039,9 @@ export class AdminCentersService {
       publishedSections["higiene-seguridad"] = publishedHygiene;
     if (publishedAnnexes) publishedSections.anexos = publishedAnnexes;
     published.sections = publishedSections;
+    const effectiveDraft = hasPendingDraft
+      ? this.mergeDraftWithPublished(published, draft.data)
+      : null;
     return {
       code: center.code,
       status: effectiveStatus,
@@ -3046,7 +3050,7 @@ export class AdminCentersService {
       publishedAt: center.publishedAt ?? null,
       version: draft?.version ?? 0,
       published,
-      draft: hasPendingDraft ? draft.data : null,
+      draft: effectiveDraft,
       review: revision
         ? {
             status: { code: revision.stateCode, name: revision.stateName },
@@ -3055,6 +3059,20 @@ export class AdminCentersService {
             reviewedAt: revision.reviewedAt,
           }
         : null,
+    };
+  }
+
+  private mergeDraftWithPublished(
+    published: CenterDraft,
+    draft: CenterDraft,
+  ): CenterDraft {
+    return {
+      ...published,
+      ...draft,
+      sections: {
+        ...(published.sections ?? {}),
+        ...(draft.sections ?? {}),
+      },
     };
   }
 

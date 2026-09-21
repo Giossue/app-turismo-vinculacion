@@ -796,6 +796,41 @@ describe("AdminCentersService", () => {
     });
   });
 
+  it("keeps published sections when the draft snapshot omits them", () => {
+    const service = new AdminCentersService({} as never);
+    const mergeDraftWithPublished = (
+      service as unknown as {
+        mergeDraftWithPublished: (
+          published: Record<string, unknown>,
+          draft: Record<string, unknown>,
+        ) => Record<string, unknown>;
+      }
+    ).mergeDraftWithPublished;
+
+    expect(
+      mergeDraftWithPublished.call(
+        service,
+        {
+          name: "Ficha publicada",
+          sections: {
+            accesibilidad: { response: "SI" },
+            planta: { response: "SI" },
+          },
+        },
+        {
+          name: "Propuesta aprobada",
+          sections: { accesibilidad: { response: "NO" } },
+        },
+      ),
+    ).toMatchObject({
+      name: "Propuesta aprobada",
+      sections: {
+        accesibilidad: { response: "NO" },
+        planta: { response: "SI" },
+      },
+    });
+  });
+
   it("includes activity state in the paginated center list", async () => {
     const dataSource = {
       query: vi.fn().mockResolvedValue([

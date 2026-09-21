@@ -486,6 +486,7 @@ export function CenterMap({
           id="tourism-establishments-source"
         >
           <Layer
+            key="tourism-establishment-icons"
             id="tourism-establishment-icons"
             layout={{
               "icon-allow-overlap": true,
@@ -497,6 +498,18 @@ export function CenterMap({
             }}
             minzoom={establishmentPinMinZoom}
             type="symbol"
+          />
+          <Layer
+            key="tourism-establishment-dots"
+            id="tourism-establishment-dots"
+            maxzoom={establishmentPinMinZoom}
+            paint={{
+              "circle-color": ["get", "color"],
+              "circle-radius": 4.5,
+              "circle-stroke-color": colors.surface,
+              "circle-stroke-width": 1.5,
+            }}
+            type="circle"
           />
         </GeoJSONSource>
         <GeoJSONSource
