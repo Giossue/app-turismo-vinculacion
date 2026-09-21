@@ -9,22 +9,21 @@ desde `Menú > Guardados`.
 
 ## Alcance
 
-- Persistir los centros guardados por dispositivo mediante AsyncStorage.
+- Conservar un resumen local para cachear la lista y migrar guardados antiguos al iniciar sesión.
 - Compartir el mismo estado entre la ficha del mapa, la ficha completa y la pantalla
   `Guardados`.
 - Abrir la ficha completa desde cada elemento guardado y permitir quitarlo.
 - Mantener el orden más reciente primero y soportar el estado vacío.
 - Añadir sesión móvil con access token en memoria y refresh token en SecureStore.
-- Sincronizar guardados con `favoritos_centros` cuando exista una sesión autenticada,
-  conservando una degradación local si la API no está disponible.
+- Sincronizar guardados con `favoritos_centros` mediante la cuenta autenticada.
 
 ## Límite actual
 
 El esquema PostgreSQL ya contiene `favoritos_centros` y
 `favoritos_puntos_interes`. La app móvil usa ahora el contrato separado
-`/auth/mobile/*`; no reutiliza la cookie de la sesión institucional. Si todavía no
-existe una cuenta turística, la pantalla conserva el funcionamiento local y ofrece
-iniciar sesión para sincronizarla.
+`/auth/mobile/*`; no reutiliza la cookie de la sesión institucional. Guardar y abrir
+`Guardados` requieren una cuenta turística; la exploración pública sigue disponible como
+invitado. Los resúmenes locales heredados se incorporan a la cuenta al autenticarse.
 
 ## Datos y privacidad
 

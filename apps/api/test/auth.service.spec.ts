@@ -5,6 +5,107 @@ import { describe, expect, it, vi } from "vitest";
 import { AuthService } from "../src/auth/auth.service";
 
 describe("AuthService refresh rotation", () => {
+  it("rejects a gender outside the Ecuador registration options", async () => {
+    const dataSource = { transaction: vi.fn() };
+    const service = new AuthService(
+      dataSource as never,
+      { hash: vi.fn() } as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(
+      service.register({
+        email: "tourist@example.com",
+        gender: "No binario",
+        name: "Turista",
+        password: "a-secure-password",
+      }),
+    ).rejects.toThrow("Los datos de la cuenta no son válidos.");
+    expect(dataSource.transaction).not.toHaveBeenCalled();
+  });
+
+  it("creates an active tourist session with normalized account data", async () => {
+    const query = vi.fn(async (sql: string) => {
+      if (sql.includes("INSERT INTO usuarios")) return [{ id: "8" }];
+      if (sql.includes("SELECT id FROM roles")) return [{ id: "2" }];
+      if (sql.includes("FROM usuarios u")) {
+        return [
+          {
+            id: "8",
+            name: "Ana Pérez",
+            email: "ana@example.com",
+            password: "hash",
+            active: true,
+            roles: ["TURISTA"],
+          },
+        ];
+      }
+      return [];
+    });
+    const manager = { query };
+    const dataSource = {
+      manager,
+      transaction: vi.fn(async (callback: (value: typeof manager) => unknown) =>
+        callback(manager),
+      ),
+    };
+    const service = new AuthService(
+      dataSource as never,
+      { hash: vi.fn().mockResolvedValue("hashed-password") } as never,
+      { signAccessToken: vi.fn().mockResolvedValue("access-token") } as never,
+      { getOrThrow: vi.fn().mockReturnValue(30) } as never,
+    );
+
+    await expect(
+      service.register({
+        birthDate: "1998-02-03",
+        email: "  ANA@EXAMPLE.COM ",
+        gender: "Femenino",
+        name: " Ana   Pérez ",
+        password: "a-secure-password",
+      }),
+    ).resolves.toMatchObject({
+      accessToken: "access-token",
+      user: { email: "ana@example.com", roles: ["TURISTA"] },
+    });
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO usuarios"),
+      [
+        "Ana Pérez",
+        "ana@example.com",
+        "Femenino",
+        "1998-02-03",
+        "hashed-password",
+      ],
+    );
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO usuarios_roles"),
+      ["2", "8"],
+    );
+  });
+
+  it("does not expose whether a registration email already exists", async () => {
+    const dataSource = {
+      transaction: vi.fn().mockRejectedValue({ code: "23505" }),
+    };
+    const service = new AuthService(
+      dataSource as never,
+      { hash: vi.fn().mockResolvedValue("hashed-password") } as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(
+      service.register({
+        email: "taken@example.com",
+        gender: "Femenino",
+        name: "Ana",
+        password: "a-secure-password",
+      }),
+    ).rejects.toThrow("No se pudo crear la cuenta con esos datos.");
+  });
+
   it("does not propagate retired institutional roles into the session", async () => {
     const query = vi.fn().mockResolvedValue([
       {

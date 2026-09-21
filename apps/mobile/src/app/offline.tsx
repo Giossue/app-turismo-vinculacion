@@ -27,6 +27,7 @@ import {
   turismoTypography,
 } from "@/core/ui/tokens";
 import { downloadOfflineCity } from "@/features/offline/application/offline-download";
+import { useAuth } from "@/features/auth/application/auth-context";
 import { useOfflineCities } from "@/features/offline/application/use-offline-cities";
 import { listStoredOfflineCities } from "@/features/offline/data/offline-storage";
 import type { OfflineCity } from "@/features/offline/domain/offline-city";
@@ -34,6 +35,7 @@ import type { OfflineCity } from "@/features/offline/domain/offline-city";
 export default function OfflineMapsScreen() {
   const router = useRouter();
   const colors = useTurismoPalette();
+  const auth = useAuth();
   const queryClient = useQueryClient();
   const [menuVisible, setMenuVisible] = useState(false);
   const [activeDownload, setActiveDownload] = useState<{
@@ -172,6 +174,16 @@ export default function OfflineMapsScreen() {
         )}
       </ScrollView>
       <TourismMenuDrawer
+        onAccount={() =>
+          router.push(
+            auth.status === "authenticated"
+              ? ("/account" as never)
+              : ({
+                  pathname: "/login",
+                  params: { returnTo: "/account" },
+                } as never),
+          )
+        }
         onClose={() => setMenuVisible(false)}
         onOfflineMaps={() => setMenuVisible(false)}
         onSaved={() => setMenuVisible(false)}

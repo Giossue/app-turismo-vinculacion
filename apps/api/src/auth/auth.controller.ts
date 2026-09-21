@@ -13,12 +13,21 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { IsEmail, IsString, MinLength } from "class-validator";
+import {
+  IsEmail,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from "class-validator";
 
 import { AuthService, type AuthResult } from "./auth.service";
 import { CurrentUser } from "./auth.decorators";
 import { AuthGuard } from "./auth.guard";
-import type { AuthenticatedUser } from "./auth.types";
+import { TOURIST_GENDER_OPTIONS, type AuthenticatedUser } from "./auth.types";
 
 class LoginDto {
   @IsEmail()
@@ -33,6 +42,31 @@ class MobileRefreshDto {
   @IsString()
   @MinLength(32)
   refreshToken!: string;
+}
+
+class RegisterDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(150)
+  name!: string;
+
+  @IsEmail()
+  @MaxLength(254)
+  email!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @IsIn(TOURIST_GENDER_OPTIONS)
+  gender!: string;
+
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  birthDate?: string;
+
+  @IsString()
+  @MinLength(12)
+  @MaxLength(128)
+  password!: string;
 }
 
 @ApiTags("auth")
@@ -62,6 +96,19 @@ export class AuthController {
   @HttpCode(200)
   async mobileLogin(@Body() body: LoginDto) {
     const result = await this.auth.login(body.email, body.password);
+    return this.mobileSession(result);
+  }
+
+  @Post("mobile/register")
+  @HttpCode(201)
+  async mobileRegister(@Body() body: RegisterDto) {
+    const result = await this.auth.register({
+      birthDate: body.birthDate,
+      email: body.email,
+      gender: body.gender,
+      name: body.name,
+      password: body.password,
+    });
     return this.mobileSession(result);
   }
 
@@ -113,9 +160,7 @@ export class AuthController {
   async me(@CurrentUser() user: AuthenticatedUser) {
     const current = await this.auth.findUserById(user.id);
     if (!current) {
-      throw new UnauthorizedException(
-        "La cuenta institucional no está activa.",
-      );
+      throw new UnauthorizedException("La cuenta no está activa.");
     }
     return { data: { user: current } };
   }

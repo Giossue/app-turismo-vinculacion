@@ -1,4 +1,10 @@
-import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   createHash,
@@ -11,7 +17,11 @@ import { InjectDataSource } from "@nestjs/typeorm";
 
 import { AuthTokenService } from "./auth-token.service";
 import { PasswordService } from "./password.service";
-import type { AuthRole, AuthenticatedUser } from "./auth.types";
+import {
+  TOURIST_GENDER_OPTIONS,
+  type AuthRole,
+  type AuthenticatedUser,
+} from "./auth.types";
 
 interface UserRow {
   id: string;
@@ -36,6 +46,14 @@ export interface AuthResult {
   accessToken: string;
   refreshToken?: string;
   user: Omit<AuthenticatedUser, "sessionId">;
+}
+
+export interface TouristRegistrationInput {
+  name: string;
+  email: string;
+  gender: string;
+  birthDate?: string;
+  password: string;
 }
 
 const REFRESH_ROTATION_GRACE_MS = 10_000;
@@ -68,6 +86,79 @@ export class AuthService {
     }
 
     return this.createSession(this.toUser(user));
+  }
+
+  async register(input: TouristRegistrationInput): Promise<AuthResult> {
+    const name = input.name.trim().replace(/\s+/g, " ");
+    const email = input.email.trim().toLowerCase();
+    const gender = input.gender?.trim() ?? "";
+    const birthDate = input.birthDate?.trim() || null;
+
+    if (!name || name.length > 150 || !email || email.length > 254) {
+      throw new BadRequestException("Los datos de la cuenta no son válidos.");
+    }
+    if (
+      !gender ||
+      gender.length > 30 ||
+      !TOURIST_GENDER_OPTIONS.includes(
+        gender as (typeof TOURIST_GENDER_OPTIONS)[number],
+      )
+    ) {
+      throw new BadRequestException("Los datos de la cuenta no son válidos.");
+    }
+    if (birthDate && !isValidBirthDate(birthDate)) {
+      throw new BadRequestException("La fecha de nacimiento no es válida.");
+    }
+
+    const passwordHash = await this.passwords.hash(input.password);
+    let userId: number;
+    try {
+      userId = await this.dataSource.transaction(async (manager) => {
+        const users = (await manager.query(
+          `INSERT INTO usuarios (nombre, email, genero, fecha_nac, password, activo)
+           VALUES ($1, $2, $3, $4, $5, TRUE)
+           RETURNING id`,
+          [name, email, gender, birthDate, passwordHash],
+        )) as { id: string }[];
+        const user = users[0];
+        if (!user) {
+          throw new InternalServerErrorException(
+            "No se pudo crear la cuenta turística.",
+          );
+        }
+
+        const roles = (await manager.query(
+          "SELECT id FROM roles WHERE nombre_rol = 'TURISTA'",
+        )) as { id: string }[];
+        if (!roles[0]) {
+          throw new InternalServerErrorException(
+            "El rol TURISTA no está configurado.",
+          );
+        }
+        await manager.query(
+          `INSERT INTO usuarios_roles (rol_id, usuario_id)
+           VALUES ($1, $2)
+           ON CONFLICT (rol_id, usuario_id) DO NOTHING`,
+          [roles[0].id, user.id],
+        );
+        return Number(user.id);
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new BadRequestException(
+          "No se pudo crear la cuenta con esos datos.",
+        );
+      }
+      throw error;
+    }
+
+    const user = await this.findUserById(userId);
+    if (!user) {
+      throw new InternalServerErrorException(
+        "No se pudo preparar la sesión turística.",
+      );
+    }
+    return this.createSession(user);
   }
 
   async refresh(refreshToken: string): Promise<AuthResult> {
@@ -116,9 +207,7 @@ export class AuthService {
         Number(session.usuario_id),
       );
       if (!user || !user.active) {
-        throw new UnauthorizedException(
-          "La cuenta institucional no está activa.",
-        );
+        throw new UnauthorizedException("La cuenta no está activa.");
       }
 
       if (recentlyRotated) {
@@ -212,9 +301,10 @@ export class AuthService {
   }
 
   private async findUserByEmail(email: string): Promise<UserRow | null> {
-    const rows = (await this.dataSource.query(this.userQuery("u.email = $1"), [
-      email,
-    ])) as UserRow[];
+    const rows = (await this.dataSource.query(
+      this.userQuery("lower(u.email) = $1"),
+      [email],
+    )) as UserRow[];
     return rows[0] ?? null;
   }
 
@@ -305,4 +395,21 @@ interface RefreshToken {
   tokenId: string;
   familyId: string;
   raw: string;
+}
+
+function isValidBirthDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) return false;
+  if (parsed.toISOString().slice(0, 10) !== value) return false;
+  return parsed.getTime() <= Date.now();
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "23505"
+  );
 }

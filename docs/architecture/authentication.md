@@ -19,6 +19,15 @@ revocación y roles. No se delega autenticación al proveedor de mapas/rutas ni 
 - Web: refresh token en cookie `HttpOnly`, `Secure`, `SameSite`; no en localStorage.
 - Cerrar sesión revoca el refresh token y limpia cachés privadas.
 
+El cliente móvil ofrece una entrada única para iniciar sesión, crear una cuenta turística
+o explorar como invitado. El registro crea únicamente una cuenta con rol `TURISTA` y usa
+`nombre`, `email`, `genero` obligatorio (opciones `Masculino` o `Femenino`) y `fecha_nac`
+opcional de `usuarios`; la fecha se selecciona mediante el calendario nativo y no admite
+fechas futuras. `activo`, las marcas de verificación y las fechas quedan bajo control del
+backend. Mientras no exista
+un proveedor institucional de correo configurado, `email_verified_at` permanece disponible
+para el futuro flujo de verificación y no se simula una verificación en el cliente.
+
 En la web, el access token se reconstruye al cargar la aplicación mediante
 `POST /auth/refresh`; no se persiste en `localStorage`. La cookie de renovación tiene
 caducidad explícita y cada renovación inserta primero la nueva sesión dentro de la misma

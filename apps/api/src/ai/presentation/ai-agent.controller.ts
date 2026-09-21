@@ -5,9 +5,14 @@ import {
   Inject,
   Post,
   Res,
+  UseGuards,
 } from "@nestjs/common";
-import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import type { FastifyReply } from "fastify";
+
+import { Roles } from "../../auth/auth.decorators";
+import { AuthGuard } from "../../auth/auth.guard";
+import { RolesGuard } from "../../auth/roles.guard";
 
 import {
   AiAgentService,
@@ -15,6 +20,9 @@ import {
 } from "../application/ai-agent.service";
 
 @ApiTags("ai-agent")
+@ApiBearerAuth()
+@UseGuards(AuthGuard, RolesGuard)
+@Roles("TURISTA", "ADMINISTRADOR")
 @Controller("ai")
 export class AiAgentController {
   constructor(@Inject(AiAgentService) private readonly agent: AiAgentService) {}

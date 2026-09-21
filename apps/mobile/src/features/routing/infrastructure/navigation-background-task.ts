@@ -47,10 +47,17 @@ if (
       };
 
       const session = await readNavigationSession();
+      if (!session?.active) {
+        // A route screen can be removed while a native location callback is
+        // already queued. Do not publish another instruction for a session that
+        // has been cancelled, and make the task self-clean if it outlives JS.
+        await stopNavigationLocationTask();
+        return;
+      }
+
       if (
-        session?.active &&
         getDistanceMeters(persistedLocation.coordinate, session.destination) <=
-          arrivalThresholdMeters
+        arrivalThresholdMeters
       ) {
         await markNavigationSessionInactive();
         await stopNavigationLocationTask();
@@ -59,7 +66,7 @@ if (
 
       await updateNavigationLocation(persistedLocation);
 
-      if (session?.active && Platform.OS === "android") {
+      if (Platform.OS === "android") {
         const notification = getNavigationNotification(
           getNavigationGuidance(session.route, persistedLocation.coordinate),
         );

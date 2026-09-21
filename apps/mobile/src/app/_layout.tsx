@@ -98,6 +98,7 @@ function AppNavigation() {
         <Stack.Screen name="offline" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="saved" />
+        <Stack.Screen name="account" />
         <Stack.Screen name="login" />
       </Stack>
     </>

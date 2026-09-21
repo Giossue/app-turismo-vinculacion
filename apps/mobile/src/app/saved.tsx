@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -43,6 +43,27 @@ export default function SavedScreen() {
   }, [router]);
 
   useScreenBackHandler(() => false);
+
+  useEffect(() => {
+    if (auth.status !== "anonymous") return;
+    router.replace({
+      pathname: "/login",
+      params: { returnTo: "/saved" },
+    } as never);
+  }, [auth.status, router]);
+
+  if (auth.status !== "authenticated") {
+    return (
+      <TourismScreenFrame onBack={handleBack} title="Guardados">
+        <View style={styles.state}>
+          <ActivityIndicator color={colors.primary} size="large" />
+          <Text style={[styles.stateText, { color: colors.textMuted }]}>
+            Preparando tu cuenta turística…
+          </Text>
+        </View>
+      </TourismScreenFrame>
+    );
+  }
 
   return (
     <TourismScreenFrame onBack={handleBack} title="Guardados">

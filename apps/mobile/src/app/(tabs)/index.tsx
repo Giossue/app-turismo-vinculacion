@@ -27,9 +27,10 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
 } from "react-native-reanimated";
 import { Defs, LinearGradient, Rect, Stop, Svg } from "react-native-svg";
-import { Stack, useRouter } from "expo-router";
+import { Redirect, Stack, useRouter } from "expo-router";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -78,6 +79,11 @@ import {
 import { CenterMap } from "@/features/map/presentation/center-map";
 import { MapAttributionButton } from "@/features/map/presentation/map-attribution-button";
 import { AgentChatContent } from "@/features/agent/presentation/agent-chat-content";
+import { useAuth } from "@/features/auth/application/auth-context";
+import {
+  readAuthEntryChoice,
+  type AuthEntryChoice,
+} from "@/features/auth/data/auth-entry-storage";
 import { useUserLocation } from "@/core/location/use-user-location";
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 
@@ -86,8 +92,46 @@ type PlaceTab = "information" | "opinions" | "photos";
 const placeTabOrder = ["information", "opinions", "photos"] as const;
 
 export default function HomeScreen() {
+  const colors = useTurismoPalette();
+  const auth = useAuth();
+  const [entryChoice, setEntryChoice] = useState<
+    AuthEntryChoice | null | undefined
+  >(undefined);
+
+  useEffect(() => {
+    let active = true;
+    void readAuthEntryChoice().then((choice) => {
+      if (active) setEntryChoice(choice);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (auth.status === "loading" || entryChoice === undefined) {
+    return (
+      <View
+        style={[styles.entryLoading, { backgroundColor: colors.background }]}
+      >
+        <ActivityIndicator color={colors.primary} size="large" />
+        <Text style={[styles.entryLoadingText, { color: colors.textMuted }]}>
+          Preparando Turismo Vinculación…
+        </Text>
+      </View>
+    );
+  }
+
+  if (auth.status !== "authenticated" && entryChoice !== "guest") {
+    return <Redirect href="/login" />;
+  }
+
+  return <ExploreMapScreen />;
+}
+
+function ExploreMapScreen() {
   const router = useRouter();
   const colors = useTurismoPalette();
+  const auth = useAuth();
   const { closeMenu, menuVisible, openMenu } = useTourismMenu();
   const { height, width } = useWindowDimensions();
   const isLandscape = width > height;
@@ -111,7 +155,9 @@ export default function HomeScreen() {
   const [selectedCenterExpanded, setSelectedCenterExpanded] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
   const [focusLocationKey, setFocusLocationKey] = useState(0);
-  const [locationFocused, setLocationFocused] = useState(false);
+  const [confirmedLocationFocusKey, setConfirmedLocationFocusKey] = useState<
+    number | null
+  >(null);
   const locationFocusInitializedRef = useRef(false);
   const {
     coordinate: userLocation,
@@ -134,7 +180,6 @@ export default function HomeScreen() {
     if (!userLocation || locationFocusInitializedRef.current) return;
 
     locationFocusInitializedRef.current = true;
-    setLocationFocused(true);
     setFocusLocationKey((value) => value + 1);
   }, [locationStatus, userLocation]);
 
@@ -304,7 +349,7 @@ export default function HomeScreen() {
   }, [agentOpen, presentSearchSheet, submittedQuery]);
 
   const handleViewportChange = useCallback(() => {
-    setLocationFocused(false);
+    setConfirmedLocationFocusKey(null);
     // El catálogo ya cargado no se reemplaza durante pan/zoom. Así MapLibre
     // conserva los símbolos y el usuario no ve parpadeos ni pines que se
     // pierden mientras termina una consulta por viewport. La consulta acotada
@@ -330,10 +375,25 @@ export default function HomeScreen() {
   };
 
   const handleLocateUser = useCallback(async () => {
+    setConfirmedLocationFocusKey(null);
     await requestLocation();
   }, [requestLocation]);
 
+  const handleLocationFocusChange = useCallback(
+    (focused: boolean) => {
+      setConfirmedLocationFocusKey(focused ? focusLocationKey : null);
+    },
+    [focusLocationKey],
+  );
+
   const openAgent = useCallback(() => {
+    if (auth.status !== "authenticated") {
+      router.push({
+        pathname: "/login",
+        params: { returnTo: "/" },
+      } as never);
+      return;
+    }
     dismissSearchSheet();
     setAgentOpen(true);
     setText("");
@@ -344,7 +404,14 @@ export default function HomeScreen() {
     setNearbyOnly(false);
     setSelectedCenterCode(null);
     setSelectedCenterExpanded(false);
-  }, [dismissSearchSheet]);
+  }, [auth.status, dismissSearchSheet, router]);
+
+  const openAuth = useCallback(() => {
+    router.push({
+      pathname: "/login",
+      params: { returnTo: "/" },
+    } as never);
+  }, [router]);
 
   const openAgentCenter = useCallback(
     (code: string) => {
@@ -382,6 +449,9 @@ export default function HomeScreen() {
       : locationStatus === "requesting"
         ? "Obteniendo tu ubicación"
         : "Activar ubicación";
+  const locationFocused =
+    locationStatus === "ready" &&
+    confirmedLocationFocusKey === focusLocationKey;
   const showLocationAction = locationStatus !== "ready" || !locationFocused;
   const retryCenters = useCallback(() => {
     void refetch();
@@ -402,6 +472,7 @@ export default function HomeScreen() {
         onCenterPress={(center) => {
           selectCenter(center);
         }}
+        onLocationFocusChange={handleLocationFocusChange}
         onViewportChange={handleViewportChange}
         resetNorthKey={resetNorthKey}
         selectedCenterCode={selectedCenterCode}
@@ -523,32 +594,38 @@ export default function HomeScreen() {
         ]}
       >
         <View style={styles.mapActionColumn}>
-          {Math.abs(mapBearing) > 1 ? (
-            <TourismCompassAction
-              accessibilityLabel="Orientar mapa al norte"
-              bearing={mapBearing}
-              onPress={handleResetNorth}
-              style={styles.locationAction}
-            />
-          ) : null}
-          <TourismIconAction
-            accessibilityLabel="Abrir agente turístico"
-            icon="bot"
-            onPress={openAgent}
-            selected={agentOpen}
-            style={styles.locationAction}
-          />
-          {showLocationAction ? (
+          <View style={styles.mapActionSlot}>
+            {Math.abs(mapBearing) > 1 ? (
+              <TourismCompassAction
+                accessibilityLabel="Orientar mapa al norte"
+                bearing={mapBearing}
+                onPress={handleResetNorth}
+                style={styles.locationAction}
+              />
+            ) : null}
+          </View>
+          <View style={styles.mapActionSlot}>
             <TourismIconAction
-              accessibilityLabel={locationButtonLabel}
-              disabled={locationStatus === "requesting"}
-              icon="locate"
-              onPress={() => void handleLocateUser()}
-              selected={false}
-              slashed={locationStatus === "disabled"}
+              accessibilityLabel="Abrir agente turístico"
+              icon="bot"
+              onPress={openAgent}
+              selected={agentOpen}
               style={styles.locationAction}
             />
-          ) : null}
+          </View>
+          <View style={styles.mapActionSlot}>
+            {showLocationAction ? (
+              <TourismIconAction
+                accessibilityLabel={locationButtonLabel}
+                disabled={locationStatus === "requesting"}
+                icon="locate"
+                onPress={() => void handleLocateUser()}
+                selected={false}
+                slashed={locationStatus === "disabled"}
+                style={styles.locationAction}
+              />
+            ) : null}
+          </View>
         </View>
       </View>
       <View pointerEvents="box-none" style={styles.attributionLayer}>
@@ -634,6 +711,7 @@ export default function HomeScreen() {
           onClose={closeSelectedCenter}
           onExpand={expandSelectedCenter}
           onOpenRoute={openRoute}
+          onRequireAuth={openAuth}
           onRetryDetail={() => void refetchSelectedCenterDetail()}
           key={`${selectedCenter.code}-${isLandscape ? "landscape" : "portrait"}`}
         />
@@ -668,6 +746,8 @@ const CENTER_SHEET_SPRING = {
   stiffness: 280,
 } as const;
 const CENTER_SHEET_EXPAND_THRESHOLD = 0.34;
+const CENTER_SHEET_DISMISS_DISTANCE = 96;
+const CENTER_SHEET_DISMISS_VELOCITY = 700;
 
 function CenterDetailSheet({
   center,
@@ -679,6 +759,7 @@ function CenterDetailSheet({
   onClose,
   onExpand,
   onOpenRoute,
+  onRequireAuth,
   onRetryDetail,
 }: Readonly<{
   center: PublicCenter;
@@ -690,6 +771,7 @@ function CenterDetailSheet({
   onClose: () => void;
   onExpand: () => void;
   onOpenRoute: () => void;
+  onRequireAuth: () => void;
   onRetryDetail: () => void;
 }>) {
   const colors = useTurismoPalette();
@@ -701,8 +783,24 @@ function CenterDetailSheet({
     Math.max(360, height - fullOffset - 24),
   );
   const compactOffset = Math.max(fullOffset, height - compactHeight);
-  const sheetOffset = useSharedValue(compactOffset);
+  const sheetOffset = useSharedValue(expanded ? fullOffset : compactOffset);
+  const sheetEntryOffset = useSharedValue(
+    expanded ? height - fullOffset : height - compactOffset,
+  );
+  const scrimOpacity = useSharedValue(0);
   const dragStartOffset = useSharedValue(compactOffset);
+
+  useEffect(() => {
+    sheetEntryOffset.value = withSpring(0, CENTER_SHEET_SPRING);
+    scrimOpacity.value = withTiming(1, { duration: 220 });
+  }, [
+    compactOffset,
+    expanded,
+    fullOffset,
+    height,
+    scrimOpacity,
+    sheetEntryOffset,
+  ]);
 
   const panGesture = Gesture.Pan()
     .activeOffsetY([-8, 8])
@@ -712,9 +810,28 @@ function CenterDetailSheet({
     })
     .onUpdate((event) => {
       const next = dragStartOffset.value + event.translationY;
-      sheetOffset.value = Math.max(fullOffset, Math.min(compactOffset, next));
+      sheetOffset.value = Math.max(fullOffset, Math.min(height, next));
     })
     .onEnd((event) => {
+      const dismissByDistance =
+        sheetOffset.value - compactOffset >= CENTER_SHEET_DISMISS_DISTANCE;
+      const dismissByVelocity =
+        event.velocityY >= CENTER_SHEET_DISMISS_VELOCITY;
+      if (dismissByDistance || dismissByVelocity) {
+        sheetOffset.value = withSpring(
+          height,
+          {
+            damping: 32,
+            mass: 0.8,
+            overshootClamping: true,
+            stiffness: 260,
+          },
+          (finished) => {
+            if (finished) runOnJS(onClose)();
+          },
+        );
+        return;
+      }
       const travel = compactOffset - fullOffset;
       const progress =
         travel <= 0 ? 1 : (compactOffset - sheetOffset.value) / travel;
@@ -727,15 +844,29 @@ function CenterDetailSheet({
       if (shouldExpand) runOnJS(onExpand)();
     });
   const sheetAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: sheetOffset.value }],
+    transform: [{ translateY: sheetOffset.value + sheetEntryOffset.value }],
+  }));
+  const scrimAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: scrimOpacity.value,
   }));
 
   return (
     <View pointerEvents="box-none" style={styles.centerSheetOverlay}>
-      <View
-        pointerEvents="box-only"
-        style={[styles.centerSheetScrim, { backgroundColor: colors.scrim }]}
-      />
+      <Animated.View
+        pointerEvents={expanded ? "none" : "auto"}
+        style={[
+          styles.centerSheetScrim,
+          { backgroundColor: colors.scrim },
+          scrimAnimatedStyle,
+        ]}
+      >
+        <Pressable
+          accessibilityLabel="Cerrar ficha turística"
+          accessibilityRole="button"
+          onPress={onClose}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
       <GestureDetector gesture={panGesture}>
         <Animated.View
           style={[
@@ -762,6 +893,7 @@ function CenterDetailSheet({
               detailError={detailError}
               detailPending={detailPending}
               onOpenRoute={onOpenRoute}
+              onRequireAuth={onRequireAuth}
               onRetryDetail={onRetryDetail}
             />
           </ScrollView>
@@ -797,6 +929,7 @@ function PlaceSheet({
   detailError,
   detailPending,
   onOpenRoute,
+  onRequireAuth,
   onRetryDetail,
 }: Readonly<{
   center: PublicCenter;
@@ -804,9 +937,11 @@ function PlaceSheet({
   detailError: Error | null;
   detailPending: boolean;
   onOpenRoute: () => void;
+  onRequireAuth: () => void;
   onRetryDetail: () => void;
 }>) {
   const colors = useTurismoPalette();
+  const auth = useAuth();
   const [activeTab, setActiveTab] = useState<PlaceTab>("information");
   const savedCenters = useSavedCenters();
   const savedMutation = useSavedCenterMutation();
@@ -946,7 +1081,13 @@ function PlaceSheet({
           accessibilityRole="button"
           accessibilityState={{ selected: saved }}
           hitSlop={4}
-          onPress={() => savedMutation.mutate({ center, saved })}
+          onPress={() => {
+            if (auth.status !== "authenticated") {
+              onRequireAuth();
+              return;
+            }
+            savedMutation.mutate({ center, saved });
+          }}
           style={({ pressed }) => [
             styles.placeAction,
             pressed && styles.placeActionPressed,
@@ -1407,7 +1548,14 @@ const styles = StyleSheet.create({
   mapActionLayerLandscape: {
     bottom: turismoSpacing.sm,
   },
-  mapActionColumn: { gap: turismoSpacing.xs },
+  mapActionColumn: {
+    gap: turismoSpacing.xs,
+    height: turismoMetrics.controlLg * 3 + turismoSpacing.xs * 2,
+  },
+  mapActionSlot: {
+    height: turismoMetrics.controlLg,
+    width: turismoMetrics.controlLg,
+  },
   attributionLayer: {
     bottom: 0,
     elevation: 20,
@@ -1584,6 +1732,14 @@ const styles = StyleSheet.create({
   detailBullet: { ...turismoTypography.body, lineHeight: 20 },
   detailBulletText: { ...turismoTypography.body, flex: 1 },
   detailEmptyText: { ...turismoTypography.body },
+  entryLoading: {
+    alignItems: "center",
+    flex: 1,
+    gap: turismoSpacing.md,
+    justifyContent: "center",
+    padding: turismoSpacing.xl,
+  },
+  entryLoadingText: { ...turismoTypography.body, textAlign: "center" },
   loading: {
     alignItems: "center",
     flex: 1,

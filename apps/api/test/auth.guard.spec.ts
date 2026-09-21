@@ -16,7 +16,7 @@ describe("AuthGuard", () => {
     const guard = new AuthGuard({ verifyAccessToken: vi.fn() } as never);
     await expect(
       guard.canActivate(contextFor({ headers: {} })),
-    ).rejects.toThrow("Se requiere una sesión institucional.");
+    ).rejects.toThrow("Se requiere una sesión autenticada.");
   });
 
   it("attaches verified identity claims to the request", async () => {

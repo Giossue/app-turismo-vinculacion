@@ -29,6 +29,7 @@ import {
 } from "@/core/ui/tokens";
 import { usePublishedCenter } from "@/features/centers/application/use-published-center";
 import type { PublicCenterDetail } from "@/features/centers/domain/public-center";
+import { useAuth } from "@/features/auth/application/auth-context";
 import {
   useSavedCenterMutation,
   useSavedCenters,
@@ -39,6 +40,7 @@ type CenterTab = "information" | "opinions" | "photos";
 export default function CenterDetailScreen() {
   const router = useRouter();
   const colors = useTurismoPalette();
+  const auth = useAuth();
   const { code } = useLocalSearchParams<{ code: string }>();
   const [activeTab, setActiveTab] = useState<CenterTab>("information");
   const savedCenters = useSavedCenters();
@@ -146,7 +148,16 @@ export default function CenterDetailScreen() {
                     saved ? "Quitar de guardados" : "Guardar centro turístico"
                   }
                   icon="bookmark"
-                  onPress={() => savedMutation.mutate({ center, saved })}
+                  onPress={() => {
+                    if (auth.status !== "authenticated") {
+                      router.push({
+                        pathname: "/login",
+                        params: { returnTo: `/centers/${code}` },
+                      } as never);
+                      return;
+                    }
+                    savedMutation.mutate({ center, saved });
+                  }}
                   selected={saved}
                 />
                 <TourismIconAction

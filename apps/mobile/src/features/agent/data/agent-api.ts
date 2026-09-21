@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { getApiUrl } from "@/core/api/api-url";
+import type { AuthorizedFetcher } from "@/features/auth/data/auth-api";
 
 const agentResponseSchema = z.string();
 
@@ -12,7 +13,7 @@ export type AgentHistoryItem = Readonly<{
 export async function askTourismAgent(
   message: string,
   history: readonly AgentHistoryItem[] = [],
-  fetcher: typeof fetch = fetch,
+  fetcher: AuthorizedFetcher = fetch,
   apiUrl = getApiUrl(),
 ): Promise<string> {
   const response = await fetcher(`${apiUrl}/ai/chat`, {

@@ -76,12 +76,15 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   persistente ni promete actualizaciones al cambiar de aplicación. En Android 13 o posterior
   también se solicita `POST_NOTIFICATIONS` cuando el seguimiento persistente está habilitado,
   para mostrar el servicio en el cajón de notificaciones.
-- Al detenerla, llegar al destino o cancelar, se eliminan el watcher, la tarea del sistema,
-  la sesión persistida, la notificación foreground y la voz. La tarea también comprueba la
-  distancia al destino cuando recibe una ubicación en segundo plano, para cerrar la sesión
-  al llegar aunque la app no esté visible. El cuerpo de la misma notificación foreground se
-  actualiza con la próxima maniobra y la distancia redondeada, sin crear notificaciones
-  duplicadas. Cuando no hay una maniobra disponible comunica que la navegación sigue activa.
+- Al detenerla, llegar al destino, cancelar o abandonar la pantalla de ruta con Atrás, se
+  eliminan el watcher, la tarea del sistema, la sesión persistida, la notificación foreground
+  y la voz. Minimizar la app o cambiar temporalmente de aplicación no equivale a cancelar:
+  mientras la navegación siga activa, la tarea continúa bajo las condiciones permitidas por
+  Android. La tarea también comprueba la distancia al destino cuando recibe una ubicación en
+  segundo plano, para cerrar la sesión al llegar aunque la app no esté visible. El cuerpo de
+  la misma notificación foreground se actualiza con la próxima maniobra y la distancia
+  redondeada, sin crear notificaciones duplicadas. Cuando no hay una maniobra disponible
+  comunica que la navegación sigue activa.
   Android 13 o posterior permite descartar manualmente notificaciones de foreground services;
   por eso el parche nativo comprueba la presencia del mismo registro en cada actualización de
   ubicación y lo vuelve a publicar si el sistema lo retiró. Esto no impide el botón del Task
@@ -99,6 +102,14 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 - Al abrir “Cómo llegar” desde un atractivo publicado, el cliente solicita la ubicación
   puntual y calcula automáticamente la primera ruta; iniciar la navegación sigue siendo
   una acción explícita. Si la ubicación o el cálculo fallan, el panel permite reintentar.
+- La ficha rápida de un atractivo se puede cerrar tocando el mapa fuera de ella o
+  deslizándola hacia abajo mientras está compacta. Al expandirse a pantalla completa,
+  queda bloqueada y se cierra únicamente con la X para no interferir con el desplazamiento
+  vertical ni horizontal de su contenido. Al abrirse, entra suavemente desde el borde
+  inferior y el scrim aparece con un fade breve.
+- El botón de ubicación solicita un enfoque animado, pero solo se oculta cuando el evento
+  final del mapa confirma la coordenada y el zoom objetivo. Si la persona interrumpe el
+  movimiento con un gesto, el enfoque pendiente se cancela y el botón permanece visible.
 - Las instrucciones se leen en español con `expo-speech`. Si la posición queda a más de
   60 m del trazado, la API recalcula usando la ubicación actual como nuevo origen; no se
   guarda un historial de coordenadas.

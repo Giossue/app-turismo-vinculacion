@@ -49,11 +49,13 @@ const TourismMenuContext = createContext<TourismMenuContextValue | null>(null);
  */
 export function TourismMenuProvider({
   children,
+  onAccount,
   onOfflineMaps,
   onSaved,
   onSettings,
 }: Readonly<{
   children: ReactNode;
+  onAccount: () => void;
   onOfflineMaps: () => void;
   onSaved: () => void;
   onSettings: () => void;
@@ -67,6 +69,10 @@ export function TourismMenuProvider({
       {children}
       <TourismMenuDrawer
         onClose={closeMenu}
+        onAccount={() => {
+          closeMenu();
+          onAccount();
+        }}
         onOfflineMaps={() => {
           closeMenu();
           onOfflineMaps();
@@ -163,12 +169,14 @@ export function TourismHeader({
 }
 
 export function TourismMenuDrawer({
+  onAccount,
   onClose,
   onOfflineMaps,
   onSettings,
   onSaved,
   visible,
 }: Readonly<{
+  onAccount: () => void;
   onClose: () => void;
   onOfflineMaps: () => void;
   onSettings: () => void;
@@ -249,6 +257,11 @@ export function TourismMenuDrawer({
               >
                 <View style={styles.drawerContent}>
                   <DrawerAction
+                    icon="user"
+                    label="Cuenta"
+                    onPress={() => closeDrawer(onAccount)}
+                  />
+                  <DrawerAction
                     icon="bookmark"
                     label="Guardados"
                     onPress={() => closeDrawer(onSaved)}
@@ -286,7 +299,7 @@ function DrawerAction({
   label,
   onPress,
 }: Readonly<{
-  icon: "bookmark" | "calendar" | "download" | "settings";
+  icon: "bookmark" | "calendar" | "download" | "settings" | "user";
   label: string;
   onPress: () => void;
 }>) {

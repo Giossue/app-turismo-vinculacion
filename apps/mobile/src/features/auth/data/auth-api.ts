@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { getApiUrl } from "@/core/api/api-url";
 import type { AuthUser } from "../domain/auth-user";
+import type { TouristGender } from "../domain/registration-options";
 
 const authResultSchema = z.object({
   data: z.object({
@@ -27,6 +28,14 @@ export type AuthorizedFetcher = (
   init?: RequestInit,
 ) => Promise<Response>;
 
+export type TouristRegistrationInput = Readonly<{
+  name: string;
+  email: string;
+  gender: TouristGender;
+  birthDate?: string;
+  password: string;
+}>;
+
 export async function loginMobile(
   email: string,
   password: string,
@@ -39,6 +48,19 @@ export async function loginMobile(
     method: "POST",
   });
   return parseAuthResult(response, "No se pudo iniciar sesión.");
+}
+
+export async function registerMobile(
+  input: TouristRegistrationInput,
+  fetcher: typeof fetch = fetch,
+  apiUrl = getApiUrl(),
+): Promise<AuthResult> {
+  const response = await fetcher(`${apiUrl}/auth/mobile/register`, {
+    body: JSON.stringify(input),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  return parseAuthResult(response, "No se pudo crear la cuenta.");
 }
 
 export async function refreshMobile(

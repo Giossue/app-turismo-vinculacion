@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { loginMobile, refreshMobile } from "./auth-api";
+import { loginMobile, refreshMobile, registerMobile } from "./auth-api";
 
 const authResponse = {
   data: {
@@ -45,5 +45,30 @@ describe("mobile auth API", () => {
     await expect(
       refreshMobile("refresh-token", fetcher, "http://api.test/api/v1"),
     ).rejects.toThrow("formato válido");
+  });
+
+  it("uses the tourist registration contract", async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => authResponse,
+    });
+
+    await expect(
+      registerMobile(
+        {
+          birthDate: "1998-02-03",
+          email: "ana@example.com",
+          gender: "Femenino",
+          name: "Ana Pérez",
+          password: "a-secure-password",
+        },
+        fetcher,
+        "http://api.test/api/v1",
+      ),
+    ).resolves.toMatchObject({ user: { roles: ["TURISTA"] } });
+    expect(fetcher).toHaveBeenCalledWith(
+      "http://api.test/api/v1/auth/mobile/register",
+      expect.objectContaining({ method: "POST" }),
+    );
   });
 });

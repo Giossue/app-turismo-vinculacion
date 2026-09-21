@@ -77,10 +77,16 @@ Referencias: [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/), [Expo Locat
   cuando se especifique su política de retención.
 - Nunca guardar claves maestras de proveedores.
 
-La primera pantalla de `Guardados` conserva el resumen público de los centros en el
-dispositivo y comparte ese estado entre el mapa, las fichas y el menú. La sincronización
-con `favoritos_centros`/`favoritos_puntos_interes` queda condicionada a incorporar la
-sesión turística; el móvil no asigna favoritos anónimos a un `usuario_id` ficticio.
+La app presenta una entrada única de identidad con `Iniciar sesión`, `Crear cuenta` y
+`Explorar como invitado`. El menú principal ofrece `Cuenta`: abre la cuenta del turista
+autenticado o lleva a la entrada de autenticación cuando no hay sesión. Mapa, fichas
+públicas y rutas funcionan como invitado; guardar, abrir Guardados, el agente y futuras
+opiniones/itinerarios llevan a la autenticación. El access token vive en memoria y el
+refresh token en SecureStore. Una cuenta nueva se crea con rol `TURISTA` mediante
+`/auth/mobile/register`; el género es obligatorio y usa las opciones `Masculino` o
+`Femenino`, mientras que la fecha de nacimiento se elige con el calendario nativo. Los
+guardados se sincronizan con `favoritos_centros`; un favorito no autenticado no se asigna a un `usuario_id` ficticio.
+El resumen local de guardados de versiones anteriores solo se importa al iniciar sesión.
 
 ### UI declarativa y overlays
 
@@ -157,8 +163,10 @@ editan en el móvil.
 - Persistir únicamente ruta, destino, modo y última posición para restaurar el estado al
   volver a la app; no conservar trazas precisas por defecto.
 - Detener seguimiento, eliminar la sesión local y limpiar la tarea y su notificación al
-  terminar/cancelar la ruta. La tarea comprueba también la llegada mientras la app está en
-  segundo plano. Desmontar la pantalla al pasar a segundo plano no cancela la sesión. La
+  terminar/cancelar la ruta o al salir de la pantalla de ruta con Atrás. La tarea comprueba
+  también la llegada mientras la app está en segundo plano. Minimizar la aplicación o cambiar
+  temporalmente de aplicación no cancela la sesión; desmontar la pantalla por ese cambio de
+  estado no debe limpiarla. La
   misma notificación foreground muestra la próxima maniobra y distancia redondeada y se
   actualiza solo cuando cambia ese contenido. Android 13 o posterior puede permitir que el
   usuario la descarte, así que el servicio vuelve a publicar el mismo registro en la siguiente

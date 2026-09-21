@@ -18,6 +18,7 @@ import {
   agentDemoMessages,
   type AgentDemoMessage,
 } from "@/features/agent/domain/agent-demo";
+import { useAuth } from "@/features/auth/application/auth-context";
 
 export function AgentChatContent({
   onClose,
@@ -27,6 +28,7 @@ export function AgentChatContent({
   onOpenCenter: (code: string) => void;
 }>) {
   const colors = useTurismoPalette();
+  const auth = useAuth();
   const [draft, setDraft] = useState("");
   const [messages, setMessages] =
     useState<readonly AgentDemoMessage[]>(agentDemoMessages);
@@ -46,6 +48,7 @@ export function AgentChatContent({
       const answer = await askTourismAgent(
         message,
         messages.map((item) => ({ role: item.role, content: item.text })),
+        auth.request,
       );
       setMessages((current) => [
         ...current,

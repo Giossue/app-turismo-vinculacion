@@ -7,12 +7,18 @@ import {
   Text,
   View,
 } from "react-native";
-import { Stack, useLocalSearchParams } from "expo-router";
+import {
+  Stack,
+  useFocusEffect,
+  useLocalSearchParams,
+  useRouter,
+} from "expo-router";
 import ExpoBottomSheet, {
   BottomSheetScrollView,
 } from "@expo/ui/community/bottom-sheet";
 
 import { useUserLocation } from "@/core/location/use-user-location";
+import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 import {
   TourismActionButton,
   TourismChoiceChip,
@@ -39,6 +45,7 @@ import {
   startNavigationLocationTask,
   stopNavigationLocationTask,
 } from "@/features/routing/infrastructure/navigation-background-task";
+import { clearNavigationSession } from "@/features/routing/data/navigation-session-storage";
 import type {
   RouteCoordinate,
   RouteMode,
@@ -65,12 +72,16 @@ const modeOptions: readonly Readonly<{
 export default function RouteScreen() {
   const colors = useTurismoPalette();
   const params = useLocalSearchParams<RouteParams>();
+  const router = useRouter();
   const [mode, setMode] = useState<RouteMode>("car");
   const [origin, setOrigin] = useState<RouteCoordinate | null>(null);
   const [routeRequested, setRouteRequested] = useState(false);
   const [navigationActive, setNavigationActive] = useState(false);
   const [navigationNotice, setNavigationNotice] = useState<string | null>(null);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const navigationActiveRef = useRef(false);
+  const navigationStartInFlightRef = useRef(false);
+  const screenFocusedRef = useRef(false);
   const routeSheetRef = useRef<ExpoBottomSheet>(null);
   const {
     message: locationMessage,
@@ -83,6 +94,61 @@ export default function RouteScreen() {
     () =>
       parseDestination(params.destinationLatitude, params.destinationLongitude),
     [params.destinationLatitude, params.destinationLongitude],
+  );
+
+  const teardownNavigation = useCallback(() => {
+    navigationActiveRef.current = false;
+    navigationStartInFlightRef.current = false;
+
+    // Clear persisted state before the native task can publish another update
+    // while the route screen is being removed.
+    void clearNavigationSession();
+    void stopNavigationLocationTask();
+  }, []);
+
+  const finishNavigation = useCallback(
+    (notice: string | null) => {
+      teardownNavigation();
+      setNavigationActive(false);
+      setNavigationNotice(notice);
+    },
+    [teardownNavigation],
+  );
+
+  const handleRouteSheetClose = useCallback(() => {
+    finishNavigation(null);
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/" as never);
+    }
+  }, [finishNavigation, router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      screenFocusedRef.current = true;
+
+      return () => {
+        screenFocusedRef.current = false;
+        if (
+          !navigationActiveRef.current &&
+          !navigationStartInFlightRef.current
+        ) {
+          return;
+        }
+        teardownNavigation();
+      };
+    }, [teardownNavigation]),
+  );
+
+  useScreenBackHandler(
+    useCallback(() => {
+      if (navigationActiveRef.current || navigationStartInFlightRef.current) {
+        finishNavigation(null);
+      }
+      // Let the shared handler pop this screen after cancelling navigation.
+      return false;
+    }, [finishNavigation]),
   );
 
   useEffect(() => {
@@ -102,10 +168,8 @@ export default function RouteScreen() {
   const isCalculating = request !== null && routeQuery.isFetching;
 
   const handleArrive = useCallback(() => {
-    void stopNavigationLocationTask();
-    setNavigationActive(false);
-    setNavigationNotice("Has llegado a tu destino.");
-  }, []);
+    finishNavigation("Has llegado a tu destino.");
+  }, [finishNavigation]);
 
   const handleReroute = useCallback((nextOrigin: RouteCoordinate) => {
     setNavigationNotice(null);
@@ -166,58 +230,70 @@ export default function RouteScreen() {
       return;
     }
 
-    const coordinate = await requestLocation();
-    if (!coordinate) return;
+    if (!screenFocusedRef.current) return;
+    navigationStartInFlightRef.current = true;
 
-    let nextNotice: string | null = null;
-    let backgroundTrackingEnabled = false;
-    if (Platform.OS !== "web") {
-      backgroundTrackingEnabled = await hasNavigationBackgroundPermission();
+    try {
+      const coordinate = await requestLocation();
+      if (!coordinate || !screenFocusedRef.current) return;
 
-      if (!backgroundTrackingEnabled) {
-        const confirmed = await confirmBackgroundNavigation();
-        if (confirmed) {
-          const backgroundPermission =
-            await requestNavigationBackgroundPermission();
-          backgroundTrackingEnabled = backgroundPermission.granted;
+      let nextNotice: string | null = null;
+      let backgroundTrackingEnabled = false;
+      if (Platform.OS !== "web") {
+        backgroundTrackingEnabled = await hasNavigationBackgroundPermission();
+        if (!screenFocusedRef.current) return;
 
-          if (!backgroundTrackingEnabled) {
-            nextNotice = backgroundPermission.canAskAgain
-              ? "Navegación iniciada mientras la app está abierta. Para continuar al cambiar de aplicación, permite la ubicación en segundo plano."
-              : "Navegación iniciada mientras la app está abierta. Para continuar al cambiar de aplicación, activa la ubicación en segundo plano desde Ajustes.";
+        if (!backgroundTrackingEnabled) {
+          const confirmed = await confirmBackgroundNavigation();
+          if (!screenFocusedRef.current) return;
+          if (confirmed) {
+            const backgroundPermission =
+              await requestNavigationBackgroundPermission();
+            if (!screenFocusedRef.current) return;
+            backgroundTrackingEnabled = backgroundPermission.granted;
+
+            if (!backgroundTrackingEnabled) {
+              nextNotice = backgroundPermission.canAskAgain
+                ? "Navegación iniciada mientras la app está abierta. Para continuar al cambiar de aplicación, permite la ubicación en segundo plano."
+                : "Navegación iniciada mientras la app está abierta. Para continuar al cambiar de aplicación, activa la ubicación en segundo plano desde Ajustes.";
+            }
+          } else {
+            nextNotice =
+              "Navegación iniciada mientras la app está abierta. Puedes activar el seguimiento al cambiar de aplicación desde Ajustes.";
           }
-        } else {
-          nextNotice =
-            "Navegación iniciada mientras la app está abierta. Puedes activar el seguimiento al cambiar de aplicación desde Ajustes.";
+        }
+
+        if (backgroundTrackingEnabled) {
+          const notificationGranted =
+            await requestNavigationNotificationPermission();
+          if (!screenFocusedRef.current) return;
+          if (!notificationGranted) {
+            nextNotice =
+              "La navegación seguirá activa, pero Android ocultará la notificación hasta que permitas las notificaciones en Ajustes.";
+          }
+
+          try {
+            // Registra el servicio mientras la acción del usuario mantiene la app
+            // en primer plano. El efecto de la sesión lo vuelve idempotente.
+            await startNavigationLocationTask();
+          } catch (error) {
+            setNavigationNotice(
+              error instanceof Error
+                ? error.message
+                : "No pudimos iniciar el seguimiento de ubicación.",
+            );
+            return;
+          }
+          if (!screenFocusedRef.current) return;
         }
       }
 
-      if (backgroundTrackingEnabled) {
-        const notificationGranted =
-          await requestNavigationNotificationPermission();
-        if (!notificationGranted) {
-          nextNotice =
-            "La navegación seguirá activa, pero Android ocultará la notificación hasta que permitas las notificaciones en Ajustes.";
-        }
-
-        try {
-          // Registra el servicio mientras la acción del usuario mantiene la app
-          // en primer plano. El efecto de la sesión lo vuelve idempotente.
-          await startNavigationLocationTask();
-        } catch (error) {
-          setNavigationNotice(
-            error instanceof Error
-              ? error.message
-              : "No pudimos iniciar el seguimiento de ubicación.",
-          );
-          return;
-        }
-      }
+      setNavigationNotice(nextNotice);
+      navigationActiveRef.current = true;
+      setNavigationActive(true);
+    } finally {
+      navigationStartInFlightRef.current = false;
     }
-
-    setNavigationNotice(nextNotice);
-    setOrigin(coordinate);
-    setNavigationActive(true);
   }, [
     destination,
     isCalculating,
@@ -226,11 +302,10 @@ export default function RouteScreen() {
     routeQuery.data,
   ]);
 
-  const handleStopNavigation = useCallback(() => {
-    void stopNavigationLocationTask();
-    setNavigationActive(false);
-    setNavigationNotice(null);
-  }, []);
+  const handleStopNavigation = useCallback(
+    () => finishNavigation(null),
+    [finishNavigation],
+  );
 
   const modeLabel =
     modeOptions.find((option) => option.mode === mode)?.label ?? "Auto";
@@ -259,8 +334,9 @@ export default function RouteScreen() {
       {destination ? (
         <ExpoBottomSheet
           backgroundStyle={{ backgroundColor: colors.surface }}
-          enablePanDownToClose={false}
+          enablePanDownToClose
           index={0}
+          onClose={handleRouteSheetClose}
           ref={routeSheetRef}
           snapPoints={navigationActive ? ["24%", "54%"] : ["38%", "84%"]}
         >

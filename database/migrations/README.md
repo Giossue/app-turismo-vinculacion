@@ -19,6 +19,11 @@ La migración `20260917_admin_auth_sessions.sql` añade sesiones de refresh rota
 el panel institucional. Debe ejecutarse después del baseline y antes de habilitar login
 en `web-turismo-admin`. No crea contraseñas ni usuarios administradores.
 
+La migración `20260920_tourist_registration.sql` añade el índice único case-insensitive
+que protege el registro móvil contra alias del mismo correo. Debe ejecutarse después del
+baseline y antes de habilitar `POST /auth/mobile/register`; si encuentra correos duplicados
+ignorando mayúsculas, se detiene para que operación los resuelva explícitamente.
+
 La migración `20260918_consolidate_auth_roles.sql` deja únicamente los roles
 `ADMINISTRADOR` y `TURISTA`. Las cuentas que tuvieran `REVISOR` o `GESTOR` conservan su
 identidad y reciben `ADMINISTRADOR` antes de retirar las asignaciones y roles obsoletos.

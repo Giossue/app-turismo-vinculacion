@@ -20,7 +20,7 @@ export class AuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<FastifyRequest>();
     const token = this.extractBearerToken(request.headers.authorization);
     if (!token) {
-      throw new UnauthorizedException("Se requiere una sesión institucional.");
+      throw new UnauthorizedException("Se requiere una sesión autenticada.");
     }
 
     try {
@@ -34,7 +34,7 @@ export class AuthGuard implements CanActivate {
       } satisfies AuthenticatedUser;
       return true;
     } catch {
-      throw new UnauthorizedException("La sesión institucional no es válida.");
+      throw new UnauthorizedException("La sesión autenticada no es válida.");
     }
   }
 

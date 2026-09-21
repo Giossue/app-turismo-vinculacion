@@ -37,6 +37,7 @@ type CenterMapProps = Readonly<{
   onAttributionChange?: (handler: (() => void) | null) => void;
   onBearingChange?: (bearing: number) => void;
   onCenterPress: (center: PublicCenter) => void;
+  onLocationFocusChange?: (focused: boolean) => void;
   onViewportChange: (bounds: BoundingBox) => void;
   resetNorthKey?: number;
   selectedCenterCode?: string | null;
@@ -57,8 +58,8 @@ const tourismPinDark = require("../../../../assets/images/tourism-pin-dark.png")
 const tourismPinSelectedLight = require("../../../../assets/images/tourism-pin-selected-light.png");
 const tourismPinSelectedDark = require("../../../../assets/images/tourism-pin-selected-dark.png");
 
-const selectedCenterZoom = 16;
-const selectedCenterCameraDuration = 320;
+const selectedCenterZoom = 15;
+const selectedCenterCameraDuration = 500;
 const cameraTargetTolerance = 0.001;
 const cameraZoomTolerance = 0.15;
 const selfHostedStyleCache = new Map<string, StyleSpecification>();
@@ -71,6 +72,9 @@ type PendingCenterSelection = Readonly<{
   center: PublicCenter;
   target: [number, number];
 }>;
+type PendingLocationFocus = Readonly<{
+  target: [number, number];
+}>;
 
 export function CenterMap({
   basemapMode = "streets",
@@ -79,6 +83,7 @@ export function CenterMap({
   onAttributionChange,
   onBearingChange,
   onCenterPress,
+  onLocationFocusChange,
   onViewportChange,
   resetNorthKey,
   selectedCenterCode = null,
@@ -88,6 +93,7 @@ export function CenterMap({
   const mapRef = useRef<MapRef>(null);
   const sourceRef = useRef<GeoJSONSourceRef>(null);
   const pendingCenterSelectionRef = useRef<PendingCenterSelection | null>(null);
+  const pendingLocationFocusRef = useRef<PendingLocationFocus | null>(null);
   const focusedLocationKeyRef = useRef<number | undefined>(undefined);
   const { scheme } = useTurismoTheme();
   const colors = getTurismoMapColors(scheme);
@@ -182,6 +188,8 @@ export function CenterMap({
       : fallbackMapStyle;
   const handleSourcePress = useCallback(
     async (event: NativeSyntheticEvent<PressEventWithFeatures>) => {
+      pendingLocationFocusRef.current = null;
+      onLocationFocusChange?.(false);
       const features = event.nativeEvent.features;
       const clusterFeature = features.find(
         (feature) => typeof feature.properties?.cluster_id === "number",
@@ -219,13 +227,16 @@ export function CenterMap({
         zoom: selectedCenterZoom,
       });
     },
-    [centersByCode],
+    [centersByCode, onLocationFocusChange],
   );
 
   useEffect(() => {
     if (!userLocation || focusLocationKey === undefined) return;
     if (focusedLocationKeyRef.current === focusLocationKey) return;
     focusedLocationKeyRef.current = focusLocationKey;
+    pendingLocationFocusRef.current = {
+      target: [userLocation.longitude, userLocation.latitude],
+    };
     cameraRef.current?.easeTo({
       center: [userLocation.longitude, userLocation.latitude],
       duration: 500,
@@ -274,6 +285,22 @@ export function CenterMap({
           const { bounds, center, userInteraction, zoom } = event.nativeEvent;
           onBearingChange?.(event.nativeEvent.bearing);
           const pendingSelection = pendingCenterSelectionRef.current;
+          const pendingLocationFocus = pendingLocationFocusRef.current;
+
+          if (pendingLocationFocus && !userInteraction) {
+            const [targetLongitude, targetLatitude] =
+              pendingLocationFocus.target;
+            const [longitude, latitude] = center;
+            const reachedTarget =
+              Math.abs(longitude - targetLongitude) <= cameraTargetTolerance &&
+              Math.abs(latitude - targetLatitude) <= cameraTargetTolerance &&
+              Math.abs(zoom - 15) <= cameraZoomTolerance;
+
+            if (reachedTarget) {
+              pendingLocationFocusRef.current = null;
+              onLocationFocusChange?.(true);
+            }
+          }
 
           if (pendingSelection && !userInteraction) {
             const [targetLongitude, targetLatitude] = pendingSelection.target;
@@ -291,8 +318,11 @@ export function CenterMap({
 
           if (userInteraction) {
             // Si el turista retoma el gesto durante el enfoque, cancela la
-            // ficha pendiente: la selección ya no representa el centro visible.
+            // ficha y el enfoque GPS pendientes: la selección ya no representa
+            // el centro visible y la cámara tampoco llegó a la ubicación.
             pendingCenterSelectionRef.current = null;
+            pendingLocationFocusRef.current = null;
+            onLocationFocusChange?.(false);
             const [west, south, east, north] = bounds;
             onViewportChange({ west, south, east, north });
           }

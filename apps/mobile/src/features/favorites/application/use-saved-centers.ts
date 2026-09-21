@@ -22,7 +22,7 @@ export function useSavedCenters() {
   return useQuery({
     queryKey: [...savedCentersQueryKey, auth.user?.id ?? "anonymous"],
     queryFn: async () => {
-      if (auth.status !== "authenticated") return listSavedCenters();
+      if (auth.status !== "authenticated") return [];
 
       const local = await listSavedCenters();
       await Promise.allSettled(
@@ -49,15 +49,14 @@ export function useSavedCenterMutation() {
 
   return useMutation({
     mutationFn: async ({ center, saved }: SavedCenterMutation) => {
+      if (auth.status !== "authenticated") {
+        throw new Error("Inicia sesión para usar tus guardados.");
+      }
       if (saved) {
-        if (auth.status === "authenticated") {
-          await removeRemoteCenter(center.code, auth.request);
-        }
+        await removeRemoteCenter(center.code, auth.request);
         await removeSavedCenter(center.code);
       } else {
-        if (auth.status === "authenticated") {
-          await saveRemoteCenter(center.code, auth.request);
-        }
+        await saveRemoteCenter(center.code, auth.request);
         await saveCenter(center);
       }
     },

@@ -13,6 +13,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   loginMobile,
   logoutMobile,
+  registerMobile,
   refreshMobile,
   type AuthorizedFetcher,
 } from "../data/auth-api";
@@ -22,10 +23,18 @@ import {
   saveRefreshToken,
 } from "../data/token-storage";
 import type { AuthStatus, AuthUser } from "../domain/auth-user";
+import type { TouristGender } from "../domain/registration-options";
 
 type AuthContextValue = Readonly<{
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
+  register: (input: {
+    name: string;
+    email: string;
+    gender: TouristGender;
+    birthDate?: string;
+    password: string;
+  }) => Promise<void>;
   logout: () => Promise<void>;
   request: AuthorizedFetcher;
   status: AuthStatus;
@@ -116,6 +125,34 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     [setSession],
   );
 
+  const register = useCallback(
+    async (input: {
+      name: string;
+      email: string;
+      gender: TouristGender;
+      birthDate?: string;
+      password: string;
+    }) => {
+      setError(null);
+      try {
+        const result = await registerMobile({
+          ...input,
+          email: input.email.trim(),
+          name: input.name.trim(),
+        });
+        await setSession(result);
+      } catch (cause) {
+        const message =
+          cause instanceof Error
+            ? cause.message
+            : "No se pudo crear la cuenta.";
+        setError(message);
+        throw cause;
+      }
+    },
+    [setSession],
+  );
+
   const logout = useCallback(async () => {
     const storedToken = await readRefreshToken();
     try {
@@ -143,8 +180,8 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   );
 
   const value = useMemo<AuthContextValue>(
-    () => ({ error, login, logout, request, status, user }),
-    [error, login, logout, request, status, user],
+    () => ({ error, login, logout, register, request, status, user }),
+    [error, login, logout, register, request, status, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
