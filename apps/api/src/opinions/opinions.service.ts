@@ -51,8 +51,11 @@ export type OwnOpinionState = Readonly<{
   canEdit: boolean;
 }>;
 
+export type AdminOpinionStatus = "PENDIENTE" | "APROBADA";
+
 export type AdminOpinion = Readonly<{
   reviewCode: string;
+  status: AdminOpinionStatus;
   version: number;
   submittedAt: string;
   authorName: string;
@@ -322,68 +325,121 @@ export class OpinionsService {
     }
   }
 
-  async listPending(limit: number, offset: number): Promise<AdminOpinionPage> {
+  async listAdmin(limit: number, offset: number): Promise<AdminOpinionPage> {
     const [rows, countRows] = await Promise.all([
       this.dataSource.query<SqlRow[]>(
-        `SELECT v.codigo_publico::text AS review_code,
-                v.numero_version,
-                v.created_at AS submitted_at,
+        `SELECT COALESCE(pending_v.codigo_publico, published_v.codigo_publico)::text AS review_code,
+                CASE WHEN pending_v.id IS NOT NULL THEN 'PENDIENTE' ELSE 'APROBADA' END AS status,
+                CASE WHEN pending_v.id IS NOT NULL
+                     THEN pending_v.numero_version
+                     ELSE published_v.numero_version
+                END AS numero_version,
+                CASE WHEN pending_v.id IS NOT NULL
+                     THEN pending_v.created_at
+                     ELSE published_v.created_at
+                END AS submitted_at,
                 u.nombre AS author_name,
                 CASE WHEN c.id IS NOT NULL THEN 'CENTRO' ELSE 'PUNTO_INTERES' END AS target_type,
-                COALESCE(c.codigo_atractivo, NULL) AS target_code,
+                c.codigo_atractivo AS target_code,
                 COALESCE(c.nombre, pi.nombre) AS target_name,
-                v.calificacion AS proposed_rating,
-                v.comentario AS proposed_comment,
-                v.created_at AS proposed_submitted_at,
-                vp.calificacion AS current_rating,
-                vp.comentario AS current_comment,
-                vp.numero_version AS current_version,
-                vp.created_at AS current_submitted_at
-           FROM opinion_versiones v
-           JOIN opiniones o ON o.id = v.opinion_id
+                CASE WHEN pending_v.id IS NOT NULL
+                     THEN pending_v.calificacion
+                     ELSE published_v.calificacion
+                END AS proposed_rating,
+                CASE WHEN pending_v.id IS NOT NULL
+                     THEN pending_v.comentario
+                     ELSE published_v.comentario
+                END AS proposed_comment,
+                CASE WHEN pending_v.id IS NOT NULL
+                     THEN pending_v.numero_version
+                     ELSE published_v.numero_version
+                END AS proposed_version,
+                CASE WHEN pending_v.id IS NOT NULL
+                     THEN pending_v.created_at
+                     ELSE published_v.created_at
+                END AS proposed_submitted_at,
+                published_v.calificacion AS current_rating,
+                published_v.comentario AS current_comment,
+                published_v.numero_version AS current_version,
+                published_v.created_at AS current_submitted_at
+           FROM opiniones o
            JOIN usuarios u ON u.id = o.usuario_id
            LEFT JOIN centros_turisticos c ON c.id = o.centro_turistico_id
            LEFT JOIN puntos_interes pi ON pi.id = o.punto_interes_id
-           LEFT JOIN opinion_versiones vp ON vp.id = o.version_publicada_id
-          WHERE v.estado_moderacion = 'PENDIENTE'
-          ORDER BY v.created_at ASC, v.id ASC
+           LEFT JOIN LATERAL (
+             SELECT v.*
+               FROM opinion_versiones v
+              WHERE v.opinion_id = o.id
+                AND v.estado_moderacion = 'PENDIENTE'
+              ORDER BY v.numero_version DESC, v.id DESC
+              LIMIT 1
+           ) pending_v ON TRUE
+           LEFT JOIN opinion_versiones published_v
+             ON published_v.id = o.version_publicada_id
+            AND published_v.estado_moderacion = 'APROBADA'
+          WHERE o.estado_moderacion IN ('PENDIENTE', 'APROBADA')
+            AND (pending_v.id IS NOT NULL OR published_v.id IS NOT NULL)
+          ORDER BY CASE WHEN pending_v.id IS NOT NULL THEN 0 ELSE 1 END,
+                   CASE WHEN pending_v.id IS NOT NULL
+                        THEN pending_v.created_at
+                        ELSE published_v.created_at
+                   END ASC,
+                   CASE WHEN pending_v.id IS NOT NULL THEN pending_v.id ELSE published_v.id END ASC
           LIMIT $1 OFFSET $2`,
         [limit, offset],
       ),
       this.dataSource.query<SqlRow[]>(
         `SELECT COUNT(*)::int AS total
-           FROM opinion_versiones
-          WHERE estado_moderacion = 'PENDIENTE'`,
+           FROM opiniones o
+           LEFT JOIN opinion_versiones published_v
+             ON published_v.id = o.version_publicada_id
+            AND published_v.estado_moderacion = 'APROBADA'
+          WHERE o.estado_moderacion IN ('PENDIENTE', 'APROBADA')
+            AND (
+              published_v.id IS NOT NULL
+              OR EXISTS (
+                SELECT 1
+                  FROM opinion_versiones pending_v
+                 WHERE pending_v.opinion_id = o.id
+                   AND pending_v.estado_moderacion = 'PENDIENTE'
+              )
+            )`,
       ),
     ]);
 
     return {
-      items: rows.map((row) => ({
-        reviewCode: stringValue(row, "review_code"),
-        version: integerValue(row, "numero_version"),
-        submittedAt: isoDate(row, "submitted_at"),
-        authorName: stringValue(row, "author_name") || "Usuario",
-        target: {
-          type: stringValue(row, "target_type") as "CENTRO" | "PUNTO_INTERES",
-          code: nullableString(row, "target_code"),
-          name: stringValue(row, "target_name") || "Destino sin nombre",
-        },
-        proposed: {
-          rating: nullableNumber(row, "proposed_rating"),
-          comment: nullableString(row, "proposed_comment"),
+      items: rows.map((row) => {
+        const status = stringValue(row, "status") as AdminOpinionStatus;
+        return {
+          reviewCode: stringValue(row, "review_code"),
+          status,
           version: integerValue(row, "numero_version"),
-          submittedAt: isoDate(row, "proposed_submitted_at"),
-        },
-        current:
-          row.current_version === null || row.current_version === undefined
-            ? null
-            : {
-                rating: nullableNumber(row, "current_rating"),
-                comment: nullableString(row, "current_comment"),
-                version: integerValue(row, "current_version"),
-                submittedAt: isoDate(row, "current_submitted_at"),
-              },
-      })),
+          submittedAt: isoDate(row, "submitted_at"),
+          authorName: stringValue(row, "author_name") || "Usuario",
+          target: {
+            type: stringValue(row, "target_type") as "CENTRO" | "PUNTO_INTERES",
+            code: nullableString(row, "target_code"),
+            name: stringValue(row, "target_name") || "Destino sin nombre",
+          },
+          proposed: {
+            rating: nullableNumber(row, "proposed_rating"),
+            comment: nullableString(row, "proposed_comment"),
+            version: integerValue(row, "proposed_version"),
+            submittedAt: isoDate(row, "proposed_submitted_at"),
+          },
+          current:
+            status === "PENDIENTE" &&
+            row.current_version !== null &&
+            row.current_version !== undefined
+              ? {
+                  rating: nullableNumber(row, "current_rating"),
+                  comment: nullableString(row, "current_comment"),
+                  version: integerValue(row, "current_version"),
+                  submittedAt: isoDate(row, "current_submitted_at"),
+                }
+              : null,
+        };
+      }),
       total: integerValue(countRows[0] ?? {}, "total"),
       limit,
       offset,

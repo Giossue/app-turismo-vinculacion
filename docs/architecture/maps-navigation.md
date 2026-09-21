@@ -12,7 +12,8 @@
   vectoriales OpenMapTiles generados desde OpenStreetMap para Ecuador. La app descarga el
   JSON del estilo, conserva la referencia TileJSON publicada por TileServer GL y aplica una
   paleta propia para terreno, edificios, agua, zonas verdes y calles. Si el servidor no responde, conserva
-  los pines sobre un fondo local neutro; no cambia a ArcGIS o Stadia.
+  los pines sobre un fondo local neutro; las capas de texto esperan a que exista una URL de fuentes válida.
+  No cambia a ArcGIS o Stadia.
 - No calcula rutas ni provee navegación por sí mismo.
 
 ### Proveedor de rutas

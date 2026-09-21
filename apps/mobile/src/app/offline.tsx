@@ -95,10 +95,7 @@ export default function OfflineMapsScreen() {
   };
 
   return (
-    <TourismScreenFrame
-      onBack={() => router.back()}
-      title="Mapas sin conexión"
-    >
+    <TourismScreenFrame onBack={() => router.back()} title="Mapas sin conexión">
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}

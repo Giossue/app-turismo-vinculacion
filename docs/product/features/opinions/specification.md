@@ -10,7 +10,7 @@ alteran la versión publicada hasta ser aprobadas.
 
 - Turista autenticado: crear una opinión, consultar su estado y editar su versión
   publicada cuando no tenga otra versión pendiente.
-- Administrador: listar versiones pendientes y aprobarlas o rechazarlas con motivo.
+- Administrador: consultar versiones pendientes y opiniones ya publicadas; aprobar o rechazar únicamente las versiones pendientes y dejar un motivo al rechazar.
 - Invitado: consultar únicamente versiones aprobadas.
 - Nadie puede moderar una versión que no esté pendiente ni modificar la opinión de
   otra cuenta.
@@ -34,7 +34,9 @@ alteran la versión publicada hasta ser aprobadas.
   resuelta.
 - Sin opiniones aprobadas: se muestra estado vacío, no una calificación ficticia.
 - Sin conexión: se muestran las opiniones cacheadas por la capa de consulta y se ofrece
-  reintento; los envíos no se simulan localmente.
+  reintento; los envíos no se simulan localmente. Al volver a abrir la pestaña, el cliente
+  revalida la lista pública para no conservar indefinidamente un estado vacío después de una
+  aprobación.
 - Error de moderación concurrente: la API devuelve conflicto y el panel recarga la cola.
 
 ## Datos
@@ -57,3 +59,4 @@ alteran la versión publicada hasta ser aprobadas.
 - Fotos o respuestas del administrador.
 - Opiniones de establecimientos de catastro.
 - Notificaciones push sobre la decisión.
+- Historial administrativo completo de versiones rechazadas.

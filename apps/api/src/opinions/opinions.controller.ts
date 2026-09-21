@@ -82,7 +82,7 @@ export class AdminOpinionsController {
   @Roles("ADMINISTRADOR")
   async list(@Query() query: OpinionsQueryDto) {
     return {
-      data: await this.opinions.listPending(query.limit, query.offset),
+      data: await this.opinions.listAdmin(query.limit, query.offset),
     };
   }
 

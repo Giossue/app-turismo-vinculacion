@@ -233,6 +233,8 @@ export function CenterMap({
     selfHostedMapStyleState?.requestKey === styleRequestKey
       ? selfHostedMapStyleState.style
       : fallbackMapStyle;
+  const hasMapGlyphs =
+    typeof mapStyle.glyphs === "string" && mapStyle.glyphs.trim().length > 0;
   const handleSourcePress = useCallback(
     async (event: NativeSyntheticEvent<PressEventWithFeatures>) => {
       pendingLocationFocusRef.current = null;
@@ -430,6 +432,7 @@ export function CenterMap({
             layout={{
               "text-field": ["get", "point_count_abbreviated"],
               "text-size": 13,
+              visibility: hasMapGlyphs ? "visible" : "none",
             }}
             paint={{ "text-color": colors.onPrimary }}
             type="symbol"
@@ -508,6 +511,7 @@ export function CenterMap({
             layout={{
               "text-field": ["get", "point_count_abbreviated"],
               "text-size": 12,
+              visibility: hasMapGlyphs ? "visible" : "none",
             }}
             paint={{ "text-color": colors.onPrimary }}
             type="symbol"
@@ -531,6 +535,7 @@ export function CenterMap({
               "text-field": ["get", "iconGlyph"],
               "text-ignore-placement": true,
               "text-size": 12,
+              visibility: hasMapGlyphs ? "visible" : "none",
             }}
             paint={{ "text-color": colors.surface }}
             type="symbol"

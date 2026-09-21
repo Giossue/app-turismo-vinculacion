@@ -19,6 +19,7 @@ export function useCenterOpinions(code: string) {
     queryKey: centerOpinionsQueryKey(code),
     queryFn: () => listCenterOpinions(code),
     enabled: Boolean(code),
+    refetchOnMount: "always",
     staleTime: 60_000,
   });
 }
@@ -30,6 +31,7 @@ export function useOwnCenterOpinion(code: string) {
     queryKey: ownOpinionQueryKey(code, userId),
     queryFn: () => getMyCenterOpinion(code, auth.request),
     enabled: Boolean(code) && auth.status === "authenticated",
+    refetchOnMount: "always",
     staleTime: 15_000,
   });
 }
