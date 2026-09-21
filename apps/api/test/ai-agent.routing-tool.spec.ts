@@ -3,10 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("ai", async () => {
   const actual = await vi.importActual<typeof import("ai")>("ai");
-  return { ...actual, generateText: vi.fn() };
+  return { ...actual, streamText: vi.fn() };
 });
 
-import { generateText } from "ai";
+import { streamText } from "ai";
 
 import { AiAgentService } from "../src/ai/application/ai-agent.service";
 import type { PublicCenterRepository } from "../src/centers/application/public-center.repository";
@@ -22,7 +22,7 @@ type GenerateOptions = Readonly<{
   tools: Record<string, { execute?: ToolExecutor }>;
 }>;
 
-const generateTextMock = vi.mocked(generateText);
+const streamTextMock = vi.mocked(streamText);
 
 const center: PublicCenter = {
   code: "GUA-001",
@@ -125,24 +125,29 @@ describe("AiAgentService calculateRoadRoute tool", () => {
     const routeExecutor = calculateRoute.execute as ReturnType<typeof vi.fn>;
     let toolRouteResult: unknown;
 
-    generateTextMock.mockImplementation(async (options: unknown) => {
-      const tools = (options as GenerateOptions).tools;
-      const search = await tools.searchPublishedCenters.execute?.({
-        limit: 1,
-        text: "Centro cultural",
-      });
-      const ref = (search as { results: [{ ref: string }] }).results[0].ref;
-      toolRouteResult = await tools.calculateRoadRoute.execute?.({
-        mode: "foot",
-        toRef: ref,
-      });
+    streamTextMock.mockImplementation((options) => {
+      const tools = (options as unknown as GenerateOptions).tools;
+      const output = (async () => {
+        const search = await tools.searchPublishedCenters.execute?.({
+          limit: 1,
+          text: "Centro cultural",
+        });
+        const ref = (search as { results: [{ ref: string }] }).results[0].ref;
+        toolRouteResult = await tools.calculateRoadRoute.execute?.({
+          mode: "foot",
+          toRef: ref,
+        });
 
-      return {
-        output: {
+        return {
           text: "Ruta vial verificada.",
           cards: [{ ref }],
           actions: [{ type: "start_route", mode: "foot", ref }],
-        },
+        };
+      })();
+
+      return {
+        output,
+        partialOutputStream: (async function* () {})(),
       } as never;
     });
 

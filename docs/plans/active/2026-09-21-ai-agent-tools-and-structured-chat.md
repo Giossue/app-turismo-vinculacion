@@ -132,7 +132,8 @@ El endpoint de streaming nunca emite tarjetas, acciones ni coordenadas parciales
 - [x] Pruebas del parser móvil, del stream SSE y de la solicitud de ubicación aproximada.
 - [x] Pruebas del controlador para respuesta JSON y eventos SSE.
 - [x] Typecheck, lint, Prettier y `git diff --check` en API y móvil.
-- [x] Tests de API completos según la última ejecución.
+- [x] Tests de API completos: 25 suites y 123 tests pasan.
+- [x] Tests móviles completos: 12 suites y 42 tests pasan.
 - [x] Lint móvil sin errores; permanece un warning previo sobre la dependencia de
       `visibleCenters` en un `useMemo` del shell del mapa.
 - [x] Smoke SQL contra PostgreSQL: 1 centro publicado, 2 POI, 51 establecimientos y 0 rutas,
@@ -140,8 +141,6 @@ El endpoint de streaming nunca emite tarjetas, acciones ni coordenadas parciales
       establecimientos para las consultas de radio.
 - [x] Tool de cálculo vial sobre el puerto OSRM existente: referencias confiables, origen
       aproximado redondeado, degradación de proveedor/no-route y confirmación móvil intacta.
-- [ ] El test móvil preexistente de `poi` en `sources` debe alinear su fixture con el contrato
-      móvil actual antes de marcar la suite completa como verde.
 
 ## Siguiente unidad
 
