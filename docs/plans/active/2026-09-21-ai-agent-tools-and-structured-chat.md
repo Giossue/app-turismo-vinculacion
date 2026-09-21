@@ -97,9 +97,9 @@ referencias inexistentes.
 - [x] Pruebas del controlador para respuesta JSON y entrada inválida.
 - [x] Pruebas del parser móvil y de la solicitud de ubicación aproximada.
 - [x] Typecheck, lint, Prettier y `git diff --check` en API.
-- [x] Tests y Prettier del móvil; el typecheck/lint global del móvil queda bloqueado por
-  `SearchSuggestionsPanel`, una referencia sin definición introducida en el cambio local del
-  shell del mapa (`apps/mobile/src/app/(tabs)/index.tsx`), fuera de esta unidad.
+- [x] Tests, typecheck y Prettier del móvil.
+- [x] Lint móvil sin errores; permanece un warning previo sobre la dependencia de
+  `visibleCenters` en un `useMemo` del shell del mapa.
 
 ## Siguiente unidad
 
