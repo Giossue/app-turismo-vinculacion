@@ -52,6 +52,16 @@ export class PhotonClient {
     // un índice español en todos los despliegues.
     url.searchParams.set("lang", "default");
     url.searchParams.set("limit", "8");
+    for (const layer of [
+      "city",
+      "county",
+      "district",
+      "locality",
+      "street",
+      "house",
+    ]) {
+      url.searchParams.append("layer", layer);
+    }
     if (
       coordinates?.latitude !== undefined &&
       coordinates.longitude !== undefined
@@ -73,7 +83,7 @@ export class PhotonClient {
       if (!response.ok) return [];
       const payload = photonResponseSchema.safeParse(await response.json());
       if (!payload.success) return [];
-      return payload.data.features.flatMap((feature) => {
+      const places = payload.data.features.flatMap((feature) => {
         const name = feature.properties.name?.trim();
         if (!name) return [];
         const subtitle = [
@@ -98,6 +108,7 @@ export class PhotonClient {
           },
         ];
       });
+      return selectPreferredPlaces(query, places);
     } catch {
       // La búsqueda propia no depende de Photon. El catálogo continúa disponible.
       return [];
@@ -110,5 +121,55 @@ export class PhotonClient {
     return this.config
       .getOrThrow<string>("GEOCODING_PHOTON_URL")
       .replace(/\/+$/, "");
+  }
+}
+
+export function selectPreferredPlaces(
+  query: string,
+  places: readonly PhotonPlace[],
+): readonly PhotonPlace[] {
+  const normalizedQuery = normalizeSearchText(query);
+  const exactMatches = places.filter(
+    (place) => normalizeSearchText(place.title) === normalizedQuery,
+  );
+  if (exactMatches.length <= 1) return places;
+
+  const preferredExactMatch = [...exactMatches].sort(
+    (left, right) => placeTypePriority(left.type) - placeTypePriority(right.type),
+  )[0];
+  if (!preferredExactMatch) return places;
+
+  return [
+    preferredExactMatch,
+    ...places.filter(
+      (place) => normalizeSearchText(place.title) !== normalizedQuery,
+    ),
+  ].slice(0, 8);
+}
+
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLocaleLowerCase("es");
+}
+
+function placeTypePriority(type: string | null): number {
+  switch (type) {
+    case "city":
+      return 0;
+    case "county":
+      return 1;
+    case "district":
+      return 2;
+    case "locality":
+      return 3;
+    case "street":
+      return 4;
+    case "house":
+      return 5;
+    default:
+      return 6;
   }
 }

@@ -1,7 +1,11 @@
 import { ConfigService } from "@nestjs/config";
 import { describe, expect, it, vi } from "vitest";
 
-import { PhotonClient } from "../src/search/infrastructure/photon.client";
+import {
+  PhotonClient,
+  type PhotonPlace,
+  selectPreferredPlaces,
+} from "../src/search/infrastructure/photon.client";
 
 describe("PhotonClient", () => {
   it("limits forward searches to Ecuador and normalizes places", async () => {
@@ -54,5 +58,29 @@ describe("PhotonClient", () => {
     );
 
     await expect(client.search("Guaranda")).resolves.toEqual([]);
+  });
+
+  it("keeps the most relevant exact geographic match", () => {
+    const city = {
+      title: "Guaranda",
+      subtitle: "Guaranda, Bolívar, Ecuador",
+      latitude: -1.5095,
+      longitude: -79.0244,
+      type: "city",
+    } satisfies PhotonPlace;
+    const county = {
+      ...city,
+      subtitle: "Provincia de Bolívar, Ecuador",
+      type: "county",
+    } satisfies PhotonPlace;
+    const street = {
+      ...city,
+      subtitle: "Cuenca, Azuay, Ecuador",
+      type: "street",
+    } satisfies PhotonPlace;
+
+    expect(selectPreferredPlaces("Guaranda", [county, street, city])).toEqual([
+      city,
+    ]);
   });
 });

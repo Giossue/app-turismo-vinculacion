@@ -43,3 +43,6 @@ selector de mapa dentro de un diálogo, sin convertir el mapa en un editor de di
   `UnknownDependenciesException`.
 - La consulta usa `lang=default`, porque Photon rechaza idiomas que no fueron incluidos en
   el índice importado; el despliegue actual anuncia `default`, `de`, `en` y `fr`.
+- La búsqueda geográfica limita Photon a capas de dirección y jerarquía territorial. Si el
+  término coincide exactamente con varias entidades, conserva la de mayor relevancia
+  (`city` antes que `county`, `district` o `street`) para no repetir el mismo nombre.

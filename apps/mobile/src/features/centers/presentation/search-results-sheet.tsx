@@ -83,15 +83,13 @@ export function SearchResultsSheet({
       ),
     [centers, places],
   );
+  const hasAnyResults = sortedCenters.length > 0 || supplementalPlaces.length > 0;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerCopy}>
           <Text style={[styles.query, { color: colors.text }]}>{query}</Text>
-          <Text style={[styles.resultLabel, { color: colors.textMuted }]}>
-            Lugares propios y ubicaciones
-          </Text>
         </View>
       </View>
 
@@ -163,7 +161,7 @@ export function SearchResultsSheet({
         </TourismSurface>
       ) : null}
 
-      {showResults && sortedCenters.length === 0 ? (
+      {showResults && !hasAnyResults ? (
         <TourismSurface style={styles.statusCard}>
           <TurismoIcon
             color={colors.primaryStrong}
@@ -171,10 +169,10 @@ export function SearchResultsSheet({
             size={turismoIconSizes.lg}
           />
           <Text style={[styles.statusTitle, { color: colors.text }]}>
-            No encontramos atractivos con “{query}”.
+            No encontramos lugares con “{query}”.
           </Text>
           <Text style={[styles.statusText, { color: colors.textMuted }]}>
-            Prueba con otro nombre, categoría o tipo de atractivo.
+            Prueba con otro nombre, categoría o tipo de lugar.
           </Text>
         </TourismSurface>
       ) : null}
@@ -212,6 +210,7 @@ function SearchPlaceCard({
   place: PublicSearchResult;
 }>) {
   const colors = useTurismoPalette();
+  const isGeographic = place.kind === "geographic";
   const label =
     place.kind === "establishment"
       ? "Catastro publicado"
@@ -232,9 +231,11 @@ function SearchPlaceCard({
         },
       ]}
     >
-      <Text style={[styles.resultCategory, { color: colors.primaryStrong }]}>
-        {label}
-      </Text>
+      {!isGeographic ? (
+        <Text style={[styles.resultCategory, { color: colors.primaryStrong }]}>
+          {label}
+        </Text>
+      ) : null}
       <Text
         numberOfLines={2}
         style={[styles.resultName, { color: colors.text }]}
@@ -246,9 +247,6 @@ function SearchPlaceCard({
         style={[styles.resultMeta, { color: colors.textMuted }]}
       >
         {place.subtitle || "Ecuador"}
-      </Text>
-      <Text style={[styles.resultActionText, { color: colors.primaryStrong }]}>
-        Ver en el mapa
       </Text>
     </Pressable>
   );
