@@ -23,6 +23,7 @@ import {
   updateNavigationLocation,
   type PersistedNavigationLocation,
 } from "../data/navigation-session-storage";
+import { isReliableLocationAccuracy } from "../../../core/location/location-quality";
 import {
   hasNavigationBackgroundPermission,
   startNavigationLocationTask,
@@ -200,6 +201,17 @@ export function useNavigationSession({
       persistedLocation: PersistedNavigationLocation,
     ) => {
       if (disposed) return;
+
+      const { accuracy, coordinate } = persistedLocation;
+      if (!isReliableLocationAccuracy(accuracy)) {
+        setState((current) => ({
+          ...current,
+          message: "Ajustando tu ubicación con el GPS…",
+          status: current.currentLocation ? "tracking" : "starting",
+        }));
+        return;
+      }
+
       if (persistedLocation.timestamp <= lastProcessedLocationAtRef.current) {
         return;
       }
@@ -207,7 +219,6 @@ export function useNavigationSession({
       lastLocationRef.current = persistedLocation;
       void updateNavigationLocation(persistedLocation);
 
-      const { accuracy, coordinate } = persistedLocation;
       const destinationCoordinate = destinationRef.current;
       const destinationDistance = destinationCoordinate
         ? getDistanceMeters(coordinate, destinationCoordinate)
@@ -224,15 +235,6 @@ export function useNavigationSession({
         remainingDistanceMeters: remaining?.distanceMeters ?? null,
         remainingDurationSeconds: remaining?.durationSeconds ?? null,
       }));
-
-      if (accuracy !== null && accuracy > 150) {
-        setState((current) => ({
-          ...current,
-          message: "La señal GPS es imprecisa; esperando una ubicación mejor.",
-          status: "tracking",
-        }));
-        return;
-      }
 
       if (
         destinationDistance !== null &&
@@ -306,14 +308,11 @@ export function useNavigationSession({
       });
     };
 
-    const restoreLastLocation = async () => {
+    const checkPersistedNavigationState = async () => {
       const snapshot = await readNavigationSession();
       if (!disposed && snapshot && !snapshot.active) {
         onArriveRef.current();
         return;
-      }
-      if (!disposed && snapshot?.active && snapshot.lastLocation) {
-        processLocation(snapshot.lastLocation);
       }
     };
 
@@ -394,7 +393,7 @@ export function useNavigationSession({
           await stopNavigationLocationTask();
           return;
         }
-        await restoreLastLocation();
+        await checkPersistedNavigationState();
 
         subscription = await Location.watchPositionAsync(
           {
@@ -429,8 +428,23 @@ export function useNavigationSession({
       "change",
       (nextState) => {
         if (nextState === "active") {
-          void restoreLastLocation();
+          // El punto que existía antes de salir puede haber quedado atrás.
+          // Ocúltalo hasta que el watcher entregue una muestra fresca.
+          setState((current) => ({
+            ...current,
+            currentLocation: null,
+            distanceToDestinationMeters: null,
+            message: "Actualizando tu ubicación…",
+            nextInstruction: null,
+            remainingDistanceMeters: null,
+            remainingDurationSeconds: null,
+            status: "starting",
+          }));
+          void checkPersistedNavigationState();
           void ensureBackgroundTask().catch(() => undefined);
+          void Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.High,
+          }).then(handleLocation, () => undefined);
         }
       },
     );

@@ -43,7 +43,11 @@ consentimiento separado, retención, descarga/borrado y evaluación de impacto.
 ## UX de estados
 
 La app distingue permiso denegado, ubicación del dispositivo apagada, señal insuficiente,
-precisión aproximada y dato antiguo. Nunca muestra una posición antigua como actual.
+precisión aproximada y dato antiguo. Para mostrar o usar la ubicación actual exige una
+lectura fresca con precisión reportada de 100 m o menos; descarta `lastKnown` y muestras
+más amplias. Nunca muestra una posición antigua como actual. La última posición persistida
+de una navegación solo sirve para continuidad del servicio y espera un punto nuevo antes
+de actualizar mapa, indicaciones o desvíos.
 
 La consulta de establecimientos puede usar la posición puntual solo para ordenar resultados
 durante la solicitud. La API no la guarda dentro del catastro ni la devuelve junto con datos

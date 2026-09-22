@@ -200,7 +200,7 @@ function ExploreMapScreen() {
     if (locationStatus !== "idle") return;
 
     locationFocusInitializedRef.current = false;
-    void requestLocation();
+    void requestLocation({ forceRefresh: true });
   }, [locationStatus, requestLocation]);
 
   useEffect(() => {
@@ -520,7 +520,7 @@ function ExploreMapScreen() {
 
   const handleLocateUser = useCallback(async () => {
     setConfirmedLocationFocusKey(null);
-    const coordinate = await requestLocation();
+    const coordinate = await requestLocation({ forceRefresh: true });
     if (!coordinate) return;
     setFocusLocationKey((value) => value + 1);
   }, [requestLocation]);
@@ -725,7 +725,9 @@ function ExploreMapScreen() {
                   setSubmittedText("");
                   setSelectedCenterCode(null);
                   dismissSearchSheet();
-                  if (!userLocation) void requestLocation();
+                  if (!userLocation) {
+                    void requestLocation({ forceRefresh: true });
+                  }
                 }}
                 searchMode={searchMode}
               />

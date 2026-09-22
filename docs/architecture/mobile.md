@@ -150,12 +150,14 @@ límites proceden de una fuente oficial y no se editan en el móvil.
 - Explorar solicita `while in use` al abrirse; el mapa y el resto del catálogo siguen
   disponibles si la persona lo deniega.
 - El control “mi ubicación”, la cercanía y el inicio de ruta reutilizan la misma sesión.
-  La sesión comprueba que el GPS esté activo, aprovecha una posición reciente y centra la
-  cámara en un nivel de zoom estable. La posición se representa con un punto azul nativo
-  de MapLibre y la sesión global inicia un watcher foreground equilibrado mientras la app
-  permanece activa. Al quedar centrado, el botón se oculta; si la persona mueve el mapa,
-  reaparece para recentrar con zoom 15. Cuando el GPS o el servicio de ubicación del
-  dispositivo está apagado muestra una línea gris sobre el icono en vez de un aviso flotante.
+  La sesión comprueba que el GPS esté activo, obtiene una lectura fresca con precisión de
+  100 m o menos y centra la cámara en un nivel de zoom estable. No usa la última posición
+  conocida del sistema como si fuera actual. La posición aceptada se representa con un punto
+  azul nativo de MapLibre y la sesión global inicia un watcher foreground de alta precisión
+  mientras la app permanece activa. Al quedar centrado, el botón se oculta; si la persona
+  mueve el mapa, reaparece para recentrar con zoom 15. Cuando el GPS o el servicio de
+  ubicación del dispositivo está apagado muestra una línea gris sobre el icono en vez de un
+  aviso flotante.
 - Si el permiso ya fue concedido pero el proveedor está apagado, el botón solicita activar
   el servicio con el diálogo del sistema en Android; en iOS dirige a los ajustes de la
   aplicación. Rechazarlo conserva el mapa disponible y muestra el estado correspondiente.
@@ -175,8 +177,10 @@ límites proceden de una fuente oficial y no se editan en el móvil.
   visible. El servicio foreground se registra desde la acción de inicio y Android muestra una
   notificación persistente cuando el seguimiento persistente está habilitado. En Android 13 o
   posterior se solicita también `POST_NOTIFICATIONS` para hacer visible esa notificación.
-- Persistir únicamente ruta, destino, modo y última posición para restaurar el estado al
-  volver a la app; no conservar trazas precisas por defecto.
+- Persistir únicamente ruta, destino, modo y última posición para que el servicio activo
+  conserve continuidad; la posición persistida no se presenta como actual ni se usa para
+  recalcular hasta recibir una lectura foreground o background fresca y con precisión de
+  100 m o menos. No conservar trazas precisas por defecto.
 - Detener seguimiento, eliminar la sesión local y limpiar la tarea y su notificación al
   cancelar/cerrar la ruta con la `X` o al salir de la pantalla antes de iniciar la navegación
   con Atrás. La tarea comprueba también la llegada mientras la app está en segundo plano y

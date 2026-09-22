@@ -10,6 +10,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { isReliableLocationAccuracy } from "./location-quality";
+
 export type UserLocationCoordinate = Readonly<{
   latitude: number;
   longitude: number;
@@ -26,13 +28,16 @@ type UserLocationState = Readonly<{
 }>;
 
 type UserLocationContextValue = UserLocationState & {
-  requestLocation: () => Promise<UserLocationCoordinate | null>;
+  requestLocation: (
+    options?: Readonly<{ forceRefresh?: boolean }>,
+  ) => Promise<UserLocationCoordinate | null>;
   setForegroundTrackingSuspended: (suspended: boolean) => void;
 };
 
 type LocationReadOptions = Readonly<{
   allowPermissionRequest: boolean;
   allowProviderPrompt: boolean;
+  forceRefresh: boolean;
   showRequesting: boolean;
 }>;
 
@@ -44,7 +49,7 @@ const initialState: UserLocationState = {
 };
 const currentLocationTimeoutMs = 12_000;
 const foregroundLocationOptions: Location.LocationOptions = {
-  accuracy: Location.Accuracy.Balanced,
+  accuracy: Location.Accuracy.High,
   distanceInterval: 10,
   timeInterval: 5_000,
 };
@@ -99,8 +104,19 @@ export function UserLocationProvider({
 
   const handleForegroundLocation = useCallback(
     (location: Location.LocationObject) => {
+      const accuracy = location.coords.accuracy ?? null;
+      if (!isReliableLocationAccuracy(accuracy)) {
+        updateState((current) => ({
+          ...current,
+          accuracy,
+          message: "Ajustando tu ubicación con el GPS…",
+          status: current.coordinate ? "ready" : "requesting",
+        }));
+        return;
+      }
+
       updateState({
-        accuracy: location.coords.accuracy ?? null,
+        accuracy,
         coordinate: {
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
@@ -257,25 +273,45 @@ export function UserLocationProvider({
             return null;
           }
 
-          const lastKnown = await Location.getLastKnownPositionAsync({
-            maxAge: 30_000,
-            requiredAccuracy: 200,
-          });
-          const location =
-            lastKnown ??
-            (await withTimeout(
-              Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.Balanced,
-              }),
-              currentLocationTimeoutMs,
-            ));
+          if (options.forceRefresh) {
+            updateState((current) => ({
+              ...current,
+              accuracy: null,
+              coordinate: null,
+              message: "Buscando una ubicación GPS precisa…",
+              status: "requesting",
+            }));
+          }
+
+          // Arranca el watcher antes de la lectura puntual. En un arranque en
+          // frío la primera muestra puede ser amplia, pero una actualización
+          // posterior sí puede alcanzar la precisión necesaria.
+          void startForegroundTracking();
+          const location = await withTimeout(
+            Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.High,
+            }),
+            currentLocationTimeoutMs,
+          );
+          const accuracy = location.coords.accuracy ?? null;
+          if (!isReliableLocationAccuracy(accuracy)) {
+            updateState((current) => ({
+              ...current,
+              accuracy,
+              coordinate: null,
+              message: "Ajustando tu ubicación con el GPS…",
+              status: "requesting",
+            }));
+            return null;
+          }
+
           const coordinate = {
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
           } satisfies UserLocationCoordinate;
 
           updateState({
-            accuracy: location.coords.accuracy ?? null,
+            accuracy,
             coordinate,
             message: null,
             status: "ready",
@@ -286,7 +322,9 @@ export function UserLocationProvider({
           void startForegroundTracking();
           return coordinate;
         } catch {
-          stopForegroundTracking();
+          // La lectura puntual puede agotar su tiempo mientras el watcher
+          // todavía espera una primera señal válida. No lo detengas: puede
+          // entregar la coordenada fresca que la lectura puntual no alcanzó.
           updateState((current) => ({
             ...current,
             coordinate: null,
@@ -354,7 +392,8 @@ export function UserLocationProvider({
           await readAndStoreLocation({
             allowPermissionRequest: false,
             allowProviderPrompt: false,
-            showRequesting: !current.coordinate,
+            forceRefresh: refreshLocation,
+            showRequesting: refreshLocation || !current.coordinate,
           });
           return;
         }
@@ -375,23 +414,27 @@ export function UserLocationProvider({
     ],
   );
 
-  const requestLocation = useCallback(async () => {
-    trackingEnabledRef.current = true;
-    const currentCoordinate = stateRef.current.coordinate;
-    if (currentCoordinate) {
-      // Reutiliza la posición compartida mientras el watcher busca la
-      // siguiente actualización; una ruta no debe quedar esperando otra
-      // lectura puntual si ya existe una coordenada válida.
-      void startForegroundTracking();
-      return currentCoordinate;
-    }
+  const requestLocation = useCallback(
+    async (options: Readonly<{ forceRefresh?: boolean }> = {}) => {
+      const forceRefresh = options.forceRefresh === true;
+      trackingEnabledRef.current = true;
+      const currentCoordinate = stateRef.current.coordinate;
+      if (currentCoordinate && !forceRefresh) {
+        // La sesión comparte una lectura que ya pasó el filtro de precisión;
+        // las acciones que necesitan el punto actual pueden forzar una nueva.
+        void startForegroundTracking();
+        return currentCoordinate;
+      }
 
-    return readAndStoreLocation({
-      allowPermissionRequest: true,
-      allowProviderPrompt: true,
-      showRequesting: true,
-    });
-  }, [readAndStoreLocation, startForegroundTracking]);
+      return readAndStoreLocation({
+        allowPermissionRequest: true,
+        allowProviderPrompt: true,
+        forceRefresh,
+        showRequesting: true,
+      });
+    },
+    [readAndStoreLocation, startForegroundTracking],
+  );
 
   const setForegroundTrackingSuspended = useCallback(
     (suspended: boolean) => {

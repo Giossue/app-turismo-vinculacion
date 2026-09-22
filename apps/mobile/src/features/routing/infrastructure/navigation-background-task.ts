@@ -9,6 +9,7 @@ import {
   updateNavigationLocation,
   type PersistedNavigationLocation,
 } from "../data/navigation-session-storage";
+import { isReliableLocationAccuracy } from "../../../core/location/location-quality";
 import {
   getDistanceMeters,
   getNavigationGuidance,
@@ -36,6 +37,8 @@ if (
 
       const latest = data.locations[data.locations.length - 1];
       if (!latest) return;
+
+      if (!isReliableLocationAccuracy(latest.coords.accuracy)) return;
 
       const persistedLocation: PersistedNavigationLocation = {
         accuracy: latest.coords.accuracy ?? null,

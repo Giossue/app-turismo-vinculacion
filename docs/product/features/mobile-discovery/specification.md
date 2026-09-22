@@ -20,9 +20,10 @@ ubicación foreground para mostrar su posición; si la deniega, puede seguir exp
 3. Si falla la red, explica el error y permite reintentar.
 4. El mapa MapLibre muestra los centros publicados como marcadores.
 5. Al abrir el mapa, la aplicación valida permiso y GPS, centra la cámara y muestra un
-   punto azul mientras el proveedor esté disponible; el watcher foreground actualiza la
-   posición mientras la app está activa y se reanuda al volver a ella. El botón “mi
-   ubicación” permite reintentar o recentrar manualmente.
+   punto azul únicamente después de recibir una lectura fresca con precisión de 100 m o
+   menos; el watcher foreground actualiza la posición mientras la app está activa y se
+   reanuda al volver a ella. El botón “mi ubicación” permite reintentar o recentrar
+   manualmente. Una posición antigua o una muestra imprecisa no se dibuja como actual.
 6. La persona puede cambiar a `Servicios cercanos`, escribir una actividad (por ejemplo,
    alimentación) y enviarla desde el teclado; la API devuelve establecimientos activos y,
    si la localidad actual no tiene resultados, informa la ciudad más cercana con resultados.
@@ -35,7 +36,8 @@ ubicación foreground para mostrar su posición; si la deniega, puede seguir exp
 - Vacío: mensaje sin datos inventados.
 - Error/sin red: alternativa y reintento.
 - Ubicación denegada, GPS apagado o señal degradada: se comunica el estado, se retira el
-  punto azul si estaba visible y explorar sigue disponible.
+  punto azul si estaba visible y explorar sigue disponible. Mientras la señal se ajusta,
+  no se utiliza una posición antigua como sustituto.
 - Búsqueda: mientras se escribe no se consulta la API; al enviar se buscan al menos dos
   caracteres en nombre, descripción y clasificación. La respuesta puede estar vacía o
   fallar sin bloquear el mapa.

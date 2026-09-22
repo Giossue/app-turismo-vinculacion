@@ -101,7 +101,6 @@ export default function RouteScreen() {
   const navigationStartInFlightRef = useRef(false);
   const screenFocusedRef = useRef(false);
   const {
-    coordinate: currentLocation,
     message: locationMessage,
     requestLocation,
     setForegroundTrackingSuspended,
@@ -247,9 +246,7 @@ export default function RouteScreen() {
     if (!destination || origin || routeRequested || navigationActive) return;
 
     let cancelled = false;
-    const locationPromise = currentLocation
-      ? Promise.resolve(currentLocation)
-      : requestLocation();
+    const locationPromise = requestLocation({ forceRefresh: true });
     void locationPromise.then((coordinate) => {
       if (cancelled || !coordinate) return;
       setOrigin(coordinate);
@@ -259,14 +256,7 @@ export default function RouteScreen() {
     return () => {
       cancelled = true;
     };
-  }, [
-    currentLocation,
-    destination,
-    navigationActive,
-    origin,
-    requestLocation,
-    routeRequested,
-  ]);
+  }, [destination, navigationActive, origin, requestLocation, routeRequested]);
 
   const handleCalculateRoute = useCallback(async () => {
     if (!destination || isCalculating || navigationActive) return;
@@ -277,14 +267,13 @@ export default function RouteScreen() {
       return;
     }
 
-    const coordinate = currentLocation ?? (await requestLocation());
+    const coordinate = await requestLocation({ forceRefresh: true });
     if (!coordinate) return;
     setOrigin(coordinate);
     setRouteRequested(true);
   }, [
     destination,
     isCalculating,
-    currentLocation,
     navigationActive,
     origin,
     requestLocation,
@@ -312,7 +301,7 @@ export default function RouteScreen() {
     navigationStartInFlightRef.current = true;
 
     try {
-      const coordinate = await requestLocation();
+      const coordinate = await requestLocation({ forceRefresh: true });
       if (!coordinate || !screenFocusedRef.current) return;
 
       let nextNotice: string | null = null;
@@ -400,8 +389,11 @@ export default function RouteScreen() {
     modeOptions.find((option) => option.mode === mode)?.label ?? "Auto";
   const routeError =
     routeQuery.error instanceof Error ? routeQuery.error.message : null;
+  // La navegación solo dibuja una posición que haya pasado por su watcher
+  // activo. No reutiliza el origen de la ruta ni la coordenada foreground de
+  // antes de entrar al modo navegación mientras espera el primer punto fresco.
   const navigationMapLocation = navigationActive
-    ? (navigationSession.currentLocation ?? currentLocation ?? origin)
+    ? navigationSession.currentLocation
     : null;
 
   return (
