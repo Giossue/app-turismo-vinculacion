@@ -81,6 +81,8 @@ import {
   type DiscoveryFilterValues,
 } from "@/features/centers/presentation/discovery-filters";
 import { SearchResultsSheet } from "@/features/centers/presentation/search-results-sheet";
+import { usePublicSearch } from "@/features/search/application/use-public-search";
+import type { PublicSearchResult } from "@/features/search/domain/search-result";
 import {
   clearSearchHistory,
   listSearchHistory,
@@ -183,6 +185,11 @@ function ExploreMapScreen() {
   const [nearbyOnly, setNearbyOnly] = useState(false);
   const [mapBearing, setMapBearing] = useState(0);
   const [resetNorthKey, setResetNorthKey] = useState(0);
+  const [searchFocusCoordinate, setSearchFocusCoordinate] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [searchFocusCoordinateKey, setSearchFocusCoordinateKey] = useState(0);
   const [selectedCenterCode, setSelectedCenterCode] = useState<string | null>(
     null,
   );
@@ -272,6 +279,10 @@ function ExploreMapScreen() {
     isPlaceholderData,
     refetch,
   } = usePublishedCenters(query);
+  const publicSearch = usePublicSearch(
+    searchMode === "CENTERS" ? submittedQuery : "",
+    userLocation,
+  );
   const { data: catalog } = useDiscoveryCatalog();
   const handleCategoryChange = useCallback(
     (categoryCode: string | undefined) => {
@@ -343,6 +354,7 @@ function ExploreMapScreen() {
     setSelectedEstablishment(null);
     setMapFeatureSelection(null);
     setMapFeatureFocusSelection(null);
+    setSearchFocusCoordinate(null);
     dismissSearchSheet();
   }, [dismissSearchSheet]);
 
@@ -390,6 +402,7 @@ function ExploreMapScreen() {
       preserveSelectionOnSearchCloseRef.current = searchSheetOpenRef.current;
       dismissSearchSheet();
       setSelectedEstablishment(null);
+      setSearchFocusCoordinate(null);
       setSelectedCenterCode(center.code);
     },
     [dismissSearchSheet],

@@ -14,6 +14,7 @@ import type {
   AdminAdmissionDto,
   AdminAdministrationDto,
   AdminCentersQueryDto,
+  AdminCatalogCreateDto,
   AdminCatalogsQueryDto,
   AdminCatalogUpdateDto,
   AdminCenterSectionCode,
@@ -62,6 +63,18 @@ const CATALOG_TARGETS: Record<
     table: "catalogo_catastro_categorias",
   },
 };
+
+function catalogCodeBase(name: string) {
+  const base = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 100);
+  if (!base) throw new ConflictException("El nombre no genera un código válido.");
+  return base;
+}
 
 type CenterDraft = {
   name: string;
@@ -2375,6 +2388,222 @@ export class AdminCentersService {
       facilityCategories,
       facilities,
     };
+  }
+
+  async createCatalog(
+    actorId: number,
+    catalog: string,
+    input: AdminCatalogCreateDto,
+  ) {
+    const target = CATALOG_TARGETS[catalog as CatalogKey];
+    if (!target) throw new ConflictException("El catálogo no está disponible.");
+
+    const name = input.name.trim();
+    const active = input.active ?? true;
+    const requiresParent = catalog !== "ACCESSIBILITY";
+    if (requiresParent && input.parentId === undefined) {
+      throw new ConflictException("Debes seleccionar el catálogo superior.");
+    }
+    if (!requiresParent && input.parentId !== undefined) {
+      throw new ConflictException("Este catálogo no admite un catálogo superior.");
+    }
+    if (catalog === "ESTABLISHMENT_CLASSIFICATION" && input.scheme !== undefined) {
+      throw new ConflictException("El sistema solo aplica a categorías de catastro.");
+    }
+    if (catalog !== "ESTABLISHMENT_CATEGORY" && input.numericValue !== undefined) {
+      throw new ConflictException("El valor numérico solo aplica a categorías de catastro.");
+    }
+    if (catalog !== "ESTABLISHMENT_CLASSIFICATION" && input.icon !== undefined) {
+      throw new ConflictException(
+        "El icono solo está disponible para tipos de establecimiento.",
+      );
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      const nextCode = async (table: string) => {
+        const base = catalogCodeBase(name);
+        const rows = (await manager.query(
+          `SELECT codigo AS code FROM ${table} WHERE codigo = $1 OR codigo LIKE $2`,
+          [base, `${base}_%`],
+        )) as Array<{ code: string }>;
+        const used = new Set(rows.map((row) => row.code));
+        if (!used.has(base)) return base;
+        for (let suffix = 2; suffix < 1000; suffix += 1) {
+          const candidate = `${base}_${suffix}`;
+          if (!used.has(candidate)) return candidate;
+        }
+        throw new ConflictException("No se pudo generar un código único.");
+      };
+
+      const ensureParent = async (
+        table: string,
+        id: number,
+        label: string,
+      ) => {
+        const rows = await manager.query(
+          `SELECT id FROM ${table} WHERE id = $1 AND activo = TRUE`,
+          [id],
+        );
+        if (!rows[0]) throw new NotFoundException(`No se encontró ${label}.`);
+      };
+
+      let id: number;
+      let code: string;
+      let visual: { icon: string; color: string } | undefined;
+      let auditNext: Record<string, unknown> = { name, active };
+
+      if (catalog === "ACCESSIBILITY") {
+        const duplicate = await manager.query(
+          `SELECT 1 FROM tipos_accesibilidad WHERE lower(nombre) = lower($1) LIMIT 1`,
+          [name],
+        );
+        if (duplicate[0]) {
+          throw new ConflictException("Ya existe una opción con ese nombre.");
+        }
+        code = await nextCode("tipos_accesibilidad");
+        const rows = (await manager.query(
+          `INSERT INTO tipos_accesibilidad (codigo, nombre, activo)
+           VALUES ($1, $2, $3) RETURNING id`,
+          [code, name, active],
+        )) as Array<{ id: string }>;
+        id = Number(rows[0]?.id);
+      } else if (catalog === "ACTIVITY") {
+        await ensureParent("grupos_actividad", input.parentId!, "el grupo de actividad");
+        const duplicate = await manager.query(
+          `SELECT 1 FROM actividades_turisticas
+            WHERE grupo_actividad_id = $2 AND lower(nombre) = lower($1)
+            LIMIT 1`,
+          [name, input.parentId],
+        );
+        if (duplicate[0]) {
+          throw new ConflictException("Ya existe una actividad con ese nombre en el grupo seleccionado.");
+        }
+        code = await nextCode("actividades_turisticas");
+        const rows = (await manager.query(
+          `INSERT INTO actividades_turisticas (grupo_actividad_id, codigo, nombre, activo)
+           VALUES ($1, $2, $3, $4) RETURNING id`,
+          [input.parentId, code, name, active],
+        )) as Array<{ id: string }>;
+        id = Number(rows[0]?.id);
+      } else if (catalog === "FACILITY") {
+        await ensureParent("categorias_facilidad", input.parentId!, "la categoría de facilidad");
+        const duplicate = await manager.query(
+          `SELECT 1 FROM tipos_facilidad
+            WHERE categoria_facilidad_id = $2 AND lower(nombre) = lower($1)
+            LIMIT 1`,
+          [name, input.parentId],
+        );
+        if (duplicate[0]) {
+          throw new ConflictException("Ya existe una facilidad con ese nombre en la categoría seleccionada.");
+        }
+        code = await nextCode("tipos_facilidad");
+        const rows = (await manager.query(
+          `INSERT INTO tipos_facilidad (categoria_facilidad_id, codigo, nombre, activo)
+           VALUES ($1, $2, $3, $4) RETURNING id`,
+          [input.parentId, code, name, active],
+        )) as Array<{ id: string }>;
+        id = Number(rows[0]?.id);
+      } else if (catalog === "ESTABLISHMENT_CLASSIFICATION") {
+        await ensureParent(
+          "catalogo_catastro_actividades",
+          input.parentId!,
+          "la actividad del catastro",
+        );
+        const duplicate = await manager.query(
+          `SELECT 1 FROM catalogo_catastro_clasificaciones
+            WHERE actividad_id = $2 AND lower(nombre) = lower($1)
+            LIMIT 1`,
+          [name, input.parentId],
+        );
+        if (duplicate[0]) {
+          throw new ConflictException("Ya existe un tipo de establecimiento con ese nombre en la actividad seleccionada.");
+        }
+        code = await nextCode("catalogo_catastro_clasificaciones");
+        visual = {
+          icon: input.icon ?? DEFAULT_ESTABLISHMENT_ICON,
+          color: getEstablishmentVisualColor(input.icon ?? DEFAULT_ESTABLISHMENT_ICON),
+        };
+        const rows = (await manager.query(
+          `INSERT INTO catalogo_catastro_clasificaciones
+             (actividad_id, codigo, nombre, activo, icono, color)
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+          [input.parentId, code, name, active, visual.icon, visual.color],
+        )) as Array<{ id: string }>;
+        id = Number(rows[0]?.id);
+        auditNext = { ...auditNext, ...visual, activityId: input.parentId };
+      } else {
+        await ensureParent(
+          "catalogo_catastro_clasificaciones",
+          input.parentId!,
+          "la clasificación del catastro",
+        );
+        const duplicate = await manager.query(
+          `SELECT 1 FROM catalogo_catastro_categorias
+            WHERE clasificacion_id = $2 AND lower(nombre) = lower($1)
+            LIMIT 1`,
+          [name, input.parentId],
+        );
+        if (duplicate[0]) {
+          throw new ConflictException("Ya existe una categoría con ese nombre en la clasificación seleccionada.");
+        }
+        const parentRows = (await manager.query(
+          `SELECT icono AS icon, color FROM catalogo_catastro_clasificaciones WHERE id = $1`,
+          [input.parentId],
+        )) as Array<{ icon: string; color: string }>;
+        const parent = parentRows[0];
+        if (!parent) throw new NotFoundException("No se encontró la clasificación del catastro.");
+        const orderRows = (await manager.query(
+          `SELECT COALESCE(MAX(orden), -1) + 1 AS next_order
+             FROM catalogo_catastro_categorias WHERE clasificacion_id = $1`,
+          [input.parentId],
+        )) as Array<{ next_order: string | number }>;
+        code = await nextCode("catalogo_catastro_categorias");
+        const scheme = input.scheme ?? "OTRA";
+        const rows = (await manager.query(
+          `INSERT INTO catalogo_catastro_categorias
+             (clasificacion_id, codigo, nombre, orden, activo, icono, color, esquema, valor_numerico, requiere_revision)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE) RETURNING id`,
+          [
+            input.parentId,
+            code,
+            name,
+            Number(orderRows[0]?.next_order ?? 0),
+            active,
+            parent.icon,
+            parent.color,
+            scheme,
+            input.numericValue ?? null,
+          ],
+        )) as Array<{ id: string }>;
+        id = Number(rows[0]?.id);
+        visual = { icon: parent.icon, color: parent.color };
+        auditNext = {
+          ...auditNext,
+          ...visual,
+          classificationId: input.parentId,
+          scheme,
+          numericValue: input.numericValue ?? null,
+        };
+      }
+
+      if (!Number.isInteger(id) || id < 1) {
+        throw new ConflictException("No se pudo crear la opción del catálogo.");
+      }
+      await manager.query(
+        `INSERT INTO auditoria_catalogos
+          (usuario_id, catalogo_codigo, registro_id, accion, datos_anteriores, datos_nuevos)
+         VALUES ($1, $2, $3, 'CREAR', '{}'::jsonb, $4::jsonb)`,
+        [actorId, catalog, id, JSON.stringify({ ...auditNext, code })],
+      );
+      return {
+        catalog,
+        id,
+        code,
+        name,
+        active,
+        ...(visual ?? {}),
+      };
+    });
   }
 
   async updateCatalog(
