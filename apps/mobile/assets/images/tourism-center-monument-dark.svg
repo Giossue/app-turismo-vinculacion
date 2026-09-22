@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000">
+  <title>monument-14 — Osmic pin</title>
+  <style>
+    :root {
+      --pin-color: #22c55e;
+      --inner-color: #06130a;
+      --icon-color: #22c55e;
+    }
+    #pin-shape { fill: #22c55e; }
+    #inner-background { fill: #06130a; }
+    /* recolor Osmic visually without touching original coordinates */
+    #osmic-icon path, #osmic-icon circle, #osmic-icon ellipse, #osmic-icon polygon,
+    #osmic-icon polyline, #osmic-icon line {
+      fill: #22c55e !important;
+      stroke: none !important;
+    }
+    #osmic-icon rect[style*="visibility:hidden"],
+    #osmic-icon rect[style*="fill:none"],
+    #osmic-icon rect#canvas {
+      fill: none !important;
+      stroke: none !important;
+      visibility: hidden !important;
+    }
+  </style>
+  <path id="pin-shape" d="M500 34
+C304 34 148 188 148 384
+C148 551 239 653 334 767
+L475 944
+C489 962 511 962 525 944
+L666 767
+C761 653 852 551 852 384
+C852 188 696 34 500 34Z"/>
+  <circle id="inner-background" cx="500" cy="380" r="261"/>
+  <g id="osmic-icon" transform="translate(360 240) scale(20)">
+    <defs
+     id="defs6" />
+  <rect
+     width="14"
+     height="14"
+     x="0"
+     y="0"
+     id="canvas"
+     style="fill:none;stroke:none;visibility:hidden" />
+  <path
+     d="M 7,0 C 7,0 5,1.4966359 5,2 l 0,8 4,0 0,-8 C 9,1.5206056 7,0 7,0 z M 4,11 c -1,0 -1,1 -1,2 l -1,0 -1,1 12,0 -1,-1 -1,0 c 0,-1 0,-2 -1,-2 z"
+     id="monument"
+     style="fill:#000000;fill-opacity:1;stroke:none" />
+  </g>
+</svg>

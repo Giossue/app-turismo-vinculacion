@@ -13,6 +13,8 @@
   JSON del estilo, conserva la referencia TileJSON publicada por TileServer GL y aplica una
   paleta propia para terreno, edificios, agua, zonas verdes y calles. Si el servidor no responde, conserva
   los pines sobre un fondo local neutro; las capas de texto esperan a que exista una URL de fuentes válida.
+  La app normaliza las familias tipográficas del estilo a `Noto Sans Regular`, que es la
+  familia publicada por el endpoint de glifos del TileServer.
   No cambia a ArcGIS o Stadia.
 - No calcula rutas ni provee navegación por sí mismo.
 
@@ -170,6 +172,8 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   registro histórico fue completado con la coordenada de su localidad,
   el endpoint conserva la marca de punto aproximado; las nuevas coordenadas capturadas por
   operación se publican como ubicación exacta.
+  Los centros turísticos usan exclusivamente el pin Osmic `tourism-monument`, recoloreado
+  con el verde institucional; ese código no pertenece al catálogo de catastros.
   En el mapa en línea, ese conjunto proviene exclusivamente de una respuesta exitosa de
   `GET /api/v1/centers`; si la respuesta remota está vacía, no se crean pines de ejemplo ni
   se reutiliza el manifiesto offline.

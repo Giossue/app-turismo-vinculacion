@@ -130,7 +130,6 @@ const establishmentIconNames: Readonly<Record<string, TurismoIconName>> = {
   "religious-place-of-worship": "mapPinned",
   "shop-supermarket": "store",
   "tourism-information": "ticket",
-  "tourism-monument": "mapPinned",
   "tourism-museum": "map",
   "tourism-viewpoint": "compass",
   "transport-bus-stop": "bus",

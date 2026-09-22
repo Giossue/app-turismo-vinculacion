@@ -298,8 +298,11 @@ function ExploreMapScreen() {
   );
   // Conservamos los centros ya confirmados mientras se revalida la consulta;
   // una respuesta remota vacía sí los reemplaza al terminar correctamente.
-  const visibleCenters =
-    searchMode === "CENTERS" && error && centers.length === 0 ? [] : centers;
+  const visibleCenters = useMemo(
+    () =>
+      searchMode === "CENTERS" && error && centers.length === 0 ? [] : centers,
+    [centers, error, searchMode],
+  );
 
   const selectedCenter = selectedCenterCode
     ? (visibleCenters.find((center) => center.code === selectedCenterCode) ??

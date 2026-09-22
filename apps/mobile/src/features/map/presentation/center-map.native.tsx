@@ -94,7 +94,6 @@ const establishmentPinAssets: Record<string, number> = {
   "religious-place-of-worship": require("../../../../assets/images/establishment-pins/religious-place-of-worship.png"),
   "shop-supermarket": require("../../../../assets/images/establishment-pins/shop-supermarket.png"),
   "tourism-information": require("../../../../assets/images/establishment-pins/tourism-information.png"),
-  "tourism-monument": require("../../../../assets/images/establishment-pins/tourism-monument.png"),
   "tourism-museum": require("../../../../assets/images/establishment-pins/tourism-museum.png"),
   "tourism-viewpoint": require("../../../../assets/images/establishment-pins/tourism-viewpoint.png"),
   "transport-bus-stop": require("../../../../assets/images/establishment-pins/transport-bus-stop.png"),
@@ -120,18 +119,18 @@ const establishmentPinColors: Record<string, string> = {
   "religious-place-of-worship": "#6d28d9",
   "shop-supermarket": "#be123c",
   "tourism-information": "#0369a1",
-  "tourism-monument": "#92400e",
   "tourism-museum": "#5b21b6",
   "tourism-viewpoint": "#a16207",
   "transport-bus-stop": "#155e75",
 };
 const establishmentDefaultIcon = "shop-supermarket";
-const establishmentDefaultPinColor = establishmentPinColors[establishmentDefaultIcon];
+const establishmentDefaultPinColor =
+  establishmentPinColors[establishmentDefaultIcon];
 
-const tourismPinLight = require("../../../../assets/images/tourism-pin-light.png");
-const tourismPinDark = require("../../../../assets/images/tourism-pin-dark.png");
-const tourismPinSelectedLight = require("../../../../assets/images/tourism-pin-selected-light.png");
-const tourismPinSelectedDark = require("../../../../assets/images/tourism-pin-selected-dark.png");
+const tourismCenterMonumentLight = require("../../../../assets/images/tourism-center-monument-light.png");
+const tourismCenterMonumentDark = require("../../../../assets/images/tourism-center-monument-dark.png");
+const tourismCenterMonumentSelectedLight = require("../../../../assets/images/tourism-center-monument-selected-light.png");
+const tourismCenterMonumentSelectedDark = require("../../../../assets/images/tourism-center-monument-selected-dark.png");
 
 const selectedCenterZoom = 15;
 const selectedCenterCameraDuration = 500;
@@ -140,8 +139,8 @@ const mapFeatureLayerIds = [
   "tourism-center-cluster-circles",
   "tourism-center-icons",
   "tourism-center-selected-icon",
-  "tourism-establishment-cluster-circles",
-  "tourism-establishment-cluster-count",
+  "tourism-center-dots",
+  "tourism-center-selected-dot",
   "tourism-establishment-pins",
   "tourism-establishment-selected-pin",
   "tourism-establishment-dots",
@@ -237,7 +236,8 @@ export function CenterMap({
         const icon = establishmentPinAssets[establishment.icon]
           ? establishment.icon
           : establishmentDefaultIcon;
-        const color = establishmentPinColors[icon] ?? establishmentDefaultPinColor;
+        const color =
+          establishmentPinColors[icon] ?? establishmentDefaultPinColor;
         return {
           type: "Feature",
           id: featureKey,
@@ -269,10 +269,10 @@ export function CenterMap({
       ),
     [establishments],
   );
-  // Con pocos puntos mostramos cada pin de forma estable. El clustering nativo
-  // se reserva para catálogos grandes, evitando que un zoom corto cambie un
-  // pin por un círculo de grupo durante la exploración inicial.
-  const shouldCluster = centers.length > 20;
+  // A escala amplia cada registro conserva su identidad cromática en un punto
+  // pequeño. Los pines completos aparecen al acercarse, sin convertir varios
+  // catastros de colores distintos en un único círculo de grupo.
+  const shouldCluster = false;
   const fallbackMapStyle = useMemo(
     () => cleanFallbackMapStyle(scheme),
     [scheme],
@@ -636,10 +636,12 @@ export function CenterMap({
                 image,
               ]),
             ),
-            "tourism-pin-dark": tourismPinDark,
-            "tourism-pin-light": tourismPinLight,
-            "tourism-pin-selected-dark": tourismPinSelectedDark,
-            "tourism-pin-selected-light": tourismPinSelectedLight,
+            "tourism-center-monument-dark": tourismCenterMonumentDark,
+            "tourism-center-monument-light": tourismCenterMonumentLight,
+            "tourism-center-monument-selected-dark":
+              tourismCenterMonumentSelectedDark,
+            "tourism-center-monument-selected-light":
+              tourismCenterMonumentSelectedLight,
           }}
         />
         <GeoJSONSource
@@ -685,6 +687,34 @@ export function CenterMap({
             type="symbol"
           />
           <Layer
+            filter={[
+              "all",
+              ["!", ["has", "point_count"]],
+              ["!=", ["get", "code"], selectedCenterCode ?? ""],
+            ]}
+            id="tourism-center-dots"
+            maxzoom={establishmentPinMinZoom}
+            paint={{
+              "circle-color": colors.primary,
+              "circle-radius": 3,
+            }}
+            type="circle"
+          />
+          <Layer
+            filter={[
+              "all",
+              ["!", ["has", "point_count"]],
+              ["==", ["get", "code"], selectedCenterCode ?? ""],
+            ]}
+            id="tourism-center-selected-dot"
+            maxzoom={establishmentPinMinZoom}
+            paint={{
+              "circle-color": colors.primaryStrong,
+              "circle-radius": 5,
+            }}
+            type="circle"
+          />
+          <Layer
             filter={
               selectedCenterCode
                 ? [
@@ -700,9 +730,12 @@ export function CenterMap({
               "icon-anchor": "bottom",
               "icon-ignore-placement": true,
               "icon-image":
-                scheme === "dark" ? "tourism-pin-dark" : "tourism-pin-light",
-              "icon-size": 0.55,
+                scheme === "dark"
+                  ? "tourism-center-monument-dark"
+                  : "tourism-center-monument-light",
+              "icon-size": 0.42,
             }}
+            minzoom={establishmentPinMinZoom}
             type="symbol"
           />
           <Layer
@@ -718,54 +751,21 @@ export function CenterMap({
               "icon-ignore-placement": true,
               "icon-image":
                 scheme === "dark"
-                  ? "tourism-pin-selected-dark"
-                  : "tourism-pin-selected-light",
-              "icon-size": 0.6,
+                  ? "tourism-center-monument-selected-dark"
+                  : "tourism-center-monument-selected-light",
+              "icon-size": 0.52,
             }}
+            minzoom={establishmentPinMinZoom}
             type="symbol"
           />
         </GeoJSONSource>
         <GeoJSONSource
-          cluster
-          clusterMaxZoom={13}
-          clusterMinPoints={2}
-          clusterRadius={56}
           data={establishmentFeatures}
           hitbox={{ bottom: 22, left: 22, right: 22, top: 22 }}
           id="tourism-establishments-source"
           onPress={handleEstablishmentFeaturePress}
           ref={establishmentsSourceRef}
         >
-          <Layer
-            filter={["has", "point_count"]}
-            id="tourism-establishment-cluster-circles"
-            paint={{
-              "circle-color": colors.surfaceStrong,
-              "circle-radius": [
-                "step",
-                ["get", "point_count"],
-                17,
-                10,
-                20,
-                30,
-                23,
-              ],
-              "circle-stroke-color": colors.surface,
-              "circle-stroke-width": 2,
-            }}
-            type="circle"
-          />
-          <Layer
-            filter={["has", "point_count"]}
-            id="tourism-establishment-cluster-count"
-            layout={{
-              "text-field": ["get", "point_count_abbreviated"],
-              "text-size": 12,
-              visibility: hasMapGlyphs ? "visible" : "none",
-            }}
-            paint={{ "text-color": colors.onPrimary }}
-            type="symbol"
-          />
           <Layer
             filter={[
               "all",
@@ -801,7 +801,11 @@ export function CenterMap({
             type="symbol"
           />
           <Layer
-            filter={["!", ["has", "point_count"]]}
+            filter={[
+              "all",
+              ["!", ["has", "point_count"]],
+              ["!=", ["get", "featureKey"], selectedEstablishmentKey ?? ""],
+            ]}
             id="tourism-establishment-dots"
             maxzoom={establishmentPinMinZoom}
             paint={{
@@ -1142,9 +1146,19 @@ function quietMapLayers(value: unknown, scheme: "light" | "dark"): unknown {
     }
 
     if (candidate.type === "symbol") {
+      const layout = isRecord(candidate.layout) ? candidate.layout : {};
       const paint = isRecord(candidate.paint) ? candidate.paint : {};
       return {
         ...candidate,
+        layout: {
+          ...layout,
+          // El estilo publicado todavía declara Open Sans, pero el endpoint de
+          // glifos del TileServer solo publica Noto Sans. Normalizarlo evita
+          // respuestas 400 y mantiene disponibles las etiquetas del mapa.
+          ...(layout["text-font"]
+            ? { "text-font": ["Noto Sans Regular"] }
+            : {}),
+        },
         paint: {
           ...paint,
           ...(paint["text-color"]

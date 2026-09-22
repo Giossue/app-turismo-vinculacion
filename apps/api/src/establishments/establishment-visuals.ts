@@ -13,7 +13,6 @@ export const ESTABLISHMENT_VISUAL_ICON_CODES = [
   "religious-place-of-worship",
   "shop-supermarket",
   "tourism-information",
-  "tourism-monument",
   "tourism-museum",
   "tourism-viewpoint",
   "transport-bus-stop",
@@ -28,10 +27,7 @@ export type EstablishmentVisualIcon =
  * tourist-center pin or the blue current-location marker.
  */
 export const ESTABLISHMENT_VISUALS: Readonly<
-  Record<
-    EstablishmentVisualIcon,
-    Readonly<{ label: string; color: string }>
-  >
+  Record<EstablishmentVisualIcon, Readonly<{ label: string; color: string }>>
 > = {
   "accommodation-hotel": { label: "Hotel", color: "#7a5c3e" },
   "amenity-cinema": { label: "Cine", color: "#7e22ce" },
@@ -53,7 +49,6 @@ export const ESTABLISHMENT_VISUALS: Readonly<
     label: "Información turística",
     color: "#0369a1",
   },
-  "tourism-monument": { label: "Monumento", color: "#92400e" },
   "tourism-museum": { label: "Museo", color: "#5b21b6" },
   "tourism-viewpoint": { label: "Mirador", color: "#a16207" },
   "transport-bus-stop": { label: "Parada de bus", color: "#155e75" },
@@ -70,4 +65,3 @@ export function getEstablishmentVisualColor(
     ESTABLISHMENT_VISUALS[DEFAULT_ESTABLISHMENT_VISUAL_ICON].color
   );
 }
-

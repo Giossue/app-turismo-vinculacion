@@ -12,9 +12,11 @@ manual de color.
 
 ## Alcance
 
-- Incorporar los 18 pines curados de `osmic_pins_osmic_wrapped (1)` como assets del móvil y
-  previsualizaciones del panel.
+- Incorporar los 18 pines curados de `osmic_pins_osmic_wrapped (1)` como assets: 17 para
+  catastros y `tourism-monument` reservado para centros turísticos.
 - Ampliar los códigos de ícono administrables a esos pines y migrar los códigos heredados.
+- Reservar `tourism-monument`, recoloreado en verde institucional, para los centros
+  turísticos y excluirlo del catálogo de catastros.
 - Definir una paleta fija, de menor saturación y con contraste sobre el estilo actual del
   mapa; el color se deriva siempre del ícono seleccionado.
 - Rechazar `color` en el contrato de mutación administrativa y conservarlo únicamente como

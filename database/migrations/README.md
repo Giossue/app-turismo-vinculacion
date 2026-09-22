@@ -134,6 +134,10 @@ catálogo curado de pines Osmic, asigna una paleta fija por icono y sincroniza e
 visual heredado de las categorías. Después de ejecutarla, el panel solo debe permitir
 seleccionar el icono; el color se calcula en la API y queda protegido por restricciones.
 
+La migración `20260922_reserve_tourism_center_pin.sql` reserva `tourism-monument` para
+los centros turísticos. Si existiera alguna clasificación de catastro con ese código,
+la devuelve al pin de supermercado y reconstruye la restricción sin el pin reservado.
+
 La migración `20260921_establishment_coordinates_required.sql` completa las coordenadas
 faltantes de `establecimientos_turisticos` usando la localidad vinculada, las marca como
 `coordenadas_aproximadas` y establece `NOT NULL` en latitud y longitud. Se detiene ante

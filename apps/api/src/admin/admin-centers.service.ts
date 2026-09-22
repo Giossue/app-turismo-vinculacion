@@ -2400,10 +2400,7 @@ export class AdminCentersService {
     ) {
       throw new ConflictException("Debes indicar un cambio para el catálogo.");
     }
-    if (
-      !target.supportsVisual &&
-      input.icon !== undefined
-    ) {
+    if (!target.supportsVisual && input.icon !== undefined) {
       throw new ConflictException(
         "El icono solo está disponible para tipos de establecimiento.",
       );
