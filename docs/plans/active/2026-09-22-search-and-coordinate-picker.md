@@ -35,3 +35,9 @@ selector de mapa dentro de un diálogo, sin convertir el mapa en un editor de di
 - [x] Typecheck/lint/test de API y mobile.
 - [x] Typecheck/lint/build del panel administrativo.
 - [x] `git diff --check` en ambos repositorios.
+
+## Corrección operativa
+
+- El cliente Photon usa un token de proveedor explícito para que Nest pueda inyectar la
+  función `fetch` en producción. Esto evita que la API falle durante el arranque con
+  `UnknownDependenciesException`.

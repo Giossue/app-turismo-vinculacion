@@ -101,24 +101,24 @@ tabla inmutable existente `auditoria_catalogos` para registrar mutaciones de
 `establecimientos_turisticos` con el discriminador `ESTABLISHMENT`. No crea tablas ni
 columnas nuevas; conserva el trigger de inmutabilidad y los JSONB de antes/después.
 
-La migración `20260921_establishment_taxonomy.sql` agrega la taxonomía jerárquica del
+La migración `20260921_aa_establishment_taxonomy.sql` agrega la taxonomía jerárquica del
 catastro: actividad, clasificación y categoría. Se genera desde el consolidado nacional
 con `scripts/generate-establishment-taxonomy-migration.py`, normaliza las etiquetas de
 categoría conocidas y conserva aliases de los valores fuente. Añade relaciones opcionales
 por ID a `establecimientos_turisticos` sin borrar sus columnas de texto, para permitir una
 normalización progresiva y trazable.
 
-La migración `20260921_establishment_category_marker_cleanup.sql` reemplaza los iconos
+La migración `20260921_ac_establishment_category_marker_cleanup.sql` reemplaza los iconos
 heredados `mapPin` de las categorías de catastro por `hotel`, cambia el valor por defecto
 y reserva el pin de lugar para los centros turísticos. La migración
-`20260921_establishment_category_palette_cleanup.sql` normaliza colores heredados fuera
+`20260921_ad_establishment_category_palette_cleanup.sql` normaliza colores heredados fuera
 de la paleta pública y alinea la restricción con las opciones del panel.
 
-La migración `20260921_establishment_category_z_blue_reserved.sql` reserva el azul para la
+La migración `20260921_ae_establishment_category_z_blue_reserved.sql` reserva el azul para la
 ubicación actual: convierte categorías existentes azules a violeta, cambia el valor por
 defecto y retira el azul de la paleta administrativa.
 
-La migración `20260921_establishment_category_z_varied_markers.sql` asigna iconos y colores
+La migración `20260921_af_establishment_category_z_varied_markers.sql` asigna iconos y colores
 semánticos a todas las categorías: alojamiento, restaurantes, cafeterías, vida nocturna,
 guianza, eventos, agencias y transporte dejan de compartir el marcador de hotel violeta.
 Conserva el azul puro reservado para la ubicación actual y es idempotente.

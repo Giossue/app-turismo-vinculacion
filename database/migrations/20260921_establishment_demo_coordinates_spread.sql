@@ -47,7 +47,15 @@ BEGIN
         ON e.localidad_id = l.id
        AND e.activo
        AND e.coordenadas_aproximadas
-     WHERE l.nombre IN ('Guaranda', 'Riobamba', 'Ambato', 'Latacunga', 'Babahoyo')
+      JOIN cantones c ON c.id = l.canton_id
+      JOIN provincias p ON p.id = c.provincia_id
+     WHERE (p.codigo_dpa, c.codigo_cton, l.nombre) IN (
+       ('02', '01', 'Guaranda'),
+       ('06', '01', 'Riobamba'),
+       ('18', '01', 'Ambato'),
+       ('05', '01', 'Latacunga'),
+       ('12', '01', 'Babahoyo')
+     )
      GROUP BY l.id, l.nombre
     HAVING COUNT(e.id) <> 10
   LOOP
@@ -70,9 +78,17 @@ BEGIN
       ) AS position
     FROM establecimientos_turisticos e
     JOIN localidades l ON l.id = e.localidad_id
+    JOIN cantones c ON c.id = l.canton_id
+    JOIN provincias p ON p.id = c.provincia_id
     WHERE e.activo
       AND e.coordenadas_aproximadas
-      AND l.nombre IN ('Guaranda', 'Riobamba', 'Ambato', 'Latacunga', 'Babahoyo')
+      AND (p.codigo_dpa, c.codigo_cton, l.nombre) IN (
+        ('02', '01', 'Guaranda'),
+        ('06', '01', 'Riobamba'),
+        ('18', '01', 'Ambato'),
+        ('05', '01', 'Latacunga'),
+        ('12', '01', 'Babahoyo')
+      )
   )
   SELECT
     COUNT(*),
@@ -111,9 +127,17 @@ WITH ranked_establishments AS (
     ) AS position
   FROM establecimientos_turisticos e
   JOIN localidades l ON l.id = e.localidad_id
+  JOIN cantones c ON c.id = l.canton_id
+  JOIN provincias p ON p.id = c.provincia_id
   WHERE e.activo
     AND e.coordenadas_aproximadas
-    AND l.nombre IN ('Guaranda', 'Riobamba', 'Ambato', 'Latacunga', 'Babahoyo')
+    AND (p.codigo_dpa, c.codigo_cton, l.nombre) IN (
+      ('02', '01', 'Guaranda'),
+      ('06', '01', 'Riobamba'),
+      ('18', '01', 'Ambato'),
+      ('05', '01', 'Latacunga'),
+      ('12', '01', 'Babahoyo')
+    )
 ), distributed_coordinates AS (
   SELECT
     ranked.id,
@@ -147,9 +171,17 @@ BEGIN
        AND second_establishment.latitud = first_establishment.latitud
        AND second_establishment.longitud = first_establishment.longitud
       JOIN localidades l ON l.id = first_establishment.localidad_id
+      JOIN cantones c ON c.id = l.canton_id
+      JOIN provincias p ON p.id = c.provincia_id
      WHERE first_establishment.activo
        AND first_establishment.coordenadas_aproximadas
-       AND l.nombre IN ('Guaranda', 'Riobamba', 'Ambato', 'Latacunga', 'Babahoyo')
+       AND (p.codigo_dpa, c.codigo_cton, l.nombre) IN (
+         ('02', '01', 'Guaranda'),
+         ('06', '01', 'Riobamba'),
+         ('18', '01', 'Ambato'),
+         ('05', '01', 'Latacunga'),
+         ('12', '01', 'Babahoyo')
+       )
   ) THEN
     RAISE EXCEPTION 'La distribución dejó catastros demo apilados';
   END IF;

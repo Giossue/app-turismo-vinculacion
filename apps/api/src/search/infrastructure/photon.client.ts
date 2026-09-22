@@ -1,6 +1,8 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { z } from "zod";
+
+export const PHOTON_FETCHER = Symbol("PHOTON_FETCHER");
 
 const photonResponseSchema = z.object({
   features: z.array(
@@ -35,7 +37,7 @@ export type PhotonPlace = Readonly<{
 export class PhotonClient {
   constructor(
     private readonly config: ConfigService,
-    private readonly fetcher: typeof fetch = fetch,
+    @Inject(PHOTON_FETCHER) private readonly fetcher: typeof fetch,
   ) {}
 
   async search(

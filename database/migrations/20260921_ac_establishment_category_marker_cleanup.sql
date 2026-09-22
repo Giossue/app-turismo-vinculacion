@@ -1,5 +1,5 @@
 -- Normaliza los valores visuales heredados de categorías de catastro.
--- Requiere que 20260921_establishment_category_visuals.sql ya se haya aplicado.
+-- Requiere que 20260921_ab_establishment_category_visuals.sql ya se haya aplicado.
 -- No elimina categorías ni establecimientos; el rollback operativo consiste en
 -- restaurar el respaldo de la tabla antes de reaplicar la restricción anterior.
 

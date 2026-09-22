@@ -14,7 +14,7 @@ from openpyxl import load_workbook
 
 
 DEFAULT_SOURCE = Path("temp/Consolidado-Nacional-2026-publico-8 (1).xlsx")
-DEFAULT_OUTPUT = Path("database/migrations/20260921_establishment_taxonomy.sql")
+DEFAULT_OUTPUT = Path("database/migrations/20260921_aa_establishment_taxonomy.sql")
 
 
 def text(value: object) -> str:

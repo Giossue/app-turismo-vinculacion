@@ -388,7 +388,7 @@ El formulario utilizará únicamente columnas existentes de `establecimientos_tu
 - estado activo.
 
 Las columnas de texto `actividad`, `clasificacion` y `categoria` se mantienen por
-compatibilidad y trazabilidad. La migración `20260921_establishment_taxonomy.sql` agrega
+compatibilidad y trazabilidad. La migración `20260921_aa_establishment_taxonomy.sql` agrega
 relaciones opcionales con la taxonomía canónica del catastro y aliases para normalizar
 variantes del consolidado durante alta y futuras importaciones.
 
@@ -486,7 +486,7 @@ restringidos. Las firmas y documentos no compartirán el flujo de URL pública d
 ## Preparación de catálogos y datos
 
 Además de las correcciones idempotentes de datos de catálogo, la taxonomía del catastro se
-carga mediante `20260921_establishment_taxonomy.sql`:
+carga mediante `20260921_aa_establishment_taxonomy.sql`:
 
 1. comparar `provincias`, `cantones` y `parroquias` con el DPA oficial;
 2. corregir Guaranda como cantón `01` de Bolívar y cargar Ángel Polibio Cháves como parroquia

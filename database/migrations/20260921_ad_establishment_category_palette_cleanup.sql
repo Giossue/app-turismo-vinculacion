@@ -1,5 +1,5 @@
 -- Normaliza colores heredados fuera de la paleta pública del catastro.
--- Requiere que 20260921_establishment_category_marker_cleanup.sql ya se haya aplicado.
+-- Requiere que 20260921_ac_establishment_category_marker_cleanup.sql ya se haya aplicado.
 
 BEGIN;
 
