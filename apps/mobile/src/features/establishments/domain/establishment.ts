@@ -23,6 +23,13 @@ export type PublicMapEstablishment = Readonly<{
   color: string;
 }>;
 
+export type EstablishmentMapViewport = Readonly<{
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+}>;
+
 export type MapEstablishmentsResult = Readonly<{
   items: readonly PublicMapEstablishment[];
 }>;

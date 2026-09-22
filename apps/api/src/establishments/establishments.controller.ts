@@ -19,6 +19,7 @@ import {
   CreateEstablishmentDto,
   PublicEstablishmentsMapQueryDto,
   PublicEstablishmentsQueryDto,
+  ReviewEstablishmentDto,
   SaveEstablishmentDto,
 } from "./establishments.dto";
 import { EstablishmentsService } from "./establishments.service";
@@ -31,9 +32,18 @@ export class AdminEstablishmentsController {
   constructor(private readonly establishments: EstablishmentsService) {}
 
   @Get()
-  @Roles("ADMINISTRADOR")
-  async list(@Query() query: AdminEstablishmentsQueryDto) {
-    return { data: await this.establishments.list(query) };
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
+  async list(
+    @Query() query: AdminEstablishmentsQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      data: await this.establishments.list(
+        query,
+        user.id,
+        user.roles.includes("ADMINISTRADOR"),
+      ),
+    };
   }
 
   @Get(":id/audit")
@@ -43,28 +53,72 @@ export class AdminEstablishmentsController {
   }
 
   @Get(":id")
-  @Roles("ADMINISTRADOR")
-  async find(@Param("id") id: string) {
-    return { data: await this.establishments.find(id) };
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
+  async find(@Param("id") id: string, @CurrentUser() user: AuthenticatedUser) {
+    return {
+      data: await this.establishments.find(
+        id,
+        user.id,
+        user.roles.includes("ADMINISTRADOR"),
+      ),
+    };
   }
 
   @Post()
-  @Roles("ADMINISTRADOR")
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
   async create(
     @Body() body: CreateEstablishmentDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return { data: await this.establishments.create(user.id, body) };
+    return {
+      data: await this.establishments.create(
+        user.id,
+        body,
+        user.roles.includes("ADMINISTRADOR"),
+      ),
+    };
   }
 
   @Patch(":id")
-  @Roles("ADMINISTRADOR")
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
   async save(
     @Param("id") id: string,
     @Body() body: SaveEstablishmentDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return { data: await this.establishments.save(id, user.id, body) };
+    return {
+      data: await this.establishments.save(
+        id,
+        user.id,
+        body,
+        user.roles.includes("ADMINISTRADOR"),
+      ),
+    };
+  }
+
+  @Post(":id/submit-review")
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
+  async submitReview(
+    @Param("id") id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      data: await this.establishments.submitReview(
+        id,
+        user.id,
+        user.roles.includes("ADMINISTRADOR"),
+      ),
+    };
+  }
+
+  @Patch(":id/review")
+  @Roles("ADMINISTRADOR")
+  async review(
+    @Param("id") id: string,
+    @Body() body: ReviewEstablishmentDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return { data: await this.establishments.review(id, user.id, body) };
   }
 
   @Post(":id/deactivate")

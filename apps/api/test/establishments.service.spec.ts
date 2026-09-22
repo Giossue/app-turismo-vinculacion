@@ -46,8 +46,8 @@ describe("EstablishmentsService", () => {
         latitude: "-1.59263",
         longitude: "-79.00098",
         approximate: true,
-        icon: "hotel",
-        color: "#7c3aed",
+        icon: "accommodation-hotel",
+        color: "#7a5c3e",
       },
     ]);
     const service = new EstablishmentsService({ query } as never);
@@ -61,8 +61,8 @@ describe("EstablishmentsService", () => {
           latitude: -1.59263,
           longitude: -79.00098,
           approximate: true,
-          icon: "hotel",
-          color: "#7c3aed",
+          icon: "accommodation-hotel",
+          color: "#7a5c3e",
         },
       ],
     });
@@ -80,6 +80,15 @@ describe("EstablishmentsService", () => {
 
     await expect(service.map({ west: -79, limit: 500 })).rejects.toThrow(
       "cuatro límites",
+    );
+  });
+
+  it("does not reveal a catastro owned by another agent", async () => {
+    const query = vi.fn().mockResolvedValue([{ ...row, responsibleId: "9" }]);
+    const service = new EstablishmentsService({ query } as never);
+
+    await expect(service.find("8", 10, false)).rejects.toThrow(
+      "No se encontró el establecimiento",
     );
   });
 

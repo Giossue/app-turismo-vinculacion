@@ -10,9 +10,19 @@ async function main(): Promise<void> {
   const email = process.env.AUTH_BOOTSTRAP_EMAIL?.trim().toLowerCase();
   const name = process.env.AUTH_BOOTSTRAP_NAME?.trim();
   const password = process.env.AUTH_BOOTSTRAP_PASSWORD;
+  const roleName = process.env.AUTH_BOOTSTRAP_ROLE?.trim() || "ADMINISTRADOR";
   if (!email || !name || !password || password.length < 12) {
     throw new Error(
       "Define AUTH_BOOTSTRAP_EMAIL, AUTH_BOOTSTRAP_NAME y AUTH_BOOTSTRAP_PASSWORD (mínimo 12 caracteres).",
+    );
+  }
+  if (
+    !(["ADMINISTRADOR", "AGENTE_TURISTICO"] as const).includes(
+      roleName as never,
+    )
+  ) {
+    throw new Error(
+      "AUTH_BOOTSTRAP_ROLE debe ser ADMINISTRADOR o AGENTE_TURISTICO.",
     );
   }
 
@@ -41,11 +51,12 @@ async function main(): Promise<void> {
         [name, email, passwordHash],
       )) as { id: string }[];
       const roles = (await manager.query(
-        "SELECT id FROM roles WHERE nombre_rol = 'ADMINISTRADOR'",
+        "SELECT id FROM roles WHERE nombre_rol = $1",
+        [roleName],
       )) as { id: string }[];
       if (!roles[0]) {
         throw new Error(
-          "El rol ADMINISTRADOR no está configurado en el baseline.",
+          `El rol ${roleName} no está configurado en la base de datos.`,
         );
       }
       await manager.query(
@@ -53,7 +64,7 @@ async function main(): Promise<void> {
         [roles[0].id, users[0].id],
       );
     });
-    console.log(`Usuario institucional creado: ${email}`);
+    console.log(`Usuario institucional creado: ${email} (${roleName})`);
   } finally {
     await dataSource.destroy();
   }

@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsPositive,
+  IsIn,
   IsString,
   Matches,
   Max,
@@ -81,6 +82,11 @@ export class AdminEstablishmentsQueryDto {
   @Transform(toOptionalBoolean)
   @IsBoolean()
   active?: boolean;
+
+  @IsOptional()
+  @Transform(toOptionalTrimmedString)
+  @IsIn(["BORRADOR", "EN_REVISION", "PUBLICADO", "RECHAZADO"])
+  reviewStatus?: "BORRADOR" | "EN_REVISION" | "PUBLICADO" | "RECHAZADO";
 
   @IsOptional()
   @Type(() => Number)
@@ -206,6 +212,17 @@ export class CreateEstablishmentDto extends EstablishmentFieldsDto {
   @Min(-180)
   @Max(180)
   longitude?: number;
+}
+
+export class ReviewEstablishmentDto {
+  @IsIn(["APPROVE", "REJECT"])
+  action!: "APPROVE" | "REJECT";
+
+  @IsOptional()
+  @Transform(toOptionalTrimmedString)
+  @IsString()
+  @MaxLength(2_000)
+  observation?: string;
 }
 
 export class PublicEstablishmentsMapQueryDto {

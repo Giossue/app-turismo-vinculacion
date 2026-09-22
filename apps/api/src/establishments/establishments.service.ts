@@ -12,6 +12,7 @@ import type {
   CreateEstablishmentDto,
   PublicEstablishmentsMapQueryDto,
   PublicEstablishmentsQueryDto,
+  ReviewEstablishmentDto,
   SaveEstablishmentDto,
 } from "./establishments.dto";
 
@@ -41,6 +42,12 @@ type EstablishmentRow = {
   latitude: string | null;
   longitude: string | null;
   active: boolean;
+  responsibleId: string | null;
+  reviewStatus: "BORRADOR" | "EN_REVISION" | "PUBLICADO" | "RECHAZADO";
+  reviewObservation: string | null;
+  requestedAt: string | null;
+  requestedBy: string | null;
+  reviewedAt: string | null;
   createdAt: string;
   updatedAt: string;
   distanceMeters?: string | null;
@@ -81,6 +88,11 @@ type AdminEstablishmentItem = {
   latitude: number | null;
   longitude: number | null;
   active: boolean;
+  reviewStatus: EstablishmentRow["reviewStatus"];
+  reviewObservation: string | null;
+  requestedAt: string | null;
+  requestedBy: string | null;
+  reviewedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -126,6 +138,12 @@ const establishmentSelect = `
          e.latitud AS latitude,
          e.longitud AS longitude,
          e.activo AS active,
+         e.responsable_usuario_id AS "responsibleId",
+         e.estado_revision AS "reviewStatus",
+         e.observacion_revision AS "reviewObservation",
+         e.fecha_solicitud AS "requestedAt",
+         requested_user.nombre AS "requestedBy",
+         e.fecha_revision AS "reviewedAt",
          e.created_at AS "createdAt",
          e.updated_at AS "updatedAt"`;
 
@@ -139,7 +157,9 @@ const establishmentJoin = `
     LEFT JOIN catalogo_catastro_clasificaciones classification_catalog
       ON classification_catalog.id = e.clasificacion_catalogo_id
     LEFT JOIN catalogo_catastro_categorias category_catalog
-      ON category_catalog.id = e.categoria_catalogo_id`;
+      ON category_catalog.id = e.categoria_catalogo_id
+    LEFT JOIN usuarios requested_user
+      ON requested_user.id = e.solicitado_por`;
 
 const publicEstablishmentSelect = `
   SELECT e.nombre_comercial AS "nombreComercial",
@@ -178,7 +198,7 @@ type PublicEstablishmentRow = Pick<
 export class EstablishmentsService {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
-  async list(query: AdminEstablishmentsQueryDto) {
+  async list(query: AdminEstablishmentsQueryDto, actorId = 0, isAdmin = true) {
     const params: unknown[] = [];
     const where: string[] = [];
     const add = (value: unknown) => {
@@ -188,6 +208,9 @@ export class EstablishmentsService {
 
     if (query.active !== undefined)
       where.push(`e.activo = ${add(query.active)}`);
+    if (query.reviewStatus)
+      where.push(`e.estado_revision = ${add(query.reviewStatus)}`);
+    if (!isAdmin) where.push(`e.responsable_usuario_id = ${add(actorId)}`);
     if (query.localityId !== undefined)
       where.push(`e.localidad_id = ${add(query.localityId)}`);
     if (query.provinceId !== undefined)
@@ -235,7 +258,7 @@ export class EstablishmentsService {
     };
   }
 
-  async find(id: string) {
+  async find(id: string, actorId?: number, isAdmin = true) {
     const numericId = this.parseId(id);
     const rows = (await this.dataSource.query(
       `${establishmentSelect} ${establishmentJoin} WHERE e.id = $1`,
@@ -243,16 +266,26 @@ export class EstablishmentsService {
     )) as EstablishmentRow[];
     const row = rows[0];
     if (!row) throw new NotFoundException("No se encontró el establecimiento.");
+    if (!isAdmin && (!actorId || Number(row.responsibleId) !== actorId)) {
+      throw new NotFoundException("No se encontró el establecimiento.");
+    }
     return this.toAdminItem(row);
   }
 
-  async create(actorId: number, input: CreateEstablishmentDto) {
+  async create(actorId: number, input: CreateEstablishmentDto, isAdmin = true) {
     const required = this.requireCreateFields(input);
     return this.dataSource.transaction(async (manager) => {
       await this.assertLocality(manager, required.localityId);
       await this.assertUniqueRegistration(manager, input.numeroRegistro);
       const taxonomy = await this.resolveTaxonomy(manager, input);
-      const row = await this.insert(manager, input, taxonomy, required);
+      const row = await this.insert(
+        manager,
+        input,
+        taxonomy,
+        required,
+        actorId,
+        isAdmin,
+      );
       const created = await this.findWithManager(manager, row.id);
       await this.audit(
         manager,
@@ -266,10 +299,29 @@ export class EstablishmentsService {
     });
   }
 
-  async save(id: string, actorId: number, input: SaveEstablishmentDto) {
+  async save(
+    id: string,
+    actorId: number,
+    input: SaveEstablishmentDto,
+    isAdmin = true,
+  ) {
     const numericId = this.parseId(id);
     return this.dataSource.transaction(async (manager) => {
       const current = await this.findWithManager(manager, numericId, true);
+      await this.assertEstablishmentAccess(
+        manager,
+        numericId,
+        actorId,
+        isAdmin,
+      );
+      if (
+        !isAdmin &&
+        !["BORRADOR", "RECHAZADO"].includes(current.reviewStatus)
+      ) {
+        throw new ConflictException(
+          "Solo puedes editar tus catastros en borrador o rechazados.",
+        );
+      }
       const nextLocalityId = input.localityId ?? Number(current.localityId);
       const nextLatitude =
         input.latitude ?? this.toNullableNumber(current.latitude);
@@ -318,6 +370,7 @@ export class EstablishmentsService {
         nextLatitude,
         nextLongitude,
         numericId,
+        isAdmin,
       ];
       await manager.query(
         `UPDATE establecimientos_turisticos
@@ -337,6 +390,8 @@ export class EstablishmentsService {
                 latitud = $14,
                 longitud = $15,
                 ubicacion = ST_SetSRID(ST_MakePoint($15::double precision, $14::double precision), 4326)::geography,
+                estado_revision = CASE WHEN $17::boolean THEN estado_revision ELSE 'BORRADOR' END,
+                observacion_revision = CASE WHEN $17::boolean THEN observacion_revision ELSE NULL END,
                 coordenadas_aproximadas = CASE
                   WHEN latitud IS DISTINCT FROM $14::numeric
                     OR longitud IS DISTINCT FROM $15::numeric
@@ -353,6 +408,87 @@ export class EstablishmentsService {
         numericId,
         actorId,
         "MODIFICAR",
+        current,
+        saved,
+      );
+      return saved;
+    });
+  }
+
+  async submitReview(id: string, actorId: number, isAdmin = true) {
+    const numericId = this.parseId(id);
+    return this.dataSource.transaction(async (manager) => {
+      await this.assertEstablishmentAccess(
+        manager,
+        numericId,
+        actorId,
+        isAdmin,
+      );
+      const current = await this.findWithManager(manager, numericId, true);
+      if (!["BORRADOR", "RECHAZADO"].includes(current.reviewStatus)) {
+        throw new ConflictException(
+          "Solo puedes enviar catastros en borrador o rechazados a revisión.",
+        );
+      }
+      await manager.query(
+        `UPDATE establecimientos_turisticos
+            SET estado_revision = 'EN_REVISION',
+                observacion_revision = NULL,
+                solicitado_por = $2,
+                fecha_solicitud = CURRENT_TIMESTAMP,
+                revisado_por = NULL,
+                fecha_revision = NULL,
+                activo = FALSE,
+                updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1`,
+        [numericId, actorId],
+      );
+      const saved = await this.findWithManager(manager, numericId);
+      await this.audit(
+        manager,
+        numericId,
+        actorId,
+        "SOLICITAR_REVISION",
+        current,
+        saved,
+      );
+      return saved;
+    });
+  }
+
+  async review(id: string, actorId: number, input: ReviewEstablishmentDto) {
+    const numericId = this.parseId(id);
+    return this.dataSource.transaction(async (manager) => {
+      const current = await this.findWithManager(manager, numericId, true);
+      if (current.reviewStatus !== "EN_REVISION") {
+        throw new ConflictException(
+          "El catastro ya no está en revisión; actualiza la lista antes de operar.",
+        );
+      }
+      const approved = input.action === "APPROVE";
+      await manager.query(
+        `UPDATE establecimientos_turisticos
+            SET estado_revision = $2,
+                observacion_revision = $3,
+                revisado_por = $4,
+                fecha_revision = CURRENT_TIMESTAMP,
+                activo = $5,
+                updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1`,
+        [
+          numericId,
+          approved ? "PUBLICADO" : "RECHAZADO",
+          input.observation ?? null,
+          actorId,
+          approved,
+        ],
+      );
+      const saved = await this.findWithManager(manager, numericId);
+      await this.audit(
+        manager,
+        numericId,
+        actorId,
+        approved ? "APROBAR" : "RECHAZAR",
         current,
         saved,
       );
@@ -421,6 +557,7 @@ export class EstablishmentsService {
     const longitudeExpression = "e.longitud";
     const where = [
       "e.activo = TRUE",
+      "e.estado_revision = 'PUBLICADO'",
       `${latitudeExpression} IS NOT NULL`,
       `${longitudeExpression} IS NOT NULL`,
     ];
@@ -449,8 +586,8 @@ export class EstablishmentsService {
               ${latitudeExpression}::double precision AS latitude,
               ${longitudeExpression}::double precision AS longitude,
               e.coordenadas_aproximadas AS approximate,
-              COALESCE(NULLIF(classification_catalog.icono, 'mapPin'), NULLIF(category_catalog.icono, 'mapPin'), 'hotel') AS icon,
-              COALESCE(classification_catalog.color, category_catalog.color, '#7c3aed') AS color
+              COALESCE(NULLIF(classification_catalog.icono, 'mapPin'), NULLIF(category_catalog.icono, 'mapPin'), 'shop-supermarket') AS icon,
+              COALESCE(classification_catalog.color, category_catalog.color, '#be123c') AS color
          ${establishmentJoin}
         WHERE ${where.join(" AND ")}
         ORDER BY e.nombre_comercial, e.id
@@ -575,6 +712,7 @@ export class EstablishmentsService {
               ST_Distance(e.ubicacion, ${origin}) AS "distanceMeters"
          ${establishmentJoin}
         WHERE e.activo = TRUE
+          AND e.estado_revision = 'PUBLICADO'
           AND l.activo = TRUE
           AND co.activo = TRUE
           AND p.activo = TRUE
@@ -615,6 +753,24 @@ export class EstablishmentsService {
     return this.toAdminItem(row);
   }
 
+  private async assertEstablishmentAccess(
+    manager: EntityManager,
+    id: number,
+    actorId: number | undefined,
+    isAdmin: boolean,
+  ) {
+    if (isAdmin) return;
+    const rows = (await manager.query(
+      `SELECT responsable_usuario_id AS "responsibleId"
+         FROM establecimientos_turisticos
+        WHERE id = $1`,
+      [id],
+    )) as Array<{ responsibleId: number | null }>;
+    if (!rows[0] || !actorId || Number(rows[0].responsibleId) !== actorId) {
+      throw new NotFoundException("No se encontró el establecimiento.");
+    }
+  }
+
   private async insert(
     manager: EntityManager,
     input: CreateEstablishmentDto,
@@ -625,6 +781,8 @@ export class EstablishmentsService {
       latitude: number;
       longitude: number;
     },
+    actorId: number,
+    isAdmin: boolean,
   ) {
     const rows = (await manager.query(
       `INSERT INTO establecimientos_turisticos (
@@ -632,12 +790,13 @@ export class EstablishmentsService {
          actividad, clasificacion, categoria,
          actividad_catalogo_id, clasificacion_catalogo_id, categoria_catalogo_id,
          direccion, telefono, latitud, longitud, ubicacion,
-         coordenadas_aproximadas, activo, created_at, updated_at
+         coordenadas_aproximadas, activo, responsable_usuario_id,
+         estado_revision, created_at, updated_at
        ) VALUES (
          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
          ST_SetSRID(ST_MakePoint($15::double precision, $14::double precision), 4326)::geography,
          FALSE,
-         TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+         $16, $17, $18, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
        ) RETURNING id`,
       [
         required.localityId,
@@ -655,6 +814,9 @@ export class EstablishmentsService {
         input.telefono || null,
         required.latitude,
         required.longitude,
+        isAdmin,
+        actorId,
+        isAdmin ? "PUBLICADO" : "BORRADOR",
       ],
     )) as Array<{ id: string }>;
     return rows[0];
@@ -984,6 +1146,7 @@ export class EstablishmentsService {
          ${establishmentJoin}
         WHERE e.localidad_id = $1
           AND e.activo = TRUE
+          AND e.estado_revision = 'PUBLICADO'
           AND ${this.matchingActivitySql("e", "$2", "$5")}
         ORDER BY "distanceMeters" NULLS LAST, e.nombre_comercial, e.id
         LIMIT $6`,
@@ -1011,6 +1174,7 @@ export class EstablishmentsService {
          ON category_match.id = e_match.categoria_catalogo_id
        WHERE e_match.localidad_id = l.id
          AND e_match.activo = TRUE
+         AND e_match.estado_revision = 'PUBLICADO'
          AND ${this.normalizedSql("COALESCE(activity_match.nombre, e_match.actividad)")} = ${this.normalizedSql(activityParam)}
          AND (${categoryParam}::text IS NULL OR ${this.normalizedSql("COALESCE(category_match.nombre, e_match.categoria)")} = ${this.normalizedSql(categoryParam)})`;
   }
@@ -1063,7 +1227,14 @@ export class EstablishmentsService {
     manager: EntityManager,
     establishmentId: number,
     actorId: number,
-    action: "CREAR" | "MODIFICAR" | "ACTIVAR" | "DESACTIVAR",
+    action:
+      | "CREAR"
+      | "MODIFICAR"
+      | "ACTIVAR"
+      | "DESACTIVAR"
+      | "SOLICITAR_REVISION"
+      | "APROBAR"
+      | "RECHAZAR",
     previous: AdminEstablishmentItem | null,
     next: AdminEstablishmentItem | null,
   ) {
@@ -1099,6 +1270,8 @@ export class EstablishmentsService {
       latitude: item.latitude,
       longitude: item.longitude,
       active: item.active,
+      reviewStatus: item.reviewStatus,
+      reviewObservation: item.reviewObservation,
     };
   }
 
@@ -1129,6 +1302,11 @@ export class EstablishmentsService {
       latitude: this.toNullableNumber(row.latitude),
       longitude: this.toNullableNumber(row.longitude),
       active: row.active,
+      reviewStatus: row.reviewStatus,
+      reviewObservation: row.reviewObservation,
+      requestedAt: row.requestedAt,
+      requestedBy: row.requestedBy,
+      reviewedAt: row.reviewedAt,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };

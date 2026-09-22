@@ -24,9 +24,15 @@ que protege el registro móvil contra alias del mismo correo. Debe ejecutarse de
 baseline y antes de habilitar `POST /auth/mobile/register`; si encuentra correos duplicados
 ignorando mayúsculas, se detiene para que operación los resuelva explícitamente.
 
-La migración `20260918_consolidate_auth_roles.sql` deja únicamente los roles
+La migración `20260918_consolidate_auth_roles.sql` deja inicialmente los roles
 `ADMINISTRADOR` y `TURISTA`. Las cuentas que tuvieran `REVISOR` o `GESTOR` conservan su
 identidad y reciben `ADMINISTRADOR` antes de retirar las asignaciones y roles obsoletos.
+
+La migración `20260922_tourism_agent_review_workflow.sql` añade el rol
+`AGENTE_TURISTICO`, vincula centros y catastros con su usuario responsable, y crea el
+estado de revisión del catastro. Los nuevos registros de agentes quedan en borrador y no
+son públicos hasta la aprobación administrativa; los catastros históricos se conservan
+como `PUBLICADO`.
 
 La migración `20260918_admin_center_drafts.sql` agrega snapshots JSONB versionados para
 separar borradores administrativos del contenido público. Debe ejecutarse después del
@@ -122,6 +128,11 @@ de clasificación/tipo de establecimiento y añade a las categorías el sistema 
 valor numérico cuando existe y una marca de revisión para valores ambiguos del consolidado.
 Conserva los campos visuales heredados de categoría para compatibilidad, pero la API nueva y
 el mapa leen la configuración de la clasificación. Es aditiva e idempotente.
+
+La migración `20260922_osmic_establishment_pins.sql` traduce los iconos heredados al
+catálogo curado de pines Osmic, asigna una paleta fija por icono y sincroniza el perfil
+visual heredado de las categorías. Después de ejecutarla, el panel solo debe permitir
+seleccionar el icono; el color se calcula en la API y queda protegido por restricciones.
 
 La migración `20260921_establishment_coordinates_required.sql` completa las coordenadas
 faltantes de `establecimientos_turisticos` usando la localidad vinculada, las marca como

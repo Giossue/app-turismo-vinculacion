@@ -37,9 +37,14 @@ export class AdminController {
   ) {}
 
   @Get("centers")
-  @Roles("ADMINISTRADOR")
-  async list(@Query() query: AdminCentersQueryDto) {
-    return { data: await this.centers.list(query) };
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
+  async list(
+    @Query() query: AdminCentersQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      data: await this.centers.list(query, user.id, isAdmin(user)),
+    };
   }
 
   @Get("summary")
@@ -49,31 +54,46 @@ export class AdminController {
   }
 
   @Get("catalogs")
-  @Roles("ADMINISTRADOR")
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
   async catalogs(@Query() query: AdminCatalogsQueryDto) {
     return { data: await this.centers.catalogs(query) };
   }
 
   @Get("centers/:code")
-  @Roles("ADMINISTRADOR")
-  async find(@Param("code") code: string) {
-    return { data: await this.centers.find(code) };
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
+  async find(
+    @Param("code") code: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      data: await this.centers.find(code, user.id, isAdmin(user)),
+    };
   }
 
   @Get("centers/:code/sections")
-  @Roles("ADMINISTRADOR")
-  async sections(@Param("code") code: string) {
-    return { data: await this.centers.sections(code) };
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
+  async sections(
+    @Param("code") code: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      data: await this.centers.sections(code, user.id, isAdmin(user)),
+    };
   }
 
   @Get("centers/:code/valuation")
-  @Roles("ADMINISTRADOR")
-  async valuation(@Param("code") code: string) {
-    return { data: await this.centers.valuation(code) };
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
+  async valuation(
+    @Param("code") code: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      data: await this.centers.valuation(code, user.id, isAdmin(user)),
+    };
   }
 
   @Patch("centers/:code/sections/:sectionCode")
-  @Roles("ADMINISTRADOR")
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
   async saveSection(
     @Param("code") code: string,
     @Param("sectionCode") sectionCode: string,
@@ -87,14 +107,21 @@ export class AdminController {
     ) {
       throw new BadRequestException("La sección de ficha no está disponible.");
     }
-    return {
-      data: await this.centers.saveSection(
-        code,
-        sectionCode as (typeof ADMIN_CENTER_SECTION_CODES)[number],
-        user.id,
-        body,
-      ),
-    };
+    const data = user.roles
+      ? await this.centers.saveSection(
+          code,
+          sectionCode as (typeof ADMIN_CENTER_SECTION_CODES)[number],
+          user.id,
+          body,
+          isAdmin(user),
+        )
+      : await this.centers.saveSection(
+          code,
+          sectionCode as (typeof ADMIN_CENTER_SECTION_CODES)[number],
+          user.id,
+          body,
+        );
+    return { data };
   }
 
   @Patch("catalogs/:catalog/:id")
@@ -117,31 +144,37 @@ export class AdminController {
   }
 
   @Post("centers")
-  @Roles("ADMINISTRADOR")
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
   async create(
     @Body() body: SaveAdminCenterDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return { data: await this.centers.create(user.id, body) };
+    return {
+      data: await this.centers.create(user.id, body),
+    };
   }
 
   @Patch("centers/:code")
-  @Roles("ADMINISTRADOR")
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
   async save(
     @Param("code") code: string,
     @Body() body: SaveAdminCenterDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return { data: await this.centers.save(code, user.id, body) };
+    return {
+      data: await this.centers.save(code, user.id, body, isAdmin(user)),
+    };
   }
 
   @Post("centers/:code/submit-review")
-  @Roles("ADMINISTRADOR")
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
   async submitReview(
     @Param("code") code: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return { data: await this.centers.submitReview(code, user.id) };
+    return {
+      data: await this.centers.submitReview(code, user.id, isAdmin(user)),
+    };
   }
 
   @Patch("centers/:code/review")
@@ -186,4 +219,8 @@ export class AdminController {
   async audit(@Param("code") code: string) {
     return { data: await this.centers.getAudit(code) };
   }
+}
+
+function isAdmin(user: AuthenticatedUser) {
+  return user.roles?.includes("ADMINISTRADOR") ?? true;
 }

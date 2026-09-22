@@ -33,6 +33,10 @@ import {
   XLSM_INDICATOR_CODES,
   type XlsmValuationCatalogs,
 } from "./valuation";
+import {
+  DEFAULT_ESTABLISHMENT_VISUAL_ICON,
+  getEstablishmentVisualColor,
+} from "../establishments/establishment-visuals";
 
 type JsonRecord = Record<string, unknown>;
 type CatalogKey =
@@ -41,8 +45,7 @@ type CatalogKey =
   | "FACILITY"
   | "ESTABLISHMENT_CLASSIFICATION"
   | "ESTABLISHMENT_CATEGORY";
-const DEFAULT_ESTABLISHMENT_ICON = "store";
-const DEFAULT_ESTABLISHMENT_COLOR = "#c026d3";
+const DEFAULT_ESTABLISHMENT_ICON = DEFAULT_ESTABLISHMENT_VISUAL_ICON;
 const CATALOG_TARGETS: Record<
   CatalogKey,
   { table: string; supportsVisual?: boolean; scopedToActivity?: boolean }
@@ -94,6 +97,7 @@ interface CenterRow extends JsonRecord {
   statusCode: string;
   statusName: string;
   active: boolean;
+  responsibleId: number | null;
   publishedAt: string | null;
   subtypeId: number;
   touristZoneId: number;
@@ -146,6 +150,7 @@ interface CenterListRow {
   requestedBy: string | null;
   observation: string | null;
   active: boolean;
+  responsibleId: number | null;
   hasDraft: boolean;
   total: string;
 }
@@ -1807,9 +1812,13 @@ export class AdminCentersService {
     @Optional() @Inject(MediaService) private readonly media?: MediaService,
   ) {}
 
-  async list(query: AdminCentersQueryDto) {
+  async list(query: AdminCentersQueryDto, actorId = 0, isAdmin = true) {
     const values: unknown[] = [];
     const conditions: string[] = ["TRUE"];
+    if (!isAdmin) {
+      values.push(actorId);
+      conditions.push(`inventory.responsible_id = $${values.length}`);
+    }
     if (query.status === "REVIEW_QUEUE") {
       conditions.push("inventory.status_code IN ('EN_REVISION', 'APROBADO')");
     } else if (query.status) {
@@ -1844,6 +1853,7 @@ export class AdminCentersService {
                 u.nombre AS "requestedBy",
                 COALESCE(rp.observacion, bd.observation) AS observation,
                 c.activo AS active,
+                c.responsable_usuario_id AS responsible_id,
                 (bd.id IS NOT NULL AND bd.state_code <> 'PUBLICADO') AS "hasDraft",
                 COUNT(*) OVER() AS total
            FROM centros_turisticos c
@@ -1874,7 +1884,7 @@ export class AdminCentersService {
        )
        SELECT code, name, status_code AS "statusCode", status_name AS "statusName",
               base_status_code AS "baseStatusCode", "updatedAt", "submittedAt",
-              "requestedBy", observation, active, "hasDraft", total
+              "requestedBy", observation, active, responsible_id AS "responsibleId", "hasDraft", total
          FROM inventory
         WHERE ${conditions.join(" AND ")}
         ORDER BY "updatedAt" DESC, code ASC
@@ -1893,6 +1903,7 @@ export class AdminCentersService {
         requestedBy: row.requestedBy,
         observation: row.observation,
         active: row.active,
+        responsibleId: row.responsibleId,
         hasDraft: row.hasDraft,
       })),
       total: Number(rows[0]?.total ?? 0),
@@ -2375,19 +2386,26 @@ export class AdminCentersService {
     const target = CATALOG_TARGETS[catalog as CatalogKey];
     if (!target) throw new ConflictException("El catálogo no está disponible.");
     if (
+      "color" in (input as unknown as Record<string, unknown>) &&
+      (input as unknown as Record<string, unknown>).color !== undefined
+    ) {
+      throw new ConflictException(
+        "El color del marcador se asigna automáticamente según el icono.",
+      );
+    }
+    if (
       input.name === undefined &&
       input.active === undefined &&
-      input.icon === undefined &&
-      input.color === undefined
+      input.icon === undefined
     ) {
       throw new ConflictException("Debes indicar un cambio para el catálogo.");
     }
     if (
       !target.supportsVisual &&
-      (input.icon !== undefined || input.color !== undefined)
+      input.icon !== undefined
     ) {
       throw new ConflictException(
-        "Icono y color solo están disponibles para tipos de establecimiento.",
+        "El icono solo está disponible para tipos de establecimiento.",
       );
     }
     return this.dataSource.transaction(async (manager) => {
@@ -2419,12 +2437,11 @@ export class AdminCentersService {
         ? (input.icon ?? current.icon ?? DEFAULT_ESTABLISHMENT_ICON)
         : undefined;
       const nextColor = target.supportsVisual
-        ? (input.color ?? current.color ?? DEFAULT_ESTABLISHMENT_COLOR)
+        ? getEstablishmentVisualColor(nextIcon)
         : undefined;
       const visualUnchanged =
         !target.supportsVisual ||
-        (nextIcon === (current.icon ?? DEFAULT_ESTABLISHMENT_ICON) &&
-          nextColor === (current.color ?? DEFAULT_ESTABLISHMENT_COLOR));
+        nextIcon === (current.icon ?? DEFAULT_ESTABLISHMENT_ICON);
       if (
         nextName === current.name &&
         nextActive === current.active &&
@@ -2484,7 +2501,7 @@ export class AdminCentersService {
         ...(target.supportsVisual
           ? {
               icon: current.icon ?? DEFAULT_ESTABLISHMENT_ICON,
-              color: current.color ?? DEFAULT_ESTABLISHMENT_COLOR,
+              color: getEstablishmentVisualColor(current.icon),
             }
           : {}),
       };
@@ -2521,10 +2538,12 @@ export class AdminCentersService {
     });
   }
 
-  async find(code: string) {
-    return this.dataSource.transaction((manager) =>
-      this.findByCode(manager, code),
-    );
+  async find(code: string, actorId?: number, isAdmin = true) {
+    return this.dataSource.transaction(async (manager) => {
+      const center = await this.findCenterByCode(manager, code);
+      this.assertCenterAccess(center, actorId, isAdmin);
+      return this.mapDetail(manager, center);
+    });
   }
 
   async create(actorId: number, input: SaveAdminCenterDto) {
@@ -2543,8 +2562,9 @@ export class AdminCentersService {
           (secuencial_atractivo, nombre, subtipo_atractivo_id, zona_turistica_id,
            parroquia_id, linea_producto_id, escenario_id, jerarquia_id,
            estado_resenia_id, latitud, longitud, altitud_msnm, descripcion,
-           barrio_sector_comuna, calle_principal, numero_direccion, calle_transversal)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+           barrio_sector_comuna, calle_principal, numero_direccion, calle_transversal,
+           responsable_usuario_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
          RETURNING id`,
         [
           sequence,
@@ -2564,6 +2584,7 @@ export class AdminCentersService {
           draft.address?.street ?? null,
           draft.address?.number ?? null,
           draft.address?.crossStreet ?? null,
+          actorId,
         ],
       )) as { id: string }[];
       const center = rows[0];
@@ -2574,9 +2595,15 @@ export class AdminCentersService {
     });
   }
 
-  async save(code: string, actorId: number, input: SaveAdminCenterDto) {
+  async save(
+    code: string,
+    actorId: number,
+    input: SaveAdminCenterDto,
+    isAdmin = true,
+  ) {
     return this.dataSource.transaction(async (manager) => {
       const center = await this.lockCenter(manager, code);
+      this.assertCenterAccess(center, actorId, isAdmin);
       const currentDraft = await this.getDraft(manager, center.id);
       const base =
         currentDraft && currentDraft.stateCode !== "PUBLICADO"
@@ -2586,6 +2613,11 @@ export class AdminCentersService {
               sections: currentDraft?.data.sections,
             };
       const draftState = currentDraft?.stateCode ?? center.statusCode;
+      if (!isAdmin && !EDITABLE_DRAFT_STATES.has(draftState)) {
+        throw new ConflictException(
+          "Solo puedes editar tus fichas en borrador o rechazadas.",
+        );
+      }
       if (
         !EDITABLE_DRAFT_STATES.has(draftState) &&
         draftState !== "PUBLICADO"
@@ -2640,9 +2672,10 @@ export class AdminCentersService {
     });
   }
 
-  async submitReview(code: string, actorId: number) {
+  async submitReview(code: string, actorId: number, isAdmin = true) {
     return this.dataSource.transaction(async (manager) => {
       const center = await this.lockCenter(manager, code);
+      this.assertCenterAccess(center, actorId, isAdmin);
       const draft = await this.getDraft(manager, center.id);
       if (!draft || !EDITABLE_DRAFT_STATES.has(draft.stateCode)) {
         throw new ConflictException(
@@ -2823,7 +2856,7 @@ export class AdminCentersService {
     return { items: rows };
   }
 
-  async sections(code: string) {
+  async sections(code: string, actorId?: number, isAdmin = true) {
     return this.dataSource.transaction(async (manager) => {
       const rows = (await manager.query(
         this.centerSelect() + " WHERE TRIM(c.codigo_atractivo) = TRIM($1)",
@@ -2832,6 +2865,7 @@ export class AdminCentersService {
       const center = rows[0];
       if (!center)
         throw new NotFoundException("No se encontró la ficha turística.");
+      this.assertCenterAccess(center, actorId, isAdmin);
       const detail = await this.mapDetail(manager, center);
       const effectiveDraft = detail.draft ?? detail.published;
       return {
@@ -2843,11 +2877,12 @@ export class AdminCentersService {
     });
   }
 
-  async valuation(code: string) {
+  async valuation(code: string, actorId?: number, isAdmin = true) {
     return this.dataSource.transaction(async (manager) => {
       const rows = (await manager.query(
         `SELECT c.id, c.jerarquia_id AS "hierarchyId",
                 rj.codigo AS "hierarchyCode"
+                ,c.responsable_usuario_id AS "responsibleId"
            FROM centros_turisticos c
            LEFT JOIN rangos_jerarquia rj ON rj.id = c.jerarquia_id
           WHERE TRIM(c.codigo_atractivo) = TRIM($1)`,
@@ -2856,10 +2891,12 @@ export class AdminCentersService {
         id: string;
         hierarchyId: number | null;
         hierarchyCode: string | null;
+        responsibleId: number | null;
       }>;
       const center = rows[0];
       if (!center)
         throw new NotFoundException("No se encontró la ficha turística.");
+      this.assertCenterAccess(center, actorId, isAdmin);
 
       const [indicatorRows, criterionRows, totalRows] = await Promise.all([
         manager.query(
@@ -2928,6 +2965,7 @@ export class AdminCentersService {
     sectionCode: AdminCenterSectionCode,
     actorId: number,
     input: SaveAdminSectionDto,
+    isAdmin = true,
   ) {
     if (!ADMIN_CENTER_SECTION_CODES.includes(sectionCode)) {
       throw new ConflictException("La sección de ficha no está disponible.");
@@ -2938,6 +2976,7 @@ export class AdminCentersService {
     }
     return this.dataSource.transaction(async (manager) => {
       const center = await this.lockCenter(manager, code);
+      this.assertCenterAccess(center, actorId, isAdmin);
       const currentDraft = await this.getDraft(manager, center.id);
       const base =
         currentDraft && currentDraft.stateCode !== "PUBLICADO"
@@ -2997,13 +3036,31 @@ export class AdminCentersService {
   }
 
   private async findByCode(manager: EntityManager, code: string) {
+    const center = await this.findCenterByCode(manager, code);
+    return this.mapDetail(manager, center);
+  }
+
+  private async findCenterByCode(
+    manager: EntityManager,
+    code: string,
+  ): Promise<CenterRow> {
     const rows = (await manager.query(
       this.centerSelect() + " WHERE TRIM(c.codigo_atractivo) = TRIM($1)",
       [code],
     )) as CenterRow[];
     if (!rows[0])
       throw new NotFoundException("No se encontró la ficha turística.");
-    return this.mapDetail(manager, rows[0]);
+    return rows[0];
+  }
+
+  private assertCenterAccess(
+    center: Pick<CenterRow, "responsibleId">,
+    actorId: number | undefined,
+    isAdmin: boolean,
+  ) {
+    if (!isAdmin && (!actorId || Number(center.responsibleId) !== actorId)) {
+      throw new NotFoundException("No se encontró la ficha turística.");
+    }
   }
 
   private async findById(manager: EntityManager, id: string) {
@@ -3148,6 +3205,7 @@ export class AdminCentersService {
   private centerSelect(): string {
     return `SELECT c.id, TRIM(c.codigo_atractivo) AS code, c.nombre AS name,
                    er.codigo AS "statusCode", er.nombre AS "statusName", c.activo AS active,
+                   c.responsable_usuario_id AS "responsibleId",
                    c.publicado_at AS "publishedAt", c.subtipo_atractivo_id AS "subtypeId",
                    c.zona_turistica_id AS "touristZoneId", c.parroquia_id AS "parishId",
                    c.linea_producto_id AS "productLineId", c.escenario_id AS "scenarioId",

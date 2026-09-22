@@ -27,13 +27,22 @@ export class FilesController {
   constructor(@Inject(MediaService) private readonly media: MediaService) {}
 
   @Get("centers/:code/media")
-  @Roles("ADMINISTRADOR")
-  async list(@Param("code") code: string) {
-    return { data: await this.media.listForAdmin(code) };
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
+  async list(
+    @Param("code") code: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      data: await this.media.listForAdmin(
+        code,
+        user.id,
+        user.roles.includes("ADMINISTRADOR"),
+      ),
+    };
   }
 
   @Post("centers/:code/media")
-  @Roles("ADMINISTRADOR")
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
   async upload(
     @Param("code") code: string,
     @Req() request: FastifyRequest,
@@ -53,19 +62,24 @@ export class FilesController {
       throw new BadRequestException("El archivo supera el límite permitido.");
     }
     return {
-      data: await this.media.upload(user.id, code, {
-        originalName: part.filename,
-        mimeType: part.mimetype,
-        buffer,
-        typeCode: parseTypeCode(fieldText(part.fields?.typeCode)),
-        description: fieldText(part.fields?.description),
-        sourceAuthor: fieldText(part.fields?.sourceAuthor),
-      }),
+      data: await this.media.upload(
+        user.id,
+        code,
+        {
+          originalName: part.filename,
+          mimeType: part.mimetype,
+          buffer,
+          typeCode: parseTypeCode(fieldText(part.fields?.typeCode)),
+          description: fieldText(part.fields?.description),
+          sourceAuthor: fieldText(part.fields?.sourceAuthor),
+        },
+        user.roles.includes("ADMINISTRADOR"),
+      ),
     };
   }
 
   @Delete("centers/:code/media/:id")
-  @Roles("ADMINISTRADOR")
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
   async remove(
     @Param("code") code: string,
     @Param("id") id: string,
@@ -77,7 +91,14 @@ export class FilesController {
         "El identificador de la fotografía no es válido.",
       );
     }
-    return { data: await this.media.remove(user.id, code, mediaId) };
+    return {
+      data: await this.media.remove(
+        user.id,
+        code,
+        mediaId,
+        user.roles.includes("ADMINISTRADOR"),
+      ),
+    };
   }
 }
 

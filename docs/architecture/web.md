@@ -75,14 +75,16 @@ se realizan exclusivamente mediante la API. Los borradores se mantienen aislados
 versión pública hasta publicar y cada mutación genera auditoría. Catastro consulta el
 catálogo activo de localidades y mantiene sus establecimientos separados de las fichas de
 centros. La consulta pública de catastro aplica fallback por actividad a la localidad activa
-más cercana que tenga resultados y lo marca explícitamente. Las mutaciones del catastro
-se registran en la tabla de auditoría existente con el discriminador `ESTABLISHMENT`;
+más cercana que tenga resultados y lo marca explícitamente. Los agentes operativos ven y
+editan sus propios catastros en borrador, mientras que la cola del administrador muestra
+el detalle completo enviado y registra sus decisiones. Las mutaciones del catastro se
+registran en la tabla de auditoría existente con el discriminador `ESTABLISHMENT`;
 la taxonomía se consulta como actividad → clasificación → categoría y no reutiliza
 `categorias_atractivo`; la categoría conserva su sistema semántico y la importación nacional
 queda para una fase posterior.
 La sección Catálogos permite administrar las opciones técnicas mediante la API y muestra
 estados activos/inactivos sin conexión directa a PostgreSQL. Los tipos de establecimiento
-conservan un código de icono y un color hexadecimal controlados por la API para representar
+conservan un código de icono y un color hexadecimal asignado automáticamente por la API para representar
 sus categorías en el mapa móvil; las categorías exponen su sistema semántico y quedan sin
 configuración visual propia.
 El editor también carga fotografías como multipart hacia `/admin/centers/:code/media`; la

@@ -44,12 +44,13 @@ limpia el access token en memoria y devuelve al inicio de sesión.
 
 ## Autorización
 
-Roles iniciales: `TURISTA` y `ADMINISTRADOR`.
+Roles iniciales: `TURISTA`, `AGENTE_TURISTICO` y `ADMINISTRADOR`.
 
-El administrador es responsable de crear, editar, revisar, publicar y desactivar fichas
-turísticas. El turista consulta contenido publicado y usa las funciones propias de la
-aplicación; no accede al panel institucional. No se separa la captura en un rol de guía
-en esta fase.
+El turista consulta contenido publicado y usa las funciones propias de la aplicación; no
+accede al panel institucional. El agente turístico crea y completa sus fichas y catastros,
+los guarda como borrador y los envía a revisión. El administrador tiene ámbito global:
+consulta el contenido completo enviado, decide aprobar o rechazar, publica fichas y
+administra catálogos.
 
 Cada caso de uso valida:
 
@@ -58,6 +59,10 @@ Cada caso de uso valida:
 3. propiedad o ámbito del registro;
 4. estado permitido de la ficha;
 5. campos modificables.
+
+La propiedad del agente se comprueba en cada lectura y mutación administrativa. Los
+registros de centros y catastros enviados por un agente permanecen fuera de la consulta
+pública hasta que una decisión administrativa los publique.
 
 Una única cuenta administradora inicial no implica codificar cardinalidad 1:1. El modelo
 debe admitir más personas e instituciones en el futuro.

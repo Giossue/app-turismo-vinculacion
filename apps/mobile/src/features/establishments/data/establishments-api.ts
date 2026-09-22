@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { getApiUrl } from "@/core/api/api-url";
 import type {
+  EstablishmentMapViewport,
   MapEstablishmentsResult,
   NearbyEstablishmentsQuery,
   NearbyEstablishmentsResult,
@@ -55,12 +56,26 @@ const mapResponseSchema = z.object({
 });
 
 export async function getMapEstablishments(
+  viewport: EstablishmentMapViewport | null = null,
   fetcher: typeof fetch = fetch,
   apiUrl = getApiUrl(),
+  signal?: AbortSignal,
 ): Promise<MapEstablishmentsResult> {
-  const response = await fetcher(`${apiUrl}/establishments/map`, {
-    headers: { Accept: "application/json" },
-  });
+  const params = new URLSearchParams();
+  if (viewport) {
+    params.set("west", String(viewport.west));
+    params.set("south", String(viewport.south));
+    params.set("east", String(viewport.east));
+    params.set("north", String(viewport.north));
+  }
+  const query = params.toString();
+  const response = await fetcher(
+    `${apiUrl}/establishments/map${query ? `?${query}` : ""}`,
+    {
+      headers: { Accept: "application/json" },
+      signal,
+    },
+  );
   // The map layer is additive and older API deployments do not expose this
   // route yet. Keep public discovery usable until that deployment is updated.
   if (response.status === 404) return { items: [] };

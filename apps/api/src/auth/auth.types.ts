@@ -1,4 +1,8 @@
-export const AUTH_ROLES = ["ADMINISTRADOR", "TURISTA"] as const;
+export const AUTH_ROLES = [
+  "ADMINISTRADOR",
+  "AGENTE_TURISTICO",
+  "TURISTA",
+] as const;
 
 /**
  * Labels used by Ecuador's civil-identity framework for the registered gender

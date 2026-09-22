@@ -2,7 +2,8 @@
 
 ## Propósito
 
-Permitir que un administrador mantenga establecimientos turísticos individuales
+Permitir que un agente turístico capture establecimientos turísticos individuales y que un
+administrador los revise antes de publicarlos,
 (alojamiento, alimentación, agencias, operadoras y otras actividades) sin confundirlos con
 la ficha técnica de un centro turístico.
 
@@ -12,6 +13,11 @@ la ficha técnica de un centro turístico.
   territoriales en cascada (provincia, cantón y localidad) y estado activo.
 - Alta, edición y activación/desactivación lógica utilizando los datos de
   `establecimientos_turisticos` y la taxonomía jerárquica del catastro.
+- Flujo de captura `BORRADOR` → `EN_REVISION` → `PUBLICADO` o `RECHAZADO`. Los agentes
+  solo pueden consultar y editar sus propios registros en borrador/rechazados; la decisión
+  administrativa conserva la observación, el solicitante y las fechas de revisión.
+- La cola administrativa permite abrir el detalle completo enviado —identificación,
+  taxonomía, territorio, contacto y coordenadas— antes de aprobar o rechazar.
 - Auditoría inmutable de altas, ediciones, activaciones y desactivaciones mediante la
   tabla existente `auditoria_catalogos`, identificada con `ESTABLISHMENT`.
 - Catálogo activo de `localidades` para seleccionar la ciudad o poblado de referencia.
@@ -20,8 +26,10 @@ la ficha técnica de un centro turístico.
 - La categoría conserva el sistema semántico de la fuente (`ESTRELLAS`, `TENEDORES`,
   `TAZAS`, `COPAS`, `CLASE`, `MODALIDAD` u otro) y, cuando corresponde, su valor numérico.
   Los valores ambiguos quedan marcados para revisión operativa.
-- El icono y el color pertenecen a la clasificación/tipo de establecimiento, no a cada
-  categoría. La etiqueta pública contextual se presenta como `clasificación · categoría`.
+- El icono pertenece a la clasificación/tipo de establecimiento, no a cada categoría. El
+  color se deriva automáticamente del icono mediante una paleta fija de bajo ruido visual;
+  el panel permite elegir únicamente el pin. La etiqueta pública contextual se presenta
+  como `clasificación · categoría`.
 - Consulta pública por actividad y localidad/posición, con orden por distancia cuando existe
   ubicación.
 - Fallback por actividad a la localidad activa más cercana con resultados; la respuesta
@@ -41,7 +49,7 @@ la ficha técnica de un centro turístico.
 4. Desactivar es lógico: el registro se conserva para operación e historia.
 5. El fallback se calcula para la actividad solicitada y prioriza localidades de tipo
    `CIUDAD`. Una localidad con otra actividad no es una alternativa válida.
-6. El catastro público solo incluye establecimientos activos. La disponibilidad no implica
+6. El catastro público solo incluye establecimientos activos y `PUBLICADO`. La disponibilidad no implica
    reserva ni garantiza que el establecimiento esté abierto en tiempo real.
 
 ## Contrato REST
@@ -52,12 +60,17 @@ GET   /api/v1/admin/establishments/:id
 GET   /api/v1/admin/establishments/:id/audit
 POST  /api/v1/admin/establishments
 PATCH /api/v1/admin/establishments/:id
+POST  /api/v1/admin/establishments/:id/submit-review
+PATCH /api/v1/admin/establishments/:id/review
 POST  /api/v1/admin/establishments/:id/deactivate
 POST  /api/v1/admin/establishments/:id/reactivate
 GET   /api/v1/establishments/nearby
+GET   /api/v1/establishments/map
 ```
 
-Las rutas administrativas requieren `ADMINISTRADOR`. La consulta pública devuelve `items`,
+La captura y consulta privada requieren `AGENTE_TURISTICO` o `ADMINISTRADOR`; la solicitud
+de revisión también admite ambos roles y la ruta `/review` requiere `ADMINISTRADOR`. La
+consulta pública devuelve `items`,
 `requestedLocalityName`, `effectiveLocality` y `fallbackApplied`.
 
 ## Pendientes explícitos
@@ -73,4 +86,5 @@ Las rutas administrativas requieren `ADMINISTRADOR`. La consulta pública devuel
 - `catalogo_catastro_categorias.esquema`, `valor_numerico` y `requiere_revision` separan
   la semántica de la categoría de su etiqueta original. `icono` y `color` permanecen en la
   categoría solo durante la transición, mientras la API y el mapa leen el perfil visual de
-  `catalogo_catastro_clasificaciones`.
+  `catalogo_catastro_clasificaciones`. El endpoint de mapa acepta los cuatro límites del
+  viewport y un límite de resultados; los pines Osmic se agrupan a escalas amplias.

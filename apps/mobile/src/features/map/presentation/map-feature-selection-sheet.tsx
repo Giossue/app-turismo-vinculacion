@@ -116,13 +116,24 @@ export function MapFeatureSelectionSheet({
 }
 
 const establishmentIconNames: Readonly<Record<string, TurismoIconName>> = {
-  hotel: "hotel",
-  restaurant: "restaurant",
-  coffee: "coffee",
-  store: "store",
-  bus: "bus",
-  ticket: "ticket",
-  briefcase: "briefcase",
+  "accommodation-hotel": "hotel",
+  "amenity-cinema": "ticket",
+  "amenity-library": "map",
+  "amenity-toilets": "mapPin",
+  "eat-drink-cafe": "coffee",
+  "eat-drink-restaurant": "restaurant",
+  "health-hospital": "mapPinned",
+  "money-atm": "store",
+  "money-bank": "store",
+  "outdoor-camping": "map",
+  "outdoor-drinking-water": "mapPin",
+  "religious-place-of-worship": "mapPinned",
+  "shop-supermarket": "store",
+  "tourism-information": "ticket",
+  "tourism-monument": "mapPinned",
+  "tourism-museum": "map",
+  "tourism-viewpoint": "compass",
+  "transport-bus-stop": "bus",
 };
 
 function getSelectionIcon(selection: MapFeatureSelection): TurismoIconName {

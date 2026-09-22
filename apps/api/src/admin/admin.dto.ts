@@ -18,6 +18,8 @@ import {
   ValidateNested,
 } from "class-validator";
 
+import { ESTABLISHMENT_VISUAL_ICON_CODES } from "../establishments/establishment-visuals";
+
 export const REVIEWABLE_STATUSES = [
   "BORRADOR",
   "EN_REVISION",
@@ -424,24 +426,7 @@ export class SaveAdminSectionDto {
   version?: number;
 }
 
-export const ESTABLISHMENT_VISUAL_ICON_CODES = [
-  "hotel",
-  "restaurant",
-  "coffee",
-  "store",
-  "bus",
-  "ticket",
-  "briefcase",
-] as const;
-export const ESTABLISHMENT_VISUAL_COLOR_CODES = [
-  "#0891b2",
-  "#7c3aed",
-  "#c026d3",
-  "#ea580c",
-  "#d97706",
-  "#dc2626",
-  "#4f46e5",
-] as const;
+export { ESTABLISHMENT_VISUAL_ICON_CODES } from "../establishments/establishment-visuals";
 
 export class AdminCatalogsQueryDto {
   @IsOptional()
@@ -470,10 +455,4 @@ export class AdminCatalogUpdateDto {
   @IsString()
   @IsIn(ESTABLISHMENT_VISUAL_ICON_CODES)
   icon?: (typeof ESTABLISHMENT_VISUAL_ICON_CODES)[number];
-
-  @IsOptional()
-  @IsString()
-  @Matches(/^#[0-9A-Fa-f]{6}$/)
-  @IsIn(ESTABLISHMENT_VISUAL_COLOR_CODES)
-  color?: string;
 }

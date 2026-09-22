@@ -63,7 +63,8 @@ export class MediaService {
     @Inject(ConfigService) private readonly config: ConfigService,
   ) {}
 
-  async listForAdmin(code: string) {
+  async listForAdmin(code: string, actorId?: number, isAdmin = true) {
+    const ownerCondition = isAdmin ? "TRUE" : "c.responsable_usuario_id = $2";
     const rows = (await this.dataSource.query(
       `SELECT a.id, TRIM(c.codigo_atractivo) AS code, c.nombre AS name,
               t.codigo AS "typeCode", t.nombre AS "typeName",
@@ -76,8 +77,9 @@ export class MediaService {
          JOIN tipos_archivo_centro_turistico t ON t.id = a.tipo_archivo_centro_id
         WHERE TRIM(c.codigo_atractivo) = TRIM($1)
           AND a.estado <> 'ELIMINADO'
+          AND ${ownerCondition}
         ORDER BY a.orden NULLS LAST, a.created_at DESC, a.id DESC`,
-      [code],
+      isAdmin ? [code] : [code, actorId],
     )) as MediaRow[];
     return {
       items: rows.map((row) => ({
@@ -101,7 +103,12 @@ export class MediaService {
     };
   }
 
-  async upload(actorId: number, code: string, input: MediaUploadInput) {
+  async upload(
+    actorId: number,
+    code: string,
+    input: MediaUploadInput,
+    isAdmin = true,
+  ) {
     const maxImageBytes = this.config.getOrThrow<number>(
       "MEDIA_MAX_IMAGE_BYTES",
     );
@@ -148,7 +155,7 @@ export class MediaService {
       );
     }
     const prepared = await this.dataSource.transaction(async (manager) => {
-      const center = await this.center(manager, code);
+      const center = await this.center(manager, code, actorId, isAdmin);
       const typeRows = (await manager.query(
         `SELECT id FROM tipos_archivo_centro_turistico WHERE codigo = $1 AND activo LIMIT 1`,
         [typeCode],
@@ -241,17 +248,20 @@ export class MediaService {
     }
   }
 
-  async remove(actorId: number, code: string, mediaId: number) {
+  async remove(actorId: number, code: string, mediaId: number, isAdmin = true) {
     const deleted = await this.dataSource.transaction(async (manager) => {
       const rows = (await manager.query(
         `SELECT a.id, a.centro_turistico_id AS "centerId", a.ruta_archivo AS key,
                 a.estado AS state
            FROM archivos_centro_turistico a
            JOIN centros_turisticos c ON c.id = a.centro_turistico_id
+           JOIN estados_resenia center_state ON center_state.id = c.estado_resenia_id
           WHERE a.id = $1 AND TRIM(c.codigo_atractivo) = TRIM($2)
             AND a.estado <> 'ELIMINADO'
+            AND ($3::boolean OR c.responsable_usuario_id = $4)
+            AND ($3::boolean OR center_state.codigo IN ('BORRADOR', 'RECHAZADO'))
           FOR UPDATE`,
-        [mediaId, code],
+        [mediaId, code, isAdmin, actorId],
       )) as Array<{ id: string; centerId: string; key: string; state: string }>;
       const file = rows[0];
       if (!file) throw new NotFoundException("No se encontró la fotografía.");
@@ -308,10 +318,21 @@ export class MediaService {
     return { body: await this.storage.get(row.key), mimeType: row.mimeType };
   }
 
-  private async center(manager: EntityManager, code: string) {
+  private async center(
+    manager: EntityManager,
+    code: string,
+    actorId?: number,
+    isAdmin = true,
+  ) {
     const rows = (await manager.query(
-      `SELECT id FROM centros_turisticos WHERE TRIM(codigo_atractivo) = TRIM($1) FOR UPDATE`,
-      [code],
+      `SELECT c.id, c.responsable_usuario_id AS "responsibleId"
+         FROM centros_turisticos c
+         JOIN estados_resenia center_state ON center_state.id = c.estado_resenia_id
+        WHERE TRIM(codigo_atractivo) = TRIM($1)
+          AND ($2::boolean OR responsable_usuario_id = $3)
+          AND ($2::boolean OR center_state.codigo IN ('BORRADOR', 'RECHAZADO'))
+        FOR UPDATE`,
+      [code, isAdmin, actorId ?? null],
     )) as Array<{ id: string }>;
     if (!rows[0])
       throw new NotFoundException("No se encontró la ficha turística.");

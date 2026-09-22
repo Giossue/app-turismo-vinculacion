@@ -18,6 +18,7 @@ import { InjectDataSource } from "@nestjs/typeorm";
 import { AuthTokenService } from "./auth-token.service";
 import { PasswordService } from "./password.service";
 import {
+  AUTH_ROLES,
   TOURIST_GENDER_OPTIONS,
   type AuthRole,
   type AuthenticatedUser,
@@ -335,7 +336,7 @@ export class AuthService {
       name: row.name,
       email: row.email,
       roles: row.roles.filter((role): role is AuthRole =>
-        ["ADMINISTRADOR", "TURISTA"].includes(role as AuthRole),
+        AUTH_ROLES.includes(role as AuthRole),
       ),
       sessionId,
     };

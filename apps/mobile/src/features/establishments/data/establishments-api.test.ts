@@ -18,8 +18,8 @@ describe("getMapEstablishments", () => {
               latitude: -1.59,
               longitude: -79.01,
               approximate: true,
-              icon: "hotel",
-              color: "#7c3aed",
+              icon: "accommodation-hotel",
+              color: "#7a5c3e",
             },
           ],
         },
@@ -27,7 +27,7 @@ describe("getMapEstablishments", () => {
     });
 
     await expect(
-      getMapEstablishments(fetcher, "http://api.test/api/v1"),
+      getMapEstablishments(null, fetcher, "http://api.test/api/v1"),
     ).resolves.toEqual({
       items: [
         {
@@ -36,8 +36,8 @@ describe("getMapEstablishments", () => {
           latitude: -1.59,
           longitude: -79.01,
           approximate: true,
-          icon: "hotel",
-          color: "#7c3aed",
+          icon: "accommodation-hotel",
+          color: "#7a5c3e",
         },
       ],
     });
@@ -51,7 +51,7 @@ describe("getMapEstablishments", () => {
     const fetcher = vi.fn().mockResolvedValue({ ok: false, status: 404 });
 
     await expect(
-      getMapEstablishments(fetcher, "http://api.test/api/v1"),
+      getMapEstablishments(null, fetcher, "http://api.test/api/v1"),
     ).resolves.toEqual({ items: [] });
   });
 });

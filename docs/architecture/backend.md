@@ -64,10 +64,9 @@ administrativo autenticado; el móvil no escribe en estas tablas.
 `establishments`, `publication`, `files`, `transport`, `reviews`, `favorites`,
 `audit`, `health`.
 
-El módulo `admin` es la frontera de captura y publicación: solo acepta el rol
-`ADMINISTRADOR`, conserva borradores versionados, valida catálogos técnicos y coordina las
-transacciones de revisión, publicación y auditoría. El panel web nunca consulta PostgreSQL
-directamente.
+El módulo `admin` es la frontera de captura y publicación: acepta `AGENTE_TURISTICO` para
+capturar sus propios borradores y `ADMINISTRADOR` para el ámbito global, revisión,
+publicación, catálogos y auditoría. El panel web nunca consulta PostgreSQL directamente.
 
 El módulo `files` valida multimedia multipart (límite, MIME y firma), genera claves opacas,
 escribe en almacenamiento local de desarrollo o S3/MinIO, y conserva en PostgreSQL solo

@@ -2,7 +2,7 @@
 
 ## Propósito
 
-Permitir que un `ADMINISTRADOR` cree y complete el núcleo de una ficha turística sin
+Permitir que un `AGENTE_TURISTICO` cree y complete el núcleo de una ficha turística sin
 alterar el contenido publicado hasta que exista una revisión aprobada y una publicación
 explícita.
 
@@ -111,7 +111,8 @@ la ficha. Importaciones y procesamiento avanzado quedan para una fase posterior.
 
 ## Reglas
 
-1. Solo `ADMINISTRADOR` puede usar `/admin/*`.
+1. `AGENTE_TURISTICO` puede crear, consultar y editar sus propios borradores de `/admin/centers`,
+   secciones y multimedia; `ADMINISTRADOR` conserva el ámbito global y la revisión.
 2. El turista solo recibe centros activos con estado `PUBLICADO`.
 3. Las ediciones de un centro publicado se almacenan como borrador aislado.
 4. Al consultar un borrador parcial, la versión publicada completa sirve como base de lectura y los valores presentes en el borrador la sobrescriben por sección.
@@ -119,3 +120,7 @@ la ficha. Importaciones y procesamiento avanzado quedan para una fase posterior.
 7. La publicación aplica el snapshot y registra auditoría en una transacción.
 8. Una fotografía pendiente no tiene URL pública utilizable; la URL solo se incluye cuando
    la ficha y el archivo están publicados.
+
+La cola de revisión abre la ficha completa en modo de solo lectura, incluyendo núcleo,
+secciones, valoración, multimedia y observaciones, antes de mostrar la decisión de aprobar
+o rechazar.

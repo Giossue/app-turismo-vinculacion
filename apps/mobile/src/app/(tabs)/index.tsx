@@ -66,7 +66,10 @@ import {
   useMapEstablishments,
 } from "@/features/establishments/application/use-map-establishments";
 import { useNearbyEstablishments } from "@/features/establishments/application/use-nearby-establishments";
-import type { PublicMapEstablishment } from "@/features/establishments/domain/establishment";
+import type {
+  EstablishmentMapViewport,
+  PublicMapEstablishment,
+} from "@/features/establishments/domain/establishment";
 import { EstablishmentDetailSheet } from "@/features/establishments/presentation/establishment-detail-sheet";
 import { EstablishmentResultsSheet } from "@/features/establishments/presentation/establishment-results-sheet";
 import type {
@@ -111,6 +114,12 @@ type OpinionRatingSummary = Readonly<{
   total: number;
 }>;
 const placeTabOrder = ["information", "opinions", "photos"] as const;
+
+function getEstablishmentSelectionKey(
+  establishment: PublicMapEstablishment,
+): string {
+  return `${establishment.name}:${establishment.latitude}:${establishment.longitude}`;
+}
 
 export default function HomeScreen() {
   const colors = useTurismoPalette();
@@ -179,6 +188,8 @@ function ExploreMapScreen() {
   );
   const [selectedEstablishment, setSelectedEstablishment] =
     useState<PublicMapEstablishment | null>(null);
+  const [mapViewport, setMapViewport] =
+    useState<EstablishmentMapViewport | null>(null);
   const [mapFeatureSelection, setMapFeatureSelection] = useState<
     readonly MapFeatureSelection[] | null
   >(null);
@@ -246,7 +257,7 @@ function ExploreMapScreen() {
   const nearbyEstablishments = useNearbyEstablishments(
     establishmentSearchQuery,
   );
-  const mapEstablishments = useMapEstablishments();
+  const mapEstablishments = useMapEstablishments(mapViewport);
   const query = useMemo(
     () => ({
       ...filters,
@@ -493,13 +504,13 @@ function ExploreMapScreen() {
     presentSearchSheet();
   }, [agentOpen, presentSearchSheet, searchFocused, submittedQuery]);
 
-  const handleViewportChange = useCallback(() => {
-    setConfirmedLocationFocusKey(null);
-    // El catálogo ya cargado no se reemplaza durante pan/zoom. Así MapLibre
-    // conserva los símbolos y el usuario no ve parpadeos ni pines que se
-    // pierden mientras termina una consulta por viewport. La consulta acotada
-    // se habilitará cuando exista paginación/cache de viewport en la API.
-  }, []);
+  const handleViewportChange = useCallback(
+    (bounds: EstablishmentMapViewport) => {
+      setConfirmedLocationFocusKey(null);
+      setMapViewport(bounds);
+    },
+    [],
+  );
 
   const openRoute = () => {
     if (!selectedCenter) return;
@@ -679,6 +690,11 @@ function ExploreMapScreen() {
         onViewportChange={handleViewportChange}
         resetNorthKey={resetNorthKey}
         selectedCenterCode={selectedCenterCode}
+        selectedEstablishmentKey={
+          selectedEstablishment
+            ? getEstablishmentSelectionKey(selectedEstablishment)
+            : null
+        }
         focusLocationKey={focusLocationKey}
         userLocation={userLocation}
       />

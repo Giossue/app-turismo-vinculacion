@@ -144,8 +144,8 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 
 ## Rendimiento del mapa
 
-- Endpoint por viewport/zoom con límites y clustering cuando el catálogo pueda
-  paginarse y cachearse sin reemplazar los símbolos durante un gesto.
+- Endpoint por viewport con límites, límite de resultados y clustering nativo para que el
+  catálogo no cargue toda la base en cada apertura.
 - Respuestas compactas para marcadores; ficha completa bajo demanda.
 - Cancelar consultas obsoletas al mover el mapa.
 - Cachear catálogos/mapas públicos con política de invalidación por publicación.
@@ -155,17 +155,18 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 - El estilo propio se cachea en memoria por combinación de tema y modo (`streets` o
   `navigation`), se deduplican solicitudes concurrentes y se muestran eventos de carga de
   MapLibre para evitar el destello negro durante el cambio de estilo.
-- No reemplazar el `GeoJSONSource` en cada cambio de cámara: el catálogo ya
-  cargado se mantiene durante pan/zoom. La consulta por viewport se habilitará
-  con paginación, cache y cancelación de consultas obsoletas.
+- Mantener los resultados anteriores mientras llega la consulta del nuevo viewport y dejar
+  que TanStack Query cancele la consulta obsoleta mediante `AbortSignal`.
 - En móvil, los centros públicos se renderizan como un `GeoJSONSource` nativo con
   `SymbolLayer`; MapLibre mantiene el conjunto de features y el clustering fuera del
   árbol React mientras el usuario hace zoom o panea. Los pines individuales usan un
   recurso de icono estático, sin una vista React ni un círculo de fondo. Los clusters sí
   usan una capa separada con conteo y se expanden mediante `getClusterExpansionZoom`.
   Los establecimientos activos del catastro llegan desde `GET /api/v1/establishments/map`
-  en una fuente GeoJSON separada, limitada y agrupada; reciben el icono y color de su
-  clasificación/tipo de establecimiento y la etiqueta contextual de su categoría. Cuando un
+  en una fuente GeoJSON separada, limitada y agrupada; reciben el pin Osmic y el color fijo
+  que el sistema asigna a su clasificación/tipo de establecimiento, además de la etiqueta
+  contextual de su categoría. El panel administrativo solo permite seleccionar el icono;
+  no recibe un color editable. Cuando un
   registro histórico fue completado con la coordenada de su localidad,
   el endpoint conserva la marca de punto aproximado; las nuevas coordenadas capturadas por
   operación se publican como ubicación exacta.

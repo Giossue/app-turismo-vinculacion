@@ -13,8 +13,8 @@ presentarse como categorías universales equivalentes.
 
 - Añadir semántica compatible a `catalogo_catastro_categorias` sin perder el texto ni
   los aliases de origen.
-- Administrar icono y color en `catalogo_catastro_clasificaciones`, donde representan
-  el tipo de establecimiento y no el nivel de categoría.
+- Administrar el icono en `catalogo_catastro_clasificaciones`, donde representa el tipo de
+  establecimiento y no el nivel de categoría; el color se deriva automáticamente del pin.
 - Exponer sistema, valor y etiqueta contextual en la API administrativa y pública.
 - Mostrar en el panel y en el móvil etiquetas como `HOTEL · 3 Estrellas`.
 - Mantener durante la transición los IDs, campos de texto y campos visuales heredados.
@@ -24,10 +24,10 @@ presentarse como categorías universales equivalentes.
 - Los valores semánticos se derivan de la combinación actividad, clasificación y nombre
   canónico; los valores no concluyentes quedan marcados para revisión.
 - La clasificación padre controla el marcador por defecto: todas sus categorías
-  comparten icono y color.
+  comparten icono y el color automático correspondiente.
 - No se elimina ni se sobrescribe el valor original del consolidado.
 - Las mutaciones administrativas siguen protegidas por `ADMINISTRADOR` y auditoría.
-- El contrato público conserva `category`, `icon` y `color`, y añade campos opcionales
+- El contrato público conserva `category`, `icon` y `color` calculado, y añade campos opcionales
   para clientes actualizados.
 
 ## Migración

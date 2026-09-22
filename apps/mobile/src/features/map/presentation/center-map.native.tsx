@@ -53,6 +53,7 @@ type CenterMapProps = Readonly<{
   onViewportChange: (bounds: BoundingBox) => void;
   resetNorthKey?: number;
   selectedCenterCode?: string | null;
+  selectedEstablishmentKey?: string | null;
   userLocation?: UserLocationCoordinate | null;
 }>;
 type CenterProperties = Readonly<{ code: string }>;
@@ -70,142 +71,62 @@ type EstablishmentProperties = Readonly<{
   featureKey: string;
   icon: string;
   iconImage: string;
-  iconOffset: readonly [number, number];
   name: string;
   approximate: boolean;
-  pinImage: string;
 }>;
 type EstablishmentFeatureCollection = GeoJSON.FeatureCollection<
   GeoJSON.Point,
   EstablishmentProperties
 >;
 
-const establishmentIconImages: Record<string, number> = {
-  hotel: require("../../../../assets/images/establishment-icons/hotel.png"),
-  restaurant: require("../../../../assets/images/establishment-icons/restaurant.png"),
-  coffee: require("../../../../assets/images/establishment-icons/coffee.png"),
-  store: require("../../../../assets/images/establishment-icons/store.png"),
-  bus: require("../../../../assets/images/establishment-icons/bus.png"),
-  ticket: require("../../../../assets/images/establishment-icons/ticket.png"),
-  briefcase: require("../../../../assets/images/establishment-icons/briefcase.png"),
+const establishmentPinAssets: Record<string, number> = {
+  "accommodation-hotel": require("../../../../assets/images/establishment-pins/accommodation-hotel.png"),
+  "amenity-cinema": require("../../../../assets/images/establishment-pins/amenity-cinema.png"),
+  "amenity-library": require("../../../../assets/images/establishment-pins/amenity-library.png"),
+  "amenity-toilets": require("../../../../assets/images/establishment-pins/amenity-toilets.png"),
+  "eat-drink-cafe": require("../../../../assets/images/establishment-pins/eat-drink-cafe.png"),
+  "eat-drink-restaurant": require("../../../../assets/images/establishment-pins/eat-drink-restaurant.png"),
+  "health-hospital": require("../../../../assets/images/establishment-pins/health-hospital.png"),
+  "money-atm": require("../../../../assets/images/establishment-pins/money-atm.png"),
+  "money-bank": require("../../../../assets/images/establishment-pins/money-bank.png"),
+  "outdoor-camping": require("../../../../assets/images/establishment-pins/outdoor-camping.png"),
+  "outdoor-drinking-water": require("../../../../assets/images/establishment-pins/outdoor-drinking-water.png"),
+  "religious-place-of-worship": require("../../../../assets/images/establishment-pins/religious-place-of-worship.png"),
+  "shop-supermarket": require("../../../../assets/images/establishment-pins/shop-supermarket.png"),
+  "tourism-information": require("../../../../assets/images/establishment-pins/tourism-information.png"),
+  "tourism-monument": require("../../../../assets/images/establishment-pins/tourism-monument.png"),
+  "tourism-museum": require("../../../../assets/images/establishment-pins/tourism-museum.png"),
+  "tourism-viewpoint": require("../../../../assets/images/establishment-pins/tourism-viewpoint.png"),
+  "transport-bus-stop": require("../../../../assets/images/establishment-pins/transport-bus-stop.png"),
 };
-const establishmentPinImages: Record<string, string> = {
-  "#0891b2": "tourism-establishment-pin-cyan",
-  "#7c3aed": "tourism-establishment-pin-violet",
-  "#c026d3": "tourism-establishment-pin-fuchsia",
-  "#ea580c": "tourism-establishment-pin-orange",
-  "#d97706": "tourism-establishment-pin-amber",
-  "#dc2626": "tourism-establishment-pin-red",
-  "#4f46e5": "tourism-establishment-pin-indigo",
-};
-const establishmentPinColorKeys: Record<string, string> = {
-  "#0891b2": "cyan",
-  "#7c3aed": "violet",
-  "#c026d3": "fuchsia",
-  "#ea580c": "orange",
-  "#d97706": "amber",
-  "#dc2626": "red",
-  "#4f46e5": "indigo",
-};
-const establishmentDefaultPinColor = "#7c3aed";
-const establishmentIconImagesByColor: Record<string, Record<string, number>> = {
-  cyan: {
-    hotel: require("../../../../assets/images/establishment-icons/hotel-cyan-dark.png"),
-    restaurant: require("../../../../assets/images/establishment-icons/restaurant-cyan-dark.png"),
-    coffee: require("../../../../assets/images/establishment-icons/coffee-cyan-dark.png"),
-    store: require("../../../../assets/images/establishment-icons/store-cyan-dark.png"),
-    bus: require("../../../../assets/images/establishment-icons/bus-cyan-dark.png"),
-    ticket: require("../../../../assets/images/establishment-icons/ticket-cyan-dark.png"),
-    briefcase: require("../../../../assets/images/establishment-icons/briefcase-cyan-dark.png"),
-  },
-  violet: {
-    hotel: require("../../../../assets/images/establishment-icons/hotel-violet-dark.png"),
-    restaurant: require("../../../../assets/images/establishment-icons/restaurant-violet-dark.png"),
-    coffee: require("../../../../assets/images/establishment-icons/coffee-violet-dark.png"),
-    store: require("../../../../assets/images/establishment-icons/store-violet-dark.png"),
-    bus: require("../../../../assets/images/establishment-icons/bus-violet-dark.png"),
-    ticket: require("../../../../assets/images/establishment-icons/ticket-violet-dark.png"),
-    briefcase: require("../../../../assets/images/establishment-icons/briefcase-violet-dark.png"),
-  },
-  fuchsia: {
-    hotel: require("../../../../assets/images/establishment-icons/hotel-fuchsia-dark.png"),
-    restaurant: require("../../../../assets/images/establishment-icons/restaurant-fuchsia-dark.png"),
-    coffee: require("../../../../assets/images/establishment-icons/coffee-fuchsia-dark.png"),
-    store: require("../../../../assets/images/establishment-icons/store-fuchsia-dark.png"),
-    bus: require("../../../../assets/images/establishment-icons/bus-fuchsia-dark.png"),
-    ticket: require("../../../../assets/images/establishment-icons/ticket-fuchsia-dark.png"),
-    briefcase: require("../../../../assets/images/establishment-icons/briefcase-fuchsia-dark.png"),
-  },
-  orange: {
-    hotel: require("../../../../assets/images/establishment-icons/hotel-orange-dark.png"),
-    restaurant: require("../../../../assets/images/establishment-icons/restaurant-orange-dark.png"),
-    coffee: require("../../../../assets/images/establishment-icons/coffee-orange-dark.png"),
-    store: require("../../../../assets/images/establishment-icons/store-orange-dark.png"),
-    bus: require("../../../../assets/images/establishment-icons/bus-orange-dark.png"),
-    ticket: require("../../../../assets/images/establishment-icons/ticket-orange-dark.png"),
-    briefcase: require("../../../../assets/images/establishment-icons/briefcase-orange-dark.png"),
-  },
-  amber: {
-    hotel: require("../../../../assets/images/establishment-icons/hotel-amber-dark.png"),
-    restaurant: require("../../../../assets/images/establishment-icons/restaurant-amber-dark.png"),
-    coffee: require("../../../../assets/images/establishment-icons/coffee-amber-dark.png"),
-    store: require("../../../../assets/images/establishment-icons/store-amber-dark.png"),
-    bus: require("../../../../assets/images/establishment-icons/bus-amber-dark.png"),
-    ticket: require("../../../../assets/images/establishment-icons/ticket-amber-dark.png"),
-    briefcase: require("../../../../assets/images/establishment-icons/briefcase-amber-dark.png"),
-  },
-  red: {
-    hotel: require("../../../../assets/images/establishment-icons/hotel-red-dark.png"),
-    restaurant: require("../../../../assets/images/establishment-icons/restaurant-red-dark.png"),
-    coffee: require("../../../../assets/images/establishment-icons/coffee-red-dark.png"),
-    store: require("../../../../assets/images/establishment-icons/store-red-dark.png"),
-    bus: require("../../../../assets/images/establishment-icons/bus-red-dark.png"),
-    ticket: require("../../../../assets/images/establishment-icons/ticket-red-dark.png"),
-    briefcase: require("../../../../assets/images/establishment-icons/briefcase-red-dark.png"),
-  },
-  indigo: {
-    hotel: require("../../../../assets/images/establishment-icons/hotel-indigo-dark.png"),
-    restaurant: require("../../../../assets/images/establishment-icons/restaurant-indigo-dark.png"),
-    coffee: require("../../../../assets/images/establishment-icons/coffee-indigo-dark.png"),
-    store: require("../../../../assets/images/establishment-icons/store-indigo-dark.png"),
-    bus: require("../../../../assets/images/establishment-icons/bus-indigo-dark.png"),
-    ticket: require("../../../../assets/images/establishment-icons/ticket-indigo-dark.png"),
-    briefcase: require("../../../../assets/images/establishment-icons/briefcase-indigo-dark.png"),
-  },
-};
-const establishmentIconImageNamesByColor: Record<
-  string,
-  Record<string, string>
-> = Object.fromEntries(
-  Object.keys(establishmentIconImagesByColor).map((colorKey) => [
-    colorKey,
-    Object.fromEntries(
-      Object.keys(establishmentIconImages).map((icon) => [
-        icon,
-        `tourism-establishment-icon-${icon}-${colorKey}-deep`,
-      ]),
-    ),
+const establishmentPinImageNames = Object.fromEntries(
+  Object.keys(establishmentPinAssets).map((icon) => [
+    icon,
+    `tourism-establishment-pin-${icon}`,
   ]),
-) as Record<string, Record<string, string>>;
-const establishmentColorIconImages: Record<string, number> = Object.fromEntries(
-  Object.entries(establishmentIconImagesByColor).flatMap(([colorKey, icons]) =>
-    Object.entries(icons).map(([icon, image]) => [
-      `tourism-establishment-icon-${icon}-${colorKey}-deep`,
-      image,
-    ]),
-  ),
-) as Record<string, number>;
-const establishmentDefaultPinImage = "tourism-establishment-pin-violet";
-const establishmentDefaultIcon = "hotel";
-const establishmentIconOffsets: Record<string, readonly [number, number]> = {
-  hotel: [0, -40],
-  restaurant: [0, -36.5],
-  coffee: [0, -36],
-  store: [0, -37.5],
-  bus: [0, -38],
-  ticket: [0, -37.5],
-  briefcase: [0, -37],
+) as Record<string, string>;
+const establishmentPinColors: Record<string, string> = {
+  "accommodation-hotel": "#7a5c3e",
+  "amenity-cinema": "#7e22ce",
+  "amenity-library": "#334155",
+  "amenity-toilets": "#64748b",
+  "eat-drink-cafe": "#8b5e34",
+  "eat-drink-restaurant": "#b45309",
+  "health-hospital": "#9f1239",
+  "money-atm": "#475569",
+  "money-bank": "#374151",
+  "outdoor-camping": "#3f6212",
+  "outdoor-drinking-water": "#0f766e",
+  "religious-place-of-worship": "#6d28d9",
+  "shop-supermarket": "#be123c",
+  "tourism-information": "#0369a1",
+  "tourism-monument": "#92400e",
+  "tourism-museum": "#5b21b6",
+  "tourism-viewpoint": "#a16207",
+  "transport-bus-stop": "#155e75",
 };
+const establishmentDefaultIcon = "shop-supermarket";
+const establishmentDefaultPinColor = establishmentPinColors[establishmentDefaultIcon];
 
 const tourismPinLight = require("../../../../assets/images/tourism-pin-light.png");
 const tourismPinDark = require("../../../../assets/images/tourism-pin-dark.png");
@@ -219,9 +140,12 @@ const mapFeatureLayerIds = [
   "tourism-center-cluster-circles",
   "tourism-center-icons",
   "tourism-center-selected-icon",
+  "tourism-establishment-cluster-circles",
+  "tourism-establishment-cluster-count",
   "tourism-establishment-pins",
-  "tourism-establishment-icons",
+  "tourism-establishment-selected-pin",
   "tourism-establishment-dots",
+  "tourism-establishment-selected-dot",
 ];
 const cameraTargetTolerance = 0.001;
 const cameraZoomTolerance = 0.15;
@@ -254,11 +178,13 @@ export function CenterMap({
   onViewportChange,
   resetNorthKey,
   selectedCenterCode = null,
+  selectedEstablishmentKey = null,
   userLocation = null,
 }: CenterMapProps) {
   const cameraRef = useRef<CameraRef>(null);
   const mapRef = useRef<MapRef>(null);
   const sourceRef = useRef<GeoJSONSourceRef>(null);
+  const establishmentsSourceRef = useRef<GeoJSONSourceRef>(null);
   const pendingMapFeatureSelectionRef =
     useRef<PendingMapFeatureSelection | null>(null);
   const pendingLocationFocusRef = useRef<PendingLocationFocus | null>(null);
@@ -306,16 +232,12 @@ export function CenterMap({
   const establishmentFeatures = useMemo<EstablishmentFeatureCollection>(
     () => ({
       type: "FeatureCollection",
-      features: establishments.map((establishment, index) => {
-        const featureKey = getEstablishmentFeatureKey(establishment, index);
-        const rawColor = establishment.color.toLowerCase();
-        const color = establishmentPinColorKeys[rawColor]
-          ? rawColor
-          : establishmentDefaultPinColor;
-        const icon = establishmentIconImages[establishment.icon]
+      features: establishments.map((establishment) => {
+        const featureKey = getEstablishmentFeatureKey(establishment);
+        const icon = establishmentPinAssets[establishment.icon]
           ? establishment.icon
           : establishmentDefaultIcon;
-        const colorKey = establishmentPinColorKeys[color] ?? "violet";
+        const color = establishmentPinColors[icon] ?? establishmentDefaultPinColor;
         return {
           type: "Feature",
           id: featureKey,
@@ -324,14 +246,9 @@ export function CenterMap({
             color,
             featureKey,
             icon,
-            iconImage: establishmentIconImageNamesByColor[colorKey][icon],
-            iconOffset:
-              establishmentIconOffsets[icon] ??
-              establishmentIconOffsets[establishmentDefaultIcon],
+            iconImage: establishmentPinImageNames[icon],
             name: establishment.name,
             approximate: establishment.approximate,
-            pinImage:
-              establishmentPinImages[color] ?? establishmentDefaultPinImage,
           },
           geometry: {
             type: "Point",
@@ -345,8 +262,8 @@ export function CenterMap({
   const establishmentsByFeatureKey = useMemo(
     () =>
       new Map(
-        establishments.map((establishment, index) => [
-          getEstablishmentFeatureKey(establishment, index),
+        establishments.map((establishment) => [
+          getEstablishmentFeatureKey(establishment),
           establishment,
         ]),
       ),
@@ -427,7 +344,10 @@ export function CenterMap({
   const hasMapGlyphs =
     typeof mapStyle.glyphs === "string" && mapStyle.glyphs.trim().length > 0;
   const handleRenderedFeaturePress = useCallback(
-    async (event: NativeSyntheticEvent<PressEventWithFeatures>) => {
+    async (
+      event: NativeSyntheticEvent<PressEventWithFeatures>,
+      clusterSourceRef: { current: GeoJSONSourceRef | null },
+    ) => {
       if (!mapMountedRef.current || !nativeMapReadyRef.current) return;
       pendingLocationFocusRef.current = null;
       pendingMapFeatureSelectionRef.current = null;
@@ -467,7 +387,7 @@ export function CenterMap({
         let expansionZoom: number | undefined;
         try {
           expansionZoom =
-            await sourceRef.current?.getClusterExpansionZoom(clusterId);
+            await clusterSourceRef.current?.getClusterExpansionZoom(clusterId);
         } catch {
           return;
         }
@@ -528,6 +448,18 @@ export function CenterMap({
       establishmentsByFeatureKey,
       onLocationFocusChange,
     ],
+  );
+  const handleCenterFeaturePress = useCallback(
+    (event: NativeSyntheticEvent<PressEventWithFeatures>) => {
+      void handleRenderedFeaturePress(event, sourceRef);
+    },
+    [handleRenderedFeaturePress],
+  );
+  const handleEstablishmentFeaturePress = useCallback(
+    (event: NativeSyntheticEvent<PressEventWithFeatures>) => {
+      void handleRenderedFeaturePress(event, establishmentsSourceRef);
+    },
+    [handleRenderedFeaturePress],
   );
 
   useEffect(() => {
@@ -634,6 +566,9 @@ export function CenterMap({
             return;
           }
 
+          const [west, south, east, north] = bounds;
+          onViewportChange({ west, south, east, north });
+
           if (pendingLocationFocus && !userInteraction) {
             const [targetLongitude, targetLatitude] =
               pendingLocationFocus.target;
@@ -679,8 +614,6 @@ export function CenterMap({
             pendingMapFeatureSelectionRef.current = null;
             pendingLocationFocusRef.current = null;
             onLocationFocusChange?.(false);
-            const [west, south, east, north] = bounds;
-            onViewportChange({ west, south, east, north });
           }
         }}
         onWillStartLoadingMap={() => setMapLoadState("loading")}
@@ -697,14 +630,12 @@ export function CenterMap({
         />
         <Images
           images={{
-            "tourism-establishment-pin-cyan": require("../../../../assets/images/establishment-icons/pin-cyan.png"),
-            "tourism-establishment-pin-violet": require("../../../../assets/images/establishment-icons/pin-violet.png"),
-            "tourism-establishment-pin-fuchsia": require("../../../../assets/images/establishment-icons/pin-fuchsia.png"),
-            "tourism-establishment-pin-orange": require("../../../../assets/images/establishment-icons/pin-orange.png"),
-            "tourism-establishment-pin-amber": require("../../../../assets/images/establishment-icons/pin-amber.png"),
-            "tourism-establishment-pin-red": require("../../../../assets/images/establishment-icons/pin-red.png"),
-            "tourism-establishment-pin-indigo": require("../../../../assets/images/establishment-icons/pin-indigo.png"),
-            ...establishmentColorIconImages,
+            ...Object.fromEntries(
+              Object.entries(establishmentPinAssets).map(([icon, image]) => [
+                establishmentPinImageNames[icon],
+                image,
+              ]),
+            ),
             "tourism-pin-dark": tourismPinDark,
             "tourism-pin-light": tourismPinLight,
             "tourism-pin-selected-dark": tourismPinSelectedDark,
@@ -719,7 +650,7 @@ export function CenterMap({
           data={centerFeatures}
           hitbox={{ bottom: 22, left: 22, right: 22, top: 22 }}
           id="tourism-centers-source"
-          onPress={handleRenderedFeaturePress}
+          onPress={handleCenterFeaturePress}
           ref={sourceRef}
         >
           <Layer
@@ -795,44 +726,106 @@ export function CenterMap({
           />
         </GeoJSONSource>
         <GeoJSONSource
-          cluster={false}
+          cluster
+          clusterMaxZoom={13}
+          clusterMinPoints={2}
+          clusterRadius={56}
           data={establishmentFeatures}
           hitbox={{ bottom: 22, left: 22, right: 22, top: 22 }}
           id="tourism-establishments-source"
-          onPress={handleRenderedFeaturePress}
+          onPress={handleEstablishmentFeaturePress}
+          ref={establishmentsSourceRef}
         >
           <Layer
+            filter={["has", "point_count"]}
+            id="tourism-establishment-cluster-circles"
+            paint={{
+              "circle-color": colors.surfaceStrong,
+              "circle-radius": [
+                "step",
+                ["get", "point_count"],
+                17,
+                10,
+                20,
+                30,
+                23,
+              ],
+              "circle-stroke-color": colors.surface,
+              "circle-stroke-width": 2,
+            }}
+            type="circle"
+          />
+          <Layer
+            filter={["has", "point_count"]}
+            id="tourism-establishment-cluster-count"
+            layout={{
+              "text-field": ["get", "point_count_abbreviated"],
+              "text-size": 12,
+              visibility: hasMapGlyphs ? "visible" : "none",
+            }}
+            paint={{ "text-color": colors.onPrimary }}
+            type="symbol"
+          />
+          <Layer
+            filter={[
+              "all",
+              ["!", ["has", "point_count"]],
+              ["!=", ["get", "featureKey"], selectedEstablishmentKey ?? ""],
+            ]}
             id="tourism-establishment-pins"
             layout={{
               "icon-allow-overlap": true,
               "icon-anchor": "bottom",
               "icon-ignore-placement": true,
-              "icon-image": ["get", "pinImage"],
-              "icon-size": 0.75,
+              "icon-image": ["get", "iconImage"],
+              "icon-size": 0.42,
             }}
             minzoom={establishmentPinMinZoom}
             type="symbol"
           />
           <Layer
-            id="tourism-establishment-icons"
+            filter={[
+              "all",
+              ["!", ["has", "point_count"]],
+              ["==", ["get", "featureKey"], selectedEstablishmentKey ?? ""],
+            ]}
+            id="tourism-establishment-selected-pin"
             layout={{
               "icon-allow-overlap": true,
-              "icon-anchor": "center",
+              "icon-anchor": "bottom",
               "icon-ignore-placement": true,
               "icon-image": ["get", "iconImage"],
-              "icon-offset": ["get", "iconOffset"],
-              "icon-size": 0.6,
+              "icon-size": 0.52,
             }}
             minzoom={establishmentPinMinZoom}
             type="symbol"
           />
           <Layer
-            key="tourism-establishment-dots"
+            filter={["!", ["has", "point_count"]]}
             id="tourism-establishment-dots"
             maxzoom={establishmentPinMinZoom}
             paint={{
               "circle-color": ["get", "color"],
-              "circle-radius": 3,
+              "circle-opacity": 0.82,
+              "circle-radius": 3.5,
+              "circle-stroke-color": colors.surface,
+              "circle-stroke-width": 1,
+            }}
+            type="circle"
+          />
+          <Layer
+            filter={[
+              "all",
+              ["!", ["has", "point_count"]],
+              ["==", ["get", "featureKey"], selectedEstablishmentKey ?? ""],
+            ]}
+            id="tourism-establishment-selected-dot"
+            maxzoom={establishmentPinMinZoom}
+            paint={{
+              "circle-color": ["get", "color"],
+              "circle-radius": 5,
+              "circle-stroke-color": colors.surface,
+              "circle-stroke-width": 2,
             }}
             type="circle"
           />
@@ -876,9 +869,8 @@ export function CenterMap({
 
 function getEstablishmentFeatureKey(
   establishment: PublicMapEstablishment,
-  index: number,
 ): string {
-  return `${index}:${establishment.name}:${establishment.latitude}:${establishment.longitude}`;
+  return `${establishment.name}:${establishment.latitude}:${establishment.longitude}`;
 }
 
 const selfHostedStyleUrlFromEnv =

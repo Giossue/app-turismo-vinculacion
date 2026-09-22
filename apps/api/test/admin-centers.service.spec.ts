@@ -14,8 +14,8 @@ describe("AdminCentersService", () => {
           name: "Hotel",
           active: true,
           activityId: "3",
-          icon: "store",
-          color: "#7c3aed",
+          icon: "shop-supermarket",
+          color: "#be123c",
         },
       ])
       .mockResolvedValueOnce([])
@@ -29,18 +29,17 @@ describe("AdminCentersService", () => {
 
     await expect(
       service.updateCatalog(7, "ESTABLISHMENT_CLASSIFICATION", 12, {
-        icon: "hotel",
-        color: "#112233",
+        icon: "accommodation-hotel",
       }),
     ).resolves.toMatchObject({
       catalog: "ESTABLISHMENT_CLASSIFICATION",
       id: 12,
-      icon: "hotel",
-      color: "#112233",
+      icon: "accommodation-hotel",
+      color: "#7a5c3e",
     });
     expect(managerQuery.mock.calls[2]).toEqual([
       expect.stringContaining("icono = $4"),
-      [12, "Hotel", true, "hotel", "#112233"],
+      [12, "Hotel", true, "accommodation-hotel", "#7a5c3e"],
     ]);
     expect(managerQuery).toHaveBeenLastCalledWith(
       expect.stringContaining("INSERT INTO auditoria_catalogos"),
@@ -49,10 +48,20 @@ describe("AdminCentersService", () => {
         "ESTABLISHMENT_CLASSIFICATION",
         12,
         "MODIFICAR",
-        expect.stringContaining("store"),
-        expect.stringContaining("hotel"),
+        expect.stringContaining("shop-supermarket"),
+        expect.stringContaining("accommodation-hotel"),
       ]),
     );
+  });
+
+  it("rejects manual establishment marker colors", async () => {
+    const service = new AdminCentersService({} as never);
+
+    await expect(
+      service.updateCatalog(7, "ESTABLISHMENT_CLASSIFICATION", 12, {
+        color: "#ffffff",
+      } as never),
+    ).rejects.toThrow("se asigna automáticamente");
   });
 
   it("publishes the visitor section across its normalized relations", async () => {
