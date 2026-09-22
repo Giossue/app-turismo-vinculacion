@@ -104,7 +104,11 @@ no se considera publicado hasta
 que exista su adaptador transaccional. La lectura devuelve el progreso por sección y el API
 rechaza respuestas, cantidades o filas que no cumplan el contrato de captura.
 
-El administrador puede renombrar y activar/desactivar opciones de los catálogos técnicos;
+El administrador puede crear, renombrar y activar/desactivar opciones de los catálogos
+técnicos desde el panel. Las altas exigen la relación superior correspondiente (grupo,
+categoría, actividad o clasificación), generan el código en el servidor y quedan auditadas
+como `CREAR`; los tipos de establecimiento eligen solo el ícono y el color se calcula
+automáticamente según ese ícono.
 cada cambio queda auditado. El panel acepta fotos, video, audio y anexos PDF/imágenes tipados
 como mapa, plan de contingencia u otro documento; los anexos quedan pendientes hasta publicar
 la ficha. Importaciones y procesamiento avanzado quedan para una fase posterior.

@@ -1,7 +1,7 @@
 # Plan: altas administrativas de catálogos
 
 Fecha: 2026-09-22
-Estado: en implementación
+Estado: implementado
 
 ## Objetivo
 
@@ -23,3 +23,18 @@ generados por el servidor, validación y auditoría.
 - Pruebas API de relaciones, códigos, auditoría y duplicados.
 - Typecheck, lint y build del API y panel.
 - Verificación de que las altas aparecen tras invalidar el catálogo.
+
+## Resultado
+
+- `POST /admin/catalogs/:catalog` implementado para accesibilidad, actividades, facilidades,
+  tipos y categorías de catastro.
+- El panel muestra un alta contextual con selección de padre, ícono para tipos de
+  establecimiento y sistema/valor numérico para categorías.
+- No requiere migración: el esquema y la auditoría existentes ya soportan estas altas.
+
+## Verificación realizada
+
+- API: typecheck correcto y 130 pruebas pasando.
+- Panel: formato y lint de los archivos modificados correctos.
+- El typecheck/lint global del panel continúa reportando errores previos en
+  `coordinate-picker-dialog.tsx`, sin relación con catálogos.

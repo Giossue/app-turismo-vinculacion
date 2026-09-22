@@ -4,6 +4,75 @@ import { AdminCentersService } from "../src/admin/admin-centers.service";
 import { XLSM_INDICATOR_CODES } from "../src/admin/valuation";
 
 describe("AdminCentersService", () => {
+  it("creates an establishment classification with its inherited visual color and audit", async () => {
+    const managerQuery = vi
+      .fn()
+      .mockResolvedValueOnce([{ id: "3" }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: "44" }])
+      .mockResolvedValueOnce([]);
+    const manager = { query: managerQuery };
+    const service = new AdminCentersService({
+      transaction: vi.fn(async (callback: (value: typeof manager) => unknown) =>
+        callback(manager),
+      ),
+    } as never);
+
+    await expect(
+      service.createCatalog(7, "ESTABLISHMENT_CLASSIFICATION", {
+        name: "Hotel boutique",
+        parentId: 3,
+        icon: "accommodation-hotel",
+      }),
+    ).resolves.toEqual({
+      catalog: "ESTABLISHMENT_CLASSIFICATION",
+      id: 44,
+      code: "HOTEL_BOUTIQUE",
+      name: "Hotel boutique",
+      active: true,
+      icon: "accommodation-hotel",
+      color: "#7a5c3e",
+    });
+    expect(managerQuery).toHaveBeenLastCalledWith(
+      expect.stringContaining("INSERT INTO auditoria_catalogos"),
+      expect.arrayContaining([
+        7,
+        "ESTABLISHMENT_CLASSIFICATION",
+        44,
+        expect.stringContaining('"name":"Hotel boutique"'),
+      ]),
+    );
+  });
+
+  it("creates an accessibility option and rejects duplicate names", async () => {
+    const managerQuery = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: "18" }])
+      .mockResolvedValueOnce([]);
+    const manager = { query: managerQuery };
+    const service = new AdminCentersService({
+      transaction: vi.fn(async (callback: (value: typeof manager) => unknown) =>
+        callback(manager),
+      ),
+    } as never);
+
+    await expect(
+      service.createCatalog(7, "ACCESSIBILITY", { name: "Braille" }),
+    ).resolves.toMatchObject({
+      catalog: "ACCESSIBILITY",
+      id: 18,
+      code: "BRAILLE",
+    });
+
+    managerQuery.mockReset().mockResolvedValueOnce([{ exists: 1 }]);
+    await expect(
+      service.createCatalog(7, "ACCESSIBILITY", { name: "Braille" }),
+    ).rejects.toThrow("Ya existe una opción con ese nombre.");
+  });
+
   it("updates establishment classification visuals and audits the change", async () => {
     const managerQuery = vi
       .fn()
