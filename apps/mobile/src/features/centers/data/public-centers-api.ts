@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { getApiUrl } from "@/core/api/api-url";
+import { acceptJsonHeaders, requestJson, type Fetcher } from "@/core/api/http";
 import type {
   CenterFilters,
   DiscoveryCatalog,
@@ -26,8 +27,7 @@ export const publicCenterSchema = z.object({
   parishCode: z.string().min(1),
   hierarchyCode: z.string().nullable(),
 });
-const centerSchema = publicCenterSchema;
-const detailSchema = centerSchema.extend({
+const detailSchema = publicCenterSchema.extend({
   touristZone: z.string().min(1),
   address: z.string().nullable(),
   altitudeMeters: z.number().int().nullable(),
@@ -67,8 +67,8 @@ const catalogSchema = z.object({
     hierarchies: z.array(optionSchema),
   }),
 });
-const listSchema = z.object({ data: z.array(centerSchema) });
-type Fetcher = typeof fetch;
+const listSchema = z.object({ data: z.array(publicCenterSchema) });
+const detailResponseSchema = z.object({ data: detailSchema });
 
 export async function getPublishedCenters(
   filters: CenterFilters = {},
@@ -90,16 +90,17 @@ export async function getPublishedCenters(
     query.set("east", String(filters.bounds.east));
     query.set("north", String(filters.bounds.north));
   }
-  const response = await fetcher(
+  const payload = await requestJson(
     `${apiUrl}/centers${query.size ? `?${query}` : ""}`,
-    { headers: { Accept: "application/json" } },
+    listSchema,
+    {
+      errorMessage: "No fue posible cargar los atractivos turísticos.",
+      fetcher,
+      init: { headers: acceptJsonHeaders },
+      invalidMessage: "La respuesta turística no tiene el formato esperado.",
+    },
   );
-  if (!response.ok)
-    throw new Error("No fue posible cargar los atractivos turísticos.");
-  const payload = listSchema.safeParse(await response.json());
-  if (!payload.success)
-    throw new Error("La respuesta turística no tiene el formato esperado.");
-  return payload.data.data;
+  return payload.data;
 }
 
 export async function getPublishedCenter(
@@ -107,32 +108,33 @@ export async function getPublishedCenter(
   fetcher: Fetcher = fetch,
   apiUrl = getApiUrl(),
 ): Promise<PublicCenterDetail> {
-  const response = await fetcher(
+  const payload = await requestJson(
     `${apiUrl}/centers/${encodeURIComponent(code)}`,
-    { headers: { Accept: "application/json" } },
+    detailResponseSchema,
+    {
+      errorMessage: "No fue posible cargar la ficha turística.",
+      fetcher,
+      init: { headers: acceptJsonHeaders },
+      invalidMessage: "La ficha turística no tiene el formato esperado.",
+      statusMessages: { 404: "El atractivo ya no está disponible." },
+    },
   );
-  if (response.status === 404)
-    throw new Error("El atractivo ya no está disponible.");
-  if (!response.ok)
-    throw new Error("No fue posible cargar la ficha turística.");
-  const payload = z
-    .object({ data: detailSchema })
-    .safeParse(await response.json());
-  if (!payload.success)
-    throw new Error("La ficha turística no tiene el formato esperado.");
-  return payload.data.data;
+  return payload.data;
 }
 
 export async function getDiscoveryCatalog(
   fetcher: Fetcher = fetch,
   apiUrl = getApiUrl(),
 ): Promise<DiscoveryCatalog> {
-  const response = await fetcher(`${apiUrl}/centers/catalogs/discovery`, {
-    headers: { Accept: "application/json" },
-  });
-  if (!response.ok) throw new Error("No fue posible cargar los filtros.");
-  const payload = catalogSchema.safeParse(await response.json());
-  if (!payload.success)
-    throw new Error("Los filtros no tienen el formato esperado.");
-  return payload.data.data;
+  const payload = await requestJson(
+    `${apiUrl}/centers/catalogs/discovery`,
+    catalogSchema,
+    {
+      errorMessage: "No fue posible cargar los filtros.",
+      fetcher,
+      init: { headers: acceptJsonHeaders },
+      invalidMessage: "Los filtros no tienen el formato esperado.",
+    },
+  );
+  return payload.data;
 }

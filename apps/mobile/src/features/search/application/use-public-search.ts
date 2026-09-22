@@ -1,26 +1,25 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { queryKeys } from "@/core/api/query-keys";
+import type { GeoCoordinate } from "@/core/geo/types";
 import { searchPublicPlaces } from "../data/search-api";
-
-export const publicSearchQueryKey = ["public-search"] as const;
 
 export function usePublicSearch(
   query: string,
-  coordinate?: { latitude: number; longitude: number } | null,
+  coordinate?: GeoCoordinate | null,
 ) {
   const normalizedQuery = query.trim();
   return useQuery({
     queryKey: [
-      ...publicSearchQueryKey,
+      ...queryKeys.publicSearch,
       normalizedQuery,
       coordinate?.latitude ?? null,
       coordinate?.longitude ?? null,
     ],
     queryFn: ({ signal }) =>
-      searchPublicPlaces(normalizedQuery, coordinate, fetch, undefined, signal),
+      searchPublicPlaces(normalizedQuery, coordinate, { signal }),
     enabled: normalizedQuery.length >= 2,
     staleTime: 60_000,
-    gcTime: 24 * 60 * 60 * 1000,
     retry: 1,
   });
 }

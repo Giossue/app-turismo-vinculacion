@@ -1,6 +1,5 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import {
-  ActivityIndicator,
   Image,
   Pressable,
   ScrollView,
@@ -8,39 +7,53 @@ import {
   Text,
   View,
 } from "react-native";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
+import { resolveMediaUrl } from "@/core/api/media-url";
+import { useTurismoPalette } from "@/core/ui/theme-context";
+import { TourismInfoRow, TourismSection } from "@/core/ui/tourism-content";
 import {
   TourismActionButton,
   TourismBadge,
   TourismIconAction,
   TourismSurface,
-  useTurismoPalette,
 } from "@/core/ui/tourism-controls";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
+import { TourismStateView } from "@/core/ui/tourism-state";
+import { TourismTabs } from "@/core/ui/tourism-tabs";
 import { TurismoIcon, type TurismoIconName } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
   turismoMetrics,
+  turismoOpacity,
   turismoRadii,
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
 import { usePublishedCenter } from "@/features/centers/application/use-published-center";
+import {
+  formatAdmissionPrice,
+  formatRating,
+} from "@/features/centers/domain/center-format";
 import type { PublicCenterDetail } from "@/features/centers/domain/public-center";
 import { useAuth } from "@/features/auth/application/auth-context";
+import { buildLoginHref } from "@/features/auth/application/login-href";
 import {
   useSavedCenterMutation,
   useSavedCenters,
 } from "@/features/favorites/application/use-saved-centers";
 import { useCenterOpinions } from "@/features/opinions/application/use-center-opinions";
+import type { OpinionRatingSummary } from "@/features/opinions/domain/opinion";
 import { CenterOpinions } from "@/features/opinions/presentation/center-opinions";
+import { buildRouteHref } from "@/features/routing/presentation/route-href";
 
 type CenterTab = "information" | "opinions" | "photos";
-type OpinionRatingSummary = Readonly<{
-  averageRating: number | null;
-  total: number;
-}>;
+
+const centerTabs = [
+  { label: "Información", value: "information" },
+  { label: "Opiniones", value: "opinions" },
+  { label: "Fotos", value: "photos" },
+] as const;
 
 export default function CenterDetailScreen() {
   const router = useRouter();
@@ -64,32 +77,17 @@ export default function CenterDetailScreen() {
 
   if (isPending) {
     return (
-      <View style={[styles.loading, { backgroundColor: colors.background }]}>
-        <ActivityIndicator color={colors.primary} size="large" />
-        <Text style={[styles.loadingText, { color: colors.textMuted }]}>
-          Abriendo ficha turística…
-        </Text>
-      </View>
+      <TourismStateView message="Abriendo ficha turística…" variant="loading" />
     );
   }
 
   if (!center || error) {
     return (
-      <View style={[styles.loading, { backgroundColor: colors.background }]}>
-        <TurismoIcon
-          color={colors.danger}
-          name="wifiOff"
-          size={turismoIconSizes.xl}
-        />
-        <Text style={[styles.errorTitle, { color: colors.text }]}>
-          No pudimos abrir la ficha.
-        </Text>
-        <TourismActionButton
-          icon="refresh"
-          label="Reintentar"
-          onPress={() => void refetch()}
-        />
-      </View>
+      <TourismStateView
+        onAction={() => void refetch()}
+        title="No pudimos abrir la ficha."
+        variant="error"
+      />
     );
   }
 
@@ -101,7 +99,6 @@ export default function CenterDetailScreen() {
       showHeader={false}
       title="Ficha turística"
     >
-      <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -122,7 +119,7 @@ export default function CenterDetailScreen() {
               <View
                 style={[
                   styles.heroFallback,
-                  { backgroundColor: colors.mapBackground },
+                  { backgroundColor: colors.map.background },
                 ]}
               >
                 <TurismoIcon
@@ -156,10 +153,7 @@ export default function CenterDetailScreen() {
                   icon="bookmark"
                   onPress={() => {
                     if (auth.status !== "authenticated") {
-                      router.push({
-                        pathname: "/login",
-                        params: { returnTo: `/centers/${code}` },
-                      } as never);
+                      router.push(buildLoginHref(`/centers/${center.code}`));
                       return;
                     }
                     savedMutation.mutate({ center, saved });
@@ -182,36 +176,15 @@ export default function CenterDetailScreen() {
             <TourismActionButton
               icon="route"
               label="Cómo llegar"
-              onPress={() =>
-                router.push({
-                  pathname: "/route",
-                  params: {
-                    destinationLatitude: String(center.latitude),
-                    destinationLongitude: String(center.longitude),
-                    destinationName: center.name,
-                  },
-                } as never)
-              }
+              onPress={() => router.push(buildRouteHref(center))}
               style={styles.routeButton}
             />
 
-            <View style={[styles.tabs, { borderBottomColor: colors.border }]}>
-              <TabButton
-                active={activeTab === "information"}
-                label="Información"
-                onPress={() => setActiveTab("information")}
-              />
-              <TabButton
-                active={activeTab === "opinions"}
-                label="Opiniones"
-                onPress={() => setActiveTab("opinions")}
-              />
-              <TabButton
-                active={activeTab === "photos"}
-                label="Fotos"
-                onPress={() => setActiveTab("photos")}
-              />
-            </View>
+            <TourismTabs
+              items={centerTabs}
+              onChange={setActiveTab}
+              value={activeTab}
+            />
 
             {activeTab === "information" ? (
               <InformationTab center={center} />
@@ -263,40 +236,6 @@ function CenterRatingSummary({
   );
 }
 
-function TabButton({
-  active,
-  label,
-  onPress,
-}: Readonly<{
-  active: boolean;
-  label: string;
-  onPress: () => void;
-}>) {
-  const colors = useTurismoPalette();
-  return (
-    <Pressable
-      accessibilityRole="tab"
-      accessibilityState={{ selected: active }}
-      hitSlop={4}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.tabButton,
-        pressed && styles.tabButtonPressed,
-        active && { borderBottomColor: colors.primary },
-      ]}
-    >
-      <Text
-        style={[
-          styles.tabLabel,
-          { color: active ? colors.primaryStrong : colors.textMuted },
-        ]}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 function InformationTab({ center }: Readonly<{ center: PublicCenterDetail }>) {
   const colors = useTurismoPalette();
   return (
@@ -306,38 +245,45 @@ function InformationTab({ center }: Readonly<{ center: PublicCenterDetail }>) {
           {center.description}
         </Text>
       ) : null}
-      <DetailSection icon="mapPinned" title="Información del lugar">
-        <InfoRow label="Zona turística" value={center.touristZone} />
-        <InfoRow label="Categoría" value={center.category} />
-        <InfoRow label="Tipo" value={center.type} />
+      <TourismSection
+        icon="mapPinned"
+        title="Información del lugar"
+        variant="card"
+      >
+        <TourismInfoRow label="Zona turística" value={center.touristZone} />
+        <TourismInfoRow label="Categoría" value={center.category} />
+        <TourismInfoRow label="Tipo" value={center.type} />
         {center.subtype ? (
-          <InfoRow label="Subtipo" value={center.subtype} />
+          <TourismInfoRow label="Subtipo" value={center.subtype} />
         ) : null}
         {center.address ? (
-          <InfoRow label="Dirección" value={center.address} />
+          <TourismInfoRow label="Dirección" value={center.address} />
         ) : null}
         {center.altitudeMeters !== null ? (
-          <InfoRow label="Altitud" value={`${center.altitudeMeters} msnm`} />
+          <TourismInfoRow
+            label="Altitud"
+            value={`${center.altitudeMeters} msnm`}
+          />
         ) : null}
-      </DetailSection>
-      <DetailSection icon="calendar" title="Ingreso y horario">
+      </TourismSection>
+      <TourismSection icon="calendar" title="Ingreso y horario" variant="card">
         {center.admission ? (
           <>
-            <InfoRow
+            <TourismInfoRow
               label="Acceso"
               value={`${center.admission.type} · ${center.admission.attention}`}
             />
             {center.admission.opensAt || center.admission.closesAt ? (
-              <InfoRow
+              <TourismInfoRow
                 label="Horario"
                 value={`${center.admission.opensAt ?? "--:--"} – ${center.admission.closesAt ?? "--:--"}`}
               />
             ) : null}
             {center.admission.priceFrom !== null ||
             center.admission.priceTo !== null ? (
-              <InfoRow
+              <TourismInfoRow
                 label="Precio"
-                value={formatPrice(
+                value={formatAdmissionPrice(
                   center.admission.priceFrom,
                   center.admission.priceTo,
                 )}
@@ -347,7 +293,7 @@ function InformationTab({ center }: Readonly<{ center: PublicCenterDetail }>) {
         ) : (
           <EmptyStateText text="No hay información de ingreso registrada." />
         )}
-      </DetailSection>
+      </TourismSection>
       <Tags title="Actividades" values={center.activities} />
       <Tags title="Accesibilidad" values={center.accessibility} />
       <Tags title="Facilidades" values={center.facilities} />
@@ -408,60 +354,19 @@ function PhotosTab({
   );
 }
 
-function DetailSection({
-  children,
-  icon,
-  title,
-}: Readonly<{
-  children: ReactNode;
-  icon: TurismoIconName;
-  title: string;
-}>) {
-  const colors = useTurismoPalette();
-  return (
-    <TourismSurface style={styles.section}>
-      <View style={styles.sectionHeading}>
-        <TurismoIcon
-          color={colors.primaryStrong}
-          name={icon}
-          size={turismoIconSizes.md}
-        />
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          {title}
-        </Text>
-      </View>
-      <View style={styles.sectionContent}>{children}</View>
-    </TourismSurface>
-  );
-}
-
-function InfoRow({ label, value }: Readonly<{ label: string; value: string }>) {
-  const colors = useTurismoPalette();
-  return (
-    <View style={styles.infoRow}>
-      <Text style={[styles.infoLabel, { color: colors.textFaint }]}>
-        {label}
-      </Text>
-      <Text style={[styles.infoValue, { color: colors.text }]}>{value}</Text>
-    </View>
-  );
-}
-
 function Tags({
   title,
   values,
 }: Readonly<{ title: string; values: readonly string[] }>) {
-  const colors = useTurismoPalette();
   if (!values.length) return null;
   return (
-    <TourismSurface style={styles.section}>
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
+    <TourismSection title={title} variant="card">
       <View style={styles.tags}>
         {values.map((value) => (
           <TourismBadge key={value}>{value}</TourismBadge>
         ))}
       </View>
-    </TourismSurface>
+    </TourismSection>
   );
 }
 
@@ -495,24 +400,6 @@ function EmptyStateText({ text }: Readonly<{ text: string }>) {
   return (
     <Text style={[styles.emptyText, { color: colors.textMuted }]}>{text}</Text>
   );
-}
-
-function formatRating(value: number): string {
-  return value.toFixed(1).replace(".", ",");
-}
-
-function formatPrice(from: number | null, to: number | null): string {
-  if (from !== null && to !== null && from !== to) return `$${from} – $${to}`;
-  const value = from ?? to;
-  return value === null ? "No registrado" : `$${value}`;
-}
-
-function resolveMediaUrl(path: string): string {
-  if (/^https?:\/\//.test(path)) return path;
-  const api = (
-    process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:3000/api/v1"
-  ).replace(/\/$/, "");
-  return `${api.replace(/\/api\/v1$/, "")}${path}`;
 }
 
 const styles = StyleSheet.create({
@@ -563,36 +450,10 @@ const styles = StyleSheet.create({
   },
   ratingValue: { ...turismoTypography.label },
   ratingCount: { ...turismoTypography.caption },
-  ratingPressed: { opacity: 0.72 },
+  ratingPressed: { opacity: turismoOpacity.pressed },
   routeButton: { width: "100%" },
-  tabs: {
-    borderBottomWidth: turismoMetrics.borderWidth,
-    flexDirection: "row",
-    gap: turismoSpacing.lg,
-  },
-  tabButton: {
-    alignItems: "center",
-    borderBottomColor: "transparent",
-    borderBottomWidth: turismoMetrics.borderWidthStrong,
-    justifyContent: "center",
-    minHeight: turismoMetrics.touchTarget,
-    paddingHorizontal: turismoSpacing.xs,
-  },
-  tabButtonPressed: { opacity: 0.72 },
-  tabLabel: { ...turismoTypography.label },
   tabContent: { gap: turismoSpacing.md },
   description: { ...turismoTypography.body },
-  section: { gap: turismoSpacing.md, padding: turismoSpacing.md },
-  sectionHeading: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-  },
-  sectionTitle: { ...turismoTypography.heading },
-  sectionContent: { gap: turismoSpacing.sm },
-  infoRow: { gap: turismoSpacing.xxs },
-  infoLabel: { ...turismoTypography.caption },
-  infoValue: { ...turismoTypography.body },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: turismoSpacing.xs },
   emptyState: {
     alignItems: "center",
@@ -612,13 +473,4 @@ const styles = StyleSheet.create({
     ...turismoTypography.caption,
     padding: turismoSpacing.xs,
   },
-  loading: {
-    alignItems: "center",
-    flex: 1,
-    gap: turismoSpacing.md,
-    justifyContent: "center",
-    padding: turismoSpacing.xl,
-  },
-  loadingText: { ...turismoTypography.body },
-  errorTitle: { ...turismoTypography.heading, textAlign: "center" },
 });

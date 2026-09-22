@@ -1,3 +1,5 @@
+import type { PublicCenter } from "@/features/centers/domain/public-center";
+
 export type OfflineCity = Readonly<{
   slug: string;
   name: string;
@@ -18,24 +20,7 @@ export type OfflineCityManifest = Readonly<{
   city: OfflineCity;
   package: NonNullable<OfflineCity["package"]>;
   boundary: Readonly<Record<string, unknown>> | null;
-  centers: readonly Readonly<{
-    code: string;
-    name: string;
-    description: string | null;
-    latitude: number;
-    longitude: number;
-    category: string;
-    type: string;
-    subtype: string;
-    hierarchy: string | null;
-    categoryCode: string;
-    typeCode: string;
-    subtypeCode: string;
-    provinceCode: string;
-    cantonCode: string;
-    parishCode: string;
-    hierarchyCode: string | null;
-  }>[];
+  centers: readonly PublicCenter[];
   routes: readonly Readonly<{
     key: string;
     name: string;

@@ -3,7 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StyleSheet, View } from "react-native";
 
 import { TourismHeader } from "./tourism-navigation";
-import { useTurismoPalette } from "./tourism-controls";
+import { useTurismoPalette } from "./theme-context";
 import { turismoMetrics, turismoSpacing } from "./tokens";
 
 /**

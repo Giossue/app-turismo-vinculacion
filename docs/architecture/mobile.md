@@ -61,10 +61,9 @@ en el encabezado. El compositor usa el manejo nativo de teclado y permanece sobr
 visible cuando aparece el teclado del sistema.
 
 El acceso al menú lateral se presenta en la fila superior, junto al buscador del mapa. Un
-`TourismMenuProvider` posee un único drawer para el shell principal; las pantallas
-secundarias que lo ofrecen conservan el mismo botón en el encabezado con un drawer local.
-La pantalla `Mapas sin conexión` es una excepción intencional: no muestra el subtítulo de
-contexto ni el botón de menú en su encabezado.
+`TourismMenuProvider` posee un único drawer para el shell principal. Las pantallas
+secundarias (ficha, ruta, cuenta, guardados, mapas sin conexión y configuración) no muestran
+el botón de menú: su encabezado ofrece `Volver` y el drawer solo se abre desde `Explorar`.
 
 Las decisiones de layout siguen las primitivas oficiales de React Native: dimensiones en
 puntos independientes de densidad, Flexbox y `useWindowDimensions` para adaptación,
@@ -76,13 +75,46 @@ limpia por pantalla, consume primero overlays y no convierte gestos efímeros en
 
 Referencias: [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/), [Expo Location](https://docs.expo.dev/versions/v57.0.0/sdk/location/), [Expo TaskManager](https://docs.expo.dev/versions/v57.0.0/sdk/task-manager/), [Expo Speech](https://docs.expo.dev/versions/latest/sdk/speech/), [Expo Router](https://docs.expo.dev/router/introduction/), [Expo SQLite](https://docs.expo.dev/versions/latest/sdk/sqlite/), [MapLibre OfflineManager](https://maplibre.org/maplibre-react-native/docs/modules/offline-manager/), [Style RN 0.86](https://reactnative.dev/docs/0.86/style), [dimensiones](https://reactnative.dev/docs/0.86/height-and-width), [useWindowDimensions](https://reactnative.dev/docs/0.86/usewindowdimensions), [PixelRatio](https://reactnative.dev/docs/0.86/pixelratio), [Text](https://reactnative.dev/docs/0.86/text), [Pressable](https://reactnative.dev/docs/0.86/pressable), [BackHandler](https://reactnative.dev/docs/0.86/backhandler) y [accesibilidad](https://reactnative.dev/docs/0.86/accessibility).
 
+## Módulos compartidos
+
+Antes de crear una utilidad o un componente nuevo, reutilizar estos módulos del cliente:
+
+- `src/core/geo`: `GeoCoordinate`, `GeoBounds`, `GeoBoundingBox`, `getDistanceMeters`
+  (haversine), `offsetCoordinate`, `normalizeLongitude` y `getCoordinateBounds` (sin
+  `Math.min(...spread)`).
+- `src/core/format`: `appLocale` (`es-EC`), `formatDistance`/`formatOptionalDistance`,
+  `formatDurationSeconds`, `formatClockTime`, `toIsoDate`, `formatLongDate` y
+  `formatRelativeDate`.
+- `src/core/api/http.ts`: `requestJson`, `sendRequest`, `assertResponseOk`,
+  `parseJsonResponse`, `readApiErrorMessage`, `ApiError` e `isApiUnavailableError`. Los
+  clientes `features/*/data/*-api.ts` los usan para que la UI nunca muestre errores de red o
+  de JSON en inglés; las opciones de transporte se pasan como `{ apiUrl, fetcher, signal }`.
+- `src/core/api/query-keys.ts`: prefijos de claves de TanStack Query, `ONE_DAY_MS` y las
+  políticas de persistencia y de cierre de sesión. `src/core/api/media-url.ts`:
+  `resolveMediaUrl` para fotografías servidas por la API.
+- `src/core/storage/json-storage.ts`: `readJson`/`writeJson`/`removeJson` validados con zod.
+- `src/core/navigation/search-params.ts`: `firstSearchParam`. Las rutas tipadas se construyen
+  con `buildRouteHref`/`parseRouteSearchParams` (`features/routing/presentation/route-href.ts`)
+  y `buildLoginHref`/`parseReturnTo` (`features/auth/application/login-href.ts`); no usar
+  `as never` en los `href`.
+- `src/core/ui`: además de los controles existentes, `TourismStateView` (carga, error y
+  vacío), `TourismTabs`, `TourismInfoRow`, `TourismSection`, `TourismBottomSheet`,
+  `TourismBottomSheetModal` y `TourismSheetScrollView`; `useTurismoPalette` y
+  `useTurismoMapPalette` viven en `theme-context.tsx`, y `turismoOpacity` y
+  `turismoFixedColors` en `tokens.ts`.
+- Mapas: `features/map/data/basemap-style.ts` (estilo autoalojado, paleta y respaldo),
+  `use-basemap-style`, `use-map-lifecycle`, `MapLoadingOverlay` y `UserLocationLayers`
+  (`features/map/presentation`), compartidos por el mapa de Explorar y el de rutas. Los pines
+  del catastro se resuelven con `getEstablishmentPin` (`establishment-pins.ts`).
+
 ## Estado
 
 - TanStack Query: estado remoto, cancelación y caché explícita.
 - Zustand: sesión, dependencias de UI y estado local de feature.
 - Expo SecureStore: refresh token y material sensible mínimo.
-- SQLite/AsyncStorage: catálogos descargados, favoritos sincronizables y borradores solo
-  cuando se especifique su política de retención.
+- SQLite/AsyncStorage: catálogos descargados y borradores solo cuando se especifique su
+  política de retención. Los guardados viven en la cuenta (`favoritos_centros`), no en el
+  dispositivo.
 - Nunca guardar claves maestras de proveedores.
 
 La app presenta una entrada única de identidad con `Iniciar sesión`, `Crear cuenta` y
@@ -95,7 +127,11 @@ refresh token en SecureStore. Una cuenta nueva se crea con rol `TURISTA` mediant
 `/auth/mobile/register`; el género es obligatorio y usa las opciones `Masculino` o
 `Femenino`, mientras que la fecha de nacimiento se elige con el calendario nativo. Los
 guardados se sincronizan con `favoritos_centros`; un favorito no autenticado no se asigna a un `usuario_id` ficticio.
-El resumen local de guardados de versiones anteriores solo se importa al iniciar sesión.
+El resumen local de guardados de versiones anteriores se importa una sola vez a la primera
+cuenta que inicia sesión en el dispositivo y después se borra, para que otra cuenta no lo
+herede; solo se conservan, para reintentar, los lugares que no se pudieron subir por falta
+de conexión. La app ya no replica la lista remota en el dispositivo ni la escribe al guardar
+o quitar un lugar.
 
 ### UI declarativa y overlays
 
@@ -133,6 +169,13 @@ abren con `push` porque sí representan una pantalla que puede cerrarse.
 ## Caché y funcionamiento sin conexión
 
 TanStack Query persiste el catálogo público en AsyncStorage durante un máximo de 24 horas.
+La persistencia usa una lista de claves permitidas (`persistedQueryKeys` en
+`src/core/api/query-keys.ts`): centros y fichas publicados, filtros, opiniones públicas y
+ciudades offline. Los datos de la cuenta (guardados, opinión propia), las búsquedas y las
+consultas por viewport o GPS solo viven en memoria, y al cerrar sesión se eliminan de la
+caché todas las claves de `userScopedQueryKeys`. Si la API no responde, la ficha de un
+atractivo usa la copia offline solo ante errores de conexión o del servidor; un 404 se
+muestra como tal.
 El mapa en línea revalida los centros publicados al montar. Los centros confirmados en caché
 permanecen visibles mientras se ejecuta una revalidación en segundo plano; una respuesta vacía
 los reemplaza al completarse y la caché nunca sustituye la fuente remota PostgreSQL. Los

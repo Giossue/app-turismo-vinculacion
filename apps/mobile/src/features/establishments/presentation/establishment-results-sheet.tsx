@@ -1,11 +1,12 @@
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
+import { useTurismoPalette } from "@/core/ui/theme-context";
 import {
   TourismActionButton,
   TourismBadge,
   TourismSurface,
-  useTurismoPalette,
 } from "@/core/ui/tourism-controls";
+import { formatDistance } from "@/core/format/distance";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
@@ -175,11 +176,6 @@ export function EstablishmentResultsSheet({
       ))}
     </View>
   );
-}
-
-function formatDistance(value: number): string {
-  if (value < 1_000) return `${Math.round(value)} m`;
-  return `${(value / 1_000).toFixed(1)} km`;
 }
 
 const styles = StyleSheet.create({

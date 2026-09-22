@@ -72,3 +72,27 @@ describe("mobile auth API", () => {
     );
   });
 });
+
+describe("mobile auth API errors", () => {
+  it("shows the API's message for rejected credentials", async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: { message: "Credenciales inválidas." } }),
+    });
+
+    await expect(
+      loginMobile("turista@mail.com", "bad", fetcher, "http://api.test/api/v1"),
+    ).rejects.toThrow("Credenciales inválidas.");
+  });
+
+  it("does not leak transport errors", async () => {
+    const fetcher = vi
+      .fn()
+      .mockRejectedValue(new TypeError("Network request failed"));
+
+    await expect(
+      loginMobile("turista@mail.com", "x", fetcher, "http://api.test/api/v1"),
+    ).rejects.toThrow("No se pudo iniciar sesión.");
+  });
+});

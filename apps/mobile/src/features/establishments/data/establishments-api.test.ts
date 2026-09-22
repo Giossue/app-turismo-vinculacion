@@ -27,7 +27,10 @@ describe("getMapEstablishments", () => {
     });
 
     await expect(
-      getMapEstablishments(null, fetcher, "http://api.test/api/v1"),
+      getMapEstablishments(null, {
+        apiUrl: "http://api.test/api/v1",
+        fetcher,
+      }),
     ).resolves.toEqual({
       items: [
         {
@@ -51,7 +54,10 @@ describe("getMapEstablishments", () => {
     const fetcher = vi.fn().mockResolvedValue({ ok: false, status: 404 });
 
     await expect(
-      getMapEstablishments(null, fetcher, "http://api.test/api/v1"),
+      getMapEstablishments(null, {
+        apiUrl: "http://api.test/api/v1",
+        fetcher,
+      }),
     ).resolves.toEqual({ items: [] });
   });
 });
@@ -92,8 +98,7 @@ describe("getNearbyEstablishments", () => {
     await expect(
       getNearbyEstablishments(
         { activity: "Alimentación", latitude: -1.59, longitude: -79.01 },
-        fetcher,
-        "http://api.test/api/v1",
+        { apiUrl: "http://api.test/api/v1", fetcher },
       ),
     ).resolves.toMatchObject({
       items: [{ nombreComercial: "Comedor Guaranda" }],
@@ -126,8 +131,7 @@ describe("getNearbyEstablishments", () => {
     await expect(
       getNearbyEstablishments(
         { activity: "Alimentación", localityId: 4 },
-        fetcher,
-        "http://api.test/api/v1",
+        { apiUrl: "http://api.test/api/v1", fetcher },
       ),
     ).resolves.toMatchObject({
       fallbackApplied: true,

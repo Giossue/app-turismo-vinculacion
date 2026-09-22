@@ -1,3 +1,5 @@
+import type { GeoBounds } from "@/core/geo/types";
+
 export type PublicCenter = Readonly<{
   code: string;
   name: string;
@@ -26,12 +28,7 @@ export type CenterFilters = Readonly<{
   cantonCode?: string;
   parishCode?: string;
   hierarchyCode?: string;
-  bounds?: Readonly<{
-    west: number;
-    south: number;
-    east: number;
-    north: number;
-  }>;
+  bounds?: GeoBounds;
 }>;
 
 export type PublicCenterDetail = PublicCenter &

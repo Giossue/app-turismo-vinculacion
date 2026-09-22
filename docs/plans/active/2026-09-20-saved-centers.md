@@ -9,7 +9,9 @@ desde `Menú > Guardados`.
 
 ## Alcance
 
-- Conservar un resumen local para cachear la lista y migrar guardados antiguos al iniciar sesión.
+- Migrar una sola vez los guardados locales de versiones anteriores al iniciar sesión. Desde
+  el refactor de calidad del 22 de septiembre la lista ya no se replica en el dispositivo
+  (ver `docs/architecture/mobile.md`).
 - Compartir el mismo estado entre la ficha del mapa, la ficha completa y la pantalla
   `Guardados`.
 - Abrir la ficha completa desde cada elemento guardado y permitir quitarlo.

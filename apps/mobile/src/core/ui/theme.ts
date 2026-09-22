@@ -5,7 +5,12 @@ import {
   type MD3Theme,
 } from "react-native-paper";
 
-import { turismoColors, turismoTypography } from "./tokens";
+import {
+  turismoColors,
+  turismoRadii,
+  turismoTypography,
+  type TurismoColors,
+} from "./tokens";
 
 const turismoFonts = configureFonts({
   config: {
@@ -25,54 +30,48 @@ const turismoFonts = configureFonts({
   },
 });
 
-export const turismoLightTheme: MD3Theme = {
-  ...MD3LightTheme,
-  roundness: 16,
-  fonts: turismoFonts,
-  colors: {
-    ...MD3LightTheme.colors,
-    primary: turismoColors.light.primary,
-    primaryContainer: turismoColors.light.primarySoft,
-    secondary: turismoColors.light.accent,
-    secondaryContainer: turismoColors.light.surfaceMuted,
-    tertiary: turismoColors.light.primaryStrong,
-    background: turismoColors.light.background,
-    onPrimary: turismoColors.light.onPrimary,
-    onPrimaryContainer: turismoColors.light.primaryStrong,
-    onSecondary: turismoColors.light.text,
-    onSecondaryContainer: turismoColors.light.text,
-    onSurface: turismoColors.light.text,
-    onSurfaceVariant: turismoColors.light.textMuted,
-    surface: turismoColors.light.surface,
-    surfaceVariant: turismoColors.light.surfaceMuted,
-    outline: turismoColors.light.border,
-    outlineVariant: turismoColors.light.border,
-    error: turismoColors.light.danger,
-  },
-};
+/** Maps the Turismo palette onto a Material 3 base theme for Paper. */
+function createTurismoPaperTheme(
+  base: MD3Theme,
+  colors: TurismoColors,
+  colorOverrides: Partial<MD3Theme["colors"]> = {},
+): MD3Theme {
+  return {
+    ...base,
+    roundness: turismoRadii.md,
+    fonts: turismoFonts,
+    colors: {
+      ...base.colors,
+      primary: colors.primary,
+      primaryContainer: colors.primarySoft,
+      secondary: colors.accent,
+      secondaryContainer: colors.surfaceMuted,
+      tertiary: colors.primaryStrong,
+      background: colors.background,
+      onPrimary: colors.onPrimary,
+      onPrimaryContainer: colors.primaryStrong,
+      onSecondary: colors.text,
+      onSecondaryContainer: colors.text,
+      onSurface: colors.text,
+      onSurfaceVariant: colors.textMuted,
+      surface: colors.surface,
+      surfaceVariant: colors.surfaceMuted,
+      outline: colors.border,
+      outlineVariant: colors.border,
+      error: colors.danger,
+      ...colorOverrides,
+    },
+  };
+}
 
-export const turismoDarkTheme: MD3Theme = {
-  ...MD3DarkTheme,
-  roundness: 16,
-  fonts: turismoFonts,
-  colors: {
-    ...MD3DarkTheme.colors,
-    primary: turismoColors.dark.primary,
-    primaryContainer: turismoColors.dark.primarySoft,
-    secondary: turismoColors.dark.accent,
-    secondaryContainer: turismoColors.dark.surfaceMuted,
-    tertiary: turismoColors.dark.primaryStrong,
-    background: turismoColors.dark.background,
-    onPrimary: turismoColors.dark.onPrimary,
-    onPrimaryContainer: turismoColors.dark.primaryStrong,
-    onSecondary: turismoColors.dark.onPrimary,
-    onSecondaryContainer: turismoColors.dark.text,
-    onSurface: turismoColors.dark.text,
-    onSurfaceVariant: turismoColors.dark.textMuted,
-    surface: turismoColors.dark.surface,
-    surfaceVariant: turismoColors.dark.surfaceMuted,
-    outline: turismoColors.dark.border,
-    outlineVariant: turismoColors.dark.border,
-    error: turismoColors.dark.danger,
-  },
-};
+export const turismoLightTheme = createTurismoPaperTheme(
+  MD3LightTheme,
+  turismoColors.light,
+);
+
+export const turismoDarkTheme = createTurismoPaperTheme(
+  MD3DarkTheme,
+  turismoColors.dark,
+  // El gris claro de `accent` necesita texto oscuro en modo oscuro.
+  { onSecondary: turismoColors.dark.onPrimary },
+);

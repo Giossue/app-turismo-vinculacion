@@ -3,27 +3,24 @@ import * as Speech from "expo-speech";
 import { AppState, Platform } from "react-native";
 import { useEffect, useRef, useState } from "react";
 
+import { getDistanceMeters } from "@/core/geo/distance";
+import type { GeoCoordinate } from "@/core/geo/types";
+import { isReliableLocationAccuracy } from "@/core/location/location-quality";
 import {
-  getDistanceMeters,
   getDistanceToRouteMeters,
   getNavigationGuidance,
   getNavigationNotification,
   getRouteRemainingMetrics,
   type NavigationGuidance,
 } from "../domain/navigation-guidance";
-import type {
-  CalculatedRoute,
-  RouteCoordinate,
-  RouteMode,
-} from "../domain/routing";
+import type { CalculatedRoute, RouteMode } from "../domain/routing";
 import {
   clearNavigationSession,
+  patchNavigationSession,
   readNavigationSession,
   saveNavigationSession,
-  updateNavigationLocation,
   type PersistedNavigationLocation,
 } from "../data/navigation-session-storage";
-import { isReliableLocationAccuracy } from "../../../core/location/location-quality";
 import {
   hasNavigationBackgroundPermission,
   startNavigationLocationTask,
@@ -36,46 +33,31 @@ const offRouteThresholdMeters = 60;
 const rerouteCooldownMs = 12_000;
 const voiceTriggerDistanceMeters = 180;
 
-export type NavigationSessionStatus =
-  | "idle"
-  | "starting"
-  | "tracking"
-  | "rerouting"
-  | "arrived"
-  | "denied"
-  | "disabled"
-  | "error";
-
 type NavigationSessionOptions = Readonly<{
   active: boolean;
-  destination: RouteCoordinate | null;
+  destination: GeoCoordinate | null;
   isRecalculating: boolean;
   mode: RouteMode;
   onArrive: () => void;
-  onReroute: (origin: RouteCoordinate) => void;
-  origin: RouteCoordinate | null;
+  onReroute: (origin: GeoCoordinate) => void;
   route: CalculatedRoute | null;
   voiceEnabled: boolean;
 }>;
 
 type NavigationSessionState = Readonly<{
-  currentLocation: RouteCoordinate | null;
-  distanceToDestinationMeters: number | null;
+  currentLocation: GeoCoordinate | null;
   remainingDistanceMeters: number | null;
   remainingDurationSeconds: number | null;
   message: string | null;
   nextInstruction: NavigationGuidance | null;
-  status: NavigationSessionStatus;
 }>;
 
 const initialState: NavigationSessionState = {
   currentLocation: null,
-  distanceToDestinationMeters: null,
   remainingDistanceMeters: null,
   remainingDurationSeconds: null,
   message: null,
   nextInstruction: null,
-  status: "idle",
 };
 
 export function useNavigationSession({
@@ -85,7 +67,6 @@ export function useNavigationSession({
   mode,
   onArrive,
   onReroute,
-  origin,
   route,
   voiceEnabled,
 }: NavigationSessionOptions): NavigationSessionState {
@@ -96,7 +77,6 @@ export function useNavigationSession({
   const modeRef = useRef(mode);
   const onArriveRef = useRef(onArrive);
   const onRerouteRef = useRef(onReroute);
-  const originRef = useRef(origin);
   const voiceEnabledRef = useRef(voiceEnabled);
   const lastRerouteAtRef = useRef(0);
   const routeKeyRef = useRef<string | null>(null);
@@ -115,7 +95,6 @@ export function useNavigationSession({
     modeRef.current = mode;
     onArriveRef.current = onArrive;
     onRerouteRef.current = onReroute;
-    originRef.current = origin;
     voiceEnabledRef.current = voiceEnabled;
   }, [
     destination,
@@ -123,7 +102,6 @@ export function useNavigationSession({
     mode,
     onArrive,
     onReroute,
-    origin,
     route,
     voiceEnabled,
   ]);
@@ -151,7 +129,7 @@ export function useNavigationSession({
   }, [active, route, voiceEnabled]);
 
   useEffect(() => {
-    if (!active || !route || !destination || !origin) return;
+    if (!active || !route || !destination) return;
 
     let disposed = false;
     void readNavigationSession().then((current) => {
@@ -159,11 +137,8 @@ export function useNavigationSession({
       void saveNavigationSession({
         active: true,
         destination,
-        lastAnnouncedStepIndex: announcedStepRef.current,
         lastLocation: current?.lastLocation ?? lastLocationRef.current,
-        lastRerouteAt: lastRerouteAtRef.current,
         mode,
-        origin,
         route,
         updatedAt: Date.now(),
         version: 1,
@@ -173,7 +148,7 @@ export function useNavigationSession({
     return () => {
       disposed = true;
     };
-  }, [active, destination, mode, origin, route]);
+  }, [active, destination, mode, route]);
 
   useEffect(() => {
     if (!active) {
@@ -207,7 +182,6 @@ export function useNavigationSession({
         setState((current) => ({
           ...current,
           message: "Ajustando tu ubicación con el GPS…",
-          status: current.currentLocation ? "tracking" : "starting",
         }));
         return;
       }
@@ -217,7 +191,10 @@ export function useNavigationSession({
       }
       lastProcessedLocationAtRef.current = persistedLocation.timestamp;
       lastLocationRef.current = persistedLocation;
-      void updateNavigationLocation(persistedLocation);
+      void patchNavigationSession(
+        { lastLocation: persistedLocation },
+        { requireActive: true },
+      );
 
       const destinationCoordinate = destinationRef.current;
       const destinationDistance = destinationCoordinate
@@ -231,7 +208,6 @@ export function useNavigationSession({
       setState((current) => ({
         ...current,
         currentLocation: coordinate,
-        distanceToDestinationMeters: destinationDistance,
         remainingDistanceMeters: remaining?.distanceMeters ?? null,
         remainingDurationSeconds: remaining?.durationSeconds ?? null,
       }));
@@ -246,7 +222,6 @@ export function useNavigationSession({
         setState((current) => ({
           ...current,
           message: "Has llegado a tu destino.",
-          status: "arrived",
         }));
         onArriveRef.current();
         return;
@@ -289,11 +264,8 @@ export function useNavigationSession({
         setState((current) => ({
           ...current,
           message: "Te alejaste de la ruta; buscando un nuevo trayecto.",
-          status: "rerouting",
         }));
         onRerouteRef.current(coordinate);
-      } else if (!isRecalculatingRef.current) {
-        setState((current) => ({ ...current, status: "tracking" }));
       }
     };
 
@@ -322,7 +294,6 @@ export function useNavigationSession({
         ...current,
         message:
           "No pudimos seguir tu ubicación. Revisa el GPS e inténtalo de nuevo.",
-        status: "error",
       }));
     };
 
@@ -334,11 +305,7 @@ export function useNavigationSession({
     };
 
     const startTracking = async () => {
-      setState((current) => ({
-        ...current,
-        message: null,
-        status: "starting",
-      }));
+      setState((current) => ({ ...current, message: null }));
       try {
         let permission = await Location.getForegroundPermissionsAsync();
         if (!permission.granted && permission.canAskAgain) {
@@ -349,7 +316,6 @@ export function useNavigationSession({
             setState((current) => ({
               ...current,
               message: "Necesitamos permiso de ubicación para navegar.",
-              status: "denied",
             }));
           }
           return;
@@ -361,7 +327,6 @@ export function useNavigationSession({
             setState((current) => ({
               ...current,
               message: "Activa el GPS para iniciar la navegación.",
-              status: "disabled",
             }));
           }
           return;
@@ -370,7 +335,7 @@ export function useNavigationSession({
 
         const currentRoute = routeRef.current;
         const destinationCoordinate = destinationRef.current;
-        if (!currentRoute || !destinationCoordinate || !originRef.current) {
+        if (!currentRoute || !destinationCoordinate) {
           throw new Error("La sesión de navegación no está lista.");
         }
 
@@ -378,11 +343,8 @@ export function useNavigationSession({
         await saveNavigationSession({
           active: true,
           destination: destinationCoordinate,
-          lastAnnouncedStepIndex: announcedStepRef.current,
           lastLocation: currentSession?.lastLocation ?? null,
-          lastRerouteAt: lastRerouteAtRef.current,
           mode: modeRef.current,
-          origin: originRef.current,
           route: currentRoute,
           updatedAt: Date.now(),
           version: 1,
@@ -407,9 +369,7 @@ export function useNavigationSession({
         if (disposed) {
           subscription.remove();
           subscription = null;
-          return;
         }
-        setState((current) => ({ ...current, status: "tracking" }));
       } catch (error) {
         if (!disposed) {
           setState((current) => ({
@@ -418,7 +378,6 @@ export function useNavigationSession({
               error instanceof Error
                 ? error.message
                 : "No pudimos iniciar el seguimiento de ubicación.",
-            status: "error",
           }));
         }
       }
@@ -433,12 +392,10 @@ export function useNavigationSession({
           setState((current) => ({
             ...current,
             currentLocation: null,
-            distanceToDestinationMeters: null,
             message: "Actualizando tu ubicación…",
             nextInstruction: null,
             remainingDistanceMeters: null,
             remainingDurationSeconds: null,
-            status: "starting",
           }));
           void checkPersistedNavigationState();
           void ensureBackgroundTask().catch(() => undefined);

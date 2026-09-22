@@ -19,19 +19,19 @@ import { G, Polygon, Svg } from "react-native-svg";
 
 import { TurismoIcon, type TurismoIconName } from "./turismo-icons";
 import {
-  getTurismoColors,
-  turismoColors,
+  turismoFixedColors,
   turismoIconSizes,
   turismoMetrics,
+  turismoOpacity,
   turismoRadii,
   turismoSpacing,
   turismoTypography,
 } from "./tokens";
-import { useTurismoTheme } from "./theme-context";
+import { useTurismoPalette } from "./theme-context";
 
-export function useTurismoPalette() {
-  return getTurismoColors(useTurismoTheme().scheme);
-}
+// The clear icon keeps its compact look; hitSlop extends it to a 44dp target.
+const searchClearHitSlop =
+  (turismoMetrics.touchTarget - turismoIconSizes.sm) / 2 - turismoSpacing.xxs;
 
 export function TourismSearchField({
   accessibilityLabel,
@@ -92,7 +92,6 @@ export function TourismSearchField({
         accessibilityLabel={accessibilityLabel}
         autoCapitalize="none"
         autoFocus={autoFocus}
-        blurOnSubmit
         onBlur={onBlur}
         onChangeText={onChangeText}
         onFocus={onFocus}
@@ -102,17 +101,22 @@ export function TourismSearchField({
         returnKeyType="search"
         onSubmitEditing={onSubmitEditing}
         style={[styles.searchInput, { color: colors.text }]}
+        submitBehavior="blurAndSubmit"
         value={value}
       />
       {value && onClear ? (
         <Pressable
           accessibilityLabel="Limpiar búsqueda"
           accessibilityRole="button"
-          hitSlop={8}
+          hitSlop={searchClearHitSlop}
           onPress={onClear}
           style={styles.searchClear}
         >
-          <TurismoIcon color={colors.textMuted} name="close" size={18} />
+          <TurismoIcon
+            color={colors.textMuted}
+            name="close"
+            size={turismoIconSizes.sm}
+          />
         </Pressable>
       ) : null}
       {trailing}
@@ -120,6 +124,10 @@ export function TourismSearchField({
   );
 }
 
+/**
+ * Round icon button. `surface` draws the bordered map-control chip; `ghost`
+ * keeps only the icon, for headers and toolbars that already have a surface.
+ */
 export function TourismIconAction({
   accessibilityLabel,
   disabled = false,
@@ -129,6 +137,7 @@ export function TourismIconAction({
   selected = false,
   slashed = false,
   style,
+  variant = "surface",
 }: Readonly<{
   accessibilityLabel: string;
   disabled?: boolean;
@@ -138,8 +147,11 @@ export function TourismIconAction({
   selected?: boolean;
   slashed?: boolean;
   style?: StyleProp<ViewStyle>;
+  variant?: "surface" | "ghost";
 }>) {
   const colors = useTurismoPalette();
+  const idleBackground = variant === "ghost" ? "transparent" : colors.surface;
+  const idleBorder = variant === "ghost" ? "transparent" : colors.border;
   return (
     <Pressable
       accessibilityLabel={accessibilityLabel}
@@ -150,10 +162,15 @@ export function TourismIconAction({
       onPress={onPress}
       style={({ pressed }) => [
         styles.iconAction,
+        variant === "ghost" && styles.iconActionGhost,
         {
-          backgroundColor: selected ? colors.primary : colors.surface,
-          borderColor: selected ? colors.primary : colors.border,
-          opacity: disabled ? 0.38 : pressed ? 0.72 : 1,
+          backgroundColor: selected ? colors.primary : idleBackground,
+          borderColor: selected ? colors.primary : idleBorder,
+          opacity: disabled
+            ? turismoOpacity.disabled
+            : pressed
+              ? turismoOpacity.pressed
+              : 1,
         },
         style,
       ]}
@@ -212,7 +229,7 @@ export function TourismCompassAction({
         {
           backgroundColor: colors.surface,
           borderColor: colors.border,
-          opacity: pressed ? 0.72 : 1,
+          opacity: pressed ? turismoOpacity.pressed : 1,
         },
         style,
       ]}
@@ -225,8 +242,15 @@ export function TourismCompassAction({
         width={42}
       >
         <G rotation={-bearing} origin="12, 12">
-          <Polygon fill="#EF4444" points="12,4 15,12 12,10" />
-          <Polygon fill="#DC2626" opacity={0.9} points="12,4 9,12 12,10" />
+          <Polygon
+            fill={turismoFixedColors.compassNorth}
+            points="12,4 15,12 12,10"
+          />
+          <Polygon
+            fill={turismoFixedColors.compassNorthShade}
+            opacity={0.9}
+            points="12,4 9,12 12,10"
+          />
           <Polygon fill={colors.text} points="12,20 15,12 12,10" />
           <Polygon fill={colors.text} opacity={0.7} points="12,20 9,12 12,10" />
         </G>
@@ -276,11 +300,13 @@ export function TourismChoiceChip({
   );
 }
 
+/** Pill button. `loading` shows Paper's spinner in place of the icon. */
 export function TourismActionButton({
   compact = false,
   disabled = false,
   icon,
   label,
+  loading = false,
   mode = "contained",
   onPress,
   style,
@@ -289,6 +315,7 @@ export function TourismActionButton({
   disabled?: boolean;
   icon?: TurismoIconName;
   label: string;
+  loading?: boolean;
   mode?: "contained" | "outlined" | "ghost";
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
@@ -305,7 +332,7 @@ export function TourismActionButton({
   return (
     <PaperButton
       accessibilityRole="button"
-      accessibilityState={{ disabled }}
+      accessibilityState={{ busy: loading, disabled }}
       compact={compact}
       buttonColor={backgroundColor}
       contentStyle={[
@@ -326,6 +353,7 @@ export function TourismActionButton({
         compact && styles.actionButtonTextCompact,
         { color: foregroundColor },
       ]}
+      loading={loading}
       mode={mode === "ghost" ? "text" : mode}
       onPress={onPress}
       textColor={foregroundColor}
@@ -384,7 +412,10 @@ export function TourismSectionTitle({
 }: Readonly<{ children: ReactNode; style?: StyleProp<TextStyle> }>) {
   const colors = useTurismoPalette();
   return (
-    <Text style={[styles.sectionTitle, { color: colors.text }, style]}>
+    <Text
+      accessibilityRole="header"
+      style={[styles.sectionTitle, { color: colors.text }, style]}
+    >
       {children}
     </Text>
   );
@@ -419,6 +450,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     width: turismoMetrics.controlMd,
   },
+  iconActionGhost: { borderWidth: 0 },
   iconGraphic: { alignItems: "center", justifyContent: "center" },
   iconSlash: {
     borderRadius: turismoRadii.pill,
@@ -475,5 +507,3 @@ const styles = StyleSheet.create({
   badgeText: { ...turismoTypography.caption },
   sectionTitle: { ...turismoTypography.heading },
 });
-
-export const turismoThemeColors = turismoColors;

@@ -2,22 +2,20 @@ import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
 import { PermissionsAndroid, Platform } from "react-native";
 
+import { getDistanceMeters } from "@/core/geo/distance";
+import { isReliableLocationAccuracy } from "@/core/location/location-quality";
+import { turismoFixedColors } from "@/core/ui/tokens";
 import {
-  markNavigationSessionInactive,
+  patchNavigationSession,
   readNavigationSession,
-  updateNavigationNotificationKey,
-  updateNavigationLocation,
   type PersistedNavigationLocation,
 } from "../data/navigation-session-storage";
-import { isReliableLocationAccuracy } from "../../../core/location/location-quality";
 import {
-  getDistanceMeters,
   getNavigationGuidance,
   getNavigationNotification,
 } from "../domain/navigation-guidance";
 
-export const navigationLocationTaskName =
-  "turismo-vinculacion-navigation-location";
+const navigationLocationTaskName = "turismo-vinculacion-navigation-location";
 
 const arrivalThresholdMeters = 35;
 let startTaskPromise: Promise<void> | null = null;
@@ -62,12 +60,18 @@ if (
         getDistanceMeters(persistedLocation.coordinate, session.destination) <=
         arrivalThresholdMeters
       ) {
-        await markNavigationSessionInactive();
+        await patchNavigationSession(
+          { active: false },
+          { requireActive: false },
+        );
         await stopNavigationLocationTask();
         return;
       }
 
-      await updateNavigationLocation(persistedLocation);
+      await patchNavigationSession(
+        { lastLocation: persistedLocation },
+        { requireActive: true },
+      );
 
       if (Platform.OS === "android") {
         const notification = getNavigationNotification(
@@ -80,7 +84,10 @@ if (
             .then(() => true)
             .catch(() => false);
           if (updated) {
-            await updateNavigationNotificationKey(notification.key);
+            await patchNavigationSession(
+              { lastNotificationKey: notification.key },
+              { requireActive: true },
+            );
           }
         }
       }
@@ -205,7 +212,7 @@ function getNavigationLocationTaskOptions(notificationBody?: string) {
       notificationBody:
         notificationBody ??
         "Siguiendo tu ubicación durante la navegación activa.",
-      notificationColor: "#176B4D",
+      notificationColor: turismoFixedColors.brand,
       notificationTitle: "Turismo Vinculación",
     },
     pausesUpdatesAutomatically: false,

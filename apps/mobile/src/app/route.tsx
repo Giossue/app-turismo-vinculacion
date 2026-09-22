@@ -25,15 +25,21 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 
+import { formatDistance } from "@/core/format/distance";
+import { formatClockTime, formatDurationSeconds } from "@/core/format/duration";
+import type { GeoCoordinate } from "@/core/geo/types";
 import { useUserLocation } from "@/core/location/use-user-location";
+import { firstSearchParam } from "@/core/navigation/search-params";
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 import { useAuth } from "@/features/auth/application/auth-context";
+import { buildLoginHref } from "@/features/auth/application/login-href";
+import { useTurismoPalette } from "@/core/ui/theme-context";
 import {
   TourismActionButton,
   TourismIconAction,
   TourismSurface,
-  useTurismoPalette,
 } from "@/core/ui/tourism-controls";
+import { TourismTabs, type TourismTabItem } from "@/core/ui/tourism-tabs";
 import { TurismoIcon, type TurismoIconName } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
@@ -55,39 +61,32 @@ import { clearNavigationSession } from "@/features/routing/data/navigation-sessi
 import type { NavigationGuidance } from "@/features/routing/domain/navigation-guidance";
 import type {
   CalculatedRoute,
-  RouteCoordinate,
   RouteMode,
   RouteRequest,
 } from "@/features/routing/domain/routing";
 import { RouteMap } from "@/features/routing/presentation/route-map";
+import {
+  parseRouteDestination,
+  parseRouteMode,
+  type RouteSearchParams,
+} from "@/features/routing/presentation/route-href";
 
-type RouteParams = Readonly<{
-  destinationLatitude?: string | string[];
-  destinationLongitude?: string | string[];
-  destinationName?: string | string[];
-  mode?: string | string[];
-}>;
-
-const modeOptions: readonly Readonly<{
-  icon: TurismoIconName;
-  label: string;
-  mode: RouteMode;
-}>[] = [
-  { icon: "car", label: "Auto", mode: "car" },
-  { icon: "bike", label: "Bicicleta", mode: "bicycle" },
-  { icon: "foot", label: "A pie", mode: "foot" },
+const modeOptions: readonly TourismTabItem<RouteMode>[] = [
+  { icon: "car", label: "Auto", value: "car" },
+  { icon: "bike", label: "Bicicleta", value: "bicycle" },
+  { icon: "foot", label: "A pie", value: "foot" },
 ];
 const navigationFollowDelayMs = 7_000;
 
 export default function RouteScreen() {
   const colors = useTurismoPalette();
   const auth = useAuth();
-  const params = useLocalSearchParams<RouteParams>();
+  const params = useLocalSearchParams<RouteSearchParams>();
   const router = useRouter();
   const [mode, setMode] = useState<RouteMode>(
-    () => parseRouteMode(firstParam(params.mode)) ?? "car",
+    () => parseRouteMode(params.mode) ?? "car",
   );
-  const [origin, setOrigin] = useState<RouteCoordinate | null>(null);
+  const [origin, setOrigin] = useState<GeoCoordinate | null>(null);
   const [routeRequested, setRouteRequested] = useState(false);
   const [navigationActive, setNavigationActive] = useState(false);
   const [navigationNotice, setNavigationNotice] = useState<string | null>(null);
@@ -109,10 +108,13 @@ export default function RouteScreen() {
 
   const destination = useMemo(
     () =>
-      parseDestination(params.destinationLatitude, params.destinationLongitude),
+      parseRouteDestination(
+        params.destinationLatitude,
+        params.destinationLongitude,
+      ),
     [params.destinationLatitude, params.destinationLongitude],
   );
-  const destinationName = firstParam(params.destinationName) ?? "Destino";
+  const destinationName = firstSearchParam(params.destinationName) ?? "Destino";
 
   const clearNavigationFollowTimer = useCallback(() => {
     if (navigationFollowTimerRef.current === null) return;
@@ -173,7 +175,7 @@ export default function RouteScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace("/" as never);
+      router.replace("/");
     }
   }, [finishNavigation, router]);
 
@@ -225,7 +227,7 @@ export default function RouteScreen() {
     setNavigationNotice("Has llegado a tu destino.");
   }, []);
 
-  const handleReroute = useCallback((nextOrigin: RouteCoordinate) => {
+  const handleReroute = useCallback((nextOrigin: GeoCoordinate) => {
     setNavigationNotice(null);
     setOrigin(nextOrigin);
   }, []);
@@ -237,7 +239,6 @@ export default function RouteScreen() {
     mode,
     onArrive: handleArrive,
     onReroute: handleReroute,
-    origin,
     route: routeQuery.data ?? null,
     voiceEnabled: true,
   });
@@ -289,10 +290,7 @@ export default function RouteScreen() {
     if (auth.status !== "authenticated") {
       if (auth.status === "anonymous") {
         finishNavigation(null);
-        router.push({
-          pathname: "/login",
-          params: { returnTo: "/route" },
-        } as never);
+        router.push(buildLoginHref("/route"));
       }
       return;
     }
@@ -386,7 +384,7 @@ export default function RouteScreen() {
   }, [finishNavigation]);
 
   const modeLabel =
-    modeOptions.find((option) => option.mode === mode)?.label ?? "Auto";
+    modeOptions.find((option) => option.value === mode)?.label ?? "Auto";
   const routeError =
     routeQuery.error instanceof Error ? routeQuery.error.message : null;
   // La navegación solo dibuja una posición que haya pasado por su watcher
@@ -397,7 +395,7 @@ export default function RouteScreen() {
     : null;
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.mapBackground }]}>
+    <View style={[styles.screen, { backgroundColor: colors.map.background }]}>
       <Stack.Screen
         options={{ gestureEnabled: !navigationActive, headerShown: false }}
       />
@@ -405,7 +403,6 @@ export default function RouteScreen() {
         <RouteMap
           currentLocation={navigationMapLocation}
           destination={destination}
-          fullScreen
           navigationActive={navigationActive}
           onUserInteraction={
             navigationActive
@@ -627,50 +624,12 @@ function RoutePreviewPanel({
                 showsVerticalScrollIndicator={false}
                 style={styles.routePanelScroll}
               >
-                <View
-                  style={[
-                    styles.routeModeTabs,
-                    { borderBottomColor: colors.border },
-                  ]}
-                >
-                  {modeOptions.map((option) => {
-                    const selected = mode === option.mode;
-                    return (
-                      <Pressable
-                        accessibilityLabel={`Modo ${option.label}`}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected }}
-                        key={option.mode}
-                        onPress={() => onModeChange(option.mode)}
-                        style={[
-                          styles.routeModeTab,
-                          selected && [
-                            styles.routeModeTabSelected,
-                            { borderBottomColor: colors.primary },
-                          ],
-                        ]}
-                      >
-                        <TurismoIcon
-                          color={selected ? colors.primary : colors.textMuted}
-                          name={option.icon}
-                          size={turismoIconSizes.md}
-                        />
-                        <Text
-                          style={[
-                            styles.routeModeTabLabel,
-                            {
-                              color: selected
-                                ? colors.primaryStrong
-                                : colors.textMuted,
-                            },
-                          ]}
-                        >
-                          {option.label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
+                <TourismTabs
+                  fill
+                  items={modeOptions}
+                  onChange={onModeChange}
+                  value={mode}
+                />
 
                 {!isCalculating ? (
                   <View style={styles.routeOverview}>
@@ -681,7 +640,7 @@ function RoutePreviewPanel({
                       ]}
                     >
                       {route
-                        ? `${formatDuration(route.durationSeconds)} (${formatDistance(route.distanceMeters)})`
+                        ? `${formatDurationSeconds(route.durationSeconds)} (${formatDistance(route.distanceMeters)})`
                         : "Prepara tu ruta"}
                     </Text>
                     <Text
@@ -887,7 +846,7 @@ function RoutePreviewPanel({
                       { color: colors.primaryStrong },
                     ]}
                   >
-                    {formatDuration(route.durationSeconds)}
+                    {formatDurationSeconds(route.durationSeconds)}
                   </Text>
                   <Text
                     style={[
@@ -1076,11 +1035,11 @@ function ActiveNavigationOverlay({
           <Text
             style={[styles.activeSummaryValue, { color: colors.primaryStrong }]}
           >
-            {formatDuration(remainingDuration)}
+            {formatDurationSeconds(remainingDuration)}
           </Text>
           <Text style={[styles.activeSummaryMeta, { color: colors.textMuted }]}>
             {formatDistance(remainingDistance)} ·{" "}
-            {formatArrivalTime(clock, remainingDuration)}
+            {formatClockTime(clock + Math.max(0, remainingDuration) * 1000)}
           </Text>
         </View>
         <TourismIconAction
@@ -1100,42 +1059,6 @@ function ActiveNavigationOverlay({
       </View>
     </View>
   );
-}
-
-function firstParam(value: string | string[] | undefined): string | undefined {
-  const result = Array.isArray(value) ? value[0] : value;
-  return result?.trim() || undefined;
-}
-
-function parseRouteMode(value: string | undefined): RouteMode | null {
-  if (value === "car" || value === "bicycle" || value === "foot") return value;
-  return null;
-}
-
-function parseDestination(
-  latitudeParam: string | string[] | undefined,
-  longitudeParam: string | string[] | undefined,
-): RouteCoordinate | null {
-  const latitude = Number(firstParam(latitudeParam));
-  const longitude = Number(firstParam(longitudeParam));
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)
-    return null;
-  return { latitude, longitude };
-}
-
-function formatDistance(meters: number): string {
-  if (meters < 1000) return `${Math.round(meters)} m`;
-  return `${(meters / 1000).toFixed(1)} km`;
-}
-
-function formatDuration(seconds: number): string {
-  const minutes = Math.ceil(seconds / 60);
-  if (minutes < 1) return "<1 min";
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return rest ? `${hours} h ${rest} min` : `${hours} h`;
 }
 
 function formatModeTitle(modeLabel: string): string {
@@ -1165,14 +1088,6 @@ function getRouteStepIcon(
   if (turnsLeft) return isSlightTurn ? "cornerUpLeft" : "arrowLeft";
   if (turnsRight) return isSlightTurn ? "cornerUpRight" : "arrowRight";
   return "arrowUp";
-}
-
-function formatArrivalTime(now: number, durationSeconds: number): string {
-  const arrival = new Date(now + Math.max(0, durationSeconds) * 1000);
-  return arrival.toLocaleTimeString("es-EC", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function confirmBackgroundNavigation(): Promise<boolean> {
@@ -1280,22 +1195,6 @@ const styles = StyleSheet.create({
     paddingTop: turismoSpacing.xs,
     paddingBottom: turismoSpacing.md,
   },
-  routeModeTabs: {
-    borderBottomWidth: turismoMetrics.borderWidth,
-    flexDirection: "row",
-  },
-  routeModeTab: {
-    alignItems: "center",
-    borderBottomColor: "transparent",
-    borderBottomWidth: turismoMetrics.borderWidthStrong,
-    flex: 1,
-    gap: turismoSpacing.xxs,
-    justifyContent: "center",
-    minHeight: turismoMetrics.controlLg,
-    paddingVertical: turismoSpacing.xxs,
-  },
-  routeModeTabSelected: {},
-  routeModeTabLabel: { ...turismoTypography.label },
   routeOverview: {
     gap: turismoSpacing.xxs,
     paddingVertical: turismoSpacing.xs,

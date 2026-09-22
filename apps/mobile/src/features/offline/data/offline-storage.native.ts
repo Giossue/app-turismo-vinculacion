@@ -1,12 +1,21 @@
 import { openDatabaseAsync, type SQLiteDatabase } from "expo-sqlite";
 
 import type { OfflineCityManifest } from "../domain/offline-city";
+import { parseStoredOfflineManifest } from "./offline-api";
 
 let databasePromise: Promise<SQLiteDatabase> | null = null;
 
-async function getDatabase(): Promise<SQLiteDatabase> {
-  databasePromise ??= openDatabaseAsync("turismo-vinculacion-offline.db");
-  const database = await databasePromise;
+/** Opens and migrates the database once; a failed attempt can be retried. */
+function getDatabase(): Promise<SQLiteDatabase> {
+  databasePromise ??= openOfflineDatabase().catch((error: unknown) => {
+    databasePromise = null;
+    throw error;
+  });
+  return databasePromise;
+}
+
+async function openOfflineDatabase(): Promise<SQLiteDatabase> {
+  const database = await openDatabaseAsync("turismo-vinculacion-offline.db");
   await database.execAsync(`
     PRAGMA journal_mode = WAL;
     PRAGMA foreign_keys = ON;
@@ -50,13 +59,8 @@ export async function listStoredOfflineManifests(): Promise<
   const rows = await database.getAllAsync<{ payload_json: string }>(
     "SELECT payload_json FROM offline_city_manifests ORDER BY city_slug",
   );
-  return rows.map((row) => JSON.parse(row.payload_json) as OfflineCityManifest);
-}
-
-export async function deleteStoredOfflineCity(slug: string): Promise<void> {
-  const database = await getDatabase();
-  await database.runAsync(
-    "DELETE FROM offline_city_manifests WHERE city_slug = ?",
-    slug,
-  );
+  return rows.flatMap((row) => {
+    const manifest = parseStoredOfflineManifest(row.payload_json);
+    return manifest ? [manifest] : [];
+  });
 }

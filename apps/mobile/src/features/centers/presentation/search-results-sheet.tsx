@@ -8,12 +8,12 @@ import {
   View,
 } from "react-native";
 
+import { useTurismoPalette } from "@/core/ui/theme-context";
 import {
   TourismActionButton,
   TourismBadge,
   TourismChoiceChip,
   TourismSurface,
-  useTurismoPalette,
 } from "@/core/ui/tourism-controls";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
@@ -23,13 +23,13 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
-import type { UserLocationCoordinate } from "@/core/location/use-user-location";
-import type { DiscoveryCatalog, PublicCenter } from "../domain/public-center";
+import { formatDistance } from "@/core/format/distance";
+import { getDistanceMeters } from "@/core/geo/distance";
+import type { GeoCoordinate } from "@/core/geo/types";
 import type { PublicSearchResult } from "@/features/search/domain/search-result";
-import {
-  uniqueFilterOptions,
-  type DiscoveryFilterValues,
-} from "./discovery-filters";
+import type { DiscoveryCatalog, PublicCenter } from "../domain/public-center";
+import { uniqueByCode } from "../domain/unique-by-code";
+import type { DiscoveryFilterValues } from "./discovery-filters";
 
 export function SearchResultsSheet({
   catalog,
@@ -62,15 +62,15 @@ export function SearchResultsSheet({
   onSelectCenter: (center: PublicCenter) => void;
   places: readonly PublicSearchResult[];
   query: string;
-  userLocation: UserLocationCoordinate | null;
+  userLocation: GeoCoordinate | null;
 }>) {
   const colors = useTurismoPalette();
   const sortedCenters = useMemo(() => {
     if (!nearbyOnly || !userLocation) return centers;
     return [...centers].sort(
       (left, right) =>
-        distanceMeters(left, userLocation) -
-        distanceMeters(right, userLocation),
+        getDistanceMeters(left, userLocation) -
+        getDistanceMeters(right, userLocation),
     );
   }, [centers, nearbyOnly, userLocation]);
   const showResults = !isFetching && !isPlaceholderData && !error;
@@ -83,7 +83,8 @@ export function SearchResultsSheet({
       ),
     [centers, places],
   );
-  const hasAnyResults = sortedCenters.length > 0 || supplementalPlaces.length > 0;
+  const hasAnyResults =
+    sortedCenters.length > 0 || supplementalPlaces.length > 0;
 
   return (
     <View style={styles.container}>
@@ -106,7 +107,7 @@ export function SearchResultsSheet({
           }
           selected={!filters.categoryCode}
         />
-        {uniqueFilterOptions(catalog?.categories ?? []).map((category) => (
+        {uniqueByCode(catalog?.categories ?? []).map((category) => (
           <TourismChoiceChip
             key={category.code}
             label={category.name}
@@ -183,7 +184,7 @@ export function SearchResultsSheet({
             <SearchResultCard
               center={center}
               distance={
-                userLocation ? distanceMeters(center, userLocation) : null
+                userLocation ? getDistanceMeters(center, userLocation) : null
               }
               key={center.code}
               onPress={() => onSelectCenter(center)}
@@ -319,36 +320,6 @@ function SearchResultCard({
   );
 }
 
-function distanceMeters(
-  center: PublicCenter,
-  origin: UserLocationCoordinate,
-): number {
-  const earthRadiusMeters = 6_371_000;
-  const latitudeDelta = toRadians(center.latitude - origin.latitude);
-  const longitudeDelta = toRadians(center.longitude - origin.longitude);
-  const originLatitude = toRadians(origin.latitude);
-  const centerLatitude = toRadians(center.latitude);
-  const haversine =
-    Math.sin(latitudeDelta / 2) ** 2 +
-    Math.cos(originLatitude) *
-      Math.cos(centerLatitude) *
-      Math.sin(longitudeDelta / 2) ** 2;
-  return (
-    earthRadiusMeters *
-    2 *
-    Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
-  );
-}
-
-function toRadians(value: number): number {
-  return (value * Math.PI) / 180;
-}
-
-function formatDistance(value: number): string {
-  if (value < 1_000) return `${Math.round(value)} m`;
-  return `${(value / 1_000).toFixed(1)} km`;
-}
-
 const styles = StyleSheet.create({
   container: { gap: turismoSpacing.md, paddingBottom: turismoSpacing.xl },
   header: {
@@ -359,7 +330,6 @@ const styles = StyleSheet.create({
   },
   headerCopy: { flex: 1, gap: turismoSpacing.xxs },
   query: { ...turismoTypography.title },
-  resultLabel: { ...turismoTypography.caption },
   filterChips: { gap: turismoSpacing.xs, paddingRight: turismoSpacing.md },
   statusRow: {
     alignItems: "center",

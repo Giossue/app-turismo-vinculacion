@@ -5,3 +5,12 @@
 export const touristGenderOptions = ["Masculino", "Femenino"] as const;
 
 export type TouristGender = (typeof touristGenderOptions)[number];
+
+export type TouristRegistrationInput = Readonly<{
+  name: string;
+  email: string;
+  gender: TouristGender;
+  /** Local calendar date as `YYYY-MM-DD`. */
+  birthDate?: string;
+  password: string;
+}>;

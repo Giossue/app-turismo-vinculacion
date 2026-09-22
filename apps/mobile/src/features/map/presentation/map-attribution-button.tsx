@@ -1,7 +1,6 @@
 import { Pressable, StyleSheet, Text } from "react-native";
 
-import { getTurismoMapColors } from "@/core/ui/tokens";
-import { useTurismoTheme } from "@/core/ui/theme-context";
+import { useTurismoMapPalette } from "@/core/ui/theme-context";
 
 export function MapAttributionButton({
   bottom = 4,
@@ -14,8 +13,7 @@ export function MapAttributionButton({
   onPress: () => void;
   right?: number;
 }>) {
-  const { scheme } = useTurismoTheme();
-  const colors = getTurismoMapColors(scheme);
+  const colors = useTurismoMapPalette();
 
   return (
     <Pressable

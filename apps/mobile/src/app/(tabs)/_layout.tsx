@@ -2,44 +2,24 @@ import { Tabs, useRouter } from "expo-router";
 
 import { TourismMenuProvider } from "@/core/ui/tourism-navigation";
 import { useAuth } from "@/features/auth/application/auth-context";
+import {
+  buildLoginHref,
+  type LoginReturnPath,
+} from "@/features/auth/application/login-href";
 
 export default function TabsLayout() {
   const router = useRouter();
   const auth = useAuth();
+  const openAccountScreen = (path: LoginReturnPath) => {
+    router.push(auth.status === "authenticated" ? path : buildLoginHref(path));
+  };
 
   return (
     <TourismMenuProvider
-      onAccount={() =>
-        router.push(
-          auth.status === "authenticated"
-            ? ("/account" as never)
-            : ({
-                pathname: "/login",
-                params: { returnTo: "/account" },
-              } as never),
-        )
-      }
-      onOfflineMaps={() =>
-        router.push(
-          auth.status === "authenticated"
-            ? ("/offline" as never)
-            : ({
-                pathname: "/login",
-                params: { returnTo: "/offline" },
-              } as never),
-        )
-      }
-      onSaved={() =>
-        router.push(
-          auth.status === "authenticated"
-            ? ("/saved" as never)
-            : ({
-                pathname: "/login",
-                params: { returnTo: "/saved" },
-              } as never),
-        )
-      }
-      onSettings={() => router.push("/settings" as never)}
+      onAccount={() => openAccountScreen("/account")}
+      onOfflineMaps={() => openAccountScreen("/offline")}
+      onSaved={() => openAccountScreen("/saved")}
+      onSettings={() => router.push("/settings")}
     >
       <PrimaryTabs />
     </TourismMenuProvider>

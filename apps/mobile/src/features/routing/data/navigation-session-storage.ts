@@ -1,163 +1,108 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { z } from "zod";
 
+import type { GeoCoordinate } from "@/core/geo/types";
+import { readJson, removeJson, writeJson } from "@/core/storage/json-storage";
 import {
   routeModes,
   type CalculatedRoute,
-  type RouteCoordinate,
   type RouteMode,
 } from "../domain/routing";
+import { calculatedRouteSchema } from "./routing-api";
 
 const navigationSessionStorageKey = "turismo-vinculacion-active-navigation-v1";
 
 export type PersistedNavigationLocation = Readonly<{
   accuracy: number | null;
-  coordinate: RouteCoordinate;
+  coordinate: GeoCoordinate;
   timestamp: number;
 }>;
 
+/**
+ * Only what the background task needs to keep an active route going: the
+ * route, destination, mode and last reliable position (see
+ * `docs/architecture/mobile.md`). No trace of previous positions is kept.
+ */
 export type NavigationSessionSnapshot = Readonly<{
   active: boolean;
-  destination: RouteCoordinate;
-  lastAnnouncedStepIndex: number;
+  destination: GeoCoordinate;
   lastNotificationKey?: string | null;
   lastLocation: PersistedNavigationLocation | null;
-  lastRerouteAt: number;
   mode: RouteMode;
-  origin: RouteCoordinate;
   route: CalculatedRoute;
   updatedAt: number;
   version: 1;
 }>;
 
+type NavigationSessionPatch = Partial<
+  Pick<
+    NavigationSessionSnapshot,
+    "active" | "lastLocation" | "lastNotificationKey"
+  >
+>;
+
+const coordinateSchema = z.object({
+  latitude: z.number(),
+  longitude: z.number(),
+});
+
+// Snapshots written by earlier versions may still carry `origin`,
+// `lastAnnouncedStepIndex` or `lastRerouteAt`; `z.object` strips them.
+const navigationSessionSnapshotSchema = z.object({
+  active: z.boolean(),
+  destination: coordinateSchema,
+  lastNotificationKey: z.string().nullable().optional(),
+  lastLocation: z
+    .object({
+      accuracy: z.number().nullable(),
+      coordinate: coordinateSchema,
+      timestamp: z.number(),
+    })
+    .nullable(),
+  mode: z.enum(routeModes),
+  route: calculatedRouteSchema,
+  updatedAt: z.number(),
+  version: z.literal(1),
+});
+
 let writeQueue: Promise<void> = Promise.resolve();
 
-export async function readNavigationSession(): Promise<NavigationSessionSnapshot | null> {
-  try {
-    const raw = await AsyncStorage.getItem(navigationSessionStorageKey);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    return isNavigationSessionSnapshot(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
+export function readNavigationSession(): Promise<NavigationSessionSnapshot | null> {
+  return readJson(navigationSessionStorageKey, navigationSessionSnapshotSchema);
 }
 
 export function saveNavigationSession(
   snapshot: NavigationSessionSnapshot,
 ): Promise<void> {
-  return enqueueWrite(async () => {
-    await AsyncStorage.setItem(
-      navigationSessionStorageKey,
-      JSON.stringify(snapshot),
-    );
-  });
+  return enqueueWrite(() => writeJson(navigationSessionStorageKey, snapshot));
 }
 
-export function updateNavigationLocation(
-  location: PersistedNavigationLocation,
+/**
+ * Updates part of the stored session inside the write queue, so foreground
+ * and background writers never overwrite each other's fields. With
+ * `requireActive`, a session that already ended is left untouched.
+ */
+export function patchNavigationSession(
+  patch: NavigationSessionPatch,
+  { requireActive }: Readonly<{ requireActive: boolean }>,
 ): Promise<void> {
   return enqueueWrite(async () => {
     const current = await readNavigationSession();
-    if (!current?.active) return;
+    if (!current || (requireActive && !current.active)) return;
 
-    await AsyncStorage.setItem(
-      navigationSessionStorageKey,
-      JSON.stringify({
-        ...current,
-        lastLocation: location,
-        updatedAt: Date.now(),
-      } satisfies NavigationSessionSnapshot),
-    );
-  });
-}
-
-export function updateNavigationNotificationKey(key: string): Promise<void> {
-  return enqueueWrite(async () => {
-    const current = await readNavigationSession();
-    if (!current?.active) return;
-
-    await AsyncStorage.setItem(
-      navigationSessionStorageKey,
-      JSON.stringify({
-        ...current,
-        lastNotificationKey: key,
-        updatedAt: Date.now(),
-      } satisfies NavigationSessionSnapshot),
-    );
-  });
-}
-
-export function markNavigationSessionInactive(): Promise<void> {
-  return enqueueWrite(async () => {
-    const current = await readNavigationSession();
-    if (!current) return;
-
-    await AsyncStorage.setItem(
-      navigationSessionStorageKey,
-      JSON.stringify({
-        ...current,
-        active: false,
-        updatedAt: Date.now(),
-      } satisfies NavigationSessionSnapshot),
-    );
+    await writeJson(navigationSessionStorageKey, {
+      ...current,
+      ...patch,
+      updatedAt: Date.now(),
+    } satisfies NavigationSessionSnapshot);
   });
 }
 
 export function clearNavigationSession(): Promise<void> {
-  return enqueueWrite(() =>
-    AsyncStorage.removeItem(navigationSessionStorageKey),
-  );
+  return enqueueWrite(() => removeJson(navigationSessionStorageKey));
 }
 
 function enqueueWrite(operation: () => Promise<void>): Promise<void> {
   const next = writeQueue.then(operation, operation);
   writeQueue = next.catch(() => undefined);
   return next;
-}
-
-function isNavigationSessionSnapshot(
-  value: unknown,
-): value is NavigationSessionSnapshot {
-  if (!isRecord(value)) return false;
-  if (value.version !== 1 || typeof value.active !== "boolean") return false;
-  if (!isRouteMode(value.mode)) return false;
-  if (!isCoordinate(value.origin) || !isCoordinate(value.destination)) {
-    return false;
-  }
-  if (!isRecord(value.route) || !Array.isArray(value.route.steps)) return false;
-  return (
-    typeof value.lastAnnouncedStepIndex === "number" &&
-    typeof value.lastRerouteAt === "number" &&
-    (value.lastLocation === null || isPersistedLocation(value.lastLocation)) &&
-    typeof value.updatedAt === "number"
-  );
-}
-
-function isPersistedLocation(
-  value: unknown,
-): value is PersistedNavigationLocation {
-  if (!isRecord(value)) return false;
-  return (
-    isCoordinate(value.coordinate) &&
-    (value.accuracy === null || typeof value.accuracy === "number") &&
-    typeof value.timestamp === "number"
-  );
-}
-
-function isCoordinate(value: unknown): value is RouteCoordinate {
-  if (!isRecord(value)) return false;
-  return (
-    typeof value.latitude === "number" &&
-    Number.isFinite(value.latitude) &&
-    typeof value.longitude === "number" &&
-    Number.isFinite(value.longitude)
-  );
-}
-
-function isRouteMode(value: unknown): value is RouteMode {
-  return typeof value === "string" && routeModes.includes(value as RouteMode);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }

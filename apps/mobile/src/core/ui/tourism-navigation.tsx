@@ -24,8 +24,9 @@ import ReanimatedDrawerLayout, {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { TurismoIcon } from "./turismo-icons";
-import { useTurismoPalette } from "./tourism-controls";
+import { useTurismoPalette } from "./theme-context";
 import {
+  turismoFixedColors,
   turismoIconSizes,
   turismoMetrics,
   turismoMotion,
@@ -158,7 +159,10 @@ export function TourismHeader({
               {subtitle}
             </Text>
           ) : null}
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
+          <Text
+            accessibilityRole="header"
+            style={[styles.headerTitle, { color: colors.text }]}
+          >
             {title}
           </Text>
         </View>
@@ -168,7 +172,7 @@ export function TourismHeader({
   );
 }
 
-export function TourismMenuDrawer({
+function TourismMenuDrawer({
   onAccount,
   onClose,
   onOfflineMaps,
@@ -359,7 +363,7 @@ const styles = StyleSheet.create({
   drawerPanel: {
     flex: 1,
     elevation: 12,
-    shadowColor: "#000",
+    shadowColor: turismoFixedColors.shadow,
     shadowOffset: { height: 0, width: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 12,

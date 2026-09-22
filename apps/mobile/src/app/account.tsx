@@ -1,20 +1,16 @@
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
+import { useTurismoPalette } from "@/core/ui/theme-context";
 import {
   TourismActionButton,
   TourismSurface,
-  useTurismoPalette,
 } from "@/core/ui/tourism-controls";
+import { TourismInfoRow } from "@/core/ui/tourism-content";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
+import { TourismStateView } from "@/core/ui/tourism-state";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
@@ -24,6 +20,7 @@ import {
   turismoTypography,
 } from "@/core/ui/tokens";
 import { useAuth } from "@/features/auth/application/auth-context";
+import { buildLoginHref } from "@/features/auth/application/login-href";
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -39,10 +36,7 @@ export default function AccountScreen() {
 
   useEffect(() => {
     if (auth.status !== "anonymous") return;
-    router.replace({
-      pathname: "/login",
-      params: { returnTo: "/account" },
-    } as never);
+    router.replace(buildLoginHref("/account"));
   }, [auth.status, router]);
 
   const handleLogout = async () => {
@@ -50,7 +44,7 @@ export default function AccountScreen() {
     setLoggingOut(true);
     try {
       await auth.logout();
-      router.replace("/login" as never);
+      router.replace("/login");
     } finally {
       setLoggingOut(false);
     }
@@ -59,12 +53,10 @@ export default function AccountScreen() {
   if (auth.status !== "authenticated" || !auth.user) {
     return (
       <TourismScreenFrame onBack={handleBack} title="Cuenta">
-        <View style={styles.loading}>
-          <ActivityIndicator color={colors.primary} size="large" />
-          <Text style={[styles.loadingText, { color: colors.textMuted }]}>
-            Preparando tu cuenta turística…
-          </Text>
-        </View>
+        <TourismStateView
+          message="Preparando tu cuenta turística…"
+          variant="loading"
+        />
       </TourismScreenFrame>
     );
   }
@@ -97,8 +89,8 @@ export default function AccountScreen() {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Tus datos
           </Text>
-          <AccountDetail label="Correo electrónico" value={auth.user.email} />
-          <AccountDetail label="Acceso" value="Turista" />
+          <TourismInfoRow label="Correo electrónico" value={auth.user.email} />
+          <TourismInfoRow label="Acceso" value="Turista" />
         </TourismSurface>
 
         <TourismActionButton
@@ -110,21 +102,6 @@ export default function AccountScreen() {
         />
       </ScrollView>
     </TourismScreenFrame>
-  );
-}
-
-function AccountDetail({
-  label,
-  value,
-}: Readonly<{ label: string; value: string }>) {
-  const colors = useTurismoPalette();
-  return (
-    <View style={styles.detail}>
-      <Text style={[styles.detailLabel, { color: colors.textFaint }]}>
-        {label}
-      </Text>
-      <Text style={[styles.detailValue, { color: colors.text }]}>{value}</Text>
-    </View>
   );
 }
 
@@ -153,14 +130,4 @@ const styles = StyleSheet.create({
   heroSubtitle: { ...turismoTypography.body },
   details: { gap: turismoSpacing.md, padding: turismoSpacing.md },
   sectionTitle: { ...turismoTypography.heading },
-  detail: { gap: turismoSpacing.xxs },
-  detailLabel: { ...turismoTypography.caption },
-  detailValue: { ...turismoTypography.body },
-  loading: {
-    alignItems: "center",
-    flex: 1,
-    gap: turismoSpacing.md,
-    justifyContent: "center",
-  },
-  loadingText: { ...turismoTypography.body },
 });

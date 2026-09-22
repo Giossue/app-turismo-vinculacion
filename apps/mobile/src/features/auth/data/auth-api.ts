@@ -1,19 +1,20 @@
 import { z } from "zod";
 
 import { getApiUrl } from "@/core/api/api-url";
-import type { AuthUser } from "../domain/auth-user";
-import type { TouristGender } from "../domain/registration-options";
+import {
+  assertResponseOk,
+  requestJson,
+  sendRequest,
+  type Fetcher,
+} from "@/core/api/http";
+import { authUserSchema, type AuthUser } from "../domain/auth-user";
+import type { TouristRegistrationInput } from "../domain/registration-options";
 
 const authResultSchema = z.object({
   data: z.object({
     accessToken: z.string().min(1),
     refreshToken: z.string().min(1),
-    user: z.object({
-      id: z.number().int().positive(),
-      name: z.string().min(1),
-      email: z.string().email(),
-      roles: z.array(z.string()),
-    }),
+    user: authUserSchema,
   }),
 });
 
@@ -23,107 +24,85 @@ type AuthResult = Readonly<{
   user: AuthUser;
 }>;
 
-export type AuthorizedFetcher = (
-  input: RequestInfo | URL,
-  init?: RequestInit,
-) => Promise<Response>;
+/** A `fetch` that adds the tourist's access token and refreshes it on 401. */
+export type AuthorizedFetcher = Fetcher;
 
-export type TouristRegistrationInput = Readonly<{
-  name: string;
-  email: string;
-  gender: TouristGender;
-  birthDate?: string;
-  password: string;
-}>;
+const jsonContentHeaders = { "content-type": "application/json" } as const;
 
-export async function loginMobile(
+export function loginMobile(
   email: string,
   password: string,
-  fetcher: typeof fetch = fetch,
+  fetcher: Fetcher = fetch,
   apiUrl = getApiUrl(),
 ): Promise<AuthResult> {
-  const response = await fetcher(`${apiUrl}/auth/mobile/login`, {
-    body: JSON.stringify({ email, password }),
-    headers: { "content-type": "application/json" },
-    method: "POST",
-  });
-  return parseAuthResult(response, "No se pudo iniciar sesión.");
+  return requestAuthResult(
+    `${apiUrl}/auth/mobile/login`,
+    { email, password },
+    fetcher,
+    "No se pudo iniciar sesión.",
+  );
 }
 
-export async function registerMobile(
+export function registerMobile(
   input: TouristRegistrationInput,
-  fetcher: typeof fetch = fetch,
+  fetcher: Fetcher = fetch,
   apiUrl = getApiUrl(),
 ): Promise<AuthResult> {
-  const response = await fetcher(`${apiUrl}/auth/mobile/register`, {
-    body: JSON.stringify(input),
-    headers: { "content-type": "application/json" },
-    method: "POST",
-  });
-  return parseAuthResult(response, "No se pudo crear la cuenta.");
+  return requestAuthResult(
+    `${apiUrl}/auth/mobile/register`,
+    input,
+    fetcher,
+    "No se pudo crear la cuenta.",
+  );
 }
 
-export async function refreshMobile(
+export function refreshMobile(
   refreshToken: string,
-  fetcher: typeof fetch = fetch,
+  fetcher: Fetcher = fetch,
   apiUrl = getApiUrl(),
 ): Promise<AuthResult> {
-  const response = await fetcher(`${apiUrl}/auth/mobile/refresh`, {
-    body: JSON.stringify({ refreshToken }),
-    headers: { "content-type": "application/json" },
-    method: "POST",
-  });
-  return parseAuthResult(response, "La sesión expiró.");
+  return requestAuthResult(
+    `${apiUrl}/auth/mobile/refresh`,
+    { refreshToken },
+    fetcher,
+    "La sesión expiró.",
+  );
 }
 
 export async function logoutMobile(
   refreshToken: string,
-  fetcher: typeof fetch = fetch,
+  fetcher: Fetcher = fetch,
   apiUrl = getApiUrl(),
 ): Promise<void> {
-  const response = await fetcher(`${apiUrl}/auth/mobile/logout`, {
-    body: JSON.stringify({ refreshToken }),
-    headers: { "content-type": "application/json" },
-    method: "POST",
+  const errorMessage = "No se pudo cerrar la sesión remota.";
+  const response = await sendRequest(`${apiUrl}/auth/mobile/logout`, {
+    errorMessage,
+    fetcher,
+    init: {
+      body: JSON.stringify({ refreshToken }),
+      headers: jsonContentHeaders,
+      method: "POST",
+    },
   });
-  if (!response.ok) {
-    throw new Error("No se pudo cerrar la sesión remota.");
-  }
+  await assertResponseOk(response, { errorMessage });
 }
 
-async function parseAuthResult(
-  response: Response,
-  fallbackMessage: string,
+async function requestAuthResult(
+  url: string,
+  body: unknown,
+  fetcher: Fetcher,
+  errorMessage: string,
 ): Promise<AuthResult> {
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, fallbackMessage));
-  }
-  const payload = authResultSchema.safeParse(await response.json());
-  if (!payload.success) {
-    throw new Error("La sesión no tiene un formato válido.");
-  }
-  return payload.data.data;
-}
-
-async function readErrorMessage(
-  response: Response,
-  fallbackMessage: string,
-): Promise<string> {
-  try {
-    const payload: unknown = await response.json();
-    if (
-      payload &&
-      typeof payload === "object" &&
-      "error" in payload &&
-      payload.error &&
-      typeof payload.error === "object" &&
-      "message" in payload.error &&
-      typeof payload.error.message === "string"
-    ) {
-      return payload.error.message;
-    }
-  } catch {
-    // Mantener un mensaje genérico si la respuesta no es JSON.
-  }
-  return fallbackMessage;
+  const payload = await requestJson(url, authResultSchema, {
+    errorMessage,
+    fetcher,
+    init: {
+      body: JSON.stringify(body),
+      headers: jsonContentHeaders,
+      method: "POST",
+    },
+    invalidMessage: "La sesión no tiene un formato válido.",
+    useServerMessage: true,
+  });
+  return payload.data;
 }

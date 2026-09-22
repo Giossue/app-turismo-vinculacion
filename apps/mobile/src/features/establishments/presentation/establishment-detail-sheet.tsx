@@ -1,22 +1,17 @@
-import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { StyleSheet, Text, View } from "react-native";
 
+import { useTurismoPalette } from "@/core/ui/theme-context";
+import { TourismActionButton, TourismBadge } from "@/core/ui/tourism-controls";
 import {
-  TourismActionButton,
-  TourismBadge,
-  useTurismoPalette,
-} from "@/core/ui/tourism-controls";
-import {
-  tourismFlexibleSheetBehavior,
-  tourismFlexibleSheetSnapPoints,
+  TourismBottomSheet,
+  TourismSheetScrollView,
 } from "@/core/ui/tourism-bottom-sheet";
-import { TurismoIcon } from "@/core/ui/turismo-icons";
+import { TourismInfoRow } from "@/core/ui/tourism-content";
+import { turismoSpacing, turismoTypography } from "@/core/ui/tokens";
 import {
-  turismoIconSizes,
-  turismoSpacing,
-  turismoTypography,
-} from "@/core/ui/tokens";
-import type { PublicMapEstablishment } from "../domain/establishment";
+  getEstablishmentLabel,
+  type PublicMapEstablishment,
+} from "../domain/establishment";
 
 export function EstablishmentDetailSheet({
   establishment,
@@ -28,67 +23,45 @@ export function EstablishmentDetailSheet({
   onOpenRoute: () => void;
 }>) {
   const colors = useTurismoPalette();
+  const categoryLabel = getEstablishmentLabel(establishment);
 
   return (
-    <BottomSheet
-      {...tourismFlexibleSheetBehavior}
-      backgroundStyle={{ backgroundColor: colors.surface }}
-      index={0}
-      onClose={onClose}
-      snapPoints={tourismFlexibleSheetSnapPoints}
-    >
-      <BottomSheetScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-        style={styles.scroll}
-      >
+    <TourismBottomSheet onClose={onClose}>
+      <TourismSheetScrollView contentStyle={styles.container}>
         <View style={styles.header}>
           <View style={styles.headerCopy}>
             <Text style={[styles.title, { color: colors.text }]}>
               {establishment.name}
             </Text>
-            {(establishment.categoryLabel ?? establishment.category) ? (
-              <TourismBadge>
-                {establishment.categoryLabel ?? establishment.category}
-              </TourismBadge>
+            {categoryLabel ? (
+              <TourismBadge>{categoryLabel}</TourismBadge>
             ) : null}
           </View>
         </View>
 
-        <View style={styles.infoRow}>
-          <TurismoIcon
-            color={colors.primaryStrong}
-            name="mapPin"
-            size={turismoIconSizes.md}
-          />
-          <View style={styles.infoCopy}>
-            <Text style={[styles.infoLabel, { color: colors.textMuted }]}>
-              Ubicación
-            </Text>
-            <Text style={[styles.infoValue, { color: colors.text }]}>
-              {establishment.approximate
-                ? "Punto de referencia aproximado"
-                : "Coordenadas registradas"}
-            </Text>
-          </View>
-        </View>
+        <TourismInfoRow
+          icon="mapPin"
+          label="Ubicación"
+          value={
+            establishment.approximate
+              ? "Punto de referencia aproximado"
+              : "Coordenadas registradas"
+          }
+        />
 
         <TourismActionButton
           icon="route"
           label="Cómo llegar"
           onPress={onOpenRoute}
         />
-      </BottomSheetScrollView>
-    </BottomSheet>
+      </TourismSheetScrollView>
+    </TourismBottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1 },
   container: {
-    flexGrow: 1,
     gap: turismoSpacing.lg,
-    padding: turismoSpacing.lg,
     paddingBottom: turismoSpacing.xxl,
   },
   header: {
@@ -99,12 +72,4 @@ const styles = StyleSheet.create({
   },
   headerCopy: { flex: 1, gap: turismoSpacing.sm },
   title: { ...turismoTypography.heading },
-  infoRow: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-  },
-  infoCopy: { flex: 1, gap: turismoSpacing.xxs },
-  infoLabel: { ...turismoTypography.caption },
-  infoValue: { ...turismoTypography.body },
 });

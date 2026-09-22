@@ -1,15 +1,19 @@
+import type { GeoCoordinate } from "@/core/geo/types";
+
 export const routeModes = ["car", "bicycle", "foot"] as const;
 export type RouteMode = (typeof routeModes)[number];
 
-export type RouteCoordinate = Readonly<{
-  latitude: number;
-  longitude: number;
-}>;
+export function isRouteMode(value: unknown): value is RouteMode {
+  return (
+    typeof value === "string" &&
+    (routeModes as readonly string[]).includes(value)
+  );
+}
 
 export type RouteRequest = Readonly<{
   mode: RouteMode;
-  origin: RouteCoordinate;
-  destination: RouteCoordinate;
+  origin: GeoCoordinate;
+  destination: GeoCoordinate;
 }>;
 
 export type CalculatedRoute = Readonly<{

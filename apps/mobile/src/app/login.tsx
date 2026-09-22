@@ -19,11 +19,10 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
+import { formatLongDate, toIsoDate } from "@/core/format/date";
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
-import {
-  TourismActionButton,
-  useTurismoPalette,
-} from "@/core/ui/tourism-controls";
+import { useTurismoPalette } from "@/core/ui/theme-context";
+import { TourismActionButton } from "@/core/ui/tourism-controls";
 import { TourismHeader } from "@/core/ui/tourism-navigation";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
@@ -36,7 +35,12 @@ import {
   getTurismoColors,
 } from "@/core/ui/tokens";
 import { useAuth } from "@/features/auth/application/auth-context";
+import { parseReturnTo } from "@/features/auth/application/login-href";
 import { chooseGuestAccess } from "@/features/auth/data/auth-entry-storage";
+import {
+  getBirthDateBounds,
+  isValidBirthDate,
+} from "@/features/auth/domain/birth-date";
 import {
   touristGenderOptions,
   type TouristGender,
@@ -63,9 +67,9 @@ export default function LoginScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const targetPath = safeReturnPath(returnTo);
-  const returnToPath = Array.isArray(returnTo) ? returnTo[0] : returnTo;
-  const returningToRoute = returnToPath === "/route";
+  const targetPath = parseReturnTo(returnTo);
+  // La ruta sigue en el historial con su destino: volver conserva sus params.
+  const returningToRoute = targetPath === "/route";
   const canGoBack = mode !== "entry" || Boolean(returnTo);
 
   const handleBack = useCallback(() => {
@@ -87,7 +91,7 @@ export default function LoginScreen() {
     if (returnTo) {
       router.back();
     } else {
-      router.replace("/" as never);
+      router.replace("/");
     }
     await persistChoice;
   };
@@ -163,9 +167,7 @@ export default function LoginScreen() {
     }
 
     const formattedBirthDate =
-      mode === "register" && birthDate
-        ? formatDateForApi(birthDate)
-        : undefined;
+      mode === "register" && birthDate ? toIsoDate(birthDate) : undefined;
 
     setSubmitting(true);
     try {
@@ -183,7 +185,7 @@ export default function LoginScreen() {
       if (returningToRoute && router.canGoBack()) {
         router.back();
       } else {
-        router.replace(targetPath as never);
+        router.replace(targetPath);
       }
     } catch (error) {
       setFormError(
@@ -678,7 +680,7 @@ function BirthDateField({
             { color: birthDate ? colors.text : colors.textFaint },
           ]}
         >
-          {birthDate ? formatDateForDisplay(birthDate) : "Selecciona una fecha"}
+          {birthDate ? formatLongDate(birthDate) : "Selecciona una fecha"}
         </Text>
       </Pressable>
 
@@ -807,66 +809,6 @@ function modeLabel(mode: Exclude<AuthMode, "entry">): string {
   return mode === "register" ? "Crear cuenta" : "Iniciar sesión";
 }
 
-function formatDateForApi(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-}
-
-function getBirthDateBounds(referenceDate = new Date()): {
-  maximumDate: Date;
-  minimumDate: Date;
-} {
-  const today = new Date(
-    referenceDate.getFullYear(),
-    referenceDate.getMonth(),
-    referenceDate.getDate(),
-  );
-  return {
-    maximumDate: shiftDateByYears(today, -11),
-    minimumDate: shiftDateByYears(today, -100),
-  };
-}
-
-function isValidBirthDate(date: Date, referenceDate = new Date()): boolean {
-  const { maximumDate, minimumDate } = getBirthDateBounds(referenceDate);
-  const value = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  return value >= minimumDate && value <= maximumDate;
-}
-
-function shiftDateByYears(date: Date, years: number): Date {
-  const shifted = new Date(date);
-  shifted.setFullYear(shifted.getFullYear() + years);
-  return shifted;
-}
-
-function formatDateForDisplay(date: Date): string {
-  const monthNames = [
-    "enero",
-    "febrero",
-    "marzo",
-    "abril",
-    "mayo",
-    "junio",
-    "julio",
-    "agosto",
-    "septiembre",
-    "octubre",
-    "noviembre",
-    "diciembre",
-  ];
-  return `${date.getDate()} de ${monthNames[date.getMonth()]} de ${date.getFullYear()}`;
-}
-
-function safeReturnPath(value: string | string[] | undefined): string {
-  const candidate = Array.isArray(value) ? value[0] : value;
-  if (!candidate || !candidate.startsWith("/") || candidate.startsWith("//")) {
-    return "/";
-  }
-  if (candidate.startsWith("/login")) return "/";
-  return candidate;
-}
-
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: {
@@ -985,15 +927,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     lineHeight: 20,
   },
-  entryActions: { gap: turismoSpacing.sm },
-  dividerRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-  },
-  divider: { flex: 1, height: turismoMetrics.borderWidth },
-  dividerText: { ...turismoTypography.caption },
-  guestHint: { ...turismoTypography.caption, textAlign: "center" },
   formContent: { gap: turismoSpacing.lg },
   form: { gap: turismoSpacing.md },
   field: { gap: turismoSpacing.xs },

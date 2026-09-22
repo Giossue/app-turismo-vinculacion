@@ -9,12 +9,13 @@ import {
   View,
 } from "react-native";
 
+import { useTurismoPalette } from "@/core/ui/theme-context";
 import {
   TourismActionButton,
   TourismBadge,
   TourismSurface,
-  useTurismoPalette,
 } from "@/core/ui/tourism-controls";
+import { queryKeys } from "@/core/api/query-keys";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
@@ -26,6 +27,7 @@ import {
 } from "@/core/ui/tokens";
 import { downloadOfflineCity } from "@/features/offline/application/offline-download";
 import { useAuth } from "@/features/auth/application/auth-context";
+import { buildLoginHref } from "@/features/auth/application/login-href";
 import { useOfflineCities } from "@/features/offline/application/use-offline-cities";
 import { listStoredOfflineCities } from "@/features/offline/data/offline-storage";
 import type { OfflineCity } from "@/features/offline/domain/offline-city";
@@ -43,17 +45,14 @@ export default function OfflineMapsScreen() {
   const citiesQuery = useOfflineCities(auth.status === "authenticated");
   const storedQuery = useQuery({
     enabled: auth.status === "authenticated",
-    queryKey: ["offline-stored-cities"],
+    queryKey: queryKeys.offlineStoredCities,
     queryFn: listStoredOfflineCities,
     staleTime: 0,
   });
 
   useEffect(() => {
     if (auth.status !== "anonymous") return;
-    router.replace({
-      pathname: "/login",
-      params: { returnTo: "/offline" },
-    } as never);
+    router.replace(buildLoginHref("/offline"));
   }, [auth.status, router]);
 
   if (auth.status !== "authenticated") {
@@ -81,7 +80,7 @@ export default function OfflineMapsScreen() {
         setActiveDownload({ progress, slug: city.slug });
       });
       await queryClient.invalidateQueries({
-        queryKey: ["offline-stored-cities"],
+        queryKey: queryKeys.offlineStoredCities,
       });
     } catch (error) {
       setDownloadError(

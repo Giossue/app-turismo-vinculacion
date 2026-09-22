@@ -1,28 +1,27 @@
 import { OfflineManager } from "@maplibre/maplibre-react-native";
 
+import { getCoordinateBounds } from "@/core/geo/bounds";
+import type { GeoBoundingBox } from "@/core/geo/types";
+import { getSelfHostedStyleUrl } from "@/features/map/data/basemap-style";
 import { getOfflineCityManifest } from "../data/offline-api";
 import { saveOfflineManifest } from "../data/offline-storage";
 import type { OfflineCity } from "../domain/offline-city";
 
-export type OfflineDownloadResult = Readonly<{
-  packId: string;
-  packageVersion: number;
-}>;
-
-function selfHostedMapStyleUrl(): string {
-  const value = process.env.EXPO_PUBLIC_TILESERVER_STYLE_URL?.trim();
-  if (!value) {
-    throw new Error("EXPO_PUBLIC_TILESERVER_STYLE_URL no está configurada");
-  }
-  return value;
-}
+// Guaranda, used when a city has neither boundary nor coordinates.
+const defaultCityCenter = { latitude: -1.59263, longitude: -79.00098 };
+const fallbackCityRadiusDegrees = 0.12;
 
 export async function downloadOfflineCity(
   city: OfflineCity,
   onProgress?: (percentage: number) => void,
-): Promise<OfflineDownloadResult> {
+): Promise<void> {
   if (!city.package)
     throw new Error("La ciudad no tiene un paquete publicado.");
+
+  const styleUrl = getSelfHostedStyleUrl();
+  if (!styleUrl) {
+    throw new Error("EXPO_PUBLIC_TILESERVER_STYLE_URL no está configurada");
+  }
 
   const manifest = await getOfflineCityManifest(city.slug);
   const existingPacks = await OfflineManager.getPacks();
@@ -32,7 +31,7 @@ export async function downloadOfflineCity(
     }
   }
 
-  const bounds = getBounds(manifest.boundary, city.latitude, city.longitude);
+  const bounds = getCityBounds(manifest.boundary, city);
   let resolveDownload!: () => void;
   let rejectDownload!: (error: Error) => void;
   const downloadComplete = new Promise<void>((resolve, reject) => {
@@ -42,7 +41,7 @@ export async function downloadOfflineCity(
   const pack = await OfflineManager.createPack(
     {
       bounds,
-      mapStyle: selfHostedMapStyleUrl(),
+      mapStyle: styleUrl,
       maxZoom: manifest.package.zoomMax,
       metadata: {
         citySlug: city.slug,
@@ -67,47 +66,37 @@ export async function downloadOfflineCity(
   if (initialStatus.state === "complete") resolveDownload();
   await downloadComplete;
   await saveOfflineManifest(manifest);
-  return { packId: pack.id, packageVersion: manifest.package.version };
 }
 
-function getBounds(
-  boundary: unknown,
-  latitude: number | null,
-  longitude: number | null,
-): [number, number, number, number] {
-  const coordinates: number[][] = [];
-  collectCoordinates(boundary, coordinates);
-  if (coordinates.length) {
-    const longitudes = coordinates.map(([value]) => value);
-    const latitudes = coordinates.map(([, value]) => value);
-    return [
-      Math.min(...longitudes),
-      Math.min(...latitudes),
-      Math.max(...longitudes),
-      Math.max(...latitudes),
-    ];
-  }
-  const centerLongitude = longitude ?? -79.00098;
-  const centerLatitude = latitude ?? -1.59263;
+function getCityBounds(boundary: unknown, city: OfflineCity): GeoBoundingBox {
+  const boundaryBounds = getCoordinateBounds(iterateCoordinates(boundary));
+  if (boundaryBounds) return boundaryBounds;
+
+  const longitude = city.longitude ?? defaultCityCenter.longitude;
+  const latitude = city.latitude ?? defaultCityCenter.latitude;
   return [
-    centerLongitude - 0.12,
-    centerLatitude - 0.12,
-    centerLongitude + 0.12,
-    centerLatitude + 0.12,
+    longitude - fallbackCityRadiusDegrees,
+    latitude - fallbackCityRadiusDegrees,
+    longitude + fallbackCityRadiusDegrees,
+    latitude + fallbackCityRadiusDegrees,
   ];
 }
 
-function collectCoordinates(value: unknown, output: number[][]): void {
+/** Yields every `[longitude, latitude]` pair nested in a GeoJSON value. */
+function* iterateCoordinates(
+  value: unknown,
+): Generator<readonly [number, number]> {
   if (!Array.isArray(value)) {
     if (value && typeof value === "object") {
-      for (const child of Object.values(value))
-        collectCoordinates(child, output);
+      for (const child of Object.values(value)) {
+        yield* iterateCoordinates(child);
+      }
     }
     return;
   }
   if (value.length >= 2 && value.every((item) => typeof item === "number")) {
-    output.push([Number(value[0]), Number(value[1])]);
+    yield [Number(value[0]), Number(value[1])];
     return;
   }
-  for (const child of value) collectCoordinates(child, output);
+  for (const child of value) yield* iterateCoordinates(child);
 }

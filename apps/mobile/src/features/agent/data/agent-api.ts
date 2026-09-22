@@ -1,19 +1,20 @@
 import { z } from "zod";
 
 import { getApiUrl } from "@/core/api/api-url";
-import type { AuthorizedFetcher } from "@/features/auth/data/auth-api";
 import {
+  ApiError,
+  assertResponseOk,
+  requestJson,
+  sendRequest,
+  type ApiRequestOptions,
+} from "@/core/api/http";
+import {
+  agentHistoryItemSchema,
   agentLocationSchema,
   agentResponseSchema,
   type AgentHistoryItem,
   type AgentLocation,
   type AgentResponse,
-} from "../domain/agent";
-
-export type {
-  AgentHistoryItem,
-  AgentLocation,
-  AgentResponse,
 } from "../domain/agent";
 
 const streamEventSchema = z.discriminatedUnion("type", [
@@ -40,76 +41,61 @@ const streamEventSchema = z.discriminatedUnion("type", [
 const requestSchema = z
   .object({
     message: z.string().trim().min(1).max(2_000),
-    history: z
-      .array(
-        z
-          .object({
-            role: z.enum(["user", "assistant"]),
-            content: z.string().trim().min(1).max(2_000),
-          })
-          .strict(),
-      )
-      .max(12),
+    history: z.array(agentHistoryItemSchema).max(12),
     location: agentLocationSchema.optional(),
   })
   .strict();
 
+const unavailableMessage = "El agente no está disponible en este momento.";
+const invalidMessage = "El agente devolvió una respuesta con formato inválido.";
+
+/**
+ * `fetcher` should be the authenticated `request` from `useAuth()`.
+ * `location` is rounded to ~100 m before it leaves the device.
+ */
+export type AgentRequestOptions = Omit<ApiRequestOptions, "signal"> &
+  Readonly<{ location?: AgentLocation }>;
+
 export async function askTourismAgent(
   message: string,
   history: readonly AgentHistoryItem[] = [],
-  fetcher: AuthorizedFetcher = fetch,
-  apiUrl = getApiUrl(),
-  location?: AgentLocation,
+  { apiUrl = getApiUrl(), fetcher, location }: AgentRequestOptions = {},
 ): Promise<AgentResponse> {
-  const body = requestSchema.parse({
-    message,
-    history,
-    location: location ? approximateLocation(location) : undefined,
+  return requestJson(`${apiUrl}/ai/chat`, agentResponseSchema, {
+    errorMessage: unavailableMessage,
+    fetcher,
+    init: {
+      body: JSON.stringify(buildRequestBody(message, history, location)),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+    },
+    invalidMessage,
   });
-  const response = await fetcher(`${apiUrl}/ai/chat`, {
-    body: JSON.stringify(body),
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
-    method: "POST",
-  });
-  if (!response.ok)
-    throw new Error("El agente no está disponible en este momento.");
-  let payload: unknown;
-  try {
-    payload = await response.json();
-  } catch {
-    throw new Error("El agente devolvió una respuesta con formato inválido.");
-  }
-  const parsed = agentResponseSchema.safeParse(payload);
-  if (!parsed.success)
-    throw new Error("El agente devolvió una respuesta con formato inválido.");
-  return parsed.data;
 }
 
 export async function askTourismAgentStream(
   message: string,
   history: readonly AgentHistoryItem[] = [],
   onText: (text: string) => Promise<void> | void,
-  fetcher: AuthorizedFetcher = fetch,
-  apiUrl = getApiUrl(),
-  location?: AgentLocation,
+  { apiUrl = getApiUrl(), fetcher, location }: AgentRequestOptions = {},
 ): Promise<AgentResponse> {
-  const body = requestSchema.parse({
-    message,
-    history,
-    location: location ? approximateLocation(location) : undefined,
-  });
-  const response = await fetcher(`${apiUrl}/ai/chat/stream`, {
-    body: JSON.stringify(body),
-    headers: {
-      Accept: "text/event-stream",
-      "Content-Type": "application/json",
+  const response = await sendRequest(`${apiUrl}/ai/chat/stream`, {
+    errorMessage: unavailableMessage,
+    fetcher,
+    init: {
+      body: JSON.stringify(buildRequestBody(message, history, location)),
+      headers: {
+        Accept: "text/event-stream",
+        "Content-Type": "application/json",
+      },
+      method: "POST",
     },
-    method: "POST",
   });
-  if (!response.ok)
-    throw new Error("El agente no está disponible en este momento.");
-  if (!response.body)
-    throw new Error("El agente devolvió una respuesta con formato inválido.");
+  await assertResponseOk(response, { errorMessage: unavailableMessage });
+  if (!response.body) throw new Error(invalidMessage);
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -129,11 +115,10 @@ export async function askTourismAgentStream(
     try {
       payload = JSON.parse(data);
     } catch {
-      throw new Error("El agente devolvió una respuesta con formato inválido.");
+      throw new Error(invalidMessage);
     }
     const parsed = streamEventSchema.safeParse(payload);
-    if (!parsed.success)
-      throw new Error("El agente devolvió una respuesta con formato inválido.");
+    if (!parsed.success) throw new Error(invalidMessage);
 
     if (parsed.data.type === "text-delta") {
       await onText(parsed.data.text);
@@ -171,6 +156,10 @@ export async function askTourismAgentStream(
     await consumeEvents(true);
   } catch (error) {
     await reader.cancel(error).catch(() => undefined);
+    // Un corte de red a mitad de la respuesta no debe mostrar texto técnico.
+    if (error instanceof TypeError) {
+      throw new ApiError(unavailableMessage, { cause: error });
+    }
     throw error;
   } finally {
     reader.releaseLock();
@@ -178,6 +167,18 @@ export async function askTourismAgentStream(
 
   if (!answer) throw new Error("El agente devolvió una respuesta incompleta.");
   return answer;
+}
+
+function buildRequestBody(
+  message: string,
+  history: readonly AgentHistoryItem[],
+  location: AgentLocation | undefined,
+) {
+  return requestSchema.parse({
+    message,
+    history,
+    location: location ? approximateLocation(location) : undefined,
+  });
 }
 
 function approximateLocation(location: AgentLocation): AgentLocation {

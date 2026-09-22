@@ -19,11 +19,8 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import {
-  TourismIconAction,
-  TourismSurface,
-  useTurismoPalette,
-} from "@/core/ui/tourism-controls";
+import { useTurismoPalette } from "@/core/ui/theme-context";
+import { TourismIconAction, TourismSurface } from "@/core/ui/tourism-controls";
 import {
   turismoIconSizes,
   turismoMetrics,
@@ -31,6 +28,7 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
+import { formatOptionalDistance } from "@/core/format/distance";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import { useUserLocation } from "@/core/location/use-user-location";
 import { askTourismAgentStream } from "@/features/agent/data/agent-api";
@@ -40,16 +38,14 @@ import type {
   AgentRouteDestination,
 } from "@/features/agent/domain/agent";
 import { useAuth } from "@/features/auth/application/auth-context";
+import type { RouteMode } from "@/features/routing/domain/routing";
 
 export function AgentChatContent({
   onOpenCenter,
   onStartRoute,
 }: Readonly<{
   onOpenCenter: (code: string) => void;
-  onStartRoute: (
-    destination: AgentRouteDestination,
-    mode: "car" | "bicycle" | "foot",
-  ) => void;
+  onStartRoute: (destination: AgentRouteDestination, mode: RouteMode) => void;
 }>) {
   const colors = useTurismoPalette();
   const auth = useAuth();
@@ -112,15 +108,16 @@ export function AgentChatContent({
             );
           });
         },
-        auth.request,
-        undefined,
-        coordinate
-          ? {
-              latitude: coordinate.latitude,
-              longitude: coordinate.longitude,
-              accuracyMeters: accuracy ?? undefined,
-            }
-          : undefined,
+        {
+          fetcher: auth.request,
+          location: coordinate
+            ? {
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude,
+                accuracyMeters: accuracy ?? undefined,
+              }
+            : undefined,
+        },
       );
       if (streamedAssistantId) {
         setMessages((current) =>
@@ -326,7 +323,7 @@ export function AgentChatContent({
                           {[
                             card.category,
                             card.localityName,
-                            formatDistance(card.distanceMeters),
+                            formatOptionalDistance(card.distanceMeters),
                           ]
                             .filter(Boolean)
                             .join(" · ")}
@@ -607,12 +604,6 @@ function ThinkingDot({
       style={[styles.thinkingDot, { backgroundColor: color }, animatedStyle]}
     />
   );
-}
-
-function formatDistance(distanceMeters: number | null): string | null {
-  if (distanceMeters === null || !Number.isFinite(distanceMeters)) return null;
-  if (distanceMeters < 1_000) return `${Math.round(distanceMeters)} m`;
-  return `${(distanceMeters / 1_000).toFixed(1)} km`;
 }
 
 function sameRouteAction(

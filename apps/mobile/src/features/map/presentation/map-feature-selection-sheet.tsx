@@ -1,17 +1,24 @@
-import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
-  tourismFlexibleSheetBehavior,
-  tourismFlexibleSheetSnapPoints,
+  TourismBottomSheet,
+  TourismSheetScrollView,
 } from "@/core/ui/tourism-bottom-sheet";
-import { useTurismoPalette } from "@/core/ui/tourism-controls";
+import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TurismoIcon, type TurismoIconName } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
+  turismoMetrics,
+  turismoOpacity,
+  turismoRadii,
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
+import {
+  getEstablishmentKey,
+  getEstablishmentLabel,
+} from "@/features/establishments/domain/establishment";
+import { getEstablishmentPin } from "@/features/establishments/presentation/establishment-pins";
 import type { MapFeatureSelection } from "../domain/map-feature-selection";
 
 export function MapFeatureSelectionSheet({
@@ -26,18 +33,8 @@ export function MapFeatureSelectionSheet({
   const colors = useTurismoPalette();
 
   return (
-    <BottomSheet
-      {...tourismFlexibleSheetBehavior}
-      backgroundStyle={{ backgroundColor: colors.surface }}
-      index={0}
-      onClose={onClose}
-      snapPoints={tourismFlexibleSheetSnapPoints}
-    >
-      <BottomSheetScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-        style={styles.scroll}
-      >
+    <TourismBottomSheet onClose={onClose}>
+      <TourismSheetScrollView contentStyle={styles.container}>
         <View style={styles.header}>
           <View style={styles.headerCopy}>
             <Text style={[styles.title, { color: colors.text }]}>
@@ -56,7 +53,7 @@ export function MapFeatureSelectionSheet({
               : selection.establishment.name;
             const category = isCenter
               ? selection.center.category
-              : selection.establishment.category;
+              : getEstablishmentLabel(selection.establishment);
             const subtitle = isCenter
               ? `Centro turístico · ${category}`
               : `Punto de interés · ${category ?? "Establecimiento turístico"}`;
@@ -110,47 +107,24 @@ export function MapFeatureSelectionSheet({
             );
           })}
         </View>
-      </BottomSheetScrollView>
-    </BottomSheet>
+      </TourismSheetScrollView>
+    </TourismBottomSheet>
   );
 }
 
-const establishmentIconNames: Readonly<Record<string, TurismoIconName>> = {
-  "accommodation-hotel": "hotel",
-  "amenity-cinema": "ticket",
-  "amenity-library": "map",
-  "amenity-toilets": "mapPin",
-  "eat-drink-cafe": "coffee",
-  "eat-drink-restaurant": "restaurant",
-  "health-hospital": "mapPinned",
-  "money-atm": "store",
-  "money-bank": "store",
-  "outdoor-camping": "map",
-  "outdoor-drinking-water": "mapPin",
-  "religious-place-of-worship": "mapPinned",
-  "shop-supermarket": "store",
-  "tourism-information": "ticket",
-  "tourism-museum": "map",
-  "tourism-viewpoint": "compass",
-  "transport-bus-stop": "bus",
-};
-
 function getSelectionIcon(selection: MapFeatureSelection): TurismoIconName {
   if (selection.kind === "center") return "mapPinned";
-  return establishmentIconNames[selection.establishment.icon] ?? "mapPin";
+  return getEstablishmentPin(selection.establishment.icon).icon;
 }
 
 function getSelectionKey(selection: MapFeatureSelection): string {
   if (selection.kind === "center") return `center:${selection.center.code}`;
-  return `establishment:${selection.establishment.name}:${selection.establishment.latitude}:${selection.establishment.longitude}`;
+  return `establishment:${getEstablishmentKey(selection.establishment)}`;
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1 },
   container: {
-    flexGrow: 1,
     gap: turismoSpacing.lg,
-    padding: turismoSpacing.lg,
     paddingBottom: turismoSpacing.xxl,
   },
   header: {
@@ -166,20 +140,20 @@ const styles = StyleSheet.create({
   option: {
     alignItems: "center",
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: turismoMetrics.borderWidth,
     flexDirection: "row",
     gap: turismoSpacing.sm,
     minHeight: 72,
     paddingHorizontal: turismoSpacing.md,
     paddingVertical: turismoSpacing.sm,
   },
-  optionPressed: { opacity: 0.72 },
+  optionPressed: { opacity: turismoOpacity.pressed },
   iconContainer: {
     alignItems: "center",
-    borderRadius: 24,
-    height: 44,
+    borderRadius: turismoRadii.lg,
+    height: turismoMetrics.touchTarget,
     justifyContent: "center",
-    width: 44,
+    width: turismoMetrics.touchTarget,
   },
   optionCopy: { flex: 1, gap: turismoSpacing.xxs },
   optionTitle: { ...turismoTypography.body, fontWeight: "700" },

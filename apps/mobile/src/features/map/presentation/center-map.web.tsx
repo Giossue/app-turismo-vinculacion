@@ -1,44 +1,16 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { useTurismoTheme } from "@/core/ui/theme-context";
+import { useTurismoMapPalette } from "@/core/ui/theme-context";
 import {
-  getTurismoMapColors,
   turismoMetrics,
   turismoRadii,
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
-import type { UserLocationCoordinate } from "@/core/location/use-user-location";
-import type { PublicCenter } from "@/features/centers/domain/public-center";
-import type { PublicMapEstablishment } from "@/features/establishments/domain/establishment";
-import type { MapFeatureSelection } from "../domain/map-feature-selection";
-
-type CenterMapProps = Readonly<{
-  centers: readonly PublicCenter[];
-  establishments?: readonly PublicMapEstablishment[];
-  focusSelection?: MapFeatureSelection | null;
-  focusLocationKey?: number;
-  focusCoordinate?: Readonly<{ latitude: number; longitude: number }> | null;
-  focusCoordinateKey?: number;
-  onAttributionChange?: (handler: (() => void) | null) => void;
-  onCenterPress: (center: PublicCenter) => void;
-  onEstablishmentPress: (establishment: PublicMapEstablishment) => void;
-  onOverlappingFeaturePress: (
-    selections: readonly MapFeatureSelection[],
-  ) => void;
-  onViewportChange: (bounds: {
-    west: number;
-    south: number;
-    east: number;
-    north: number;
-  }) => void;
-  selectedCenterCode?: string | null;
-  userLocation?: UserLocationCoordinate | null;
-}>;
+import type { CenterMapProps } from "./center-map.types";
 
 export function CenterMap({ centers }: CenterMapProps) {
-  const { scheme } = useTurismoTheme();
-  const colors = getTurismoMapColors(scheme);
+  const colors = useTurismoMapPalette();
   return (
     <View
       accessibilityLabel="Mapa disponible en la aplicación móvil"

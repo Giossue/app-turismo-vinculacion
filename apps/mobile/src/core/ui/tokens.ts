@@ -32,10 +32,7 @@ export const turismoMetrics = {
   controlMd: 48,
   controlLg: 52,
   avatarSm: 32,
-  avatarMd: 40,
   iconButtonLg: 56,
-  tabBar: 64,
-  popoverTop: 72,
   contentMaxWidth: 720,
   sheetMaxWidth: 560,
   drawerMaxWidth: 360,
@@ -66,6 +63,23 @@ export const turismoMotion = {
   drawerAnimationSpeed: 1,
 } as const;
 
+/** Opacity feedback shared by pressable controls. */
+export const turismoOpacity = {
+  pressed: 0.72,
+  disabled: 0.38,
+} as const;
+
+/**
+ * Colors that do not change with the theme: system surfaces outside the app
+ * (the Android navigation notification), fixed graphics and shadows.
+ */
+export const turismoFixedColors = {
+  brand: "#176B4D",
+  compassNorth: "#EF4444",
+  compassNorthShade: "#DC2626",
+  shadow: "#000000",
+} as const;
+
 export const turismoColors = {
   light: {
     background: "#f5f8f7",
@@ -82,9 +96,6 @@ export const turismoColors = {
     accent: "#4b5563",
     warm: "#b45309",
     danger: "#b91c1c",
-    info: "#0369a1",
-    infoSoft: "rgba(3, 105, 161, 0.16)",
-    mapBackground: "#E2ECE6",
     mapSearchIcon: "#52605a",
     scrim: "rgba(0, 0, 0, 0.42)",
     onPrimary: "#ffffff",
@@ -92,8 +103,6 @@ export const turismoColors = {
       background: "#E2ECE6",
       border: "#D4E2D8",
       attribution: "#176B4D",
-      info: "#2C7BE5",
-      infoSoft: "rgba(44, 123, 229, 0.24)",
       location: "#1155ff",
       locationSoft: "rgba(37, 99, 235, 0.24)",
       onPrimary: "#FFFFFF",
@@ -119,9 +128,6 @@ export const turismoColors = {
     accent: "#b8b8b8",
     warm: "#ffa726",
     danger: "#f44336",
-    info: "#29b6f6",
-    infoSoft: "rgba(41, 182, 246, 0.24)",
-    mapBackground: "#10251A",
     mapSearchIcon: "#ffffff",
     scrim: "rgba(0, 0, 0, 0.58)",
     onPrimary: "#06130a",
@@ -129,8 +135,6 @@ export const turismoColors = {
       background: "#10251A",
       border: "#345844",
       attribution: "#55C58D",
-      info: "#8CB8FF",
-      infoSoft: "rgba(140, 184, 255, 0.24)",
       location: "#0e55ff",
       locationSoft: "rgba(37, 99, 235, 0.24)",
       onPrimary: "#092015",

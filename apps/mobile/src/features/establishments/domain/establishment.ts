@@ -1,4 +1,4 @@
-export type PublicEstablishment = Readonly<{
+type PublicEstablishment = Readonly<{
   nombreComercial: string;
   actividad: string;
   clasificacion: string | null;
@@ -21,13 +21,6 @@ export type PublicMapEstablishment = Readonly<{
   approximate: boolean;
   icon: string;
   color: string;
-}>;
-
-export type EstablishmentMapViewport = Readonly<{
-  west: number;
-  south: number;
-  east: number;
-  north: number;
 }>;
 
 export type MapEstablishmentsResult = Readonly<{
@@ -55,3 +48,23 @@ export type NearbyEstablishmentsQuery = Readonly<{
   longitude?: number;
   limit?: number;
 }>;
+
+/**
+ * Map establishments have no public identifier; name plus coordinates is
+ * stable across refetches and identifies the same pin on the map and sheets.
+ */
+export function getEstablishmentKey(
+  establishment: Pick<
+    PublicMapEstablishment,
+    "latitude" | "longitude" | "name"
+  >,
+): string {
+  return `${establishment.name}:${establishment.latitude}:${establishment.longitude}`;
+}
+
+/** Human category of a map establishment, preferring the curated label. */
+export function getEstablishmentLabel(
+  establishment: Pick<PublicMapEstablishment, "category" | "categoryLabel">,
+): string | null {
+  return establishment.categoryLabel ?? establishment.category;
+}

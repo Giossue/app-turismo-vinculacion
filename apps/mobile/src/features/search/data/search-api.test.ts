@@ -27,8 +27,7 @@ describe("searchPublicPlaces", () => {
       searchPublicPlaces(
         "Guaranda",
         { latitude: -1.59, longitude: -79 },
-        fetcher,
-        "http://api.test/api/v1",
+        { apiUrl: "http://api.test/api/v1", fetcher },
       ),
     ).resolves.toMatchObject({ photonAvailable: true });
 

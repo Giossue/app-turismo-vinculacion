@@ -1,16 +1,5 @@
-import BottomSheet, {
-  BottomSheetModal,
-  BottomSheetScrollView,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -23,53 +12,55 @@ import {
   View,
 } from "react-native";
 import { Defs, LinearGradient, Rect, Stop, Svg } from "react-native-svg";
-import { Redirect, Stack, useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { resolveMediaUrl } from "@/core/api/media-url";
+import { queryKeys } from "@/core/api/query-keys";
+import type { GeoBounds, GeoCoordinate } from "@/core/geo/types";
+import { useTurismoPalette } from "@/core/ui/theme-context";
 import {
   TourismActionButton,
   TourismCompassAction,
   TourismChoiceChip,
   TourismIconAction,
   TourismSearchField,
-  useTurismoPalette,
 } from "@/core/ui/tourism-controls";
 import {
-  tourismAgentSheetBehavior,
-  tourismAgentSheetSnapPoints,
-  tourismFlexibleSheetBehavior,
-  tourismFlexibleSheetSnapPoints,
+  TourismBottomSheet,
+  TourismBottomSheetModal,
+  TourismSheetScrollView,
 } from "@/core/ui/tourism-bottom-sheet";
+import { TourismInfoRow, TourismSection } from "@/core/ui/tourism-content";
+import { TourismTabs } from "@/core/ui/tourism-tabs";
 import {
   TourismMenuButton as NavigationMenuButton,
   useTourismMenu,
 } from "@/core/ui/tourism-navigation";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
+  turismoFixedColors,
   turismoIconSizes,
   turismoMetrics,
+  turismoOpacity,
   turismoRadii,
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
+import { useDiscoveryCatalog } from "@/features/centers/application/use-discovery-catalog";
+import { usePublishedCenters } from "@/features/centers/application/use-published-centers";
 import {
-  discoveryCatalogQueryKey,
-  useDiscoveryCatalog,
-} from "@/features/centers/application/use-discovery-catalog";
-import {
-  publishedCentersQueryKey,
-  usePublishedCenters,
-} from "@/features/centers/application/use-published-centers";
-import {
-  mapEstablishmentsQueryKey,
-  useMapEstablishments,
-} from "@/features/establishments/application/use-map-establishments";
+  formatAdmissionPrice,
+  formatRating,
+} from "@/features/centers/domain/center-format";
+import { useMapEstablishments } from "@/features/establishments/application/use-map-establishments";
 import { useNearbyEstablishments } from "@/features/establishments/application/use-nearby-establishments";
-import type {
-  EstablishmentMapViewport,
-  PublicMapEstablishment,
+import {
+  getEstablishmentKey,
+  type PublicMapEstablishment,
 } from "@/features/establishments/domain/establishment";
+import { defaultEstablishmentPin } from "@/features/establishments/presentation/establishment-pins";
 import { EstablishmentDetailSheet } from "@/features/establishments/presentation/establishment-detail-sheet";
 import { EstablishmentResultsSheet } from "@/features/establishments/presentation/establishment-results-sheet";
 import type {
@@ -82,18 +73,15 @@ import {
 } from "@/features/centers/presentation/discovery-filters";
 import { SearchResultsSheet } from "@/features/centers/presentation/search-results-sheet";
 import { usePublicSearch } from "@/features/search/application/use-public-search";
+import { useSearchHistory } from "@/features/search/application/use-search-history";
 import type { PublicSearchResult } from "@/features/search/domain/search-result";
-import {
-  clearSearchHistory,
-  listSearchHistory,
-  rememberSearch,
-} from "@/features/centers/data/search-history-storage";
 import { usePublishedCenter } from "@/features/centers/application/use-published-center";
 import {
   useSavedCenterMutation,
   useSavedCenters,
 } from "@/features/favorites/application/use-saved-centers";
 import { useCenterOpinions } from "@/features/opinions/application/use-center-opinions";
+import type { OpinionRatingSummary } from "@/features/opinions/domain/opinion";
 import { CenterOpinions } from "@/features/opinions/presentation/center-opinions";
 import type { MapFeatureSelection } from "@/features/map/domain/map-feature-selection";
 import { CenterMap } from "@/features/map/presentation/center-map";
@@ -102,26 +90,24 @@ import { MapFeatureSelectionSheet } from "@/features/map/presentation/map-featur
 import type { AgentRouteDestination } from "@/features/agent/domain/agent";
 import { AgentChatContent } from "@/features/agent/presentation/agent-chat-content";
 import { useAuth } from "@/features/auth/application/auth-context";
+import { buildLoginHref } from "@/features/auth/application/login-href";
 import {
   readAuthEntryChoice,
   type AuthEntryChoice,
 } from "@/features/auth/data/auth-entry-storage";
 import { useUserLocation } from "@/core/location/use-user-location";
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
+import type { RouteMode } from "@/features/routing/domain/routing";
+import { buildRouteHref } from "@/features/routing/presentation/route-href";
 
 type ExploreSearchMode = "CENTERS" | "ESTABLISHMENTS";
 type PlaceTab = "information" | "opinions" | "photos";
-type OpinionRatingSummary = Readonly<{
-  averageRating: number | null;
-  total: number;
-}>;
 const placeTabOrder = ["information", "opinions", "photos"] as const;
-
-function getEstablishmentSelectionKey(
-  establishment: PublicMapEstablishment,
-): string {
-  return `${establishment.name}:${establishment.latitude}:${establishment.longitude}`;
-}
+const placeTabs = [
+  { label: "Información", value: "information" },
+  { label: "Opiniones", value: "opinions" },
+  { label: "Fotos", value: "photos" },
+] as const;
 
 export default function HomeScreen() {
   const colors = useTurismoPalette();
@@ -181,22 +167,23 @@ function ExploreMapScreen() {
   const [submittedText, setSubmittedText] = useState("");
   const [searchMode, setSearchMode] = useState<ExploreSearchMode>("CENTERS");
   const [searchFocused, setSearchFocused] = useState(false);
-  const [searchHistory, setSearchHistory] = useState<readonly string[]>([]);
+  const {
+    clear: clearSearchHistory,
+    history: searchHistory,
+    remember: rememberSearch,
+  } = useSearchHistory();
   const [nearbyOnly, setNearbyOnly] = useState(false);
   const [mapBearing, setMapBearing] = useState(0);
   const [resetNorthKey, setResetNorthKey] = useState(0);
-  const [searchFocusCoordinate, setSearchFocusCoordinate] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
+  const [searchFocusCoordinate, setSearchFocusCoordinate] =
+    useState<GeoCoordinate | null>(null);
   const [searchFocusCoordinateKey, setSearchFocusCoordinateKey] = useState(0);
   const [selectedCenterCode, setSelectedCenterCode] = useState<string | null>(
     null,
   );
   const [selectedEstablishment, setSelectedEstablishment] =
     useState<PublicMapEstablishment | null>(null);
-  const [mapViewport, setMapViewport] =
-    useState<EstablishmentMapViewport | null>(null);
+  const [mapViewport, setMapViewport] = useState<GeoBounds | null>(null);
   const [mapFeatureSelection, setMapFeatureSelection] = useState<
     readonly MapFeatureSelection[] | null
   >(null);
@@ -231,16 +218,6 @@ function ExploreMapScreen() {
     locationFocusInitializedRef.current = true;
     setFocusLocationKey((value) => value + 1);
   }, [locationStatus, userLocation]);
-
-  useEffect(() => {
-    let active = true;
-    void listSearchHistory().then((history) => {
-      if (active) setSearchHistory(history);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const [filters, setFilters] = useState<DiscoveryFilterValues>({});
   const handleAttributionChange = useCallback(
@@ -298,11 +275,11 @@ function ExploreMapScreen() {
       // respuestas que todavía están dentro de su staleTime y conserva en el
       // mapa los datos actuales mientras llegan los nuevos.
       void Promise.all([
-        queryClient.invalidateQueries({ queryKey: publishedCentersQueryKey }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.publishedCenters }),
         queryClient.invalidateQueries({
-          queryKey: mapEstablishmentsQueryKey,
+          queryKey: queryKeys.mapEstablishments,
         }),
-        queryClient.invalidateQueries({ queryKey: discoveryCatalogQueryKey }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.discoveryCatalog }),
       ]);
     },
     [queryClient],
@@ -470,8 +447,8 @@ function ExploreMapScreen() {
           latitude: place.latitude,
           longitude: place.longitude,
           approximate: place.approximate ?? false,
-          icon: place.icon ?? "shop-supermarket",
-          color: place.color ?? "#be123c",
+          icon: place.icon ?? defaultEstablishmentPin.key,
+          color: place.color ?? defaultEstablishmentPin.color,
         });
         return;
       }
@@ -592,13 +569,10 @@ function ExploreMapScreen() {
     presentSearchSheet();
   }, [agentOpen, presentSearchSheet, searchFocused, submittedQuery]);
 
-  const handleViewportChange = useCallback(
-    (bounds: EstablishmentMapViewport) => {
-      setConfirmedLocationFocusKey(null);
-      setMapViewport(bounds);
-    },
-    [],
-  );
+  const handleViewportChange = useCallback((bounds: GeoBounds) => {
+    setConfirmedLocationFocusKey(null);
+    setMapViewport(bounds);
+  }, []);
 
   const openRoute = () => {
     if (!selectedCenter) return;
@@ -607,14 +581,7 @@ function ExploreMapScreen() {
     // cambiar de pantalla para no quedar montada sobre la ruta.
     dismissSearchSheet();
     setSelectedCenterCode(null);
-    router.push({
-      pathname: "/route",
-      params: {
-        destinationLatitude: String(selectedCenter.latitude),
-        destinationLongitude: String(selectedCenter.longitude),
-        destinationName: selectedCenter.name,
-      },
-    } as never);
+    router.push(buildRouteHref(selectedCenter));
   };
 
   const handleLocateUser = useCallback(async () => {
@@ -633,10 +600,7 @@ function ExploreMapScreen() {
 
   const openAgent = useCallback(() => {
     if (auth.status !== "authenticated") {
-      router.push({
-        pathname: "/login",
-        params: { returnTo: "/" },
-      } as never);
+      router.push(buildLoginHref("/"));
       return;
     }
     dismissSearchSheet();
@@ -653,10 +617,7 @@ function ExploreMapScreen() {
   }, [auth.status, dismissSearchSheet, router]);
 
   const openAuth = useCallback(() => {
-    router.push({
-      pathname: "/login",
-      params: { returnTo: "/" },
-    } as never);
+    router.push(buildLoginHref("/"));
   }, [router]);
 
   const openAgentCenter = useCallback(
@@ -670,17 +631,9 @@ function ExploreMapScreen() {
     [closeAgent, router],
   );
   const openAgentRoute = useCallback(
-    (destination: AgentRouteDestination, mode: "car" | "bicycle" | "foot") => {
+    (destination: AgentRouteDestination, mode: RouteMode) => {
       closeAgent();
-      router.push({
-        pathname: "/route",
-        params: {
-          destinationLatitude: String(destination.latitude),
-          destinationLongitude: String(destination.longitude),
-          destinationName: destination.name,
-          mode,
-        },
-      } as never);
+      router.push(buildRouteHref(destination, mode));
     },
     [closeAgent, router],
   );
@@ -688,23 +641,14 @@ function ExploreMapScreen() {
   const handleSubmitSearch = useCallback(() => {
     const nextQuery = text.trim();
     if (nextQuery.length < 2) return;
-    void rememberSearch(nextQuery).then(() => {
-      setSearchHistory((current) =>
-        [
-          nextQuery,
-          ...current.filter(
-            (item) =>
-              item.toLocaleLowerCase() !== nextQuery.toLocaleLowerCase(),
-          ),
-        ].slice(0, 8),
-      );
-    });
+    Keyboard.dismiss();
+    void rememberSearch(nextQuery);
     setSubmittedText(nextQuery);
     setSearchFocused(false);
     setNearbyOnly(false);
     setSelectedCenterCode(null);
     setSelectedEstablishment(null);
-  }, [text]);
+  }, [rememberSearch, text]);
 
   const handleClearSearchInput = useCallback(() => {
     setText("");
@@ -713,12 +657,15 @@ function ExploreMapScreen() {
     setSearchFocused(true);
   }, [dismissSearchSheet]);
 
-  const handleRecentSearch = useCallback((recentQuery: string) => {
-    setText(recentQuery);
-    setSubmittedText(recentQuery);
-    setSearchFocused(false);
-    void rememberSearch(recentQuery);
-  }, []);
+  const handleRecentSearch = useCallback(
+    (recentQuery: string) => {
+      setText(recentQuery);
+      setSubmittedText(recentQuery);
+      setSearchFocused(false);
+      void rememberSearch(recentQuery);
+    },
+    [rememberSearch],
+  );
 
   const searchSuggestions = useMemo(() => {
     const normalized = text.trim().toLocaleLowerCase();
@@ -765,10 +712,8 @@ function ExploreMapScreen() {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.mapBackground }]}>
-      <Stack.Screen options={{ headerShown: false }} />
+    <View style={[styles.screen, { backgroundColor: colors.map.background }]}>
       <CenterMap
-        basemapMode="streets"
         centers={visibleCenters}
         establishments={mapEstablishments.data?.items ?? []}
         focusCoordinate={searchFocusCoordinate}
@@ -787,7 +732,7 @@ function ExploreMapScreen() {
         selectedCenterCode={selectedCenterCode}
         selectedEstablishmentKey={
           selectedEstablishment
-            ? getEstablishmentSelectionKey(selectedEstablishment)
+            ? getEstablishmentKey(selectedEstablishment)
             : null
         }
         focusLocationKey={focusLocationKey}
@@ -881,6 +826,7 @@ function ExploreMapScreen() {
               icon="arrowLeft"
               onPress={closeFocusedSearch}
               style={styles.searchBackAction}
+              variant="ghost"
             />
             <View style={styles.searchFieldWrap}>
               <TourismSearchField
@@ -902,9 +848,7 @@ function ExploreMapScreen() {
           <SearchSuggestionsPanel
             fullScreen
             history={searchHistory}
-            onClearHistory={() => {
-              void clearSearchHistory().then(() => setSearchHistory([]));
-            }}
+            onClearHistory={() => void clearSearchHistory()}
             onRecentPress={handleRecentSearch}
             onSuggestionPress={(center) => {
               void rememberSearch(center.name);
@@ -973,10 +917,7 @@ function ExploreMapScreen() {
       !selectedCenterCode &&
       !selectedEstablishment &&
       !mapFeatureSelection ? (
-        <BottomSheetModal
-          {...tourismFlexibleSheetBehavior}
-          backgroundStyle={{ backgroundColor: colors.surface }}
-          index={0}
+        <TourismBottomSheetModal
           onDismiss={() => {
             const preserveSelection = preserveSelectionOnSearchCloseRef.current;
             preserveSelectionOnSearchCloseRef.current = false;
@@ -984,22 +925,16 @@ function ExploreMapScreen() {
             if (!preserveSelection) clearSearch();
           }}
           ref={sheetRef}
-          snapPoints={tourismFlexibleSheetSnapPoints}
         >
           {submittedQuery && searchMode === "CENTERS" ? (
-            <BottomSheetScrollView
-              contentContainerStyle={[
-                styles.sheetView,
-                isLandscape && styles.sheetViewLandscape,
-              ]}
+            <TourismSheetScrollView
               key={`search-${submittedQuery}`}
-              showsVerticalScrollIndicator={false}
-              style={styles.flexibleSheetScroll}
+              landscapeMaxWidth={turismoMetrics.sheetMaxWidth}
             >
               <SearchResultsSheet
                 catalog={catalog}
                 centers={visibleCenters}
-                error={searchResultsError as Error | null}
+                error={searchResultsError}
                 filters={filters}
                 isFetching={isFetching || publicSearch.isFetching}
                 isPlaceholderData={isPlaceholderData}
@@ -1013,29 +948,24 @@ function ExploreMapScreen() {
                 query={submittedQuery}
                 userLocation={userLocation}
               />
-            </BottomSheetScrollView>
+            </TourismSheetScrollView>
           ) : submittedQuery && searchMode === "ESTABLISHMENTS" ? (
-            <BottomSheetScrollView
-              contentContainerStyle={[
-                styles.sheetView,
-                isLandscape && styles.sheetViewLandscape,
-              ]}
+            <TourismSheetScrollView
               key={`establishments-${submittedQuery}`}
-              showsVerticalScrollIndicator={false}
-              style={styles.flexibleSheetScroll}
+              landscapeMaxWidth={turismoMetrics.sheetMaxWidth}
             >
               <EstablishmentResultsSheet
                 data={nearbyEstablishments.data}
-                error={nearbyEstablishments.error as Error | null}
+                error={nearbyEstablishments.error}
                 hasLocation={Boolean(userLocation)}
                 isFetching={nearbyEstablishments.isFetching}
                 onRequestLocation={() => void handleLocateUser()}
                 onRetry={() => void nearbyEstablishments.refetch()}
                 query={submittedQuery}
               />
-            </BottomSheetScrollView>
+            </TourismSheetScrollView>
           ) : null}
-        </BottomSheetModal>
+        </TourismBottomSheetModal>
       ) : null}
       {!searchFocused && mapFeatureSelection ? (
         <MapFeatureSelectionSheet
@@ -1064,28 +994,17 @@ function ExploreMapScreen() {
           onOpenRoute={() => {
             const establishment = selectedEstablishment;
             closeSelectedEstablishment();
-            router.push({
-              pathname: "/route",
-              params: {
-                destinationLatitude: String(establishment.latitude),
-                destinationLongitude: String(establishment.longitude),
-                destinationName: establishment.name,
-              },
-            } as never);
+            router.push(buildRouteHref(establishment));
           }}
         />
       ) : null}
-      <BottomSheetModal
-        {...tourismAgentSheetBehavior}
-        backgroundStyle={{ backgroundColor: colors.surface }}
-        handleComponent={null}
-        index={0}
+      <TourismBottomSheetModal
         onDismiss={() => {
           agentSheetOpenRef.current = false;
           setAgentOpen(false);
         }}
         ref={agentSheetRef}
-        snapPoints={tourismAgentSheetSnapPoints}
+        variant="agent"
       >
         <BottomSheetView style={styles.agentSheetView}>
           <SafeAreaView
@@ -1105,7 +1024,7 @@ function ExploreMapScreen() {
                 accessibilityLabel="Cerrar agente turístico"
                 icon="close"
                 onPress={closeAgent}
-                style={styles.agentCloseAction}
+                variant="ghost"
               />
             </View>
             <View style={styles.agentContent}>
@@ -1116,7 +1035,7 @@ function ExploreMapScreen() {
             </View>
           </SafeAreaView>
         </BottomSheetView>
-      </BottomSheetModal>
+      </TourismBottomSheetModal>
     </View>
   );
 }
@@ -1333,27 +1252,12 @@ function CenterDetailSheet({
   onRequireAuth: () => void;
   onRetryDetail: () => void;
 }>) {
-  const colors = useTurismoPalette();
-  const { height, width } = useWindowDimensions();
-  const isLandscape = width > height;
-
   return (
-    <BottomSheet
-      {...tourismFlexibleSheetBehavior}
-      backgroundStyle={{ backgroundColor: colors.surface }}
-      index={0}
-      onClose={onClose}
-      snapPoints={tourismFlexibleSheetSnapPoints}
-    >
-      <BottomSheetScrollView
-        contentContainerStyle={[
-          styles.sheetView,
-          styles.centerSheetContent,
-          isLandscape && styles.sheetViewLandscape,
-        ]}
+    <TourismBottomSheet onClose={onClose}>
+      <TourismSheetScrollView
+        contentStyle={styles.centerSheetContent}
         key={center.code}
-        showsVerticalScrollIndicator={false}
-        style={styles.centerSheetScroll}
+        landscapeMaxWidth={turismoMetrics.sheetMaxWidth}
       >
         <PlaceSheet
           center={center}
@@ -1366,8 +1270,8 @@ function CenterDetailSheet({
           onRequireAuth={onRequireAuth}
           onRetryDetail={onRetryDetail}
         />
-      </BottomSheetScrollView>
-    </BottomSheet>
+      </TourismSheetScrollView>
+    </TourismBottomSheet>
   );
 }
 
@@ -1470,7 +1374,7 @@ function PlaceSheet({
           <View
             style={[
               styles.placeHeroFallback,
-              { backgroundColor: colors.mapBackground },
+              { backgroundColor: colors.map.background },
             ]}
           >
             <TurismoIcon
@@ -1594,7 +1498,11 @@ function PlaceSheet({
         </View>
       ) : (
         <>
-          <PlaceTabButton activeTab={activeTab} onChange={changeTab} />
+          <TourismTabs
+            items={placeTabs}
+            onChange={changeTab}
+            value={activeTab}
+          />
           <View
             onLayout={(event) => setPagerWidth(event.nativeEvent.layout.width)}
             style={[
@@ -1696,52 +1604,6 @@ function CenterRatingSummary({
   );
 }
 
-function PlaceTabButton({
-  activeTab,
-  onChange,
-}: Readonly<{
-  activeTab: PlaceTab;
-  onChange: (tab: PlaceTab) => void;
-}>) {
-  const colors = useTurismoPalette();
-  return (
-    <View style={[styles.placeTabs, { borderBottomColor: colors.border }]}>
-      {(
-        [
-          ["information", "Información"],
-          ["opinions", "Opiniones"],
-          ["photos", "Fotos"],
-        ] as const
-      ).map(([tab, label]) => (
-        <Pressable
-          accessibilityRole="tab"
-          accessibilityState={{ selected: activeTab === tab }}
-          hitSlop={4}
-          key={tab}
-          onPress={() => onChange(tab)}
-          style={({ pressed }) => [
-            styles.placeTab,
-            pressed && styles.placeTabPressed,
-            activeTab === tab && { borderBottomColor: colors.primary },
-          ]}
-        >
-          <Text
-            style={[
-              styles.placeTabLabel,
-              {
-                color:
-                  activeTab === tab ? colors.primaryStrong : colors.textMuted,
-              },
-            ]}
-          >
-            {label}
-          </Text>
-        </Pressable>
-      ))}
-    </View>
-  );
-}
-
 function PlaceInformation({
   detail,
 }: Readonly<{ detail: PublicCenterDetail }>) {
@@ -1749,45 +1611,53 @@ function PlaceInformation({
   return (
     <>
       {detail.description ? (
-        <PlaceSection icon="circleHelp" title="Descripción">
+        <TourismSection icon="circleHelp" title="Descripción" variant="divided">
           <Text style={[styles.detailInfoValue, { color: colors.text }]}>
             {detail.description}
           </Text>
-        </PlaceSection>
+        </TourismSection>
       ) : null}
-      <PlaceSection icon="mapPinned" title="Información del lugar">
-        <PlaceInfoRow label="Zona turística" value={detail.touristZone} />
-        <PlaceInfoRow label="Categoría" value={detail.category} />
-        <PlaceInfoRow label="Tipo" value={detail.type} />
-        <PlaceInfoRow label="Subtipo" value={detail.subtype} />
+      <TourismSection
+        icon="mapPinned"
+        title="Información del lugar"
+        variant="divided"
+      >
+        <TourismInfoRow label="Zona turística" value={detail.touristZone} />
+        <TourismInfoRow label="Categoría" value={detail.category} />
+        <TourismInfoRow label="Tipo" value={detail.type} />
+        <TourismInfoRow label="Subtipo" value={detail.subtype} />
         {detail.address ? (
-          <PlaceInfoRow label="Dirección" value={detail.address} />
+          <TourismInfoRow label="Dirección" value={detail.address} />
         ) : null}
         {detail.altitudeMeters !== null ? (
-          <PlaceInfoRow
+          <TourismInfoRow
             label="Altitud"
             value={`${detail.altitudeMeters} msnm`}
           />
         ) : null}
-      </PlaceSection>
-      <PlaceSection icon="calendar" title="Ingreso y horario">
+      </TourismSection>
+      <TourismSection
+        icon="calendar"
+        title="Ingreso y horario"
+        variant="divided"
+      >
         {detail.admission ? (
           <>
-            <PlaceInfoRow
+            <TourismInfoRow
               label="Acceso"
               value={`${detail.admission.type} · ${detail.admission.attention}`}
             />
             {detail.admission.opensAt || detail.admission.closesAt ? (
-              <PlaceInfoRow
+              <TourismInfoRow
                 label="Horario"
                 value={`${detail.admission.opensAt ?? "--:--"} – ${detail.admission.closesAt ?? "--:--"}`}
               />
             ) : null}
             {detail.admission.priceFrom !== null ||
             detail.admission.priceTo !== null ? (
-              <PlaceInfoRow
+              <TourismInfoRow
                 label="Precio"
-                value={formatPrice(
+                value={formatAdmissionPrice(
                   detail.admission.priceFrom,
                   detail.admission.priceTo,
                 )}
@@ -1797,7 +1667,7 @@ function PlaceInformation({
         ) : (
           <PlaceEmptyState text="No hay información de ingreso registrada." />
         )}
-      </PlaceSection>
+      </TourismSection>
       <PlaceTagsSection
         icon="compass"
         title="Actividades"
@@ -1823,9 +1693,9 @@ function PlacePhotos({
   const colors = useTurismoPalette();
   if (!photos.length) {
     return (
-      <PlaceSection icon="mapPinned" title="Fotos">
+      <TourismSection icon="mapPinned" title="Fotos" variant="divided">
         <PlaceEmptyState text="Todavía no hay imágenes publicadas para este centro." />
-      </PlaceSection>
+      </TourismSection>
     );
   }
   return (
@@ -1870,41 +1740,6 @@ function PlaceOpinions({
   );
 }
 
-function resolveMediaUrl(path: string): string {
-  if (/^https?:\/\//.test(path)) return path;
-  const api = (
-    process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:3000/api/v1"
-  ).replace(/\/$/, "");
-  return `${api.replace(/\/api\/v1$/, "")}${path}`;
-}
-
-function PlaceSection({
-  children,
-  icon,
-  title,
-}: Readonly<{
-  children: ReactNode;
-  icon: "calendar" | "circleHelp" | "mapPinned";
-  title: string;
-}>) {
-  const colors = useTurismoPalette();
-  return (
-    <View style={[styles.detailSection, { borderBottomColor: colors.border }]}>
-      <View style={styles.detailSectionHeader}>
-        <TurismoIcon
-          color={colors.primaryStrong}
-          name={icon}
-          size={turismoIconSizes.md}
-        />
-        <Text style={[styles.detailSectionTitle, { color: colors.text }]}>
-          {title}
-        </Text>
-      </View>
-      <View style={styles.detailSectionContent}>{children}</View>
-    </View>
-  );
-}
-
 function PlaceTagsSection({
   icon,
   title,
@@ -1916,17 +1751,7 @@ function PlaceTagsSection({
 }>) {
   const colors = useTurismoPalette();
   return (
-    <View style={[styles.detailSection, { borderBottomColor: colors.border }]}>
-      <View style={styles.detailSectionHeader}>
-        <TurismoIcon
-          color={colors.primaryStrong}
-          name={icon}
-          size={turismoIconSizes.md}
-        />
-        <Text style={[styles.detailSectionTitle, { color: colors.text }]}>
-          {title}
-        </Text>
-      </View>
+    <TourismSection icon={icon} title={title} variant="divided">
       {values.length ? (
         <View style={styles.detailBulletList}>
           {values.map((value) => (
@@ -1942,24 +1767,7 @@ function PlaceTagsSection({
       ) : (
         <PlaceEmptyState text={`No hay ${title.toLowerCase()} registradas.`} />
       )}
-    </View>
-  );
-}
-
-function PlaceInfoRow({
-  label,
-  value,
-}: Readonly<{ label: string; value: string }>) {
-  const colors = useTurismoPalette();
-  return (
-    <View style={styles.detailInfoRow}>
-      <Text style={[styles.detailInfoLabel, { color: colors.textFaint }]}>
-        {label}
-      </Text>
-      <Text style={[styles.detailInfoValue, { color: colors.text }]}>
-        {value}
-      </Text>
-    </View>
+    </TourismSection>
   );
 }
 
@@ -1970,17 +1778,6 @@ function PlaceEmptyState({ text }: Readonly<{ text: string }>) {
       {text}
     </Text>
   );
-}
-
-function formatRating(value: number): string {
-  return value.toFixed(1).replace(".", ",");
-}
-
-function formatPrice(from: number | null, to: number | null): string {
-  if (from !== null && to !== null && from !== to)
-    return `$${from.toFixed(2)} – $${to.toFixed(2)}`;
-  const value = from ?? to;
-  return value === null ? "No especificado" : `$${value.toFixed(2)}`;
 }
 
 function ErrorState({
@@ -2053,10 +1850,6 @@ const styles = StyleSheet.create({
     gap: turismoSpacing.xs,
   },
   searchBackAction: {
-    backgroundColor: "transparent",
-    borderColor: "transparent",
-    borderRadius: 0,
-    borderWidth: 0,
     height: turismoMetrics.touchTarget,
     width: turismoMetrics.touchTarget,
   },
@@ -2065,7 +1858,7 @@ const styles = StyleSheet.create({
     borderWidth: turismoMetrics.borderWidth,
     elevation: 8,
     overflow: "hidden",
-    shadowColor: "#000",
+    shadowColor: turismoFixedColors.shadow,
     shadowOffset: { height: 3, width: 0 },
     shadowOpacity: 0.18,
     shadowRadius: 8,
@@ -2152,19 +1945,10 @@ const styles = StyleSheet.create({
     height: turismoMetrics.controlLg,
     width: turismoMetrics.controlLg,
   },
-  sheetView: {
-    alignSelf: "center",
-    flexGrow: 1,
-    padding: turismoSpacing.lg,
-    width: "100%",
-  },
-  flexibleSheetScroll: { flex: 1 },
-  sheetViewLandscape: { maxWidth: turismoMetrics.sheetMaxWidth },
   centerSheetContent: {
     paddingBottom: turismoSpacing.xxl + turismoMetrics.iconButtonLg,
     paddingTop: 0,
   },
-  centerSheetScroll: { flex: 1 },
   agentSheetView: {
     flex: 1,
     height: "100%",
@@ -2180,12 +1964,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: turismoSpacing.md,
   },
   agentHeaderTitle: { ...turismoTypography.heading },
-  agentCloseAction: {
-    backgroundColor: "transparent",
-    borderColor: "transparent",
-    borderRadius: 0,
-    borderWidth: 0,
-  },
   agentContent: {
     flex: 1,
     minHeight: 0,
@@ -2251,24 +2029,9 @@ const styles = StyleSheet.create({
   ratingSummaryInline: { alignSelf: "center" },
   ratingValue: { ...turismoTypography.label },
   ratingCount: { ...turismoTypography.caption },
-  ratingPressed: { opacity: 0.72 },
+  ratingPressed: { opacity: turismoOpacity.pressed },
   actions: { flexDirection: "row", gap: turismoSpacing.xs },
   routeAction: { flex: 1 },
-  placeTabs: {
-    borderBottomWidth: turismoMetrics.borderWidth,
-    flexDirection: "row",
-    gap: turismoSpacing.lg,
-  },
-  placeTab: {
-    alignItems: "center",
-    borderBottomColor: "transparent",
-    borderBottomWidth: turismoMetrics.borderWidthStrong,
-    justifyContent: "center",
-    minHeight: turismoMetrics.touchTarget,
-    paddingHorizontal: turismoSpacing.xs,
-  },
-  placeTabPressed: { opacity: 0.72 },
-  placeTabLabel: { ...turismoTypography.label },
   placePager: { width: "100%" },
   placePagerContent: {
     alignItems: "flex-start",
@@ -2297,22 +2060,6 @@ const styles = StyleSheet.create({
     paddingVertical: turismoSpacing.lg,
   },
   detailStateText: { ...turismoTypography.body, textAlign: "center" },
-  detailSection: {
-    borderBottomWidth: turismoMetrics.borderWidth,
-    gap: turismoSpacing.sm,
-    minWidth: 0,
-    paddingBottom: turismoSpacing.lg,
-    paddingTop: turismoSpacing.md,
-  },
-  detailSectionHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-  },
-  detailSectionTitle: { ...turismoTypography.heading },
-  detailSectionContent: { gap: turismoSpacing.sm, minWidth: 0 },
-  detailInfoRow: { gap: turismoSpacing.xxs },
-  detailInfoLabel: { ...turismoTypography.caption },
   detailInfoValue: { ...turismoTypography.body },
   detailBulletList: {
     alignSelf: "stretch",

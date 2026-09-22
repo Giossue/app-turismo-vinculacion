@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  getDistanceMeters,
   getDistanceToRouteMeters,
   getNavigationGuidance,
   getNavigationNotification,
@@ -40,16 +39,6 @@ const route: CalculatedRoute = {
 };
 
 describe("navigation guidance", () => {
-  it("calculates geographic distance in meters", () => {
-    const distance = getDistanceMeters(
-      { latitude: -1.59, longitude: -79 },
-      { latitude: -1.59, longitude: -79.001 },
-    );
-
-    expect(distance).toBeGreaterThan(100);
-    expect(distance).toBeLessThan(115);
-  });
-
   it("measures distance from the current location to the route", () => {
     const distance = getDistanceToRouteMeters(route, {
       latitude: -1.59,

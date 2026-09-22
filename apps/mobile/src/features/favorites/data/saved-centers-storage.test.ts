@@ -1,16 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  listSavedCenters,
-  removeSavedCenter,
-  saveCenter,
-} from "./saved-centers-storage";
+import { importLegacySavedCenters } from "../application/import-legacy-saved-centers";
+import { listLegacySavedCenters } from "./saved-centers-storage";
 
 const values = new Map<string, string>();
+const storageKey = "turismo-vinculacion-saved-centers-v1";
 
 vi.mock("@react-native-async-storage/async-storage", () => ({
   default: {
     getItem: vi.fn(async (key: string) => values.get(key) ?? null),
+    removeItem: vi.fn(async (key: string) => {
+      values.delete(key);
+    }),
     setItem: vi.fn(async (key: string, value: string) => {
       values.set(key, value);
     }),
@@ -42,36 +43,63 @@ const secondCenter = {
   name: "Centro",
 };
 
-describe("saved centers storage", () => {
+function response(status: number, body: unknown): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+  } as Response;
+}
+
+describe("legacy saved centers", () => {
   beforeEach(() => {
     values.clear();
-  });
-
-  it("puts recently saved centers first and replaces duplicates", async () => {
-    await saveCenter(firstCenter);
-    await saveCenter(secondCenter);
-    await saveCenter({ ...firstCenter, name: "Mirador actualizado" });
-
-    await expect(listSavedCenters()).resolves.toEqual([
-      { ...firstCenter, name: "Mirador actualizado" },
-      secondCenter,
-    ]);
-  });
-
-  it("removes only the selected center", async () => {
-    await saveCenter(firstCenter);
-    await saveCenter(secondCenter);
-    await removeSavedCenter(firstCenter.code);
-
-    await expect(listSavedCenters()).resolves.toEqual([secondCenter]);
+    vi.stubEnv("EXPO_PUBLIC_API_URL", "http://api.test/api/v1");
   });
 
   it("ignores malformed persisted entries", async () => {
     values.set(
-      "turismo-vinculacion-saved-centers-v1",
+      storageKey,
       JSON.stringify([{ code: "incompleto" }, firstCenter]),
     );
 
-    await expect(listSavedCenters()).resolves.toEqual([firstCenter]);
+    await expect(listLegacySavedCenters()).resolves.toEqual([firstCenter]);
+  });
+
+  it("uploads the device list once and then forgets it", async () => {
+    values.set(storageKey, JSON.stringify([firstCenter, secondCenter]));
+    const request = vi.fn(async (input: RequestInfo | URL) =>
+      response(200, {
+        data: String(input).endsWith(firstCenter.code)
+          ? firstCenter
+          : secondCenter,
+      }),
+    );
+
+    await importLegacySavedCenters(request);
+
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(request).toHaveBeenCalledWith(
+      `http://api.test/api/v1/favorites/centers/${firstCenter.code}`,
+      { method: "PUT" },
+    );
+    expect(values.has(storageKey)).toBe(false);
+
+    await importLegacySavedCenters(request);
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps only the uploads that failed while the API was unreachable", async () => {
+    values.set(storageKey, JSON.stringify([firstCenter, secondCenter]));
+    const request = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith(firstCenter.code)) {
+        throw new TypeError("Network request failed");
+      }
+      return response(404, {});
+    });
+
+    await importLegacySavedCenters(request);
+
+    await expect(listLegacySavedCenters()).resolves.toEqual([firstCenter]);
   });
 });

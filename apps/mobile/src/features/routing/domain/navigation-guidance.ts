@@ -1,6 +1,8 @@
-import type { CalculatedRoute, RouteCoordinate } from "./routing";
+import { getDistanceMeters, toRadians } from "@/core/geo/distance";
+import type { GeoCoordinate } from "@/core/geo/types";
+import { formatDistance } from "@/core/format/distance";
+import type { CalculatedRoute } from "./routing";
 
-const earthRadiusMeters = 6_371_000;
 const metersPerDegreeLatitude = 111_320;
 
 export type NavigationGuidance = Readonly<{
@@ -25,31 +27,10 @@ type RouteProgress = Readonly<{
   routeLengthMeters: number;
 }>;
 
-/** Returns the great-circle distance between two geographic coordinates. */
-export function getDistanceMeters(
-  first: RouteCoordinate,
-  second: RouteCoordinate,
-): number {
-  const latitudeDelta = toRadians(second.latitude - first.latitude);
-  const longitudeDelta = toRadians(second.longitude - first.longitude);
-  const firstLatitude = toRadians(first.latitude);
-  const secondLatitude = toRadians(second.latitude);
-  const haversine =
-    Math.sin(latitudeDelta / 2) ** 2 +
-    Math.cos(firstLatitude) *
-      Math.cos(secondLatitude) *
-      Math.sin(longitudeDelta / 2) ** 2;
-  return (
-    2 *
-    earthRadiusMeters *
-    Math.atan2(Math.sqrt(haversine), Math.sqrt(Math.max(0, 1 - haversine)))
-  );
-}
-
 /** Returns the shortest approximate distance from a point to a route line. */
 export function getDistanceToRouteMeters(
   route: CalculatedRoute,
-  coordinate: RouteCoordinate,
+  coordinate: GeoCoordinate,
 ): number {
   return getRouteProgress(route, coordinate).distanceToRouteMeters;
 }
@@ -57,7 +38,7 @@ export function getDistanceToRouteMeters(
 /** Estimates the remaining route distance and duration from the current position. */
 export function getRouteRemainingMetrics(
   route: CalculatedRoute,
-  coordinate: RouteCoordinate,
+  coordinate: GeoCoordinate,
 ): RouteRemainingMetrics {
   const progress = getRouteProgress(route, coordinate);
   if (progress.routeLengthMeters <= 0) {
@@ -81,7 +62,7 @@ export function getRouteRemainingMetrics(
 /** Finds the next OSRM instruction and its approximate remaining distance. */
 export function getNavigationGuidance(
   route: CalculatedRoute,
-  coordinate: RouteCoordinate,
+  coordinate: GeoCoordinate,
 ): NavigationGuidance | null {
   if (!route.steps.length) return null;
 
@@ -126,7 +107,11 @@ export function getNavigationNotification(
     };
   }
 
-  const distance = formatNotificationDistance(guidance.distanceMeters);
+  // Redondear a decenas evita republicar la notificación por cada metro.
+  const distance = formatDistance(guidance.distanceMeters, {
+    minimumMeters: 10,
+    stepMeters: 10,
+  });
   return {
     body:
       guidance.distanceMeters <= 5
@@ -138,7 +123,7 @@ export function getNavigationNotification(
 
 function getRouteProgress(
   route: CalculatedRoute,
-  coordinate: RouteCoordinate,
+  coordinate: GeoCoordinate,
 ): RouteProgress {
   const coordinates = route.geometry.coordinates;
   if (coordinates.length < 2) {
@@ -165,11 +150,11 @@ function getRouteProgress(
     const startCoordinate = {
       latitude: start[1],
       longitude: start[0],
-    } satisfies RouteCoordinate;
+    } satisfies GeoCoordinate;
     const endCoordinate = {
       latitude: end[1],
       longitude: end[0],
-    } satisfies RouteCoordinate;
+    } satisfies GeoCoordinate;
     const segmentLengthMeters = getDistanceMeters(
       startCoordinate,
       endCoordinate,
@@ -182,7 +167,7 @@ function getRouteProgress(
       longitude:
         startCoordinate.longitude +
         (endCoordinate.longitude - startCoordinate.longitude) * projection,
-    } satisfies RouteCoordinate;
+    } satisfies GeoCoordinate;
     const distanceToProjectionMeters = getDistanceMeters(
       coordinate,
       projectedCoordinate,
@@ -204,9 +189,9 @@ function getRouteProgress(
 }
 
 function projectPoint(
-  start: RouteCoordinate,
-  end: RouteCoordinate,
-  point: RouteCoordinate,
+  start: GeoCoordinate,
+  end: GeoCoordinate,
+  point: GeoCoordinate,
 ): number {
   const meanLatitude = toRadians((start.latitude + end.latitude) / 2);
   const longitudeScale = Math.max(
@@ -230,15 +215,4 @@ function projectPoint(
       ((pointX - startX) * deltaX + (pointY - startY) * deltaY) / squaredLength,
     ),
   );
-}
-
-function toRadians(value: number): number {
-  return (value * Math.PI) / 180;
-}
-
-function formatNotificationDistance(meters: number): string {
-  if (meters < 1000) {
-    return `${Math.max(10, Math.round(meters / 10) * 10)} m`;
-  }
-  return `${(meters / 1000).toFixed(1)} km`;
 }

@@ -1,62 +1,33 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { z } from "zod";
 
+import { readJson, removeJson, writeJson } from "@/core/storage/json-storage";
+import { publicCenterSchema } from "@/features/centers/data/public-centers-api";
 import type { PublicCenter } from "@/features/centers/domain/public-center";
 
-const storageKey = "turismo-vinculacion-saved-centers-v1";
+/**
+ * Device-wide list written by versions that saved places before tourist
+ * accounts existed. It is only read to import it once into the account that
+ * signs in; saved places now live exclusively in `favoritos_centros`.
+ */
+const legacyStorageKey = "turismo-vinculacion-saved-centers-v1";
 
-export async function listSavedCenters(): Promise<readonly PublicCenter[]> {
-  const raw = await AsyncStorage.getItem(storageKey);
-  if (!raw) return [];
-
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isPublicCenter);
-  } catch {
-    return [];
-  }
+export async function listLegacySavedCenters(): Promise<
+  readonly PublicCenter[]
+> {
+  const stored = await readJson(legacyStorageKey, z.array(z.unknown()));
+  return (stored ?? []).flatMap((value) => {
+    const center = publicCenterSchema.safeParse(value);
+    return center.success ? [center.data] : [];
+  });
 }
 
-export async function saveCenter(center: PublicCenter): Promise<void> {
-  const current = await listSavedCenters();
-  const next = [center, ...current.filter((item) => item.code !== center.code)];
-  await AsyncStorage.setItem(storageKey, JSON.stringify(next));
-}
-
-export async function removeSavedCenter(code: string): Promise<void> {
-  const current = await listSavedCenters();
-  await AsyncStorage.setItem(
-    storageKey,
-    JSON.stringify(current.filter((item) => item.code !== code)),
-  );
-}
-
-export async function replaceSavedCenters(
+/** Keeps only the legacy entries that still need to be imported. */
+export async function replaceLegacySavedCenters(
   centers: readonly PublicCenter[],
 ): Promise<void> {
-  await AsyncStorage.setItem(storageKey, JSON.stringify(centers));
-}
-
-function isPublicCenter(value: unknown): value is PublicCenter {
-  if (!value || typeof value !== "object") return false;
-  const center = value as Partial<PublicCenter>;
-  return (
-    typeof center.code === "string" &&
-    center.code.length > 0 &&
-    typeof center.name === "string" &&
-    (typeof center.description === "string" || center.description === null) &&
-    typeof center.latitude === "number" &&
-    typeof center.longitude === "number" &&
-    typeof center.category === "string" &&
-    typeof center.type === "string" &&
-    typeof center.subtype === "string" &&
-    (typeof center.hierarchy === "string" || center.hierarchy === null) &&
-    typeof center.categoryCode === "string" &&
-    typeof center.typeCode === "string" &&
-    typeof center.subtypeCode === "string" &&
-    typeof center.provinceCode === "string" &&
-    typeof center.cantonCode === "string" &&
-    typeof center.parishCode === "string" &&
-    (typeof center.hierarchyCode === "string" || center.hierarchyCode === null)
-  );
+  if (centers.length) {
+    await writeJson(legacyStorageKey, centers);
+  } else {
+    await removeJson(legacyStorageKey);
+  }
 }

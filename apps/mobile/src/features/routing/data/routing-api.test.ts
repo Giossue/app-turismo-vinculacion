@@ -37,7 +37,10 @@ describe("calculateRoute", () => {
     };
 
     await expect(
-      calculateRoute(request, fetcher, "http://api.test/api/v1"),
+      calculateRoute(request, {
+        apiUrl: "http://api.test/api/v1",
+        fetcher,
+      }),
     ).resolves.toEqual(route);
     expect(fetcher).toHaveBeenCalledWith(
       "http://api.test/api/v1/routing/route",
@@ -61,9 +64,32 @@ describe("calculateRoute", () => {
           origin: { latitude: -1.593, longitude: -79.001 },
           destination: { latitude: -1.594, longitude: -79 },
         },
-        fetcher,
-        "http://api.test/api/v1",
+        { apiUrl: "http://api.test/api/v1", fetcher },
       ),
     ).rejects.toThrow("formato esperado");
+  });
+
+  it("explains routing failures without exposing technical details", async () => {
+    const request = {
+      mode: "foot" as const,
+      origin: { latitude: -1.593, longitude: -79.001 },
+      destination: { latitude: -1.594, longitude: -79 },
+    };
+    const options = { apiUrl: "http://api.test/api/v1" };
+
+    await expect(
+      calculateRoute(request, {
+        ...options,
+        fetcher: vi.fn().mockResolvedValue({ ok: false, status: 422 }),
+      }),
+    ).rejects.toThrow("No encontramos una ruta posible entre esos puntos.");
+    await expect(
+      calculateRoute(request, {
+        ...options,
+        fetcher: vi
+          .fn()
+          .mockRejectedValue(new TypeError("Network request failed")),
+      }),
+    ).rejects.toThrow("No pudimos calcular la ruta.");
   });
 });

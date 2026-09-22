@@ -10,11 +10,13 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 
+import { formatRelativeDate } from "@/core/format/date";
+
+import { useTurismoPalette } from "@/core/ui/theme-context";
 import {
   TourismActionButton,
   TourismChoiceChip,
   TourismSurface,
-  useTurismoPalette,
 } from "@/core/ui/tourism-controls";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
@@ -24,6 +26,8 @@ import {
   turismoTypography,
 } from "@/core/ui/tokens";
 import { useAuth } from "@/features/auth/application/auth-context";
+import { buildLoginHref } from "@/features/auth/application/login-href";
+import { formatRating } from "@/features/centers/domain/center-format";
 import {
   useCenterOpinionMutation,
   useCenterOpinions,
@@ -64,7 +68,9 @@ export function CenterOpinions({
 
   const averageLabel = useMemo(() => {
     const average = opinions.data?.summary.averageRating;
-    return average === null || average === undefined ? "—" : average.toFixed(1);
+    return average === null || average === undefined
+      ? "—"
+      : formatRating(average);
   }, [opinions.data?.summary.averageRating]);
   const opinionCount = opinions.data?.summary.total ?? 0;
   const opinionLabel = opinionCount === 1 ? "opinión" : "opiniones";
@@ -79,10 +85,7 @@ export function CenterOpinions({
       onRequireAuth();
       return;
     }
-    router.push({
-      pathname: "/login",
-      params: { returnTo: `/centers/${code}` },
-    } as never);
+    router.push(buildLoginHref(`/centers/${code}`));
   }
 
   function startCreate() {
@@ -580,31 +583,6 @@ function getInitials(value: string): string {
   return initials || "?";
 }
 
-function formatRelativeDate(value: string): string {
-  const timestamp = new Date(value).getTime();
-  if (Number.isNaN(timestamp)) return "";
-
-  const elapsed = Date.now() - timestamp;
-  if (elapsed <= 0) return "Ahora";
-
-  const minute = 60 * 1000;
-  const day = 24 * 60 * minute;
-  const days = Math.floor(elapsed / day);
-  if (days === 0) return "Hoy";
-  if (days < 7) return `Hace ${days} ${days === 1 ? "día" : "días"}`;
-
-  const weeks = Math.floor(days / 7);
-  if (weeks < 5) return `Hace ${weeks} ${weeks === 1 ? "semana" : "semanas"}`;
-
-  const months = Math.floor(days / 30);
-  if (months < 12) {
-    return `Hace ${months} ${months === 1 ? "mes" : "meses"}`;
-  }
-
-  const years = Math.floor(days / 365);
-  return `Hace ${years} ${years === 1 ? "año" : "años"}`;
-}
-
 const styles = StyleSheet.create({
   container: { gap: turismoSpacing.md },
   summary: {
@@ -669,7 +647,6 @@ const styles = StyleSheet.create({
   },
   stateSurface: { gap: turismoSpacing.sm, padding: turismoSpacing.lg },
   stateText: { ...turismoTypography.body },
-  emptyTitle: { ...turismoTypography.heading },
   opinionItem: {
     borderRadius: turismoRadii.sm,
     gap: turismoSpacing.sm,

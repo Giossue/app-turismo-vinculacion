@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import type { OfflineCityManifest } from "../domain/offline-city";
+import { parseStoredOfflineManifest } from "./offline-api";
 
 const keyPrefix = "turismo-vinculacion-offline-city:";
 
@@ -28,11 +29,7 @@ export async function listStoredOfflineManifests(): Promise<
     slugs.map((slug) => `${keyPrefix}${slug}`),
   );
   return values.flatMap(([, value]) => {
-    if (!value) return [];
-    return [JSON.parse(value) as OfflineCityManifest];
+    const manifest = value ? parseStoredOfflineManifest(value) : null;
+    return manifest ? [manifest] : [];
   });
-}
-
-export async function deleteStoredOfflineCity(slug: string): Promise<void> {
-  await AsyncStorage.removeItem(`${keyPrefix}${slug}`);
 }

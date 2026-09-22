@@ -40,9 +40,15 @@ describe("askTourismAgent", () => {
       askTourismAgent(
         "Quiero una buena vista",
         [{ role: "user", content: "Estoy en Guaranda" }],
-        fetcher,
-        "http://api.test/api/v1",
-        { latitude: -1.59234, longitude: -79.00123, accuracyMeters: 35 },
+        {
+          apiUrl: "http://api.test/api/v1",
+          fetcher,
+          location: {
+            latitude: -1.59234,
+            longitude: -79.00123,
+            accuracyMeters: 35,
+          },
+        },
       ),
     ).resolves.toMatchObject({
       itinerary: { stops: [{ code: "GUA-001" }, { code: "GUA-002" }] },
@@ -101,7 +107,10 @@ describe("askTourismAgent", () => {
     });
 
     await expect(
-      askTourismAgent("¿Qué hay cerca?", [], fetcher, "http://api.test/api/v1"),
+      askTourismAgent("¿Qué hay cerca?", [], {
+        apiUrl: "http://api.test/api/v1",
+        fetcher,
+      }),
     ).resolves.toMatchObject({
       cards: [{ type: "poi", name: "Plaza cultural" }],
       actions: [{ destination: { type: "poi" } }],
@@ -138,8 +147,7 @@ describe("askTourismAgent", () => {
         (text) => {
           textParts.push(text);
         },
-        fetcher,
-        "http://api.test/api/v1",
+        { apiUrl: "http://api.test/api/v1", fetcher },
       ),
     ).resolves.toEqual({
       text: "Hola viajero.",
@@ -170,13 +178,10 @@ describe("askTourismAgent", () => {
     );
 
     await expect(
-      askTourismAgentStream(
-        "Hola",
-        [],
-        vi.fn(),
+      askTourismAgentStream("Hola", [], vi.fn(), {
+        apiUrl: "http://api.test/api/v1",
         fetcher,
-        "http://api.test/api/v1",
-      ),
+      }),
     ).rejects.toThrow("respuesta incompleta");
   });
 
@@ -186,7 +191,10 @@ describe("askTourismAgent", () => {
       ok: true,
     });
     await expect(
-      askTourismAgent("Hola", [], fetcher, "http://api.test/api/v1"),
+      askTourismAgent("Hola", [], {
+        apiUrl: "http://api.test/api/v1",
+        fetcher,
+      }),
     ).rejects.toThrow("formato inválido");
   });
 
@@ -195,7 +203,10 @@ describe("askTourismAgent", () => {
       .fn()
       .mockResolvedValue({ ok: false, text: async () => "secret" });
     await expect(
-      askTourismAgent("Hola", [], fetcher, "http://api.test/api/v1"),
+      askTourismAgent("Hola", [], {
+        apiUrl: "http://api.test/api/v1",
+        fetcher,
+      }),
     ).rejects.toThrow("agente no está disponible");
   });
 });

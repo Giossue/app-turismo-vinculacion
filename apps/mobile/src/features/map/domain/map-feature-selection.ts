@@ -1,5 +1,9 @@
+import { getDistanceMeters } from "@/core/geo/distance";
 import type { PublicCenter } from "@/features/centers/domain/public-center";
-import type { PublicMapEstablishment } from "@/features/establishments/domain/establishment";
+import {
+  getEstablishmentKey,
+  type PublicMapEstablishment,
+} from "@/features/establishments/domain/establishment";
 
 export type MapFeatureSelection = Readonly<
   | {
@@ -12,7 +16,7 @@ export type MapFeatureSelection = Readonly<
     }
 >;
 
-export const nearbyMapFeatureRadiusMeters = 50;
+const nearbyMapFeatureRadiusMeters = 50;
 
 export function getMapFeatureCoordinate(
   selection: MapFeatureSelection,
@@ -28,27 +32,18 @@ export function getNearbyMapFeatureSelections(
   establishments: readonly PublicMapEstablishment[],
   radiusMeters = nearbyMapFeatureRadiusMeters,
 ): readonly MapFeatureSelection[] {
-  const [anchorLongitude, anchorLatitude] = getMapFeatureCoordinate(anchor);
+  const [longitude, latitude] = getMapFeatureCoordinate(anchor);
+  const anchorCoordinate = { latitude, longitude };
   const candidates: {
     distanceMeters: number;
     selection: MapFeatureSelection;
   }[] = [
     ...centers.map((center) => ({
-      distanceMeters: distanceBetweenCoordinatesMeters(
-        anchorLatitude,
-        anchorLongitude,
-        center.latitude,
-        center.longitude,
-      ),
+      distanceMeters: getDistanceMeters(anchorCoordinate, center),
       selection: { kind: "center" as const, center },
     })),
     ...establishments.map((establishment) => ({
-      distanceMeters: distanceBetweenCoordinatesMeters(
-        anchorLatitude,
-        anchorLongitude,
-        establishment.latitude,
-        establishment.longitude,
-      ),
+      distanceMeters: getDistanceMeters(anchorCoordinate, establishment),
       selection: { kind: "establishment" as const, establishment },
     })),
   ];
@@ -75,35 +70,10 @@ function isSameMapFeature(
     return left.center.code === right.center.code;
   }
   if (left.kind === "establishment" && right.kind === "establishment") {
-    return left.establishment === right.establishment;
+    return (
+      getEstablishmentKey(left.establishment) ===
+      getEstablishmentKey(right.establishment)
+    );
   }
   return false;
-}
-
-function distanceBetweenCoordinatesMeters(
-  latitudeA: number,
-  longitudeA: number,
-  latitudeB: number,
-  longitudeB: number,
-): number {
-  const earthRadiusMeters = 6_371_000;
-  const latitudeDelta = degreesToRadians(latitudeB - latitudeA);
-  const longitudeDelta = degreesToRadians(longitudeB - longitudeA);
-  const latitudeARadians = degreesToRadians(latitudeA);
-  const latitudeBRadians = degreesToRadians(latitudeB);
-  const haversine =
-    Math.sin(latitudeDelta / 2) ** 2 +
-    Math.cos(latitudeARadians) *
-      Math.cos(latitudeBRadians) *
-      Math.sin(longitudeDelta / 2) ** 2;
-
-  return (
-    earthRadiusMeters *
-    2 *
-    Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
-  );
-}
-
-function degreesToRadians(value: number): number {
-  return (value * Math.PI) / 180;
 }

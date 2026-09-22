@@ -9,12 +9,7 @@ export async function getStoredOfflineCenters(): Promise<
   readonly PublicCenter[]
 > {
   const manifests = await listStoredOfflineManifests();
-  return manifests.flatMap((manifest) =>
-    manifest.centers.map((center) => ({
-      ...center,
-      description: center.description,
-    })),
-  );
+  return manifests.flatMap((manifest) => manifest.centers);
 }
 
 export async function getStoredOfflineCenter(

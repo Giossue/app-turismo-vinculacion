@@ -1,25 +1,19 @@
 import { useCallback, useEffect, useMemo } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 import { useAuth } from "@/features/auth/application/auth-context";
-import {
-  TourismActionButton,
-  useTurismoPalette,
-} from "@/core/ui/tourism-controls";
+import { buildLoginHref } from "@/features/auth/application/login-href";
+import { useTurismoPalette } from "@/core/ui/theme-context";
+import { TourismActionButton } from "@/core/ui/tourism-controls";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
+import { TourismStateView } from "@/core/ui/tourism-state";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
   turismoMetrics,
+  turismoOpacity,
   turismoRadii,
   turismoSpacing,
   turismoTypography,
@@ -57,21 +51,16 @@ export default function SavedScreen() {
 
   useEffect(() => {
     if (auth.status !== "anonymous") return;
-    router.replace({
-      pathname: "/login",
-      params: { returnTo: "/saved" },
-    } as never);
+    router.replace(buildLoginHref("/saved"));
   }, [auth.status, router]);
 
   if (auth.status !== "authenticated") {
     return (
       <TourismScreenFrame onBack={handleBack} title="Guardados">
-        <View style={styles.state}>
-          <ActivityIndicator color={colors.primary} size="large" />
-          <Text style={[styles.stateText, { color: colors.textMuted }]}>
-            Preparando tu cuenta turística…
-          </Text>
-        </View>
+        <TourismStateView
+          message="Preparando tu cuenta turística…"
+          variant="loading"
+        />
       </TourismScreenFrame>
     );
   }
@@ -79,28 +68,14 @@ export default function SavedScreen() {
   return (
     <TourismScreenFrame onBack={handleBack} title="Guardados">
       {savedCenters.isPending ? (
-        <View style={styles.state}>
-          <ActivityIndicator color={colors.primary} size="large" />
-          <Text style={[styles.stateText, { color: colors.textMuted }]}>
-            Cargando tus guardados…
-          </Text>
-        </View>
+        <TourismStateView message="Cargando tus guardados…" variant="loading" />
       ) : savedCenters.isError ? (
-        <View style={styles.state}>
-          <TurismoIcon
-            color={colors.danger}
-            name="wifiOff"
-            size={turismoIconSizes.xl}
-          />
-          <Text style={[styles.stateTitle, { color: colors.text }]}>
-            No pudimos abrir tus guardados.
-          </Text>
-          <TourismActionButton
-            icon="refresh"
-            label="Reintentar"
-            onPress={() => void savedCenters.refetch()}
-          />
-        </View>
+        <TourismStateView
+          actionPending={savedCenters.isFetching}
+          onAction={() => void savedCenters.refetch()}
+          title="No pudimos abrir tus guardados."
+          variant="error"
+        />
       ) : (
         <ScrollView
           contentContainerStyle={styles.content}
@@ -117,7 +92,7 @@ export default function SavedScreen() {
                     router.push({
                       pathname: "/centers/[code]",
                       params: { code: center.code },
-                    } as never)
+                    })
                   }
                   onRemove={() => savedMutation.mutate({ center, saved: true })}
                 />
@@ -238,15 +213,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: turismoMetrics.touchTarget,
   },
-  pressed: { opacity: 0.72 },
+  pressed: { opacity: turismoOpacity.pressed },
   emptyText: { ...turismoTypography.body, textAlign: "center" },
-  state: {
-    alignItems: "center",
-    flex: 1,
-    gap: turismoSpacing.md,
-    justifyContent: "center",
-    padding: turismoSpacing.xl,
-  },
-  stateTitle: { ...turismoTypography.heading, textAlign: "center" },
-  stateText: { ...turismoTypography.body, textAlign: "center" },
 });

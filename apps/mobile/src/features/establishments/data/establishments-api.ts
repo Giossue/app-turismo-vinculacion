@@ -1,8 +1,16 @@
 import { z } from "zod";
 
 import { getApiUrl } from "@/core/api/api-url";
+import {
+  acceptJsonHeaders,
+  assertResponseOk,
+  parseJsonResponse,
+  requestJson,
+  sendRequest,
+  type ApiRequestOptions,
+} from "@/core/api/http";
+import type { GeoBounds } from "@/core/geo/types";
 import type {
-  EstablishmentMapViewport,
   MapEstablishmentsResult,
   NearbyEstablishmentsQuery,
   NearbyEstablishmentsResult,
@@ -55,11 +63,11 @@ const mapResponseSchema = z.object({
   }),
 });
 
+const mapErrorMessage = "No pudimos cargar los establecimientos del mapa.";
+
 export async function getMapEstablishments(
-  viewport: EstablishmentMapViewport | null = null,
-  fetcher: typeof fetch = fetch,
-  apiUrl = getApiUrl(),
-  signal?: AbortSignal,
+  viewport: GeoBounds | null = null,
+  { apiUrl = getApiUrl(), fetcher, signal }: ApiRequestOptions = {},
 ): Promise<MapEstablishmentsResult> {
   const params = new URLSearchParams();
   if (viewport) {
@@ -69,33 +77,29 @@ export async function getMapEstablishments(
     params.set("north", String(viewport.north));
   }
   const query = params.toString();
-  const response = await fetcher(
+  const response = await sendRequest(
     `${apiUrl}/establishments/map${query ? `?${query}` : ""}`,
     {
-      headers: { Accept: "application/json" },
-      signal,
+      errorMessage: mapErrorMessage,
+      fetcher,
+      init: { headers: acceptJsonHeaders, signal },
     },
   );
   // The map layer is additive and older API deployments do not expose this
   // route yet. Keep public discovery usable until that deployment is updated.
   if (response.status === 404) return { items: [] };
-  if (!response.ok) {
-    throw new Error("No pudimos cargar los establecimientos del mapa.");
-  }
-  const payload = mapResponseSchema.safeParse(await response.json());
-  if (!payload.success) {
-    throw new Error(
-      "Los establecimientos del mapa tienen un formato inválido.",
-    );
-  }
-  return payload.data.data;
+  await assertResponseOk(response, { errorMessage: mapErrorMessage });
+  const payload = await parseJsonResponse(
+    response,
+    mapResponseSchema,
+    "Los establecimientos del mapa tienen un formato inválido.",
+  );
+  return payload.data;
 }
 
 export async function getNearbyEstablishments(
   query: NearbyEstablishmentsQuery,
-  fetcher: typeof fetch = fetch,
-  apiUrl = getApiUrl(),
-  signal?: AbortSignal,
+  { apiUrl = getApiUrl(), fetcher, signal }: ApiRequestOptions = {},
 ): Promise<NearbyEstablishmentsResult> {
   const params = new URLSearchParams();
   params.set("activity", query.activity.trim());
@@ -109,16 +113,15 @@ export async function getNearbyEstablishments(
     params.set("longitude", String(query.longitude));
   if (query.limit !== undefined) params.set("limit", String(query.limit));
 
-  const response = await fetcher(`${apiUrl}/establishments/nearby?${params}`, {
-    headers: { Accept: "application/json" },
-    signal,
-  });
-  if (!response.ok) {
-    throw new Error("No pudimos buscar establecimientos turísticos.");
-  }
-  const payload = responseSchema.safeParse(await response.json());
-  if (!payload.success) {
-    throw new Error("El catastro no tiene el formato esperado.");
-  }
-  return payload.data.data;
+  const payload = await requestJson(
+    `${apiUrl}/establishments/nearby?${params}`,
+    responseSchema,
+    {
+      errorMessage: "No pudimos buscar establecimientos turísticos.",
+      fetcher,
+      init: { headers: acceptJsonHeaders, signal },
+      invalidMessage: "El catastro no tiene el formato esperado.",
+    },
+  );
+  return payload.data;
 }

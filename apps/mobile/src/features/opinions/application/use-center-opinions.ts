@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { queryKeys } from "@/core/api/query-keys";
 import { useAuth } from "@/features/auth/application/auth-context";
 import type { OpinionContent } from "../domain/opinion";
 import {
@@ -9,14 +10,9 @@ import {
   listCenterOpinions,
 } from "../data/opinions-api";
 
-export const centerOpinionsQueryKey = (code: string) =>
-  ["center-opinions", code] as const;
-export const ownOpinionQueryKey = (code: string, userId: number | null) =>
-  ["own-center-opinion", code, userId ?? "anonymous"] as const;
-
 export function useCenterOpinions(code: string, enabled = true) {
   return useQuery({
-    queryKey: centerOpinionsQueryKey(code),
+    queryKey: [...queryKeys.centerOpinions, code],
     queryFn: () => listCenterOpinions(code),
     enabled: Boolean(code) && enabled,
     refetchOnMount: "always",
@@ -28,7 +24,7 @@ export function useOwnCenterOpinion(code: string, enabled = true) {
   const auth = useAuth();
   const userId = auth.user?.id ?? null;
   return useQuery({
-    queryKey: ownOpinionQueryKey(code, userId),
+    queryKey: [...queryKeys.ownOpinion, code, userId ?? "anonymous"],
     queryFn: () => getMyCenterOpinion(code, auth.request),
     enabled: Boolean(code) && enabled && auth.status === "authenticated",
     refetchOnMount: "always",
@@ -51,10 +47,10 @@ export function useCenterOpinionMutation() {
     },
     onSuccess: (_state, variables) => {
       void queryClient.invalidateQueries({
-        queryKey: centerOpinionsQueryKey(variables.code),
+        queryKey: [...queryKeys.centerOpinions, variables.code],
       });
       void queryClient.invalidateQueries({
-        queryKey: ["own-center-opinion", variables.code],
+        queryKey: [...queryKeys.ownOpinion, variables.code],
       });
     },
   });

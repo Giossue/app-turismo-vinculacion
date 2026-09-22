@@ -1,6 +1,12 @@
 import { z } from "zod";
 
 import { getApiUrl } from "@/core/api/api-url";
+import {
+  acceptJsonHeaders,
+  requestJson,
+  type ApiRequestOptions,
+} from "@/core/api/http";
+import type { GeoCoordinate } from "@/core/geo/types";
 import type { PublicSearchResultPage } from "../domain/search-result";
 
 const resultSchema = z.object({
@@ -39,26 +45,26 @@ const responseSchema = z.object({
 
 export async function searchPublicPlaces(
   query: string,
-  coordinate?: { latitude: number; longitude: number } | null,
-  fetcher: typeof fetch = fetch,
-  apiUrl = getApiUrl(),
-  signal?: AbortSignal,
+  coordinate?: GeoCoordinate | null,
+  { apiUrl = getApiUrl(), fetcher, signal }: ApiRequestOptions = {},
 ): Promise<PublicSearchResultPage> {
   const params = new URLSearchParams({ q: query.trim() });
   if (coordinate) {
     params.set("latitude", String(coordinate.latitude));
     params.set("longitude", String(coordinate.longitude));
   }
-  const response = await fetcher(`${apiUrl}/search?${params}`, {
-    headers: { Accept: "application/json" },
-    signal,
-  });
-  if (!response.ok) throw new Error("No pudimos actualizar la búsqueda.");
-  const payload = responseSchema.safeParse(await response.json());
-  if (!payload.success)
-    throw new Error("La búsqueda tiene un formato inválido.");
+  const payload = await requestJson(
+    `${apiUrl}/search?${params}`,
+    responseSchema,
+    {
+      errorMessage: "No pudimos actualizar la búsqueda.",
+      fetcher,
+      init: { headers: acceptJsonHeaders, signal },
+      invalidMessage: "La búsqueda tiene un formato inválido.",
+    },
+  );
   return {
-    items: payload.data.data.items,
-    photonAvailable: payload.data.data.meta.photonAvailable,
+    items: payload.data.items,
+    photonAvailable: payload.data.meta.photonAvailable,
   };
 }

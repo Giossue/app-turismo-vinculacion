@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { userScopedQueryKeys } from "@/core/api/query-keys";
 import {
   loginMobile,
   logoutMobile,
@@ -23,18 +24,12 @@ import {
   saveRefreshToken,
 } from "../data/token-storage";
 import type { AuthStatus, AuthUser } from "../domain/auth-user";
-import type { TouristGender } from "../domain/registration-options";
+import type { TouristRegistrationInput } from "../domain/registration-options";
 
 type AuthContextValue = Readonly<{
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (input: {
-    name: string;
-    email: string;
-    gender: TouristGender;
-    birthDate?: string;
-    password: string;
-  }) => Promise<void>;
+  register: (input: TouristRegistrationInput) => Promise<void>;
   logout: () => Promise<void>;
   request: AuthorizedFetcher;
   status: AuthStatus;
@@ -57,7 +52,10 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     setUser(null);
     setStatus("anonymous");
     setError(null);
-    queryClient.removeQueries({ queryKey: ["saved-centers"] });
+    // Nada de la cuenta anterior debe quedar visible para el siguiente turista.
+    for (const queryKey of userScopedQueryKeys) {
+      queryClient.removeQueries({ queryKey });
+    }
   }, [queryClient]);
 
   const setSession = useCallback(
@@ -126,13 +124,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   );
 
   const register = useCallback(
-    async (input: {
-      name: string;
-      email: string;
-      gender: TouristGender;
-      birthDate?: string;
-      password: string;
-    }) => {
+    async (input: TouristRegistrationInput) => {
       setError(null);
       try {
         const result = await registerMobile({

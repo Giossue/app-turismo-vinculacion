@@ -56,7 +56,7 @@ import {
   X,
 } from "lucide-react-native";
 
-export const turismoIconMap = {
+const turismoIconMap = {
   arrowLeft: ArrowLeft,
   arrowRight: ArrowRight,
   arrowUp: ArrowUp,

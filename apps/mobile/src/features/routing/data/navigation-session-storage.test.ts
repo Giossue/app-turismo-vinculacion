@@ -2,11 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   clearNavigationSession,
-  markNavigationSessionInactive,
+  patchNavigationSession,
   readNavigationSession,
   saveNavigationSession,
-  updateNavigationNotificationKey,
-  updateNavigationLocation,
   type NavigationSessionSnapshot,
 } from "./navigation-session-storage";
 
@@ -27,11 +25,8 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
 const snapshot: NavigationSessionSnapshot = {
   active: true,
   destination: { latitude: -1.594, longitude: -79 },
-  lastAnnouncedStepIndex: 0,
   lastLocation: null,
-  lastRerouteAt: 0,
   mode: "car",
-  origin: { latitude: -1.593, longitude: -79.001 },
   route: {
     mode: "car",
     distanceMeters: 846,
@@ -57,11 +52,16 @@ describe("navigation session storage", () => {
 
   it("restores an active session and its latest location", async () => {
     await saveNavigationSession(snapshot);
-    await updateNavigationLocation({
-      accuracy: 4,
-      coordinate: { latitude: -1.5935, longitude: -79.0005 },
-      timestamp: 2,
-    });
+    await patchNavigationSession(
+      {
+        lastLocation: {
+          accuracy: 4,
+          coordinate: { latitude: -1.5935, longitude: -79.0005 },
+          timestamp: 2,
+        },
+      },
+      { requireActive: true },
+    );
 
     await expect(readNavigationSession()).resolves.toMatchObject({
       active: true,
@@ -81,7 +81,7 @@ describe("navigation session storage", () => {
 
   it("marks a background arrival without losing the session before resume", async () => {
     await saveNavigationSession(snapshot);
-    await markNavigationSessionInactive();
+    await patchNavigationSession({ active: false }, { requireActive: false });
 
     await expect(readNavigationSession()).resolves.toMatchObject({
       active: false,
@@ -91,10 +91,50 @@ describe("navigation session storage", () => {
 
   it("persists the last notification key for background deduplication", async () => {
     await saveNavigationSession(snapshot);
-    await updateNavigationNotificationKey("1:180 m:Gira a la derecha");
+    await patchNavigationSession(
+      { lastNotificationKey: "1:180 m:Gira a la derecha" },
+      { requireActive: true },
+    );
 
     await expect(readNavigationSession()).resolves.toMatchObject({
       lastNotificationKey: "1:180 m:Gira a la derecha",
     });
+  });
+
+  it("does not revive a session that already ended", async () => {
+    await saveNavigationSession({ ...snapshot, active: false });
+    await patchNavigationSession(
+      { lastNotificationKey: "0:10 m:Continúa" },
+      { requireActive: true },
+    );
+
+    await expect(readNavigationSession()).resolves.not.toHaveProperty(
+      "lastNotificationKey",
+    );
+  });
+
+  it("drops stored snapshots that no longer match the contract", async () => {
+    values.set(
+      "turismo-vinculacion-active-navigation-v1",
+      JSON.stringify({ ...snapshot, route: { mode: "car" } }),
+    );
+
+    await expect(readNavigationSession()).resolves.toBeNull();
+  });
+
+  it("ignores legacy fields that are no longer persisted", async () => {
+    values.set(
+      "turismo-vinculacion-active-navigation-v1",
+      JSON.stringify({
+        ...snapshot,
+        lastAnnouncedStepIndex: 2,
+        lastRerouteAt: 10,
+        origin: { latitude: -1.593, longitude: -79.001 },
+      }),
+    );
+
+    const restored = await readNavigationSession();
+    expect(restored).toMatchObject({ active: true, mode: "car" });
+    expect(restored).not.toHaveProperty("origin");
   });
 });

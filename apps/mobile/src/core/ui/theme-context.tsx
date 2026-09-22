@@ -9,7 +9,11 @@ import {
 } from "react";
 import { useColorScheme } from "react-native";
 
-import type { TurismoColorScheme } from "./tokens";
+import {
+  getTurismoColors,
+  getTurismoMapColors,
+  type TurismoColorScheme,
+} from "./tokens";
 
 export type ThemePreference = "system" | TurismoColorScheme;
 
@@ -17,7 +21,6 @@ type TurismoThemeContextValue = Readonly<{
   preference: ThemePreference;
   scheme: TurismoColorScheme;
   setPreference: (preference: ThemePreference) => void;
-  toggleTheme: () => void;
 }>;
 
 const themePreferenceStorageKey = "turismo-vinculacion.theme-preference";
@@ -64,17 +67,8 @@ export function TurismoThemeProvider({
 
   const scheme = preference === "system" ? systemScheme : preference;
   const value = useMemo<TurismoThemeContextValue>(
-    () => ({
-      preference,
-      scheme,
-      setPreference,
-      toggleTheme: () =>
-        setPreference((current) => {
-          const currentScheme = current === "system" ? systemScheme : current;
-          return currentScheme === "dark" ? "light" : "dark";
-        }),
-    }),
-    [preference, scheme, systemScheme],
+    () => ({ preference, scheme, setPreference }),
+    [preference, scheme],
   );
 
   return (
@@ -92,6 +86,16 @@ export function useTurismoTheme() {
     );
   }
   return context;
+}
+
+/** Semantic colors of the active scheme for app surfaces and text. */
+export function useTurismoPalette() {
+  return getTurismoColors(useTurismoTheme().scheme);
+}
+
+/** Colors of the active scheme for MapLibre layers and map controls. */
+export function useTurismoMapPalette() {
+  return getTurismoMapColors(useTurismoTheme().scheme);
 }
 
 function isThemePreference(value: string | null): value is ThemePreference {

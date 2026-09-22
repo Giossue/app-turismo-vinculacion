@@ -10,19 +10,15 @@ import {
   type ReactNode,
 } from "react";
 
+import type { GeoCoordinate } from "../geo/types";
 import { isReliableLocationAccuracy } from "./location-quality";
 
-export type UserLocationCoordinate = Readonly<{
-  latitude: number;
-  longitude: number;
-}>;
-
-export type UserLocationStatus =
+type UserLocationStatus =
   "idle" | "requesting" | "ready" | "denied" | "disabled" | "error";
 
 type UserLocationState = Readonly<{
   accuracy: number | null;
-  coordinate: UserLocationCoordinate | null;
+  coordinate: GeoCoordinate | null;
   message: string | null;
   status: UserLocationStatus;
 }>;
@@ -30,7 +26,7 @@ type UserLocationState = Readonly<{
 type UserLocationContextValue = UserLocationState & {
   requestLocation: (
     options?: Readonly<{ forceRefresh?: boolean }>,
-  ) => Promise<UserLocationCoordinate | null>;
+  ) => Promise<GeoCoordinate | null>;
   setForegroundTrackingSuspended: (suspended: boolean) => void;
 };
 
@@ -77,9 +73,7 @@ export function UserLocationProvider({
   const foregroundSubscriptionRef =
     useRef<Location.LocationSubscription | null>(null);
   const foregroundStartRef = useRef<Promise<void> | null>(null);
-  const locationReadRef = useRef<Promise<UserLocationCoordinate | null> | null>(
-    null,
-  );
+  const locationReadRef = useRef<Promise<GeoCoordinate | null> | null>(null);
   const availabilityCheckRef = useRef(false);
 
   const updateState = useCallback(
@@ -220,7 +214,7 @@ export function UserLocationProvider({
   ]);
 
   const readAndStoreLocation = useCallback(
-    (options: LocationReadOptions): Promise<UserLocationCoordinate | null> => {
+    (options: LocationReadOptions): Promise<GeoCoordinate | null> => {
       if (locationReadRef.current) return locationReadRef.current;
 
       const read = (async () => {
@@ -308,7 +302,7 @@ export function UserLocationProvider({
           const coordinate = {
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
-          } satisfies UserLocationCoordinate;
+          } satisfies GeoCoordinate;
 
           updateState({
             accuracy,

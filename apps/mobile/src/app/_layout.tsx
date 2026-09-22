@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { isPersistedQueryKey, ONE_DAY_MS } from "@/core/api/query-keys";
 import { useTurismoTheme, TurismoThemeProvider } from "@/core/ui/theme-context";
 import { TurismoPaperProvider } from "@/core/ui/turismo-paper-provider";
 import { getTurismoColors } from "@/core/ui/tokens";
@@ -22,7 +23,7 @@ function AppProviders({ children }: Readonly<{ children: ReactNode }>) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            gcTime: 24 * 60 * 60 * 1000,
+            gcTime: ONE_DAY_MS,
             refetchOnReconnect: true,
           },
         },
@@ -39,18 +40,17 @@ function AppProviders({ children }: Readonly<{ children: ReactNode }>) {
     <PersistQueryClientProvider
       client={queryClient}
       persistOptions={{
-        buster: "mobile-v2",
+        // v3 descarta cachés anteriores que aún contenían datos de la cuenta,
+        // búsquedas y consultas por viewport.
+        buster: "mobile-v3",
         dehydrateOptions: {
-          shouldDehydrateQuery: (query) => {
-            const rootKey = query.queryKey[0];
-            return (
-              query.state.status === "success" &&
-              rootKey !== "calculated-route" &&
-              rootKey !== "nearby-establishments"
-            );
-          },
+          // Solo catálogos públicos: nada de la cuenta ni consultas por
+          // ubicación o viewport sobrevive en AsyncStorage.
+          shouldDehydrateQuery: (query) =>
+            query.state.status === "success" &&
+            isPersistedQueryKey(query.queryKey),
         },
-        maxAge: 24 * 60 * 60 * 1000,
+        maxAge: ONE_DAY_MS,
         persister,
       }}
     >

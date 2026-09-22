@@ -1,83 +1,36 @@
 import { z } from "zod";
 
 import { getApiUrl } from "@/core/api/api-url";
+import { acceptJsonHeaders, requestJson, type Fetcher } from "@/core/api/http";
 import type { AuthorizedFetcher } from "@/features/auth/data/auth-api";
-import type {
-  OpinionContent,
-  OwnOpinionState,
-  PublicOpinionPage,
+import {
+  ownOpinionStateSchema,
+  publicOpinionPageSchema,
+  type OpinionContent,
+  type OwnOpinionState,
+  type PublicOpinionPage,
 } from "../domain/opinion";
 
-const opinionSchema = z.object({
-  authorName: z.string(),
-  rating: z.number().int().min(1).max(5).nullable(),
-  comment: z.string().nullable(),
-  publishedAt: z.string(),
-});
-
-const summarySchema = z.object({
-  total: z.number().int().nonnegative(),
-  totalRatings: z.number().int().nonnegative(),
-  averageRating: z.number().finite().nullable(),
-  distribution: z.object({
-    "1": z.number().int().nonnegative(),
-    "2": z.number().int().nonnegative(),
-    "3": z.number().int().nonnegative(),
-    "4": z.number().int().nonnegative(),
-    "5": z.number().int().nonnegative(),
-  }),
-});
-
-const listSchema = z.object({
-  data: z.object({
-    items: z.array(opinionSchema),
-    total: z.number().int().nonnegative(),
-    limit: z.number().int().positive(),
-    offset: z.number().int().nonnegative(),
-    summary: summarySchema,
-  }),
-});
-
-const opinionVersionSchema = z.object({
-  rating: z.number().int().min(1).max(5).nullable(),
-  comment: z.string().nullable(),
-  version: z.number().int().positive(),
-  submittedAt: z.string(),
-  reviewedAt: z.string().nullable().optional(),
-});
-
-const ownSchema = z.object({
-  data: z
-    .object({
-      status: z.enum(["PENDIENTE", "APROBADA", "RECHAZADA"]),
-      current: opinionVersionSchema.nullable(),
-      pending: opinionVersionSchema.nullable(),
-      lastRejected: opinionVersionSchema
-        .extend({ reason: z.string().nullable() })
-        .nullable(),
-      canCreate: z.boolean(),
-      canEdit: z.boolean(),
-    })
-    .nullable(),
-});
-
-type Fetcher = typeof fetch;
+const listSchema = z.object({ data: publicOpinionPageSchema });
+const ownSchema = z.object({ data: ownOpinionStateSchema.nullable() });
+const submittedSchema = z.object({ data: ownOpinionStateSchema });
 
 export async function listCenterOpinions(
   code: string,
   fetcher: Fetcher = fetch,
   apiUrl = getApiUrl(),
 ): Promise<PublicOpinionPage> {
-  const response = await fetcher(
+  const payload = await requestJson(
     `${apiUrl}/centers/${encodeURIComponent(code)}/opinions`,
-    { headers: { Accept: "application/json" } },
+    listSchema,
+    {
+      errorMessage: "No se pudieron cargar las opiniones.",
+      fetcher,
+      init: { headers: acceptJsonHeaders },
+      invalidMessage: "Las opiniones no tienen el formato esperado.",
+    },
   );
-  if (!response.ok) throw new Error("No se pudieron cargar las opiniones.");
-  const payload = listSchema.safeParse(await response.json());
-  if (!payload.success) {
-    throw new Error("Las opiniones no tienen el formato esperado.");
-  }
-  return payload.data.data;
+  return payload.data;
 }
 
 export async function getMyCenterOpinion(
@@ -85,15 +38,16 @@ export async function getMyCenterOpinion(
   request: AuthorizedFetcher,
   apiUrl = getApiUrl(),
 ): Promise<OwnOpinionState | null> {
-  const response = await request(
+  const payload = await requestJson(
     `${apiUrl}/opinions/me/centers/${encodeURIComponent(code)}`,
+    ownSchema,
+    {
+      errorMessage: "No se pudo cargar tu opinión.",
+      fetcher: request,
+      invalidMessage: "El estado de tu opinión no tiene el formato esperado.",
+    },
   );
-  if (!response.ok) throw new Error("No se pudo cargar tu opinión.");
-  const payload = ownSchema.safeParse(await response.json());
-  if (!payload.success) {
-    throw new Error("El estado de tu opinión no tiene el formato esperado.");
-  }
-  return payload.data.data;
+  return payload.data;
 }
 
 export async function createCenterOpinion(
@@ -121,35 +75,25 @@ async function submitCenterOpinion(
   method: "POST" | "PATCH",
   apiUrl: string,
 ): Promise<OwnOpinionState> {
-  const response = await request(
+  const payload = await requestJson(
     `${apiUrl}/opinions/centers/${encodeURIComponent(code)}`,
+    submittedSchema,
     {
-      body: JSON.stringify({
-        ...(content.rating === null ? {} : { rating: content.rating }),
-        ...(content.comment.trim() ? { comment: content.comment.trim() } : {}),
-      }),
-      headers: { "content-type": "application/json" },
-      method,
+      errorMessage: "No se pudo guardar tu opinión.",
+      fetcher: request,
+      init: {
+        body: JSON.stringify({
+          ...(content.rating === null ? {} : { rating: content.rating }),
+          ...(content.comment.trim()
+            ? { comment: content.comment.trim() }
+            : {}),
+        }),
+        headers: { "content-type": "application/json" },
+        method,
+      },
+      invalidMessage: "La API no devolvió el estado de tu opinión.",
+      useServerMessage: true,
     },
   );
-  if (!response.ok) {
-    throw new Error(
-      await readError(response, "No se pudo guardar tu opinión."),
-    );
-  }
-  const payload = ownSchema.safeParse(await response.json());
-  if (!payload.success || !payload.data.data) {
-    throw new Error("La API no devolvió el estado de tu opinión.");
-  }
-  return payload.data.data;
-}
-
-async function readError(
-  response: Response,
-  fallback: string,
-): Promise<string> {
-  const body = (await response.json().catch(() => null)) as {
-    error?: { message?: string };
-  } | null;
-  return body?.error?.message ?? fallback;
+  return payload.data;
 }

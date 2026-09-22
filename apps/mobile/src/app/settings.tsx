@@ -3,9 +3,9 @@ import { useCallback } from "react";
 import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
-import { TourismSurface, useTurismoPalette } from "@/core/ui/tourism-controls";
+import { TourismSurface } from "@/core/ui/tourism-controls";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
-import { useTurismoTheme } from "@/core/ui/theme-context";
+import { useTurismoPalette, useTurismoTheme } from "@/core/ui/theme-context";
 import { turismoSpacing, turismoTypography } from "@/core/ui/tokens";
 
 export default function SettingsScreen() {

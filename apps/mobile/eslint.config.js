@@ -18,6 +18,7 @@ module.exports = defineConfig([
             "^@/features/map/presentation/center-map$",
             "^@/features/offline/application/offline-download$",
             "^@/features/offline/data/offline-storage$",
+            "^@/features/routing/presentation/route-map$",
           ],
         },
       ],
