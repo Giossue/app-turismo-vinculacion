@@ -1,0 +1,60 @@
+import { z } from "zod";
+
+import { getApiUrl } from "@/core/api/api-url";
+import type { PublicSearchResultPage } from "../domain/search-result";
+
+const resultSchema = z.object({
+  kind: z.enum(["center", "establishment", "geographic"]),
+  source: z.enum(["internal", "photon"]),
+  title: z.string().min(1),
+  subtitle: z.string(),
+  latitude: z.number().finite(),
+  longitude: z.number().finite(),
+  centerCode: z.string().min(1).optional(),
+  category: z.string().nullable().optional(),
+  type: z.string().nullable().optional(),
+  subtype: z.string().nullable().optional(),
+  hierarchy: z.string().nullable().optional(),
+  categoryCode: z.string().nullable().optional(),
+  typeCode: z.string().nullable().optional(),
+  subtypeCode: z.string().nullable().optional(),
+  provinceCode: z.string().nullable().optional(),
+  cantonCode: z.string().nullable().optional(),
+  parishCode: z.string().nullable().optional(),
+  hierarchyCode: z.string().nullable().optional(),
+  approximate: z.boolean().optional(),
+  icon: z.string().optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+});
+
+const responseSchema = z.object({
+  data: z.object({
+    items: z.array(resultSchema),
+    meta: z.object({ photonAvailable: z.boolean() }),
+  }),
+});
+
+export async function searchPublicPlaces(
+  query: string,
+  coordinate?: { latitude: number; longitude: number } | null,
+  fetcher: typeof fetch = fetch,
+  apiUrl = getApiUrl(),
+  signal?: AbortSignal,
+): Promise<PublicSearchResultPage> {
+  const params = new URLSearchParams({ q: query.trim() });
+  if (coordinate) {
+    params.set("latitude", String(coordinate.latitude));
+    params.set("longitude", String(coordinate.longitude));
+  }
+  const response = await fetcher(`${apiUrl}/search?${params}`, {
+    headers: { Accept: "application/json" },
+    signal,
+  });
+  if (!response.ok) throw new Error("No pudimos actualizar la búsqueda.");
+  const payload = responseSchema.safeParse(await response.json());
+  if (!payload.success) throw new Error("La búsqueda tiene un formato inválido.");
+  return {
+    items: payload.data.data.items,
+    photonAvailable: payload.data.data.meta.photonAvailable,
+  };
+}

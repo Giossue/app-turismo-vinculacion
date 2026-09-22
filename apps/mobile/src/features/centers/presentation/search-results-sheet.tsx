@@ -25,6 +25,7 @@ import {
 } from "@/core/ui/tokens";
 import type { UserLocationCoordinate } from "@/core/location/use-user-location";
 import type { DiscoveryCatalog, PublicCenter } from "../domain/public-center";
+import type { PublicSearchResult } from "@/features/search/domain/search-result";
 import {
   uniqueFilterOptions,
   type DiscoveryFilterValues,
@@ -41,7 +42,9 @@ export function SearchResultsSheet({
   onChangeFilters,
   onNearbyToggle,
   onRetry,
+  onSelectPlace,
   onSelectCenter,
+  places,
   query,
   userLocation,
 }: Readonly<{
@@ -55,7 +58,9 @@ export function SearchResultsSheet({
   onChangeFilters: (filters: DiscoveryFilterValues) => void;
   onNearbyToggle: () => void;
   onRetry: () => void;
+  onSelectPlace: (place: PublicSearchResult) => void;
   onSelectCenter: (center: PublicCenter) => void;
+  places: readonly PublicSearchResult[];
   query: string;
   userLocation: UserLocationCoordinate | null;
 }>) {
@@ -69,6 +74,15 @@ export function SearchResultsSheet({
     );
   }, [centers, nearbyOnly, userLocation]);
   const showResults = !isFetching && !isPlaceholderData && !error;
+  const supplementalPlaces = useMemo(
+    () =>
+      places.filter(
+        (place) =>
+          place.kind !== "center" ||
+          !centers.some((center) => center.code === place.centerCode),
+      ),
+    [centers, places],
+  );
 
   return (
     <View style={styles.container}>
@@ -76,7 +90,7 @@ export function SearchResultsSheet({
         <View style={styles.headerCopy}>
           <Text style={[styles.query, { color: colors.text }]}>{query}</Text>
           <Text style={[styles.resultLabel, { color: colors.textMuted }]}>
-            Atractivos turísticos publicados
+            Lugares propios y ubicaciones
           </Text>
         </View>
       </View>
@@ -177,9 +191,60 @@ export function SearchResultsSheet({
               onPress={() => onSelectCenter(center)}
             />
           ))}
+          {supplementalPlaces.map((place) => (
+            <SearchPlaceCard
+              key={`${place.kind}-${place.title}-${place.latitude}-${place.longitude}`}
+              onPress={() => onSelectPlace(place)}
+              place={place}
+            />
+          ))}
         </View>
       ) : null}
     </View>
+  );
+}
+
+function SearchPlaceCard({
+  onPress,
+  place,
+}: Readonly<{
+  onPress: () => void;
+  place: PublicSearchResult;
+}>) {
+  const colors = useTurismoPalette();
+  const label =
+    place.kind === "establishment"
+      ? "Catastro publicado"
+      : place.kind === "geographic"
+        ? "Ubicación en Ecuador"
+        : "Centro turístico publicado";
+  return (
+    <Pressable
+      accessibilityLabel={`Centrar mapa en ${place.title}`}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.resultCard,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+          opacity: pressed ? 0.78 : 1,
+        },
+      ]}
+    >
+      <Text style={[styles.resultCategory, { color: colors.primaryStrong }]}>
+        {label}
+      </Text>
+      <Text numberOfLines={2} style={[styles.resultName, { color: colors.text }]}>
+        {place.title}
+      </Text>
+      <Text numberOfLines={2} style={[styles.resultMeta, { color: colors.textMuted }]}>
+        {place.subtitle || "Ecuador"}
+      </Text>
+      <Text style={[styles.resultActionText, { color: colors.primaryStrong }]}>
+        Ver en el mapa
+      </Text>
+    </Pressable>
   );
 }
 

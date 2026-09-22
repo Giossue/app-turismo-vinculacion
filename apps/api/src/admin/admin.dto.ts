@@ -20,6 +20,18 @@ import {
 
 import { ESTABLISHMENT_VISUAL_ICON_CODES } from "../establishments/establishment-visuals";
 
+export const ADMIN_ESTABLISHMENT_CATEGORY_SCHEMES = [
+  "ESTRELLAS",
+  "TENEDORES",
+  "TAZAS",
+  "COPAS",
+  "UNICA",
+  "CATEGORIA_OFICIAL",
+  "CLASE",
+  "MODALIDAD",
+  "OTRA",
+] as const;
+
 export const REVIEWABLE_STATUSES = [
   "BORRADOR",
   "EN_REVISION",
@@ -438,6 +450,40 @@ export class AdminCatalogsQueryDto {
   @Transform(({ value }) => value === true || value === "true")
   @IsBoolean()
   includeInactive?: boolean;
+}
+
+export class AdminCatalogCreateDto {
+  @IsString()
+  @MinLength(2)
+  @MaxLength(180)
+  name!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(ESTABLISHMENT_VISUAL_ICON_CODES)
+  icon?: (typeof ESTABLISHMENT_VISUAL_ICON_CODES)[number];
+
+  /** Parent ID: group, activity, facility category or classification. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  parentId?: number;
+
+  @IsOptional()
+  @IsIn(ADMIN_ESTABLISHMENT_CATEGORY_SCHEMES)
+  scheme?: (typeof ADMIN_ESTABLISHMENT_CATEGORY_SCHEMES)[number];
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(99)
+  numericValue?: number;
 }
 
 export class AdminCatalogUpdateDto {

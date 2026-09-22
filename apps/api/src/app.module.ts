@@ -14,6 +14,7 @@ import { RoutingModule } from "./routing/routing.module";
 import { EstablishmentsModule } from "./establishments/establishments.module";
 import { FavoritesModule } from "./favorites/favorites.module";
 import { OpinionsModule } from "./opinions/opinions.module";
+import { SearchModule } from "./search/search.module";
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { OpinionsModule } from "./opinions/opinions.module";
     EstablishmentsModule,
     FavoritesModule,
     OpinionsModule,
+    SearchModule,
   ],
 })
 export class AppModule {}

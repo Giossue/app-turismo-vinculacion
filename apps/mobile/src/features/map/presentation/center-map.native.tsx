@@ -41,6 +41,8 @@ type CenterMapProps = Readonly<{
   establishments?: readonly PublicMapEstablishment[];
   basemapMode?: BasemapMode;
   focusLocationKey?: number;
+  focusCoordinate?: Readonly<{ latitude: number; longitude: number }> | null;
+  focusCoordinateKey?: number;
   focusSelection?: MapFeatureSelection | null;
   onAttributionChange?: (handler: (() => void) | null) => void;
   onBearingChange?: (bearing: number) => void;
@@ -167,6 +169,8 @@ export function CenterMap({
   centers,
   establishments = [],
   focusLocationKey,
+  focusCoordinate = null,
+  focusCoordinateKey,
   focusSelection = null,
   onAttributionChange,
   onBearingChange,
@@ -508,6 +512,22 @@ export function CenterMap({
       zoom: 15,
     });
   }, [focusLocationKey, nativeMapReady, userLocation]);
+
+  useEffect(() => {
+    if (
+      !nativeMapReady ||
+      !mapMountedRef.current ||
+      !focusCoordinate ||
+      focusCoordinateKey === undefined
+    ) {
+      return;
+    }
+    cameraRef.current?.easeTo({
+      center: [focusCoordinate.longitude, focusCoordinate.latitude],
+      duration: 500,
+      zoom: 15,
+    });
+  }, [focusCoordinate, focusCoordinateKey, nativeMapReady]);
 
   useEffect(() => {
     if (!resetNorthKey || !nativeMapReady || !mapMountedRef.current) return;

@@ -15,6 +15,7 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { AdminCentersService } from "./admin-centers.service";
 import {
   AdminCentersQueryDto,
+  AdminCatalogCreateDto,
   AdminCatalogsQueryDto,
   AdminCatalogUpdateDto,
   ADMIN_CENTER_SECTION_CODES,
@@ -57,6 +58,18 @@ export class AdminController {
   @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
   async catalogs(@Query() query: AdminCatalogsQueryDto) {
     return { data: await this.centers.catalogs(query) };
+  }
+
+  @Post("catalogs/:catalog")
+  @Roles("ADMINISTRADOR")
+  async createCatalog(
+    @Param("catalog") catalog: string,
+    @Body() body: AdminCatalogCreateDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      data: await this.centers.createCatalog(user.id, catalog, body),
+    };
   }
 
   @Get("centers/:code")
