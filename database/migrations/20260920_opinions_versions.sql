@@ -44,38 +44,60 @@ ALTER TABLE moderaciones_opinion
 
 -- La instalación original guardaba el envío directamente en opiniones. Se migra
 -- cada fila a la versión 1 con un código público determinista y no reversible.
-INSERT INTO opinion_versiones (
-    codigo_publico,
-    opinion_id,
-    numero_version,
-    calificacion,
-    comentario,
-    estado_moderacion,
-    created_at,
-    revisado_at
-)
-SELECT
-    MD5('turismo-opinion-version:' || o.id::text)::uuid,
-    o.id,
-    1,
-    o.calificacion,
-    o.comentario,
-    CASE
-        WHEN o.estado_moderacion = 'OCULTA' THEN 'RECHAZADA'
-        ELSE o.estado_moderacion
-    END,
-    o.created_at,
-    CASE
-        WHEN o.estado_moderacion IN ('APROBADA', 'RECHAZADA', 'OCULTA')
-            THEN o.updated_at
-        ELSE NULL
-    END
-FROM opiniones o
-WHERE NOT EXISTS (
-    SELECT 1
-      FROM opinion_versiones v
-     WHERE v.opinion_id = o.id
-);
+-- Si este archivo ya se ejecutó, las columnas antiguas ya no existen y el bloque
+-- debe ser un no-op para que el arranque local pueda reaplicar migraciones.
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+          FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = 'opiniones'
+           AND column_name = 'calificacion'
+    ) AND EXISTS (
+        SELECT 1
+          FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = 'opiniones'
+           AND column_name = 'comentario'
+    ) THEN
+        EXECUTE $copy$
+            INSERT INTO opinion_versiones (
+                codigo_publico,
+                opinion_id,
+                numero_version,
+                calificacion,
+                comentario,
+                estado_moderacion,
+                created_at,
+                revisado_at
+            )
+            SELECT
+                MD5('turismo-opinion-version:' || o.id::text)::uuid,
+                o.id,
+                1,
+                o.calificacion,
+                o.comentario,
+                CASE
+                    WHEN o.estado_moderacion = 'OCULTA' THEN 'RECHAZADA'
+                    ELSE o.estado_moderacion
+                END,
+                o.created_at,
+                CASE
+                    WHEN o.estado_moderacion IN ('APROBADA', 'RECHAZADA', 'OCULTA')
+                        THEN o.updated_at
+                    ELSE NULL
+                END
+            FROM opiniones o
+            WHERE NOT EXISTS (
+                SELECT 1
+                  FROM opinion_versiones v
+                 WHERE v.opinion_id = o.id
+            )
+        $copy$;
+    END IF;
+END;
+$$;
 
 UPDATE opiniones o
    SET estado_moderacion = CASE
@@ -126,22 +148,38 @@ ALTER TABLE opiniones
         estado_moderacion IN ('PENDIENTE', 'APROBADA', 'RECHAZADA')
     );
 
-ALTER TABLE opiniones
-    ADD CONSTRAINT opiniones_version_publicada_id_fkey
-    FOREIGN KEY (version_publicada_id)
-    REFERENCES opinion_versiones(id)
-    ON UPDATE CASCADE
-    ON DELETE SET NULL;
-
 ALTER TABLE moderaciones_opinion
     ALTER COLUMN opinion_version_id SET NOT NULL;
 
-ALTER TABLE moderaciones_opinion
-    ADD CONSTRAINT moderaciones_opinion_version_id_fkey
-    FOREIGN KEY (opinion_version_id)
-    REFERENCES opinion_versiones(id)
-    ON UPDATE CASCADE
-    ON DELETE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+         WHERE conname = 'opiniones_version_publicada_id_fkey'
+           AND conrelid = 'public.opiniones'::regclass
+    ) THEN
+        ALTER TABLE opiniones
+            ADD CONSTRAINT opiniones_version_publicada_id_fkey
+            FOREIGN KEY (version_publicada_id)
+            REFERENCES opinion_versiones(id)
+            ON UPDATE CASCADE
+            ON DELETE SET NULL;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+         WHERE conname = 'moderaciones_opinion_version_id_fkey'
+           AND conrelid = 'public.moderaciones_opinion'::regclass
+    ) THEN
+        ALTER TABLE moderaciones_opinion
+            ADD CONSTRAINT moderaciones_opinion_version_id_fkey
+            FOREIGN KEY (opinion_version_id)
+            REFERENCES opinion_versiones(id)
+            ON UPDATE CASCADE
+            ON DELETE CASCADE;
+    END IF;
+END;
+$$;
 
 ALTER TABLE moderaciones_opinion
     ADD CONSTRAINT moderaciones_opinion_accion_check CHECK (

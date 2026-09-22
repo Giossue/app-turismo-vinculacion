@@ -9,6 +9,12 @@ BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '120s';
 
+-- Este seed se ejecuta antes de 20260921_establishment_coordinates_required.sql
+-- por orden lexicográfico. Mantenerlo autocontenido permite arrancar desde una
+-- base existente sin depender de que la migración posterior ya haya corrido.
+ALTER TABLE establecimientos_turisticos
+  ADD COLUMN IF NOT EXISTS coordenadas_aproximadas BOOLEAN NOT NULL DEFAULT FALSE;
+
 CREATE TEMP TABLE _catastro_demo_seed (
   provincia_codigo CHAR(2) NOT NULL,
   canton_codigo CHAR(2) NOT NULL,

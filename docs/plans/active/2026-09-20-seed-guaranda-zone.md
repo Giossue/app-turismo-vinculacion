@@ -31,12 +31,12 @@ Se generaron con GPT Image y se copiaron al repositorio como material visual de 
 
 Las imágenes son ilustrativas, no una afirmación de que representen un sitio exacto.
 La tabla territorial no recibe multimedia directamente. La ficha visible que usa el mapa
-se crea mediante `20260920_seed_guaranda_ficha.sql` como un centro turístico dentro de
+se crea mediante `20260920_z2_seed_guaranda_ficha.sql` como un centro turístico dentro de
 esta zona, y allí sí se registran las fotografías con la relación multimedia existente.
 
 ## Verificación
 
-Aplicar `database/migrations/20260920_seed_guaranda_zone.sql` con `ON_ERROR_STOP=1`,
+Aplicar `database/migrations/20260920_z1_seed_guaranda_zone.sql` con `ON_ERROR_STOP=1`,
 ejecutarlo dos veces y comprobar que existe una zona activa en Guaranda, dos puntos
 activos y ningún duplicado creado por la segunda ejecución.
 

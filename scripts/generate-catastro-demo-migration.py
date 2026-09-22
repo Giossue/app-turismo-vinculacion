@@ -14,7 +14,7 @@ from openpyxl import load_workbook
 
 
 DEFAULT_SOURCE = Path("temp/Consolidado-Nacional-2026-publico-8 (1).xlsx")
-DEFAULT_OUTPUT = Path("database/migrations/20260920_seed_catastro_demo.sql")
+DEFAULT_OUTPUT = Path("database/migrations/20260920_z_seed_catastro_demo.sql")
 
 
 @dataclass(frozen=True)

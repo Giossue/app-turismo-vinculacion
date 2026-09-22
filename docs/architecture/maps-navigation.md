@@ -29,6 +29,21 @@
 - En producción, el adaptador usa los servicios privados `osrm-car`, `osrm-bicycle` y
   `osrm-foot` dentro de `dokploy-network`. El móvil nunca conoce sus nombres ni sus puertos.
 
+### Geocodificación y búsqueda
+
+- `GET /api/v1/search` combina dos fuentes: centros y establecimientos propios publicados
+  desde PostgreSQL, y resultados geográficos de Photon para calles, ciudades y referencias
+  públicas.
+- Photon se consulta únicamente desde la API, usando el servicio privado `photon-ecuador`
+  dentro de `dokploy-network` y restringiendo la búsqueda a Ecuador (`countrycode=EC`). La
+  aplicación móvil nunca llama directamente a Photon ni a Nominatim.
+- Un fallo o timeout de Photon degrada la búsqueda geográfica, pero no oculta los centros ni
+  catastros propios que sí estén disponibles.
+- El panel administrativo no guarda una dirección inferida por geocodificación. Al crear o
+  editar una ficha o un catastro, el operador abre un modal MapLibre, hace clic en el mapa y
+  confirma únicamente latitud y longitud; la dirección descriptiva continúa siendo un campo
+  independiente.
+
 ### PostgreSQL/PostGIS
 
 - Centros, POI, establecimientos y paradas oficiales.
@@ -159,6 +174,9 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   MapLibre para evitar el destello negro durante el cambio de estilo.
 - Mantener los resultados anteriores mientras llega la consulta del nuevo viewport y dejar
   que TanStack Query cancele la consulta obsoleta mediante `AbortSignal`.
+- La búsqueda del móvil conserva en la misma respuesta los resultados propios y los
+  geográficos. Seleccionar un centro o catastro propio abre su ficha o detalle; seleccionar
+  una calle, ciudad u otra referencia geográfica solo centra el mapa y no crea una ficha.
 - En móvil, los centros públicos se renderizan como un `GeoJSONSource` nativo con
   `SymbolLayer`; MapLibre mantiene el conjunto de features y el clustering fuera del
   árbol React mientras el usuario hace zoom o panea. Los pines individuales usan un

@@ -3,6 +3,7 @@
 | Servicio                      | Propósito                                       | Acceso                                                         | Propietario interno |
 | ----------------------------- | ----------------------------------------------- | -------------------------------------------------------------- | ------------------- |
 | MapLibre + proveedor de rutas | renderizado de mapas, rutas y navegación futura | estilo público limitado; credenciales de rutas solo en backend | maps                |
+| Photon                       | búsqueda geográfica de calles, ciudades y referencias | solo backend, `http://photon-ecuador:2322`, restringido a Ecuador | maps                |
 | Proveedor de IA               | texto, visión y voz                             | API key server-side                                            | ai                  |
 | MinIO/S3                      | objetos multimedia                              | credenciales server-side/URLs firmadas                         | files               |
 | FCM/APNs                      | notificaciones móviles                          | credenciales server-side                                       | notifications       |
@@ -19,6 +20,8 @@
 - Degradación explícita: si IA falla, fichas/mapa continúan; si Redis falla, la fuente
   permanente continúa; si el proveedor de mapas/rutas falla, mostrar lugares sin inventar navegación.
 - Webhooks autenticados, con protección contra replay e idempotencia.
+- La búsqueda de entidades propias no depende de Photon: PostgreSQL sigue siendo la fuente
+  de verdad para centros y catastros publicados.
 
 ## Archivos
 

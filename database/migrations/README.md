@@ -83,7 +83,7 @@ localidades ni zonas; esos valores se mantienen libres o pertenecen al módulo d
 catastro. Usa la misma fuente y SHA-256, y se reproduce con
 `scripts/generate-xlsm-operational-catalog-migration.py`.
 
-La migración `20260920_seed_catastro_demo.sql` carga una muestra reproducible del
+La migración `20260920_z3_seed_catastro_demo.sql` carga una muestra reproducible del
 consolidado nacional: diez establecimientos ratificados de parroquias urbanas por cada
 una de las ciudades Guaranda, Riobamba, Ambato, Latacunga y Babahoyo. Crea o reactiva
 las cinco localidades como `CIUDAD`, conserva los números de registro oficiales como
@@ -163,13 +163,13 @@ elimina el estado `OCULTA`, conserva una versión aprobada mientras una edición
 pendiente y registra la versión moderada en `moderaciones_opinion`. Requiere respaldo
 previo porque elimina las columnas antiguas duplicadas de `opiniones`.
 
-La migración `20260920_seed_guaranda_zone.sql` crea o reactiva una única zona de
+La migración `20260920_z1_seed_guaranda_zone.sql` crea o reactiva una única zona de
 demostración (`Entorno de Guaranda`) en la localidad `Guaranda` y dos puntos de interés
 con coordenadas y descripciones referenciales. Es idempotente, utiliza solo las tablas
 territoriales existentes y no registra fotografías porque el esquema actual relaciona
 los metadatos multimedia exclusivamente con `centros_turisticos`.
 
-La migración `20260920_seed_guaranda_ficha.sql` crea la ficha integral demostrativa
+La migración `20260920_z2_seed_guaranda_ficha.sql` crea la ficha integral demostrativa
 `Centro Cultural Indio Guaranga` dentro de esa zona, con código `020101MC010202001`,
 valoración A-I `48,7`, jerarquía `02`, datos de ingreso, accesibilidad, planta,
 actividades, promoción y tres fotografías PNG publicadas. Es idempotente y reutiliza

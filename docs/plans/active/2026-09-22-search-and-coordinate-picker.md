@@ -30,9 +30,8 @@ selector de mapa dentro de un diálogo, sin convertir el mapa en un editor de di
 
 ## Verificación
 
-- Tests unitarios del adaptador Photon y del contrato de búsqueda.
-- Tests de API para resultados internos, resultados externos y fallo de Photon.
-- Typecheck/lint/test de API y mobile.
-- Typecheck/lint/build del panel administrativo.
-- `git diff --check` en ambos repositorios.
-
+- [x] Tests unitarios del adaptador Photon y del contrato de búsqueda.
+- [x] Tests de API para resultados internos, resultados externos y fallo de Photon.
+- [x] Typecheck/lint/test de API y mobile.
+- [x] Typecheck/lint/build del panel administrativo.
+- [x] `git diff --check` en ambos repositorios.

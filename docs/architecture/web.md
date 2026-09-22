@@ -32,6 +32,10 @@ contenidos, además de componentes reutilizables con tokens centralizados.
 - Tablas con filtros consistentes, paginación y acciones por permisos/estado.
 - Comparación clara entre publicado y propuesto durante revisión.
 - Toda mutación comunica pendiente, éxito y error.
+- En los formularios de fichas y catastros, la ubicación se captura con un modal MapLibre:
+  el operador hace clic para seleccionar el punto y el formulario recibe solo latitud y
+  longitud. No se reemplazan ni se rellenan automáticamente los campos descriptivos de
+  dirección. El estilo del modal se configura con `NEXT_PUBLIC_TILESERVER_STYLE_URL`.
 - El panel usa refresh token HttpOnly y access token solo en memoria; nunca localStorage.
 - Desactivar es reversible y no requiere fricción destructiva excesiva.
 - No mostrar nombres de tablas, IDs, JSON, rutas de objeto o proveedor salvo herramienta técnica autorizada.
