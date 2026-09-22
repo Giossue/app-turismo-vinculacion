@@ -44,9 +44,10 @@ BEGIN
     SELECT l.nombre, COUNT(e.id) AS establishment_count
       FROM localidades l
       LEFT JOIN establecimientos_turisticos e
-        ON e.localidad_id = l.id
+       ON e.localidad_id = l.id
        AND e.activo
        AND e.coordenadas_aproximadas
+       AND e.numero_registro LIKE '%.%'
       JOIN cantones c ON c.id = l.canton_id
       JOIN provincias p ON p.id = c.provincia_id
      WHERE (p.codigo_dpa, c.codigo_cton, l.nombre) IN (
@@ -82,6 +83,7 @@ BEGIN
     JOIN provincias p ON p.id = c.provincia_id
     WHERE e.activo
       AND e.coordenadas_aproximadas
+      AND e.numero_registro LIKE '%.%'
       AND (p.codigo_dpa, c.codigo_cton, l.nombre) IN (
         ('02', '01', 'Guaranda'),
         ('06', '01', 'Riobamba'),
@@ -131,6 +133,7 @@ WITH ranked_establishments AS (
   JOIN provincias p ON p.id = c.provincia_id
   WHERE e.activo
     AND e.coordenadas_aproximadas
+    AND e.numero_registro LIKE '%.%'
     AND (p.codigo_dpa, c.codigo_cton, l.nombre) IN (
       ('02', '01', 'Guaranda'),
       ('06', '01', 'Riobamba'),
@@ -168,6 +171,7 @@ BEGIN
        AND second_establishment.id > first_establishment.id
        AND second_establishment.activo
        AND second_establishment.coordenadas_aproximadas
+       AND second_establishment.numero_registro LIKE '%.%'
        AND second_establishment.latitud = first_establishment.latitud
        AND second_establishment.longitud = first_establishment.longitud
       JOIN localidades l ON l.id = first_establishment.localidad_id
@@ -175,6 +179,7 @@ BEGIN
       JOIN provincias p ON p.id = c.provincia_id
      WHERE first_establishment.activo
        AND first_establishment.coordenadas_aproximadas
+       AND first_establishment.numero_registro LIKE '%.%'
        AND (p.codigo_dpa, c.codigo_cton, l.nombre) IN (
          ('02', '01', 'Guaranda'),
          ('06', '01', 'Riobamba'),

@@ -83,7 +83,45 @@ BEGIN
   FOR UPDATE;
 
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'La ficha % no tiene borrador administrativo; se aborta para no crear otro centro', center_code;
+    INSERT INTO borradores_centros_turisticos (
+      centro_turistico_id,
+      estado_resenia_id,
+      version,
+      datos,
+      actualizado_por
+    )
+    SELECT
+      c.id,
+      (SELECT id FROM estados_resenia WHERE codigo = 'BORRADOR' AND activo),
+      1,
+      jsonb_build_object(
+        'name', c.nombre,
+        'subtypeId', c.subtipo_atractivo_id,
+        'touristZoneId', c.zona_turistica_id,
+        'parishId', c.parroquia_id,
+        'productLineId', c.linea_producto_id,
+        'scenarioId', c.escenario_id,
+        'hierarchyId', c.jerarquia_id,
+        'latitude', c.latitud,
+        'longitude', c.longitud,
+        'altitudeMeters', c.altitud_msnm,
+        'description', c.descripcion,
+        'address', jsonb_build_object(
+          'barrio', c.barrio_sector_comuna,
+          'street', c.calle_principal,
+          'number', c.numero_direccion,
+          'crossStreet', c.calle_transversal
+        ),
+        'sections', '{}'::jsonb
+      ),
+      actor_id
+    FROM centros_turisticos c
+    WHERE c.id = center_id
+    RETURNING id, version, datos INTO draft_id, draft_version, old_data;
+
+    IF draft_id IS NULL THEN
+      RAISE EXCEPTION 'No se pudo crear el borrador administrativo para %', center_code;
+    END IF;
   END IF;
 
   IF old_data->>'description' = demo_description

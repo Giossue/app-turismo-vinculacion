@@ -20,6 +20,13 @@ ALTER TABLE catalogo_catastro_categorias
 
 ALTER TABLE catalogo_catastro_categorias
   ADD CONSTRAINT catalogo_catastro_categorias_icono_check
-  CHECK (icono IN ('hotel', 'restaurant', 'coffee', 'store', 'bus', 'ticket', 'briefcase'));
+  CHECK (icono IN (
+    'hotel', 'restaurant', 'coffee', 'store', 'bus', 'ticket', 'briefcase',
+    'accommodation-hotel', 'amenity-cinema', 'amenity-library', 'amenity-toilets',
+    'eat-drink-cafe', 'eat-drink-restaurant', 'health-hospital', 'money-atm',
+    'money-bank', 'outdoor-camping', 'outdoor-drinking-water',
+    'religious-place-of-worship', 'shop-supermarket', 'tourism-information',
+    'tourism-monument', 'tourism-museum', 'tourism-viewpoint', 'transport-bus-stop'
+  ));
 
 COMMIT;

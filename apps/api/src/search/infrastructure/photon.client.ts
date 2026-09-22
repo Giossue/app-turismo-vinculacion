@@ -36,7 +36,7 @@ export type PhotonPlace = Readonly<{
 @Injectable()
 export class PhotonClient {
   constructor(
-    private readonly config: ConfigService,
+    @Inject(ConfigService) private readonly config: ConfigService,
     @Inject(PHOTON_FETCHER) private readonly fetcher: typeof fetch,
   ) {}
 
