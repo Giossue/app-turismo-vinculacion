@@ -18,6 +18,8 @@ type CenterMapProps = Readonly<{
   establishments?: readonly PublicMapEstablishment[];
   focusSelection?: MapFeatureSelection | null;
   focusLocationKey?: number;
+  focusCoordinate?: Readonly<{ latitude: number; longitude: number }> | null;
+  focusCoordinateKey?: number;
   onAttributionChange?: (handler: (() => void) | null) => void;
   onCenterPress: (center: PublicCenter) => void;
   onEstablishmentPress: (establishment: PublicMapEstablishment) => void;

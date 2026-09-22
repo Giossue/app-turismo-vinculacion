@@ -1,5 +1,13 @@
 import { Transform, Type } from "class-transformer";
-import { IsNumber, IsOptional, IsString, Max, MaxLength, Min, MinLength } from "class-validator";
+import {
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+} from "class-validator";
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === "string" ? value.trim() : value;

@@ -80,10 +80,7 @@ const environmentSchema = z.object({
     .min(1000)
     .max(30_000)
     .default(8_000),
-  GEOCODING_PHOTON_URL: z
-    .string()
-    .url()
-    .default("http://photon-ecuador:2322"),
+  GEOCODING_PHOTON_URL: z.string().url().default("http://photon-ecuador:2322"),
   GEOCODING_REQUEST_TIMEOUT_MS: z.coerce
     .number()
     .int()

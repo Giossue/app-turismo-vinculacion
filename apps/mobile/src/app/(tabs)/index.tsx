@@ -281,7 +281,7 @@ function ExploreMapScreen() {
   } = usePublishedCenters(query);
   const publicSearch = usePublicSearch(
     searchMode === "CENTERS" ? submittedQuery : "",
-    userLocation,
+    null,
   );
   const { data: catalog } = useDiscoveryCatalog();
   const handleCategoryChange = useCallback(
@@ -314,6 +314,8 @@ function ExploreMapScreen() {
       searchMode === "CENTERS" && error && centers.length === 0 ? [] : centers,
     [centers, error, searchMode],
   );
+  const searchResultsError =
+    error ?? (visibleCenters.length === 0 ? publicSearch.error : null);
 
   const selectedCenter = selectedCenterCode
     ? (visibleCenters.find((center) => center.code === selectedCenterCode) ??
@@ -383,6 +385,7 @@ function ExploreMapScreen() {
     setSelectedEstablishment(null);
     setMapFeatureSelection(null);
     setMapFeatureFocusSelection(null);
+    setSearchFocusCoordinate(null);
     dismissSearchSheet();
   }, [dismissSearchSheet]);
   const closeSelectedCenter = useCallback(() => {
@@ -416,6 +419,75 @@ function ExploreMapScreen() {
       setSelectedEstablishment(establishment);
     },
     [dismissSearchSheet],
+  );
+  const selectSearchPlace = useCallback(
+    (place: PublicSearchResult) => {
+      if (place.kind === "center" && place.centerCode) {
+        const center = visibleCenters.find(
+          (candidate) => candidate.code === place.centerCode,
+        );
+        if (center) {
+          selectCenter(center);
+          return;
+        }
+        if (
+          place.category &&
+          place.type &&
+          place.subtype &&
+          place.categoryCode &&
+          place.typeCode &&
+          place.subtypeCode &&
+          place.provinceCode &&
+          place.cantonCode &&
+          place.parishCode
+        ) {
+          selectCenter({
+            code: place.centerCode,
+            name: place.title,
+            description: null,
+            latitude: place.latitude,
+            longitude: place.longitude,
+            category: place.category,
+            type: place.type,
+            subtype: place.subtype,
+            hierarchy: place.hierarchy ?? null,
+            categoryCode: place.categoryCode,
+            typeCode: place.typeCode,
+            subtypeCode: place.subtypeCode,
+            provinceCode: place.provinceCode,
+            cantonCode: place.cantonCode,
+            parishCode: place.parishCode,
+            hierarchyCode: place.hierarchyCode ?? null,
+          });
+        }
+        return;
+      }
+      if (place.kind === "establishment") {
+        selectEstablishment({
+          name: place.title,
+          category: place.category ?? null,
+          categoryLabel: place.subtitle || place.category,
+          latitude: place.latitude,
+          longitude: place.longitude,
+          approximate: place.approximate ?? false,
+          icon: place.icon ?? "shop-supermarket",
+          color: place.color ?? "#be123c",
+        });
+        return;
+      }
+
+      dismissSearchSheet();
+      setSelectedCenterCode(null);
+      setSelectedEstablishment(null);
+      setText(place.title);
+      setSubmittedText("");
+      setSearchFocusCoordinate({
+        latitude: place.latitude,
+        longitude: place.longitude,
+      });
+      setSearchFocusCoordinateKey((value) => value + 1);
+    },
+    [dismissSearchSheet, selectCenter, selectEstablishment, visibleCenters],
   );
   const handleMapFeatureSelection = useCallback(
     (selection: MapFeatureSelection) => {
@@ -683,7 +755,12 @@ function ExploreMapScreen() {
     void refetch();
   }, [refetch]);
 
-  if (searchMode === "CENTERS" && error && visibleCenters.length === 0) {
+  if (
+    searchMode === "CENTERS" &&
+    error &&
+    visibleCenters.length === 0 &&
+    !publicSearch.data
+  ) {
     return <ErrorState isRetrying={isFetching} onRetry={retryCenters} />;
   }
 
@@ -694,6 +771,8 @@ function ExploreMapScreen() {
         basemapMode="streets"
         centers={visibleCenters}
         establishments={mapEstablishments.data?.items ?? []}
+        focusCoordinate={searchFocusCoordinate}
+        focusCoordinateKey={searchFocusCoordinateKey}
         focusSelection={mapFeatureFocusSelection}
         onAttributionChange={handleAttributionChange}
         onBearingChange={setMapBearing}
@@ -773,7 +852,9 @@ function ExploreMapScreen() {
               />
             ) : null}
             {searchMode === "CENTERS" &&
-            (isFetching || mapEstablishments.isFetching) ? (
+            (isFetching ||
+              publicSearch.isFetching ||
+              mapEstablishments.isFetching) ? (
               <View
                 accessible
                 accessibilityLabel="Actualizando lugares turísticos"
@@ -918,15 +999,17 @@ function ExploreMapScreen() {
               <SearchResultsSheet
                 catalog={catalog}
                 centers={visibleCenters}
-                error={error ?? null}
+                error={searchResultsError as Error | null}
                 filters={filters}
-                isFetching={isFetching}
+                isFetching={isFetching || publicSearch.isFetching}
                 isPlaceholderData={isPlaceholderData}
                 nearbyOnly={nearbyOnly}
                 onChangeFilters={setFilters}
                 onNearbyToggle={handleNearbyToggle}
                 onRetry={() => void refetch()}
+                onSelectPlace={selectSearchPlace}
                 onSelectCenter={selectCenter}
+                places={publicSearch.data?.items ?? []}
                 query={submittedQuery}
                 userLocation={userLocation}
               />

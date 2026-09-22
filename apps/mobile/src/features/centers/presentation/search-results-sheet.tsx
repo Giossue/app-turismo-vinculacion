@@ -235,10 +235,16 @@ function SearchPlaceCard({
       <Text style={[styles.resultCategory, { color: colors.primaryStrong }]}>
         {label}
       </Text>
-      <Text numberOfLines={2} style={[styles.resultName, { color: colors.text }]}>
+      <Text
+        numberOfLines={2}
+        style={[styles.resultName, { color: colors.text }]}
+      >
         {place.title}
       </Text>
-      <Text numberOfLines={2} style={[styles.resultMeta, { color: colors.textMuted }]}>
+      <Text
+        numberOfLines={2}
+        style={[styles.resultMeta, { color: colors.textMuted }]}
+      >
         {place.subtitle || "Ecuador"}
       </Text>
       <Text style={[styles.resultActionText, { color: colors.primaryStrong }]}>

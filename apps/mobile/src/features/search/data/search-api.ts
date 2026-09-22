@@ -24,7 +24,10 @@ const resultSchema = z.object({
   hierarchyCode: z.string().nullable().optional(),
   approximate: z.boolean().optional(),
   icon: z.string().optional(),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
 });
 
 const responseSchema = z.object({
@@ -52,7 +55,8 @@ export async function searchPublicPlaces(
   });
   if (!response.ok) throw new Error("No pudimos actualizar la búsqueda.");
   const payload = responseSchema.safeParse(await response.json());
-  if (!payload.success) throw new Error("La búsqueda tiene un formato inválido.");
+  if (!payload.success)
+    throw new Error("La búsqueda tiene un formato inválido.");
   return {
     items: payload.data.data.items,
     photonAvailable: payload.data.data.meta.photonAvailable,

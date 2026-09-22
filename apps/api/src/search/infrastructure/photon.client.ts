@@ -77,7 +77,9 @@ export class PhotonClient {
           feature.properties.state,
           feature.properties.country,
         ]
-          .filter((value, index, values) => value && values.indexOf(value) === index)
+          .filter(
+            (value, index, values) => value && values.indexOf(value) === index,
+          )
           .join(", ");
         const [longitude, latitude] = feature.geometry.coordinates;
         return [
@@ -86,7 +88,8 @@ export class PhotonClient {
             subtitle,
             latitude,
             longitude,
-            type: feature.properties.type ?? feature.properties.osm_value ?? null,
+            type:
+              feature.properties.type ?? feature.properties.osm_value ?? null,
           },
         ];
       });

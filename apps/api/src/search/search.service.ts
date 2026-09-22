@@ -78,7 +78,9 @@ export class SearchService {
         kind: "center",
         source: "internal",
         title: row.title,
-        subtitle: [row.category, row.type, row.cantonCode].filter(Boolean).join(" · "),
+        subtitle: [row.category, row.type, row.cantonCode]
+          .filter(Boolean)
+          .join(" · "),
         latitude: Number(row.latitude),
         longitude: Number(row.longitude),
         centerCode: row.code,
@@ -110,17 +112,15 @@ export class SearchService {
     return {
       items: [
         ...internal,
-        ...geographic.map(
-          (place): SearchItem => ({
-            kind: "geographic",
-            source: "photon",
-            title: place.title,
-            subtitle: place.subtitle,
-            latitude: place.latitude,
-            longitude: place.longitude,
-            type: place.type,
-          }),
-        ),
+        ...geographic.map((place): SearchItem => ({
+          kind: "geographic",
+          source: "photon",
+          title: place.title,
+          subtitle: place.subtitle,
+          latitude: place.latitude,
+          longitude: place.longitude,
+          type: place.type,
+        })),
       ].slice(0, 24),
       meta: { photonAvailable: geographic.length > 0 },
     };
@@ -167,7 +167,9 @@ export class SearchService {
     );
   }
 
-  private searchEstablishments(query: string): Promise<EstablishmentSearchRow[]> {
+  private searchEstablishments(
+    query: string,
+  ): Promise<EstablishmentSearchRow[]> {
     return this.dataSource.query<EstablishmentSearchRow[]>(
       `SELECT e.nombre_comercial AS title,
               CONCAT_WS(' · ',
