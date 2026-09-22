@@ -320,7 +320,7 @@ export function CenterMap({
           type: "Feature",
           id: featureKey,
           properties: {
-            category: establishment.category,
+            category: establishment.categoryLabel ?? establishment.category,
             color,
             featureKey,
             icon,

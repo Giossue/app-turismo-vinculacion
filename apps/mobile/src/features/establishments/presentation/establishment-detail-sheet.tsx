@@ -47,8 +47,10 @@ export function EstablishmentDetailSheet({
             <Text style={[styles.title, { color: colors.text }]}>
               {establishment.name}
             </Text>
-            {establishment.category ? (
-              <TourismBadge>{establishment.category}</TourismBadge>
+            {(establishment.categoryLabel ?? establishment.category) ? (
+              <TourismBadge>
+                {establishment.categoryLabel ?? establishment.category}
+              </TourismBadge>
             ) : null}
           </View>
         </View>

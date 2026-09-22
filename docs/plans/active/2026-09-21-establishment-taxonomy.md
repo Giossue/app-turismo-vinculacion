@@ -1,7 +1,8 @@
 # Catálogo jerárquico del catastro
 
 Fecha: 2026-09-21  
-Estado: en curso
+Estado: completado; la semántica de categorías y el perfil visual por clasificación se
+completaron en `20260922_establishment_semantic_taxonomy.sql`
 
 ## Objetivo
 

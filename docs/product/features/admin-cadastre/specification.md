@@ -17,6 +17,11 @@ la ficha técnica de un centro turístico.
 - Catálogo activo de `localidades` para seleccionar la ciudad o poblado de referencia.
 - Catálogos dependientes de actividad, clasificación y categoría; las categorías de
   atractivos turísticos no se mezclan con las categorías del catastro.
+- La categoría conserva el sistema semántico de la fuente (`ESTRELLAS`, `TENEDORES`,
+  `TAZAS`, `COPAS`, `CLASE`, `MODALIDAD` u otro) y, cuando corresponde, su valor numérico.
+  Los valores ambiguos quedan marcados para revisión operativa.
+- El icono y el color pertenecen a la clasificación/tipo de establecimiento, no a cada
+  categoría. La etiqueta pública contextual se presenta como `clasificación · categoría`.
 - Consulta pública por actividad y localidad/posición, con orden por distancia cuando existe
   ubicación.
 - Fallback por actividad a la localidad activa más cercana con resultados; la respuesta
@@ -65,3 +70,7 @@ Las rutas administrativas requieren `ADMINISTRADOR`. La consulta pública devuel
   compatibilidad y trazabilidad. Sus relaciones canónicas viven en los catálogos
   `catalogo_catastro_actividades`, `catalogo_catastro_clasificaciones` y
   `catalogo_catastro_categorias`; los aliases permiten resolver variantes del consolidado.
+- `catalogo_catastro_categorias.esquema`, `valor_numerico` y `requiere_revision` separan
+  la semántica de la categoría de su etiqueta original. `icono` y `color` permanecen en la
+  categoría solo durante la transición, mientras la API y el mapa leen el perfil visual de
+  `catalogo_catastro_clasificaciones`.

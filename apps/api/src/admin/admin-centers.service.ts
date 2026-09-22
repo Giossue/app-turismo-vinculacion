@@ -36,19 +36,27 @@ import {
 
 type JsonRecord = Record<string, unknown>;
 type CatalogKey =
-  "ACCESSIBILITY" | "ACTIVITY" | "FACILITY" | "ESTABLISHMENT_CATEGORY";
-const DEFAULT_ESTABLISHMENT_CATEGORY_ICON = "hotel";
-const DEFAULT_ESTABLISHMENT_CATEGORY_COLOR = "#7c3aed";
+  | "ACCESSIBILITY"
+  | "ACTIVITY"
+  | "FACILITY"
+  | "ESTABLISHMENT_CLASSIFICATION"
+  | "ESTABLISHMENT_CATEGORY";
+const DEFAULT_ESTABLISHMENT_ICON = "store";
+const DEFAULT_ESTABLISHMENT_COLOR = "#c026d3";
 const CATALOG_TARGETS: Record<
   CatalogKey,
-  { table: string; supportsVisual?: boolean }
+  { table: string; supportsVisual?: boolean; scopedToActivity?: boolean }
 > = {
   ACCESSIBILITY: { table: "tipos_accesibilidad" },
   ACTIVITY: { table: "actividades_turisticas" },
   FACILITY: { table: "tipos_facilidad" },
+  ESTABLISHMENT_CLASSIFICATION: {
+    table: "catalogo_catastro_clasificaciones",
+    supportsVisual: true,
+    scopedToActivity: true,
+  },
   ESTABLISHMENT_CATEGORY: {
     table: "catalogo_catastro_categorias",
-    supportsVisual: true,
   },
 };
 
@@ -2003,7 +2011,7 @@ export class AdminCentersService {
       ),
       this.dataSource.query(
         `SELECT id, codigo AS code, nombre AS name, activo AS active,
-                actividad_id AS "activityId"
+                actividad_id AS "activityId", icono AS icon, color
            FROM catalogo_catastro_clasificaciones
           WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
           ORDER BY nombre`,
@@ -2012,11 +2020,15 @@ export class AdminCentersService {
       this.dataSource.query(
         `SELECT category.id, category.codigo AS code, category.nombre AS name,
                 category.activo AS active, category.orden AS "order",
-                category.icono AS icon, category.color AS color,
+                category.esquema AS scheme,
+                category.valor_numerico AS "numericValue",
+                category.requiere_revision AS "requiresReview",
+                classification.icono AS icon, classification.color AS color,
                 classification.id AS "classificationId",
                 activity.id AS "activityId",
                 classification.nombre AS "classificationName",
-                activity.nombre AS "activityName"
+                activity.nombre AS "activityName",
+                CONCAT_WS(' · ', classification.nombre, category.nombre) AS "displayName"
            FROM catalogo_catastro_categorias category
            JOIN catalogo_catastro_clasificaciones classification
              ON classification.id = category.clasificacion_id
@@ -2375,15 +2387,18 @@ export class AdminCentersService {
       (input.icon !== undefined || input.color !== undefined)
     ) {
       throw new ConflictException(
-        "Icono y color solo están disponibles para categorías de catastro.",
+        "Icono y color solo están disponibles para tipos de establecimiento.",
       );
     }
     return this.dataSource.transaction(async (manager) => {
       const visualSelect = target.supportsVisual
         ? ", icono AS icon, color"
         : "";
+      const activitySelect = target.scopedToActivity
+        ? ', actividad_id AS "activityId"'
+        : "";
       const rows = (await manager.query(
-        `SELECT id, codigo AS code, nombre AS name, activo AS active${visualSelect}
+        `SELECT id, codigo AS code, nombre AS name, activo AS active${activitySelect}${visualSelect}
            FROM ${target.table} WHERE id = $1 FOR UPDATE`,
         [id],
       )) as Array<{
@@ -2391,6 +2406,7 @@ export class AdminCentersService {
         code: string;
         name: string;
         active: boolean;
+        activityId?: string;
         icon?: string;
         color?: string;
       }>;
@@ -2400,16 +2416,15 @@ export class AdminCentersService {
       const nextName = input.name?.trim() || current.name;
       const nextActive = input.active ?? current.active;
       const nextIcon = target.supportsVisual
-        ? (input.icon ?? current.icon ?? DEFAULT_ESTABLISHMENT_CATEGORY_ICON)
+        ? (input.icon ?? current.icon ?? DEFAULT_ESTABLISHMENT_ICON)
         : undefined;
       const nextColor = target.supportsVisual
-        ? (input.color ?? current.color ?? DEFAULT_ESTABLISHMENT_CATEGORY_COLOR)
+        ? (input.color ?? current.color ?? DEFAULT_ESTABLISHMENT_COLOR)
         : undefined;
       const visualUnchanged =
         !target.supportsVisual ||
-        (nextIcon === (current.icon ?? DEFAULT_ESTABLISHMENT_CATEGORY_ICON) &&
-          nextColor ===
-            (current.color ?? DEFAULT_ESTABLISHMENT_CATEGORY_COLOR));
+        (nextIcon === (current.icon ?? DEFAULT_ESTABLISHMENT_ICON) &&
+          nextColor === (current.color ?? DEFAULT_ESTABLISHMENT_COLOR));
       if (
         nextName === current.name &&
         nextActive === current.active &&
@@ -2436,7 +2451,16 @@ export class AdminCentersService {
               WHERE lower(candidate.nombre) = lower($1)
                 AND candidate.id <> $2
               LIMIT 1`
-          : `SELECT 1 FROM ${target.table}
+          : catalog === "ESTABLISHMENT_CLASSIFICATION"
+            ? `SELECT 1
+                 FROM ${target.table} candidate
+                 JOIN ${target.table} current_option
+                   ON current_option.id = $2
+                  AND current_option.actividad_id = candidate.actividad_id
+                WHERE lower(candidate.nombre) = lower($1)
+                  AND candidate.id <> $2
+                LIMIT 1`
+            : `SELECT 1 FROM ${target.table}
               WHERE lower(nombre) = lower($1) AND id <> $2
               LIMIT 1`,
         [nextName, id],
@@ -2459,8 +2483,8 @@ export class AdminCentersService {
         active: current.active,
         ...(target.supportsVisual
           ? {
-              icon: current.icon ?? DEFAULT_ESTABLISHMENT_CATEGORY_ICON,
-              color: current.color ?? DEFAULT_ESTABLISHMENT_CATEGORY_COLOR,
+              icon: current.icon ?? DEFAULT_ESTABLISHMENT_ICON,
+              color: current.color ?? DEFAULT_ESTABLISHMENT_COLOR,
             }
           : {}),
       };

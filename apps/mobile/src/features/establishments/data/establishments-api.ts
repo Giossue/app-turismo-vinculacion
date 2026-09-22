@@ -12,6 +12,7 @@ const establishmentSchema = z.object({
   actividad: z.string().min(1),
   clasificacion: z.string().nullable(),
   categoria: z.string().nullable(),
+  categoriaEtiqueta: z.string().nullable().optional(),
   direccion: z.string().nullable(),
   telefono: z.string().nullable(),
   latitude: z.number().finite().nullable(),
@@ -42,6 +43,7 @@ const mapResponseSchema = z.object({
       z.object({
         name: z.string().min(1),
         category: z.string().nullable(),
+        categoryLabel: z.string().nullable().optional(),
         latitude: z.number().finite(),
         longitude: z.number().finite(),
         approximate: z.boolean(),

@@ -78,11 +78,13 @@ centros. La consulta pública de catastro aplica fallback por actividad a la loc
 más cercana que tenga resultados y lo marca explícitamente. Las mutaciones del catastro
 se registran en la tabla de auditoría existente con el discriminador `ESTABLISHMENT`;
 la taxonomía se consulta como actividad → clasificación → categoría y no reutiliza
-`categorias_atractivo`; la importación nacional queda para una fase posterior.
+`categorias_atractivo`; la categoría conserva su sistema semántico y la importación nacional
+queda para una fase posterior.
 La sección Catálogos permite administrar las opciones técnicas mediante la API y muestra
-estados activos/inactivos sin conexión directa a PostgreSQL. Las categorías de catastro
-además conservan un código de icono y un color hexadecimal controlados por la API para
-representar establecimientos en el mapa móvil.
+estados activos/inactivos sin conexión directa a PostgreSQL. Los tipos de establecimiento
+conservan un código de icono y un color hexadecimal controlados por la API para representar
+sus categorías en el mapa móvil; las categorías exponen su sistema semántico y quedan sin
+configuración visual propia.
 El editor también carga fotografías como multipart hacia `/admin/centers/:code/media`; la
 API guarda el binario en el proveedor configurado, registra metadatos en PostgreSQL y solo
 expone una imagen cuando la ficha se publica.

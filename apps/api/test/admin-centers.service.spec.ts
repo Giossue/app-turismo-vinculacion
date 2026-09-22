@@ -4,16 +4,17 @@ import { AdminCentersService } from "../src/admin/admin-centers.service";
 import { XLSM_INDICATOR_CODES } from "../src/admin/valuation";
 
 describe("AdminCentersService", () => {
-  it("updates establishment category visuals and audits the change", async () => {
+  it("updates establishment classification visuals and audits the change", async () => {
     const managerQuery = vi
       .fn()
       .mockResolvedValueOnce([
         {
           id: "12",
-          code: "CAT_HOTEL",
-          name: "Categoría única",
+          code: "CLAS_HOTEL",
+          name: "Hotel",
           active: true,
-          icon: "mapPin",
+          activityId: "3",
+          icon: "store",
           color: "#7c3aed",
         },
       ])
@@ -27,28 +28,28 @@ describe("AdminCentersService", () => {
     const service = new AdminCentersService({ transaction } as never);
 
     await expect(
-      service.updateCatalog(7, "ESTABLISHMENT_CATEGORY", 12, {
+      service.updateCatalog(7, "ESTABLISHMENT_CLASSIFICATION", 12, {
         icon: "hotel",
         color: "#112233",
       }),
     ).resolves.toMatchObject({
-      catalog: "ESTABLISHMENT_CATEGORY",
+      catalog: "ESTABLISHMENT_CLASSIFICATION",
       id: 12,
       icon: "hotel",
       color: "#112233",
     });
-    expect(managerQuery).toHaveBeenCalledWith(
+    expect(managerQuery.mock.calls[2]).toEqual([
       expect.stringContaining("icono = $4"),
-      [12, "Categoría única", true, "hotel", "#112233"],
-    );
+      [12, "Hotel", true, "hotel", "#112233"],
+    ]);
     expect(managerQuery).toHaveBeenLastCalledWith(
       expect.stringContaining("INSERT INTO auditoria_catalogos"),
       expect.arrayContaining([
         7,
-        "ESTABLISHMENT_CATEGORY",
+        "ESTABLISHMENT_CLASSIFICATION",
         12,
         "MODIFICAR",
-        expect.stringContaining("mapPin"),
+        expect.stringContaining("store"),
         expect.stringContaining("hotel"),
       ]),
     );

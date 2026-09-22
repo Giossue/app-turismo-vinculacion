@@ -29,6 +29,10 @@ type EstablishmentRow = {
   actividad: string;
   clasificacion: string | null;
   categoria: string | null;
+  categoryLabel: string | null;
+  categoryScheme: string | null;
+  categoryValue: string | number | null;
+  categoryRequiresReview: boolean;
   activityId: string | null;
   classificationId: string | null;
   categoryId: string | null;
@@ -65,6 +69,10 @@ type AdminEstablishmentItem = {
   actividad: string;
   clasificacion: string | null;
   categoria: string | null;
+  categoriaEtiqueta: string | null;
+  esquemaCategoria: string | null;
+  valorCategoria: number | null;
+  categoriaRequiereRevision: boolean;
   activityId: number | null;
   classificationId: number | null;
   categoryId: number | null;
@@ -100,6 +108,16 @@ const establishmentSelect = `
          COALESCE(activity_catalog.nombre, e.actividad) AS actividad,
          COALESCE(classification_catalog.nombre, e.clasificacion) AS clasificacion,
          COALESCE(category_catalog.nombre, e.categoria) AS categoria,
+         CASE
+           WHEN COALESCE(category_catalog.nombre, e.categoria) IS NULL THEN NULL
+           ELSE CONCAT_WS(' · ',
+             COALESCE(classification_catalog.nombre, e.clasificacion),
+             COALESCE(category_catalog.nombre, e.categoria)
+           )
+         END AS "categoryLabel",
+         category_catalog.esquema AS "categoryScheme",
+         category_catalog.valor_numerico AS "categoryValue",
+         COALESCE(category_catalog.requiere_revision, FALSE) AS "categoryRequiresReview",
          e.actividad_catalogo_id AS "activityId",
          e.clasificacion_catalogo_id AS "classificationId",
          e.categoria_catalogo_id AS "categoryId",
@@ -129,6 +147,13 @@ const publicEstablishmentSelect = `
          COALESCE(activity_catalog.nombre, e.actividad) AS actividad,
          COALESCE(classification_catalog.nombre, e.clasificacion) AS clasificacion,
          COALESCE(category_catalog.nombre, e.categoria) AS categoria,
+         CASE
+           WHEN COALESCE(category_catalog.nombre, e.categoria) IS NULL THEN NULL
+           ELSE CONCAT_WS(' · ',
+             COALESCE(classification_catalog.nombre, e.clasificacion),
+             COALESCE(category_catalog.nombre, e.categoria)
+           )
+         END AS "categoryLabel",
          e.direccion,
          e.telefono,
          e.latitud AS latitude,
@@ -141,6 +166,7 @@ type PublicEstablishmentRow = Pick<
   | "actividad"
   | "clasificacion"
   | "categoria"
+  | "categoryLabel"
   | "direccion"
   | "telefono"
   | "latitude"
@@ -412,11 +438,19 @@ export class EstablishmentsService {
     const rows = (await this.dataSource.query(
       `SELECT e.nombre_comercial AS name,
               COALESCE(category_catalog.nombre, e.categoria) AS category,
+              COALESCE(classification_catalog.nombre, e.clasificacion) AS classification,
+              CASE
+                WHEN COALESCE(category_catalog.nombre, e.categoria) IS NULL THEN NULL
+                ELSE CONCAT_WS(' · ',
+                  COALESCE(classification_catalog.nombre, e.clasificacion),
+                  COALESCE(category_catalog.nombre, e.categoria)
+                )
+              END AS "categoryLabel",
               ${latitudeExpression}::double precision AS latitude,
               ${longitudeExpression}::double precision AS longitude,
               e.coordenadas_aproximadas AS approximate,
-              COALESCE(NULLIF(category_catalog.icono, 'mapPin'), 'hotel') AS icon,
-              COALESCE(category_catalog.color, '#7c3aed') AS color
+              COALESCE(NULLIF(classification_catalog.icono, 'mapPin'), NULLIF(category_catalog.icono, 'mapPin'), 'hotel') AS icon,
+              COALESCE(classification_catalog.color, category_catalog.color, '#7c3aed') AS color
          ${establishmentJoin}
         WHERE ${where.join(" AND ")}
         ORDER BY e.nombre_comercial, e.id
@@ -425,6 +459,8 @@ export class EstablishmentsService {
     )) as Array<{
       name: string;
       category: string | null;
+      classification: string | null;
+      categoryLabel: string | null;
       latitude: string | number;
       longitude: string | number;
       approximate: boolean;
@@ -436,6 +472,7 @@ export class EstablishmentsService {
       items: rows.map((row) => ({
         name: row.name,
         category: row.category,
+        categoryLabel: row.categoryLabel ?? row.category,
         latitude: Number(row.latitude),
         longitude: Number(row.longitude),
         approximate: row.approximate,
@@ -1080,6 +1117,10 @@ export class EstablishmentsService {
       actividad: row.actividad,
       clasificacion: row.clasificacion,
       categoria: row.categoria,
+      categoriaEtiqueta: row.categoryLabel,
+      esquemaCategoria: row.categoryScheme,
+      valorCategoria: this.toNullableInteger(row.categoryValue),
+      categoriaRequiereRevision: row.categoryRequiresReview,
       activityId: this.toNullableInteger(row.activityId),
       classificationId: this.toNullableInteger(row.classificationId),
       categoryId: this.toNullableInteger(row.categoryId),
@@ -1099,6 +1140,7 @@ export class EstablishmentsService {
       actividad: row.actividad,
       clasificacion: row.clasificacion,
       categoria: row.categoria,
+      categoriaEtiqueta: row.categoryLabel,
       direccion: row.direccion,
       telefono: row.telefono,
       latitude: this.toNullableNumber(row.latitude),

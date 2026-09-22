@@ -424,7 +424,7 @@ export class SaveAdminSectionDto {
   version?: number;
 }
 
-export const ESTABLISHMENT_CATEGORY_ICON_CODES = [
+export const ESTABLISHMENT_VISUAL_ICON_CODES = [
   "hotel",
   "restaurant",
   "coffee",
@@ -433,7 +433,7 @@ export const ESTABLISHMENT_CATEGORY_ICON_CODES = [
   "ticket",
   "briefcase",
 ] as const;
-export const ESTABLISHMENT_CATEGORY_COLOR_CODES = [
+export const ESTABLISHMENT_VISUAL_COLOR_CODES = [
   "#0891b2",
   "#7c3aed",
   "#c026d3",
@@ -468,12 +468,12 @@ export class AdminCatalogUpdateDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(ESTABLISHMENT_CATEGORY_ICON_CODES)
-  icon?: (typeof ESTABLISHMENT_CATEGORY_ICON_CODES)[number];
+  @IsIn(ESTABLISHMENT_VISUAL_ICON_CODES)
+  icon?: (typeof ESTABLISHMENT_VISUAL_ICON_CODES)[number];
 
   @IsOptional()
   @IsString()
   @Matches(/^#[0-9A-Fa-f]{6}$/)
-  @IsIn(ESTABLISHMENT_CATEGORY_COLOR_CODES)
+  @IsIn(ESTABLISHMENT_VISUAL_COLOR_CODES)
   color?: string;
 }

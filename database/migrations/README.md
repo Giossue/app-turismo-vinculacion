@@ -117,6 +117,12 @@ semánticos a todas las categorías: alojamiento, restaurantes, cafeterías, vid
 guianza, eventos, agencias y transporte dejan de compartir el marcador de hotel violeta.
 Conserva el azul puro reservado para la ubicación actual y es idempotente.
 
+La migración `20260922_establishment_semantic_taxonomy.sql` mueve el perfil visual al nivel
+de clasificación/tipo de establecimiento y añade a las categorías el sistema semántico, el
+valor numérico cuando existe y una marca de revisión para valores ambiguos del consolidado.
+Conserva los campos visuales heredados de categoría para compatibilidad, pero la API nueva y
+el mapa leen la configuración de la clasificación. Es aditiva e idempotente.
+
 La migración `20260921_establishment_coordinates_required.sql` completa las coordenadas
 faltantes de `establecimientos_turisticos` usando la localidad vinculada, las marca como
 `coordenadas_aproximadas` y establece `NOT NULL` en latitud y longitud. Se detiene ante

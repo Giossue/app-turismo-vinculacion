@@ -1,20 +1,24 @@
 # Plan: categorías de catastro y marcadores en el mapa
 
 Fecha: 2026-09-21
-Estado: implementado; migración de normalización aplicada y pendiente comprobación visual en dispositivo
+Estado: implementado; el perfil visual quedó centralizado en la clasificación y queda
+pendiente comprobación visual en dispositivo
 
 ## Objetivo
 
-Permitir que una categoría de catastro administre un icono y un color, y mostrar en el mapa móvil los establecimientos turísticos activos que tengan coordenadas, usando esa configuración visual.
+Mostrar en el mapa móvil los establecimientos turísticos activos que tengan coordenadas,
+usando el icono y color del tipo de establecimiento al que pertenece su categoría.
 
 ## Alcance
 
-- Añadir icono y color a `catalogo_catastro_categorias` con valores seguros y retrocompatibles.
+- Añadir icono y color a `catalogo_catastro_clasificaciones` con valores seguros; conservar
+  los campos antiguos de categoría durante la transición.
 - Exponerlos en `GET /admin/catalogs` y permitir editarlos mediante el endpoint administrativo existente, conservando autorización y auditoría.
-- Incorporar controles de selección de icono y color al diálogo de edición de categorías de catastro.
+- Incorporar controles de selección de icono y color al diálogo de edición de tipos de
+  establecimiento.
 - Exponer un endpoint público acotado para establecimientos activos georreferenciados, con filtros de viewport y límites.
-- Añadir una capa nativa al mapa móvil para esos establecimientos, separada de los centros turísticos y usando el icono/color de su categoría.
-- Mantener los establecimientos sin agrupación visual: mostrar un punto del color de su categoría a escala amplia y reemplazarlo por un pin del mismo color, con un círculo interior del mismo color y el icono configurado desde un zoom cercano (`minzoom`), evitando el pin verde reservado para centros y los círculos con cantidades.
+- Añadir una capa nativa al mapa móvil para esos establecimientos, separada de los centros turísticos y usando el icono/color de su tipo de establecimiento.
+- Mantener los establecimientos sin agrupación visual: mostrar un punto del color de su tipo a escala amplia y reemplazarlo por un pin del mismo color, con un círculo interior del mismo color y el icono configurado desde un zoom cercano (`minzoom`), evitando el pin verde reservado para centros y los círculos con cantidades.
 - Abrir una ficha inferior al pulsar un punto o pin de catastro, con su nombre, categoría, precisión de ubicación y acceso a la ruta.
 - Mantener los centros publicados, búsquedas y estados sin ubicación funcionando como antes;
   los establecimientos con coordenada territorial conservan su marca de aproximación.

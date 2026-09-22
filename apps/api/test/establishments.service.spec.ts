@@ -24,6 +24,7 @@ const row = {
   actividad: "Alimentación",
   clasificacion: "Restaurante",
   categoria: "Tercera",
+  categoryLabel: "Restaurante · Tercera",
   direccion: "Calle principal",
   telefono: "032999999",
   latitude: "-1.59",
@@ -40,6 +41,8 @@ describe("EstablishmentsService", () => {
       {
         name: "Hotel de prueba",
         category: "2 Estrellas",
+        classification: "Hotel",
+        categoryLabel: "Hotel · 2 Estrellas",
         latitude: "-1.59263",
         longitude: "-79.00098",
         approximate: true,
@@ -54,6 +57,7 @@ describe("EstablishmentsService", () => {
         {
           name: "Hotel de prueba",
           category: "2 Estrellas",
+          categoryLabel: "Hotel · 2 Estrellas",
           latitude: -1.59263,
           longitude: -79.00098,
           approximate: true,
@@ -109,6 +113,7 @@ describe("EstablishmentsService", () => {
           actividad: "Alimentación",
           clasificacion: "Restaurante",
           categoria: "Tercera",
+          categoriaEtiqueta: "Restaurante · Tercera",
           direccion: "Calle principal",
           telefono: "032999999",
           latitude: -1.59,

@@ -3,6 +3,7 @@ export type PublicEstablishment = Readonly<{
   actividad: string;
   clasificacion: string | null;
   categoria: string | null;
+  categoriaEtiqueta?: string | null;
   direccion: string | null;
   telefono: string | null;
   latitude: number | null;
@@ -14,6 +15,7 @@ export type PublicEstablishment = Readonly<{
 export type PublicMapEstablishment = Readonly<{
   name: string;
   category: string | null;
+  categoryLabel?: string | null;
   latitude: number;
   longitude: number;
   approximate: boolean;
