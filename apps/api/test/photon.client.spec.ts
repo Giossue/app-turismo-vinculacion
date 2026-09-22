@@ -41,7 +41,7 @@ describe("PhotonClient", () => {
 
     const [url] = fetcher.mock.calls[0] as [URL];
     expect(url.searchParams.get("countrycode")).toBe("EC");
-    expect(url.searchParams.get("lang")).toBe("es");
+    expect(url.searchParams.get("lang")).toBe("default");
   });
 
   it("degrades to no geographic results when Photon is unavailable", async () => {

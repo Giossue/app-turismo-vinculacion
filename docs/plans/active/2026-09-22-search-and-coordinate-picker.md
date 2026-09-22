@@ -41,3 +41,5 @@ selector de mapa dentro de un diálogo, sin convertir el mapa en un editor de di
 - El cliente Photon usa un token de proveedor explícito para que Nest pueda inyectar la
   función `fetch` en producción. Esto evita que la API falle durante el arranque con
   `UnknownDependenciesException`.
+- La consulta usa `lang=default`, porque Photon rechaza idiomas que no fueron incluidos en
+  el índice importado; el despliegue actual anuncia `default`, `de`, `en` y `fr`.

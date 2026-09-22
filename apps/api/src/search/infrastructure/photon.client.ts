@@ -47,7 +47,10 @@ export class PhotonClient {
     const url = new URL("/api", this.getBaseUrl());
     url.searchParams.set("q", query);
     url.searchParams.set("countrycode", "EC");
-    url.searchParams.set("lang", "es");
+    // Photon solo acepta idiomas que fueron incluidos en su índice. `default`
+    // delega en la configuración de la instancia y evita asumir que existe
+    // un índice español en todos los despliegues.
+    url.searchParams.set("lang", "default");
     url.searchParams.set("limit", "8");
     if (
       coordinates?.latitude !== undefined &&
