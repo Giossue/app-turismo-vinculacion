@@ -86,6 +86,14 @@ export class AdminOpinionsController {
     };
   }
 
+  @Get(":reviewCode/history")
+  @Roles("ADMINISTRADOR")
+  async history(@Param("reviewCode") reviewCode: string) {
+    return {
+      data: await this.opinions.getAdminHistory(reviewCode),
+    };
+  }
+
   @Patch(":reviewCode")
   @Roles("ADMINISTRADOR")
   async review(

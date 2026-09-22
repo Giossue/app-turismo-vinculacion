@@ -9,6 +9,9 @@
 - [ ] Aprobar una edición reemplaza atómicamente la versión publicada anterior.
 - [ ] No existe el estado `OCULTA` en el flujo nuevo.
 - [ ] El administrador solo puede decidir sobre versiones pendientes.
+- [ ] El administrador puede abrir el historial completo de una opinión desde la cola.
+- [ ] El historial muestra versiones, estados, fechas, comentarios y decisiones de moderación
+      sin exponer IDs internos.
 - [ ] Un turista no puede editar opiniones ajenas ni moderar opiniones.
 - [ ] El motivo de rechazo queda disponible para el propietario y la auditoría.
 - [ ] La UI resuelve carga, vacío, error, conflicto, reintento y autenticación.

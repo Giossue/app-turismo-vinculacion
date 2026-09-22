@@ -10,7 +10,7 @@ alteran la versión publicada hasta ser aprobadas.
 
 - Turista autenticado: crear una opinión, consultar su estado y editar su versión
   publicada cuando no tenga otra versión pendiente.
-- Administrador: consultar versiones pendientes y opiniones ya publicadas; aprobar o rechazar únicamente las versiones pendientes y dejar un motivo al rechazar.
+- Administrador: consultar versiones pendientes y opiniones ya publicadas, abrir el historial completo de una opinión y aprobar o rechazar únicamente las versiones pendientes, dejando un motivo al rechazar.
 - Invitado: consultar únicamente versiones aprobadas.
 - Nadie puede moderar una versión que no esté pendiente ni modificar la opinión de
   otra cuenta.
@@ -46,6 +46,9 @@ alteran la versión publicada hasta ser aprobadas.
 - `moderaciones_opinion` conserva las decisiones administrativas inmutables.
 - Se publican únicamente calificación, comentario, fecha y un nombre de autor
   minimizado; nunca se exponen IDs internos.
+- La cola administrativa expone el historial bajo demanda mediante
+  `GET /admin/opinions/:reviewCode/history`, incluyendo versiones y moderaciones, solo
+  para el rol `ADMINISTRADOR`.
 
 ## Integraciones
 
@@ -59,4 +62,3 @@ alteran la versión publicada hasta ser aprobadas.
 - Fotos o respuestas del administrador.
 - Opiniones de establecimientos de catastro.
 - Notificaciones push sobre la decisión.
-- Historial administrativo completo de versiones rechazadas.

@@ -183,6 +183,90 @@ describe("OpinionsService", () => {
     );
   });
 
+  it("returns every opinion version and its moderation history for administrators", async () => {
+    const query = vi.fn().mockResolvedValue([
+      {
+        review_code: secondReviewCode,
+        numero_version: "2",
+        calificacion: 4,
+        comentario: "Edición pendiente",
+        status: "PENDIENTE",
+        submitted_at: "2026-09-21T12:00:00.000Z",
+        reviewed_at: null,
+        author_name: "Bruno Visitante",
+        target_type: "CENTRO",
+        target_code: "CENTER-2",
+        target_name: "Otro centro",
+        moderations: [],
+      },
+      {
+        review_code: firstReviewCode,
+        numero_version: "1",
+        calificacion: 3,
+        comentario: "Versión anterior",
+        status: "APROBADA",
+        submitted_at: "2026-09-19T12:00:00.000Z",
+        reviewed_at: "2026-09-19T13:00:00.000Z",
+        author_name: "Bruno Visitante",
+        target_type: "CENTRO",
+        target_code: "CENTER-2",
+        target_name: "Otro centro",
+        moderations: [
+          {
+            action: "APROBAR",
+            reason: null,
+            moderatorName: "Ana Administradora",
+            createdAt: "2026-09-19T13:00:00.000Z",
+          },
+        ],
+      },
+    ]);
+    const service = new OpinionsService({ query } as never);
+
+    await expect(service.getAdminHistory(secondReviewCode)).resolves.toEqual({
+      reviewCode: secondReviewCode,
+      authorName: "Bruno Visitante",
+      target: {
+        type: "CENTRO",
+        code: "CENTER-2",
+        name: "Otro centro",
+      },
+      versions: [
+        {
+          reviewCode: secondReviewCode,
+          version: 2,
+          rating: 4,
+          comment: "Edición pendiente",
+          status: "PENDIENTE",
+          submittedAt: "2026-09-21T12:00:00.000Z",
+          reviewedAt: null,
+          moderations: [],
+        },
+        {
+          reviewCode: firstReviewCode,
+          version: 1,
+          rating: 3,
+          comment: "Versión anterior",
+          status: "APROBADA",
+          submittedAt: "2026-09-19T12:00:00.000Z",
+          reviewedAt: "2026-09-19T13:00:00.000Z",
+          moderations: [
+            {
+              action: "APROBAR",
+              reason: null,
+              moderatorName: "Ana Administradora",
+              createdAt: "2026-09-19T13:00:00.000Z",
+            },
+          ],
+        },
+      ],
+    });
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("moderaciones_opinion"),
+      [secondReviewCode],
+    );
+  });
+
   it("requires a reason for rejection before opening a transaction", async () => {
     const dataSource = dataSourceFor(vi.fn());
     const service = new OpinionsService(dataSource);

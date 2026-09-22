@@ -75,6 +75,35 @@ export type AdminOpinionPage = Readonly<{
   offset: number;
 }>;
 
+export type AdminOpinionModeration = Readonly<{
+  action: "APROBAR" | "RECHAZAR";
+  moderatorName: string;
+  reason: string | null;
+  createdAt: string;
+}>;
+
+export type AdminOpinionHistoryVersion = Readonly<{
+  reviewCode: string;
+  version: number;
+  rating: number | null;
+  comment: string | null;
+  status: "PENDIENTE" | "APROBADA" | "RECHAZADA" | "REEMPLAZADA";
+  submittedAt: string;
+  reviewedAt: string | null;
+  moderations: readonly AdminOpinionModeration[];
+}>;
+
+export type AdminOpinionHistory = Readonly<{
+  reviewCode: string;
+  authorName: string;
+  target: Readonly<{
+    type: "CENTRO" | "PUNTO_INTERES";
+    code: string | null;
+    name: string;
+  }>;
+  versions: readonly AdminOpinionHistoryVersion[];
+}>;
+
 type CenterTarget = Readonly<{ id: string; code: string; name: string }>;
 
 @Injectable()
@@ -446,6 +475,93 @@ export class OpinionsService {
     };
   }
 
+  async getAdminHistory(reviewCode: string): Promise<AdminOpinionHistory> {
+    const normalizedCode = reviewCode.trim().toLowerCase();
+    if (!isUuid(normalizedCode)) {
+      throw new BadRequestException("El código de revisión no es válido.");
+    }
+
+    const rows = await this.dataSource.query<SqlRow[]>(
+      `SELECT v.codigo_publico::text AS review_code,
+              v.numero_version,
+              v.calificacion,
+              v.comentario,
+              v.estado_moderacion AS status,
+              v.created_at AS submitted_at,
+              v.revisado_at AS reviewed_at,
+              u.nombre AS author_name,
+              CASE WHEN c.id IS NOT NULL THEN 'CENTRO' ELSE 'PUNTO_INTERES' END AS target_type,
+              c.codigo_atractivo AS target_code,
+              COALESCE(c.nombre, pi.nombre) AS target_name,
+              COALESCE(
+                json_agg(
+                  json_build_object(
+                    'action', m.accion,
+                    'reason', m.motivo,
+                    'moderatorName', moderator.nombre,
+                    'createdAt', m.created_at
+                  ) ORDER BY m.created_at DESC, m.id DESC
+                ) FILTER (WHERE m.id IS NOT NULL),
+                '[]'::json
+              ) AS moderations
+         FROM opinion_versiones v
+         JOIN opiniones o ON o.id = v.opinion_id
+         JOIN usuarios u ON u.id = o.usuario_id
+         LEFT JOIN centros_turisticos c ON c.id = o.centro_turistico_id
+         LEFT JOIN puntos_interes pi ON pi.id = o.punto_interes_id
+         LEFT JOIN moderaciones_opinion m ON m.opinion_version_id = v.id
+         LEFT JOIN usuarios moderator ON moderator.id = m.moderador_id
+        WHERE v.opinion_id = (
+          SELECT selected.opinion_id
+            FROM opinion_versiones selected
+           WHERE selected.codigo_publico = $1::uuid
+           LIMIT 1
+        )
+        GROUP BY v.id,
+                 v.codigo_publico,
+                 v.numero_version,
+                 v.calificacion,
+                 v.comentario,
+                 v.estado_moderacion,
+                 v.created_at,
+                 v.revisado_at,
+                 u.nombre,
+                 c.id,
+                 c.codigo_atractivo,
+                 c.nombre,
+                 pi.id,
+                 pi.nombre
+        ORDER BY v.numero_version DESC, v.id DESC`,
+      [normalizedCode],
+    );
+
+    const first = rows[0];
+    if (!first) {
+      throw new NotFoundException("No se encontró el historial de la opinión.");
+    }
+
+    return {
+      reviewCode: normalizedCode,
+      authorName: stringValue(first, "author_name") || "Usuario",
+      target: {
+        type: stringValue(first, "target_type") as "CENTRO" | "PUNTO_INTERES",
+        code: nullableString(first, "target_code"),
+        name: stringValue(first, "target_name") || "Destino sin nombre",
+      },
+      versions: rows.map((row) => ({
+        reviewCode: stringValue(row, "review_code"),
+        version: integerValue(row, "numero_version"),
+        rating: nullableNumber(row, "calificacion"),
+        comment: nullableString(row, "comentario"),
+        status: stringValue(row, "status") as
+          "PENDIENTE" | "APROBADA" | "RECHAZADA" | "REEMPLAZADA",
+        submittedAt: isoDate(row, "submitted_at"),
+        reviewedAt: nullableIsoDate(row, "reviewed_at"),
+        moderations: moderationValues(row.moderations),
+      })),
+    };
+  }
+
   async review(
     reviewCode: string,
     moderatorId: number,
@@ -743,6 +859,24 @@ function nullableIsoDate(row: SqlRow, key: string): string | null {
   const value = row[key];
   if (value === null || value === undefined) return null;
   return isoDate(row, key);
+}
+
+function moderationValues(value: unknown): AdminOpinionModeration[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as SqlRow;
+    const action = stringValue(row, "action");
+    if (action !== "APROBAR" && action !== "RECHAZAR") return [];
+    return [
+      {
+        action,
+        moderatorName: stringValue(row, "moderatorName") || "Administrador",
+        reason: nullableString(row, "reason"),
+        createdAt: isoDate(row, "createdAt"),
+      },
+    ];
+  });
 }
 
 function isUuid(value: string): boolean {
