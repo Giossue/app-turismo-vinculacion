@@ -1,8 +1,8 @@
 import type { TurismoIconName } from "@/core/ui/turismo-icons";
 
 /**
- * Grupos de establecimientos que el mapa puede filtrar. Las claves son las
- * del parámetro `group` de `/establishments/map` (ver
+ * Grupos de establecimientos que el mapa puede filtrar. Las claves son el
+ * `group` de cada punto de las teselas `/establishments/tiles` (ver
  * `apps/api/src/establishments/establishment-groups.ts`). Los `primary` van
  * como chips sobre el mapa; el resto, en "Ver más".
  */

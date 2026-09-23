@@ -65,7 +65,7 @@ PATCH /api/v1/admin/establishments/:id/review
 POST  /api/v1/admin/establishments/:id/deactivate
 POST  /api/v1/admin/establishments/:id/reactivate
 GET   /api/v1/establishments/nearby
-GET   /api/v1/establishments/map
+GET   /api/v1/establishments/tiles/:z/:x/:y
 ```
 
 La captura y consulta privada requieren `AGENTE_TURISTICO` o `ADMINISTRADOR`; la solicitud
@@ -86,5 +86,5 @@ consulta pública devuelve `items`,
 - `catalogo_catastro_categorias.esquema`, `valor_numerico` y `requiere_revision` separan
   la semántica de la categoría de su etiqueta original. `icono` y `color` permanecen en la
   categoría solo durante la transición, mientras la API y el mapa leen el perfil visual de
-  `catalogo_catastro_clasificaciones`. El endpoint de mapa acepta los cuatro límites del
-  viewport y un límite de resultados; los pines Osmic se agrupan a escalas amplias.
+  `catalogo_catastro_clasificaciones`. El mapa público recibe teselas vectoriales MVT
+  (`/establishments/tiles/:z/:x/:y`); por debajo del zoom 13 los puntos se agregan por celda.

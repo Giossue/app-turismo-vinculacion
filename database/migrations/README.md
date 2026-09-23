@@ -138,6 +138,11 @@ La migración `20260922_reserve_tourism_center_pin.sql` reserva `tourism-monumen
 los centros turísticos. Si existiera alguna clasificación de catastro con ese código,
 la devuelve al pin de supermercado y reconstruye la restricción sin el pin reservado.
 
+La migración `20260923_establishment_map_tiles.sql` indexa la ubicación de los
+catastros en Web Mercator (`ST_Transform(ubicacion::geometry, 3857)`), la misma
+expresión que usan las teselas vectoriales `GET /establishments/tiles/:z/:x/:y`. Es
+aditiva e idempotente; sin ella las teselas funcionan, pero recorren toda la tabla.
+
 La migración `20260921_establishment_coordinates_required.sql` completa las coordenadas
 faltantes de `establecimientos_turisticos` usando la localidad vinculada, las marca como
 `coordenadas_aproximadas` y establece `NOT NULL` en latitud y longitud. Se detiene ante

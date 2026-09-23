@@ -2,7 +2,6 @@ import { useRouter } from "expo-router";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
-import { TourismActionButton } from "@/core/ui/tourism-controls";
 import { TourismPressable } from "@/core/ui/tourism-pressable";
 import { TourismStateView } from "@/core/ui/tourism-state";
 import { TourismGlassScope } from "@/core/ui/tourism-glass";
@@ -44,7 +43,6 @@ export default function SavedScreen() {
 
 function SavedCenterList() {
   const router = useRouter();
-  const colors = useTurismoPalette();
   const savedCenters = useSavedCenters();
   const savedMutation = useSavedCenterMutation();
   const discoveryCatalog = useDiscoveryCatalog();
@@ -70,6 +68,23 @@ function SavedCenterList() {
     );
   }
 
+  if (savedCenters.data.length === 0) {
+    return (
+      <>
+        <TourismStateView
+          actionIcon="map"
+          actionLabel="Explorar"
+          icon="bookmark"
+          message="Abre una ficha turística y toca el marcador para conservarla aquí."
+          onAction={() => router.replace("/")}
+          title="Aún no tienes guardados"
+          variant="empty"
+        />
+        <SavedCenterErrorSnackbar mutation={savedMutation} />
+      </>
+    );
+  }
+
   return (
     <>
       <ScrollView
@@ -79,37 +94,24 @@ function SavedCenterList() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {savedCenters.data.length > 0 ? (
-          <View style={styles.list}>
-            {savedCenters.data.map((center) => (
-              <SavedCenterRow
-                center={center}
-                city={cantonNames.get(center.cantonCode)}
-                key={center.code}
-                onOpen={() =>
-                  router.push({
-                    pathname: "/centers/[code]",
-                    params: { code: center.code },
-                  })
-                }
-                onRemove={() =>
-                  savedMutation.mutate({ center, currentlySaved: true })
-                }
-              />
-            ))}
-          </View>
-        ) : (
-          <>
-            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-              Abre una ficha turística y toca el marcador para conservarla aquí.
-            </Text>
-            <TourismActionButton
-              icon="map"
-              label="Explorar lugares"
-              onPress={() => router.back()}
+        <View style={styles.list}>
+          {savedCenters.data.map((center) => (
+            <SavedCenterRow
+              center={center}
+              city={cantonNames.get(center.cantonCode)}
+              key={center.code}
+              onOpen={() =>
+                router.push({
+                  pathname: "/centers/[code]",
+                  params: { code: center.code },
+                })
+              }
+              onRemove={() =>
+                savedMutation.mutate({ center, currentlySaved: true })
+              }
             />
-          </>
-        )}
+          ))}
+        </View>
       </ScrollView>
       <SavedCenterErrorSnackbar mutation={savedMutation} />
     </>
@@ -210,5 +212,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: turismoMetrics.touchTarget,
   },
-  emptyText: { ...turismoTypography.body, textAlign: "center" },
 });

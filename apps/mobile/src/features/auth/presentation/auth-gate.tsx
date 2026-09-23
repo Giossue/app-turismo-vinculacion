@@ -24,7 +24,7 @@ export function AuthGate({
   children: (user: AuthUser) => ReactNode;
   loadingMessage?: string;
   returnTo: LoginReturnPath;
-  /** Pestaña principal: sin botón Atrás y sin margen inferior (lo pone la barra). */
+  /** Pestaña principal: sin encabezado (la barra ya la nombra) y sin margen inferior. */
   tab?: boolean;
   title: string;
 }>) {
@@ -35,6 +35,7 @@ export function AuthGate({
     <TourismScreenFrame
       includeBottomInset={!tab}
       onBack={tab ? undefined : () => router.back()}
+      showHeader={!tab}
       title={title}
     >
       {access.status === "authenticated" ? (

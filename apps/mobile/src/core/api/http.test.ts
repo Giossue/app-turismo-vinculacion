@@ -169,8 +169,8 @@ describe("query persistence policy", () => {
     expect(isPersistedQueryKey([...queryKeys.publicSearch, "mirador"])).toBe(
       false,
     );
-    expect(isPersistedQueryKey([...queryKeys.mapEstablishments, null])).toBe(
-      false,
-    );
+    expect(
+      isPersistedQueryKey([...queryKeys.nearbyEstablishments, "hotel"]),
+    ).toBe(false);
   });
 });

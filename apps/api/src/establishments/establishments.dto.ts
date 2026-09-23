@@ -14,10 +14,7 @@ import {
   MinLength,
 } from "class-validator";
 
-import {
-  ESTABLISHMENT_MAP_GROUP_KEYS,
-  type EstablishmentMapGroup,
-} from "./establishment-groups";
+import { ESTABLISHMENT_TILE_MAX_ZOOM } from "./establishment-tiles";
 
 const toOptionalTrimmedString = ({ value }: { value: unknown }) => {
   if (value === undefined || value === null || value === "") return undefined;
@@ -230,46 +227,23 @@ export class ReviewEstablishmentDto {
   observation?: string;
 }
 
-export class PublicEstablishmentsMapQueryDto {
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(-180)
-  @Max(180)
-  west?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(-90)
-  @Max(90)
-  south?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(-180)
-  @Max(180)
-  east?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(-90)
-  @Max(90)
-  north?: number;
-
-  @IsOptional()
+/** Coordenadas XYZ de una tesela vectorial del mapa público. */
+export class EstablishmentTileParamsDto {
   @Type(() => Number)
   @IsInt()
-  @Min(1)
-  @Max(500)
-  limit = 500;
+  @Min(0)
+  @Max(ESTABLISHMENT_TILE_MAX_ZOOM)
+  z!: number;
 
-  /** Muestra solo un grupo (restaurantes, alojamiento…); sin él, todos. */
-  @IsOptional()
-  @IsIn(ESTABLISHMENT_MAP_GROUP_KEYS)
-  group?: EstablishmentMapGroup;
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  x!: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  y!: number;
 }
 
 export class PublicEstablishmentsQueryDto {

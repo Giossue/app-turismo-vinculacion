@@ -166,8 +166,15 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 
 ## Rendimiento del mapa
 
-- Endpoint por viewport con límites, límite de resultados y clustering nativo para que el
-  catálogo no cargue toda la base en cada apertura.
+- Los catastros se sirven como teselas vectoriales MVT (`GET /establishments/tiles/:z/:x/:y`,
+  `ST_AsMVT` sobre el índice `idx_establecimientos_ubicacion_mercator`), como los mapas
+  comerciales: el móvil solo descarga los cuadrados que entran en pantalla y los guarda en
+  caché (`Cache-Control: public, max-age=300`). Desde zoom 13 cada catastro es un punto con
+  los datos de su ficha; por debajo se agregan por celda con su `count`, así una tesela
+  alejada pesa lo mismo con cien que con cien mil registros. Tocar un punto agregado acerca
+  el mapa hasta ver sus pines. Cada punto lleva su `group` y los chips lo filtran en la capa,
+  sin nuevas peticiones. La ruta tiene su propio límite de peticiones (3000/min) porque un
+  paneo pide varias teselas a la vez.
 - Respuestas compactas para marcadores; ficha completa bajo demanda.
 - Cancelar consultas obsoletas al mover el mapa.
 - Cachear catálogos/mapas públicos con política de invalidación por publicación.
@@ -187,8 +194,8 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   árbol React mientras el usuario hace zoom o panea. Los pines individuales usan un
   recurso de icono estático, sin una vista React ni un círculo de fondo. Los clusters sí
   usan una capa separada con conteo y se expanden mediante `getClusterExpansionZoom`.
-  Los establecimientos activos del catastro llegan desde `GET /api/v1/establishments/map`
-  en una fuente GeoJSON separada, limitada y agrupada; reciben el pin Osmic y el color fijo
+  Los establecimientos activos del catastro llegan desde las teselas
+  `GET /api/v1/establishments/tiles/:z/:x/:y` en una `VectorSource` separada; reciben el pin Osmic y el color fijo
   que el sistema asigna a su clasificación/tipo de establecimiento, además de la etiqueta
   contextual de su categoría. El panel administrativo solo permite seleccionar el icono;
   no recibe un color editable. Cuando un

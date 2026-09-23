@@ -23,7 +23,7 @@ const loadedCenter: PublicCenter = {
   hierarchyCode: "H2",
 };
 
-const fallbackPin = { key: "shop-supermarket", color: "#123456" };
+const fallbackPin = { key: "shop-supermarket" };
 
 const base: PublicSearchResult = {
   kind: "geographic",
@@ -107,7 +107,6 @@ describe("getSearchPlaceTarget", () => {
           longitude: -79.01,
           approximate: false,
           icon: "shop-supermarket",
-          color: "#123456",
         },
       },
     });

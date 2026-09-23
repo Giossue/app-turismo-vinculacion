@@ -219,9 +219,11 @@ Los chips sobre el mapa de Explorar (`ExploreFilterChips`) filtran lo que se dib
 "Turismo" (solo atractivos) y los grupos principales del catastro (Restaurantes, Cafeterías,
 Alojamiento, Bares), con ícono monocromo; "Ver más" abre una sheet con el resto de grupos. Sin
 chip seleccionado se ve todo y tocar el chip activo lo quita. Los grupos se definen en
-`features/establishments/domain/establishment-groups.ts` con las mismas claves que el
-parámetro `group` de `GET /establishments/map` (`apps/api/src/establishments/establishment-groups.ts`),
-que filtra por la actividad o el tipo del catálogo del catastro.
+`features/establishments/domain/establishment-groups.ts` con las mismas claves que la
+propiedad `group` de cada punto de las teselas `GET /establishments/tiles/:z/:x/:y`
+(`apps/api/src/establishments/establishment-groups.ts`), que la API deriva de la actividad o
+el tipo del catálogo del catastro. El chip filtra la capa en MapLibre, sin pedir otra vez las
+teselas.
 
 En Explorar las fichas comparten una única sheet siempre montada y cerrada
 (`TourismBottomSheetHost`, `index: -1`): cada `TourismBottomSheet` le entrega su contenido y

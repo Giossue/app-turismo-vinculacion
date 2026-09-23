@@ -34,8 +34,6 @@ export function useExploreLocationFocus() {
     requestLocation: () => void requestLocation({ forceRefresh: true }),
     status,
     userLocation: coordinate,
-    /** The camera left the user's position (pan, zoom or another focus). */
-    clearLocationFocus: () => setConfirmedFocusKey(null),
     locate: () => {
       setConfirmedFocusKey(null);
       void requestLocation({ forceRefresh: true });

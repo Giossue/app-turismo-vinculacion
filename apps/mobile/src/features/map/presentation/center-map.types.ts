@@ -1,6 +1,7 @@
-import type { GeoBounds, GeoCoordinate } from "@/core/geo/types";
+import type { GeoCoordinate } from "@/core/geo/types";
 import type { PublicCenter } from "@/features/centers/domain/public-center";
 import type { PublicMapEstablishment } from "@/features/establishments/domain/establishment";
+import type { EstablishmentMapGroup } from "@/features/establishments/domain/establishment-groups";
 import type { MapFeatureSelection } from "../domain/map-feature-selection";
 
 /** Props shared by the native MapLibre map and its web placeholder. */
@@ -8,7 +9,11 @@ export type CenterMapProps = Readonly<{
   /** Offset of the "i" attribution control from the bottom-left corner. */
   attributionInset?: Readonly<{ bottom?: number; left?: number }>;
   centers: readonly PublicCenter[];
-  establishments?: readonly PublicMapEstablishment[];
+  /** Registry pins (vector tiles): hidden, all, or only one map group. */
+  establishmentLayer: Readonly<{
+    visible: boolean;
+    group?: EstablishmentMapGroup;
+  }>;
   /** Eases to `focusCoordinate` whenever `focusCoordinateKey` changes. */
   focusCoordinate?: GeoCoordinate | null;
   focusCoordinateKey?: number;
@@ -23,7 +28,6 @@ export type CenterMapProps = Readonly<{
   onOverlappingFeaturePress: (
     selections: readonly MapFeatureSelection[],
   ) => void;
-  onViewportChange: (bounds: GeoBounds) => void;
   /** Rotates the camera back to north whenever this key changes. */
   resetNorthKey?: number;
   userLocation?: GeoCoordinate | null;

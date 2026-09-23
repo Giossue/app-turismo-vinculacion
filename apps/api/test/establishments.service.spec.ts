@@ -36,68 +36,60 @@ const row = {
 };
 
 describe("EstablishmentsService", () => {
-  it("returns active map markers with category visuals and precision", async () => {
-    const query = vi.fn().mockResolvedValue([
-      {
-        name: "Hotel de prueba",
-        category: "2 Estrellas",
-        classification: "Hotel",
-        categoryLabel: "Hotel · 2 Estrellas",
-        latitude: "-1.59263",
-        longitude: "-79.00098",
-        approximate: true,
-        icon: "accommodation-hotel",
-        color: "#7a5c3e",
-      },
-    ]);
+  it("returns the vector tile of published establishments", async () => {
+    const tile = Buffer.from([0x1a, 0x02]);
+    const query = vi.fn().mockResolvedValue([{ tile }]);
     const service = new EstablishmentsService({ query } as never);
 
-    await expect(service.map({ limit: 500 })).resolves.toEqual({
-      items: [
-        {
-          name: "Hotel de prueba",
-          category: "2 Estrellas",
-          categoryLabel: "Hotel · 2 Estrellas",
-          latitude: -1.59263,
-          longitude: -79.00098,
-          approximate: true,
-          icon: "accommodation-hotel",
-          color: "#7a5c3e",
-        },
-      ],
-    });
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("e.activo = TRUE"),
-      [500],
+    await expect(service.tile({ z: 14, x: 4596, y: 8264 })).resolves.toBe(
+      tile,
     );
-    expect(query.mock.calls[0]?.[0]).toContain(
-      "e.coordenadas_aproximadas AS approximate",
+    const [sql, params] = query.mock.calls[0] ?? [];
+    expect(sql).toContain("e.estado_revision = 'PUBLICADO'");
+    expect(sql).toContain("ST_AsMVT(features, 'establishments'");
+    expect(params.slice(0, 3)).toEqual([14, 4596, 8264]);
+  });
+
+  it("sends each pin with its data at detail zoom", async () => {
+    const query = vi.fn().mockResolvedValue([{ tile: Buffer.alloc(0) }]);
+    const service = new EstablishmentsService({ query } as never);
+
+    await service.tile({ z: 13, x: 0, y: 0 });
+    const [sql] = query.mock.calls[0] ?? [];
+    expect(sql).toContain('name, category, "categoryLabel", latitude');
+    expect(sql).not.toContain("COUNT(*)");
+  });
+
+  it("aggregates pins per cell below detail zoom", async () => {
+    const query = vi.fn().mockResolvedValue([{ tile: Buffer.alloc(0) }]);
+    const service = new EstablishmentsService({ query } as never);
+
+    await service.tile({ z: 8, x: 71, y: 129 });
+    const [sql] = query.mock.calls[0] ?? [];
+    expect(sql).toContain("COUNT(*)::integer AS count");
+    expect(sql).toContain("ST_SnapToGrid");
+  });
+
+  it("tags every point with its map group", async () => {
+    const query = vi.fn().mockResolvedValue([{ tile: Buffer.alloc(0) }]);
+    const service = new EstablishmentsService({ query } as never);
+
+    await service.tile({ z: 14, x: 0, y: 0 });
+    const [sql, params] = query.mock.calls[0] ?? [];
+    expect(sql).toContain("THEN $");
+    expect(params).toEqual(
+      expect.arrayContaining([["ALOJAMIENTO"], "lodging", "cafes"]),
     );
   });
 
-  it("filters the map by a catalog group (activity or type)", async () => {
-    const query = vi.fn().mockResolvedValue([]);
+  it("rejects a tile outside the zoom grid", async () => {
+    const query = vi.fn();
     const service = new EstablishmentsService({ query } as never);
 
-    await service.map({ limit: 500, group: "lodging" });
-    expect(query.mock.calls[0]?.[0]).toContain(
-      "(activity_catalog.nombre = ANY($1))",
+    await expect(service.tile({ z: 2, x: 4, y: 0 })).rejects.toThrow(
+      "no existe",
     );
-    expect(query.mock.calls[0]?.[1]).toEqual([["ALOJAMIENTO"], 500]);
-
-    await service.map({ limit: 500, group: "bars" });
-    expect(query.mock.calls[1]?.[0]).toContain(
-      "(classification_catalog.nombre = ANY($1))",
-    );
-    expect(query.mock.calls[1]?.[1]).toEqual([["BAR", "DISCOTECA"], 500]);
-  });
-
-  it("rejects an incomplete map viewport", async () => {
-    const service = new EstablishmentsService({ query: vi.fn() } as never);
-
-    await expect(service.map({ west: -79, limit: 500 })).rejects.toThrow(
-      "cuatro límites",
-    );
+    expect(query).not.toHaveBeenCalled();
   });
 
   it("does not reveal a catastro owned by another agent", async () => {

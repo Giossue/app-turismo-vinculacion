@@ -2,11 +2,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { queryKeys } from "@/core/api/query-keys";
-import type { GeoBounds, GeoCoordinate } from "@/core/geo/types";
+import type { GeoCoordinate } from "@/core/geo/types";
 import { useDiscoveryCatalog } from "@/features/centers/application/use-discovery-catalog";
 import { usePublishedCenters } from "@/features/centers/application/use-published-centers";
 import type { DiscoveryFilterValues } from "@/features/centers/presentation/discovery-filters";
-import { useMapEstablishments } from "@/features/establishments/application/use-map-establishments";
 import { useNearbyEstablishments } from "@/features/establishments/application/use-nearby-establishments";
 import { usePublicSearch } from "@/features/search/application/use-public-search";
 import type { SearchMode } from "@/features/search/presentation/search-mode-chips";
@@ -17,8 +16,8 @@ import {
 
 /**
  * Remote data behind Explore: published centers (filtered by category and
- * the submitted text), national search, catalog, pins in the viewport and
- * the nearby tourism registry.
+ * the submitted text), national search, catalog and the nearby tourism
+ * registry. Registry pins come as map tiles: here only their filter.
  */
 export function useExploreQueries({
   mode,
@@ -31,7 +30,6 @@ export function useExploreQueries({
 }>) {
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<DiscoveryFilterValues>({});
-  const [viewport, setViewport] = useState<GeoBounds | null>(null);
   const [mapFilter, setMapFilter] = useState<ExploreMapFilter>(null);
   const centersQuery = usePublishedCenters({
     ...filters,
@@ -42,10 +40,6 @@ export function useExploreQueries({
     null,
   );
   const catalog = useDiscoveryCatalog();
-  const mapEstablishments = useMapEstablishments(viewport, {
-    enabled: mapFilter?.kind !== "tourism",
-    group: mapFilter?.kind === "establishments" ? mapFilter.group : undefined,
-  });
   const nearbyEstablishments = useNearbyEstablishments(
     mode === "ESTABLISHMENTS" && submittedQuery && userLocation
       ? {
@@ -67,13 +61,13 @@ export function useExploreQueries({
       setMapFilter((current) => toggleMapFilter(current, next)),
     /** Centers drawn on the map: hidden while a registry group is selected. */
     mapCenters: mapFilter?.kind === "establishments" ? [] : centers,
-    mapEstablishments:
-      mapFilter?.kind === "tourism"
-        ? []
-        : (mapEstablishments.data?.items ?? []),
+    /** Registry pins: hidden under Turismo, one group, or all of them. */
+    establishmentLayer: {
+      visible: mapFilter?.kind !== "tourism",
+      group: mapFilter?.kind === "establishments" ? mapFilter.group : undefined,
+    },
     nearbyEstablishments,
     publicSearch,
-    setViewport,
     /** Neither centers nor the national search answered: nothing to show. */
     failed:
       mode === "CENTERS" &&
@@ -83,10 +77,7 @@ export function useExploreQueries({
     isFetchingCenters: centersQuery.isFetching,
     isFetchingSearch: centersQuery.isFetching || publicSearch.isFetching,
     isRefreshingMap:
-      mode === "CENTERS" &&
-      (centersQuery.isFetching ||
-        publicSearch.isFetching ||
-        mapEstablishments.isFetching),
+      mode === "CENTERS" && (centersQuery.isFetching || publicSearch.isFetching),
     searchError:
       centersQuery.error ?? (centers.length === 0 ? publicSearch.error : null),
     changeCategory: (categoryCode: string | undefined) => {
@@ -103,9 +94,6 @@ export function useExploreQueries({
       // mapa los datos actuales mientras llegan los nuevos.
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.publishedCenters }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.mapEstablishments,
-        }),
         queryClient.invalidateQueries({ queryKey: queryKeys.discoveryCatalog }),
       ]);
     },

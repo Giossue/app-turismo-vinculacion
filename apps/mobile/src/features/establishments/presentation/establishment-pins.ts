@@ -1,3 +1,7 @@
+import type {
+  CircleLayerSpecification,
+  SymbolLayerSpecification,
+} from "@maplibre/maplibre-react-native";
 import type { TurismoIconName } from "@/core/ui/turismo-icons";
 
 export type EstablishmentPin = Readonly<{
@@ -102,10 +106,12 @@ const pinDefinitions = {
   },
 } as const satisfies Record<string, PinDefinition>;
 
+const establishmentPinImagePrefix = "tourism-establishment-pin-";
+
 const establishmentPins: ReadonlyMap<string, EstablishmentPin> = new Map(
   Object.entries(pinDefinitions).map(([key, definition]) => [
     key,
-    { ...definition, imageName: `tourism-establishment-pin-${key}`, key },
+    { ...definition, imageName: `${establishmentPinImagePrefix}${key}`, key },
   ]),
 );
 
@@ -124,6 +130,28 @@ export const establishmentPinImages: Readonly<Record<string, number>> =
   Object.fromEntries(
     [...establishmentPins.values()].map((pin) => [pin.imageName, pin.asset]),
   );
+
+/**
+ * Style expressions that resolve the `icon` property of a map feature (vector
+ * tiles) to its registered image and its local color, with the default pin
+ * for unknown keys, like `getEstablishmentPin`.
+ */
+export const establishmentPinImageExpression = [
+  "coalesce",
+  ["image", ["concat", establishmentPinImagePrefix, ["get", "icon"]]],
+  ["image", defaultEstablishmentPin.imageName],
+] satisfies NonNullable<SymbolLayerSpecification["layout"]>["icon-image"];
+
+export const establishmentPinColorExpression = [
+  "match",
+  ["get", "icon"],
+  defaultEstablishmentPin.key,
+  defaultEstablishmentPin.color,
+  ...[...establishmentPins.values()]
+    .filter((pin) => pin !== defaultEstablishmentPin)
+    .flatMap((pin) => [pin.key, pin.color]),
+  defaultEstablishmentPin.color,
+] satisfies NonNullable<CircleLayerSpecification["paint"]>["circle-color"];
 
 function getKnownPin(key: keyof typeof pinDefinitions): EstablishmentPin {
   const pin = establishmentPins.get(key);

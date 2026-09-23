@@ -20,11 +20,6 @@ export type PublicMapEstablishment = Readonly<{
   longitude: number;
   approximate: boolean;
   icon: string;
-  color: string;
-}>;
-
-export type MapEstablishmentsResult = Readonly<{
-  items: readonly PublicMapEstablishment[];
 }>;
 
 export type NearbyEstablishmentsResult = Readonly<{

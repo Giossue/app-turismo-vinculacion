@@ -6,9 +6,12 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UseGuards,
 } from "@nestjs/common";
+import { RouteConfig } from "@nestjs/platform-fastify";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import type { FastifyReply } from "fastify";
 
 import { CurrentUser, Roles } from "../auth/auth.decorators";
 import { AuthGuard } from "../auth/auth.guard";
@@ -17,7 +20,7 @@ import type { AuthenticatedUser } from "../auth/auth.types";
 import {
   AdminEstablishmentsQueryDto,
   CreateEstablishmentDto,
-  PublicEstablishmentsMapQueryDto,
+  EstablishmentTileParamsDto,
   PublicEstablishmentsQueryDto,
   ReviewEstablishmentDto,
   SaveEstablishmentDto,
@@ -145,9 +148,19 @@ export class AdminEstablishmentsController {
 export class PublicEstablishmentsController {
   constructor(private readonly establishments: EstablishmentsService) {}
 
-  @Get("map")
-  async map(@Query() query: PublicEstablishmentsMapQueryDto) {
-    return { data: await this.establishments.map(query) };
+  // Un paneo pide varias teselas a la vez: el límite global (300/min) se
+  // agotaría enseguida, y el móvil las guarda en caché según Cache-Control.
+  @Get("tiles/:z/:x/:y")
+  @RouteConfig({ rateLimit: { max: 3000, timeWindow: "1 minute" } })
+  async tile(
+    @Param() coordinates: EstablishmentTileParamsDto,
+    @Res() response: FastifyReply,
+  ) {
+    const tile = await this.establishments.tile(coordinates);
+    response
+      .header("Content-Type", "application/vnd.mapbox-vector-tile")
+      .header("Cache-Control", "public, max-age=300")
+      .send(tile);
   }
 
   @Get("nearby")

@@ -34,7 +34,6 @@ function establishment(name: string, latitude: number): PublicMapEstablishment {
     longitude: -79.00098,
     approximate: false,
     icon: "hotel",
-    color: "#7c3aed",
   };
 }
 

@@ -23,3 +23,7 @@
       como ubicación actual ni se usa para iniciar una ruta.
 - [x] Las rutas y la navegación giro a giro real continúan fuera de alcance de esta
       feature y se habilitan en una sesión de navegación separada.
+- [ ] Mover o acercar el mapa no muestra indicador de carga por los catastros: llegan como
+      teselas vectoriales cacheadas y solo se descargan las que entran en pantalla.
+- [ ] Con el mapa alejado los catastros se ven como puntos agregados; tocarlos acerca el
+      mapa hasta ver sus pines. Los chips filtran sin nuevas peticiones.

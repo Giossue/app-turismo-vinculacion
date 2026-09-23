@@ -13,8 +13,8 @@ export type SearchPlaceTarget =
   | Readonly<{ kind: "feature"; selection: MapFeatureSelection }>
   | Readonly<{ kind: "coordinate"; coordinate: GeoCoordinate; title: string }>;
 
-/** Pin used for establishments whose result carries no icon or color. */
-export type FallbackEstablishmentPin = Readonly<{ key: string; color: string }>;
+/** Pin used for establishments whose result carries no icon. */
+export type FallbackEstablishmentPin = Readonly<{ key: string }>;
 
 /**
  * Resolves a public search result. Centers prefer the loaded map copy; a
@@ -47,7 +47,6 @@ export function getSearchPlaceTarget(
           longitude: place.longitude,
           approximate: place.approximate ?? false,
           icon: place.icon ?? fallbackPin.key,
-          color: place.color ?? fallbackPin.color,
         },
       },
     };

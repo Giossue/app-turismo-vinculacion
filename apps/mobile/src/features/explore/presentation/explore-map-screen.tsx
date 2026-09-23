@@ -3,7 +3,6 @@ import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
-import type { GeoBounds } from "@/core/geo/types";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { useTourismMenu } from "@/core/ui/tourism-navigation";
 import {
@@ -158,10 +157,6 @@ export function ExploreMapScreen() {
     search.closeFocus();
     overlay.focusFeature({ kind: "center", center });
   };
-  const handleViewportChange = (bounds: GeoBounds) => {
-    location.clearLocationFocus();
-    data.setViewport(bounds);
-  };
 
   if (data.failed) {
     return (
@@ -200,7 +195,7 @@ export function ExploreMapScreen() {
           <CenterMap
             attributionInset={{ bottom: tabBarInset, left: 0 }}
             centers={data.mapCenters}
-            establishments={data.mapEstablishments}
+            establishmentLayer={data.establishmentLayer}
             focusCoordinate={search.focusCoordinate?.coordinate}
             focusCoordinateKey={search.focusCoordinate?.key}
             focusLocationKey={location.focusLocationKey}
@@ -212,7 +207,6 @@ export function ExploreMapScreen() {
             onEstablishmentPress={overlay.selectEstablishment}
             onLocationFocusChange={location.onLocationFocusChange}
             onOverlappingFeaturePress={overlay.showChoices}
-            onViewportChange={handleViewportChange}
             resetNorthKey={resetNorthKey}
             userLocation={location.userLocation}
           />

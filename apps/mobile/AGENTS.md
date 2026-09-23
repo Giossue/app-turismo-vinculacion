@@ -83,3 +83,7 @@ La selección de un centro debe mantener el código seleccionado en el estado de
 abrir la ficha enseguida, mientras la cámara se mueve al zoom predeterminado; la cámara
 centra el pin en la parte visible del mapa, encima de la ficha (padding inferior). Los pines no cambian
 de tamaño ni de icono al seleccionarse: no hay capa ni estilo de pin seleccionado.
+Los catastros llegan como teselas vectoriales (`VectorSource` sobre
+`GET /establishments/tiles/{z}/{x}/{y}`), nunca como una lista JSON por viewport: MapLibre
+pide, cachea y descarta las teselas, y los chips filtran con el `filter` de la capa sin
+nuevas peticiones. Los datos de la ficha salen de las propiedades del feature tocado.

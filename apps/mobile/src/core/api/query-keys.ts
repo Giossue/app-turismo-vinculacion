@@ -12,7 +12,6 @@ export const queryKeys = {
   // Paginated (infinite) list; the segment discards the single-page shape.
   centerOpinions: ["center-opinions", "pages-v1"],
   discoveryCatalog: ["discovery-catalog"],
-  mapEstablishments: ["public-establishments-map", "osmic-pins-v1"],
   nearbyEstablishments: ["nearby-establishments"],
   offlineCities: ["offline-cities"],
   offlineStoredCities: ["offline-stored-cities"],

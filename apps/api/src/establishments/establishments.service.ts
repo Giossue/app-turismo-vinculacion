@@ -7,11 +7,14 @@ import {
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource, EntityManager } from "typeorm";
 
-import { ESTABLISHMENT_MAP_GROUPS } from "./establishment-groups";
+import {
+  buildEstablishmentTileQuery,
+  type EstablishmentTileCoordinates,
+  isValidTile,
+} from "./establishment-tiles";
 import type {
   AdminEstablishmentsQueryDto,
   CreateEstablishmentDto,
-  PublicEstablishmentsMapQueryDto,
   PublicEstablishmentsQueryDto,
   ReviewEstablishmentDto,
   SaveEstablishmentDto,
@@ -539,101 +542,16 @@ export class EstablishmentsService {
     return { items: rows };
   }
 
-  async map(query: PublicEstablishmentsMapQueryDto) {
-    const bounds = [query.west, query.south, query.east, query.north];
-    const hasAnyBound = bounds.some((value) => value !== undefined);
-    const hasAllBounds = bounds.every((value) => value !== undefined);
-    if (hasAnyBound && !hasAllBounds) {
-      throw new BadRequestException(
-        "El mapa requiere los cuatro límites del viewport.",
-      );
+  /** Tesela vectorial (MVT) de los catastros publicados; vacía si no hay puntos. */
+  async tile(coordinates: EstablishmentTileCoordinates): Promise<Buffer> {
+    if (!isValidTile(coordinates)) {
+      throw new BadRequestException("La tesela solicitada no existe.");
     }
-
-    const params: unknown[] = [];
-    const add = (value: unknown) => {
-      params.push(value);
-      return `$${params.length}`;
-    };
-    const latitudeExpression = "e.latitud";
-    const longitudeExpression = "e.longitud";
-    const where = [
-      "e.activo = TRUE",
-      "e.estado_revision = 'PUBLICADO'",
-      `${latitudeExpression} IS NOT NULL`,
-      `${longitudeExpression} IS NOT NULL`,
-    ];
-    if (hasAllBounds) {
-      const west = add(query.west);
-      const south = add(query.south);
-      const east = add(query.east);
-      const north = add(query.north);
-      where.push(
-        `${longitudeExpression} BETWEEN ${west} AND ${east}`,
-        `${latitudeExpression} BETWEEN ${south} AND ${north}`,
-      );
-    }
-    if (query.group) {
-      const group: Readonly<{
-        activities?: readonly string[];
-        classifications?: readonly string[];
-      }> = ESTABLISHMENT_MAP_GROUPS[query.group];
-      const matches: string[] = [];
-      if (group.activities) {
-        matches.push(`activity_catalog.nombre = ANY(${add(group.activities)})`);
-      }
-      if (group.classifications) {
-        matches.push(
-          `classification_catalog.nombre = ANY(${add(group.classifications)})`,
-        );
-      }
-      where.push(`(${matches.join(" OR ")})`);
-    }
-    const limit = add(Math.min(query.limit ?? 500, 500));
-    const rows = (await this.dataSource.query(
-      `SELECT e.nombre_comercial AS name,
-              COALESCE(category_catalog.nombre, e.categoria) AS category,
-              COALESCE(classification_catalog.nombre, e.clasificacion) AS classification,
-              CASE
-                WHEN COALESCE(category_catalog.nombre, e.categoria) IS NULL THEN NULL
-                ELSE CONCAT_WS(' · ',
-                  COALESCE(classification_catalog.nombre, e.clasificacion),
-                  COALESCE(category_catalog.nombre, e.categoria)
-                )
-              END AS "categoryLabel",
-              ${latitudeExpression}::double precision AS latitude,
-              ${longitudeExpression}::double precision AS longitude,
-              e.coordenadas_aproximadas AS approximate,
-              COALESCE(NULLIF(classification_catalog.icono, 'mapPin'), NULLIF(category_catalog.icono, 'mapPin'), 'shop-supermarket') AS icon,
-              COALESCE(classification_catalog.color, category_catalog.color, '#be123c') AS color
-         ${establishmentJoin}
-        WHERE ${where.join(" AND ")}
-        ORDER BY e.nombre_comercial, e.id
-        LIMIT ${limit}`,
-      params,
-    )) as Array<{
-      name: string;
-      category: string | null;
-      classification: string | null;
-      categoryLabel: string | null;
-      latitude: string | number;
-      longitude: string | number;
-      approximate: boolean;
-      icon: string;
-      color: string;
+    const { sql, params } = buildEstablishmentTileQuery(coordinates);
+    const [row] = (await this.dataSource.query(sql, params)) as Array<{
+      tile: Buffer;
     }>;
-
-    return {
-      items: rows.map((row) => ({
-        name: row.name,
-        category: row.category,
-        categoryLabel: row.categoryLabel ?? row.category,
-        latitude: Number(row.latitude),
-        longitude: Number(row.longitude),
-        approximate: row.approximate,
-        icon: row.icon,
-        color: row.color,
-      })),
-    };
+    return row?.tile ?? Buffer.alloc(0);
   }
 
   async nearby(query: PublicEstablishmentsQueryDto) {

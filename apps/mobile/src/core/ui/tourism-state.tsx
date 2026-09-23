@@ -19,6 +19,7 @@ export type TourismStateVariant = "loading" | "error" | "empty";
  * button labeled `actionLabel` (default `Reintentar`).
  */
 export function TourismStateView({
+  actionIcon,
   actionLabel,
   actionPending = false,
   icon,
@@ -28,6 +29,7 @@ export function TourismStateView({
   title,
   variant,
 }: Readonly<{
+  actionIcon?: TurismoIconName;
   actionLabel?: string;
   actionPending?: boolean;
   icon?: TurismoIconName;
@@ -91,7 +93,7 @@ export function TourismStateView({
       {onAction ? (
         <TourismActionButton
           disabled={actionPending}
-          icon={variant === "error" ? "refresh" : undefined}
+          icon={actionIcon ?? (variant === "error" ? "refresh" : undefined)}
           label={actionLabel ?? "Reintentar"}
           loading={actionPending}
           mode={compact ? "outlined" : "contained"}
