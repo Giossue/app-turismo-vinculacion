@@ -58,11 +58,7 @@ export function getSelectedEstablishmentKey(
 
 /** What the Android Back button closes first on the Explore screen. */
 export type ExploreBackAction =
-  | "closeSearchFocus"
-  | "closeMenu"
-  | "closeOverlay"
-  | "clearSearch"
-  | null;
+  "closeSearchFocus" | "closeMenu" | "closeOverlay" | "clearSearch" | null;
 
 export function getExploreBackAction({
   menuVisible,

@@ -14,7 +14,12 @@ export function getRouteStepIcon(step: RouteStep): TurismoIconName {
   if (maneuverType === "arrive" || maneuverType === "destination") {
     return "flag";
   }
-  if (maneuverType.includes("uturn") || maneuverType.includes("u turn")) {
+  // OSRM reports U-turns as `modifier: "uturn"`; other sources in the type.
+  if (
+    modifier === "uturn" ||
+    maneuverType.includes("uturn") ||
+    maneuverType.includes("u turn")
+  ) {
     return turnsRight ? "redo" : "undo";
   }
   if (maneuverType.includes("roundabout") || maneuverType.includes("rotary")) {

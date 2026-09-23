@@ -5,7 +5,10 @@ import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismIconAction } from "@/core/ui/tourism-controls";
 import { turismoMetrics, turismoSpacing } from "@/core/ui/tokens";
 import type { PublicCenter } from "@/features/centers/domain/public-center";
-import { SearchModeField, type SearchModeFieldProps } from "./search-mode-field";
+import {
+  SearchModeField,
+  type SearchModeFieldProps,
+} from "./search-mode-field";
 import { SearchSuggestionsPanel } from "./search-suggestions-panel";
 
 const overlayEdges: readonly Edge[] = ["top", "bottom"];

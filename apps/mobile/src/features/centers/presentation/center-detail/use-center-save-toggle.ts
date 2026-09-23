@@ -17,8 +17,9 @@ export function useCenterSaveToggle(
   const savedCenters = useSavedCenters();
   const mutation = useSavedCenterMutation();
   const saved =
-    savedCenters.data?.some((savedCenter) => savedCenter.code === center.code) ??
-    false;
+    savedCenters.data?.some(
+      (savedCenter) => savedCenter.code === center.code,
+    ) ?? false;
 
   const toggle = () => {
     if (auth.status !== "authenticated") {
@@ -29,7 +30,9 @@ export function useCenterSaveToggle(
   };
 
   return {
-    accessibilityLabel: saved ? "Quitar de guardados" : "Guardar centro turístico",
+    accessibilityLabel: saved
+      ? "Quitar de guardados"
+      : "Guardar centro turístico",
     saved,
     toggle,
   };

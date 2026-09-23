@@ -31,7 +31,11 @@ export function MapAttributionButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
-        { bottom, left, opacity: pressed ? turismoOpacity.pressed : idleOpacity },
+        {
+          bottom,
+          left,
+          opacity: pressed ? turismoOpacity.pressed : idleOpacity,
+        },
       ]}
     >
       <Text style={[styles.icon, { color: colors.attribution }]}>i</Text>

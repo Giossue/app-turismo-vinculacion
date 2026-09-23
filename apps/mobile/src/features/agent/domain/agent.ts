@@ -2,13 +2,21 @@ import { z } from "zod";
 
 import { routeModes } from "@/features/routing/domain/routing";
 
+/** Limits of the API's chat contract (`agentChatSchema`). */
+export const AGENT_MESSAGE_MAX_LENGTH = 2_000;
+export const AGENT_HISTORY_MAX_ITEMS = 12;
+export const AGENT_MAX_ACCURACY_METERS = 10_000;
+
 const finiteCoordinate = z.number().finite();
 
 export const agentLocationSchema = z
   .object({
     latitude: finiteCoordinate.min(-90).max(90),
     longitude: finiteCoordinate.min(-180).max(180),
-    accuracyMeters: finiteCoordinate.min(0).max(10_000).optional(),
+    accuracyMeters: finiteCoordinate
+      .min(0)
+      .max(AGENT_MAX_ACCURACY_METERS)
+      .optional(),
   })
   .strict();
 
@@ -126,7 +134,7 @@ export const agentResponseSchema = z
 export const agentHistoryItemSchema = z
   .object({
     role: z.enum(["user", "assistant"]),
-    content: z.string().trim().min(1).max(2_000),
+    content: z.string().trim().min(1).max(AGENT_MESSAGE_MAX_LENGTH),
   })
   .strict();
 
@@ -139,12 +147,33 @@ export type AgentResponse = z.infer<typeof agentResponseSchema>;
 export type AgentSource = z.infer<typeof agentSourceSchema>;
 export type AgentHistoryItem = Readonly<z.infer<typeof agentHistoryItemSchema>>;
 
+export type StartRouteAction = Extract<AgentAction, { type: "start_route" }>;
+
+/**
+ * A chat bubble. `kind` marks bubbles that are not part of a successful
+ * exchange (the greeting, an error, an answer cut off mid-stream); they are
+ * shown but never sent back to the agent as history.
+ */
 export type AgentMessage = Readonly<{
   id: string;
   role: "assistant" | "user";
   text: string;
+  kind?: "intro" | "error" | "partial";
   cards?: readonly AgentCard[];
   itinerary?: AgentItinerary;
   actions?: readonly AgentAction[];
   sources?: readonly AgentSource[];
 }>;
+
+export function isSameRouteAction(
+  left: StartRouteAction,
+  right: StartRouteAction,
+): boolean {
+  return (
+    left.mode === right.mode &&
+    left.destination.type === right.destination.type &&
+    left.destination.name === right.destination.name &&
+    left.destination.latitude === right.destination.latitude &&
+    left.destination.longitude === right.destination.longitude
+  );
+}

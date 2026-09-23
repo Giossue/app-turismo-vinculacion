@@ -119,7 +119,9 @@ export function navigationSessionReducer(
         backgroundNotice: navigationMessages.backgroundUnavailable,
       };
     case "background-started":
-      return state.backgroundNotice ? { ...state, backgroundNotice: null } : state;
+      return state.backgroundNotice
+        ? { ...state, backgroundNotice: null }
+        : state;
   }
 }
 

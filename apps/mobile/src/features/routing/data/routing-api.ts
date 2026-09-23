@@ -1,11 +1,7 @@
 import { z } from "zod";
 
 import { getApiUrl } from "@/core/api/api-url";
-import {
-  ApiError,
-  requestJson,
-  type ApiRequestOptions,
-} from "@/core/api/http";
+import { ApiError, requestJson, type ApiRequestOptions } from "@/core/api/http";
 import {
   routeModes,
   type CalculatedRoute,

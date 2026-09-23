@@ -5,6 +5,7 @@ import {
   getNavigationGuidance,
   getNavigationNotification,
   getRouteRemainingMetrics,
+  hasArrivedAtDestination,
 } from "./navigation-guidance";
 import type { CalculatedRoute } from "./routing";
 
@@ -81,5 +82,22 @@ describe("navigation guidance", () => {
       body: "En 180 m: Gira a la derecha por Calle R-23",
       key: "1:180 m:Gira a la derecha por Calle R-23",
     });
+  });
+
+  it("counts arrival within the shared threshold of the destination", () => {
+    const destination = { latitude: -1.59, longitude: -79.002 };
+
+    expect(
+      hasArrivedAtDestination(
+        { latitude: -1.59, longitude: -79.0018 },
+        destination,
+      ),
+    ).toBe(true);
+    expect(
+      hasArrivedAtDestination(
+        { latitude: -1.59, longitude: -79.001 },
+        destination,
+      ),
+    ).toBe(false);
   });
 });

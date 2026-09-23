@@ -9,22 +9,25 @@ import { useUserLocation } from "@/core/location/use-user-location";
  */
 export function useExploreLocationFocus() {
   const { coordinate, requestLocation, status } = useUserLocation();
-  const [focusLocationKey, setFocusLocationKey] = useState(0);
   const [confirmedFocusKey, setConfirmedFocusKey] = useState<number | null>(
     null,
   );
   const hasFreshLocation = status === "ready" && coordinate !== null;
+  // Every request (initial, button, return to foreground) passes through
+  // `requesting`, so a position turning ready is the only trigger that
+  // moves the camera to the user; the button does not recenter again.
+  const [locationFocus, setLocationFocus] = useState({ fresh: false, key: 0 });
+  if (locationFocus.fresh !== hasFreshLocation) {
+    setLocationFocus({
+      fresh: hasFreshLocation,
+      key: hasFreshLocation ? locationFocus.key + 1 : locationFocus.key,
+    });
+  }
+  const focusLocationKey = locationFocus.key;
 
   useEffect(() => {
     if (status === "idle") void requestLocation({ forceRefresh: true });
   }, [requestLocation, status]);
-
-  // Every request (initial, button, return to foreground) passes through
-  // `requesting`, so this is the only place that moves the camera to the
-  // user; the button does not need to recenter again after its request.
-  useEffect(() => {
-    if (hasFreshLocation) setFocusLocationKey((key) => key + 1);
-  }, [hasFreshLocation]);
 
   const locationFocused =
     status === "ready" && confirmedFocusKey === focusLocationKey;

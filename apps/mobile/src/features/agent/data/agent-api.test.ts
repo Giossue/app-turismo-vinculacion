@@ -1,76 +1,63 @@
 import { describe, expect, it, vi } from "vitest";
+import { ZodError } from "zod";
 
-import { askTourismAgent, askTourismAgentStream } from "./agent-api";
+import { ApiError } from "@/core/api/http";
+import { agentResponseSchema } from "../domain/agent";
+import {
+  AGENT_INVALID_FORMAT_MESSAGE,
+  askTourismAgentStream,
+  buildAgentRequestBody,
+} from "./agent-api";
 
-describe("askTourismAgent", () => {
-  it("sends approximate location and returns the structured response", async () => {
-    const fetcher = vi.fn().mockResolvedValue({
-      json: async () => ({
-        text: "Hay un mirador publicado en Guaranda.",
-        cards: [],
-        actions: [],
-        itinerary: {
-          title: "Paseo recomendado",
-          summary: "Lugares publicados para visitar.",
-          stops: [
-            {
-              type: "center",
-              code: "GUA-001",
-              name: "Primer lugar",
-              latitude: -1.59,
-              longitude: -79,
-              order: 1,
-            },
-            {
-              type: "center",
-              code: "GUA-002",
-              name: "Segundo lugar",
-              latitude: -1.58,
-              longitude: -79.01,
-              order: 2,
-            },
-          ],
-        },
-        sources: [],
-      }),
-      ok: true,
-    });
+const apiUrl = "http://api.test/api/v1";
 
-    await expect(
-      askTourismAgent(
+function sseResponse(chunks: readonly string[]): Response {
+  const encoder = new TextEncoder();
+  return new Response(
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+        controller.close();
+      },
+    }),
+    { headers: { "content-type": "text/event-stream" }, status: 200 },
+  );
+}
+
+function completeEvent(response: unknown): string {
+  return `data: ${JSON.stringify({ type: "complete", response })}\n\n`;
+}
+
+describe("buildAgentRequestBody", () => {
+  it("rounds the location and clamps its accuracy to the contract", () => {
+    expect(
+      buildAgentRequestBody(
         "Quiero una buena vista",
         [{ role: "user", content: "Estoy en Guaranda" }],
-        {
-          apiUrl: "http://api.test/api/v1",
-          fetcher,
-          location: {
-            latitude: -1.59234,
-            longitude: -79.00123,
-            accuracyMeters: 35,
-          },
-        },
+        { latitude: -1.59234, longitude: -79.00123, accuracyMeters: 35_000 },
       ),
-    ).resolves.toMatchObject({
-      itinerary: { stops: [{ code: "GUA-001" }, { code: "GUA-002" }] },
-      text: expect.stringContaining("mirador"),
-    });
-    expect(fetcher).toHaveBeenCalledWith("http://api.test/api/v1/ai/chat", {
-      body: JSON.stringify({
-        message: "Quiero una buena vista",
-        history: [{ role: "user", content: "Estoy en Guaranda" }],
-        location: { latitude: -1.592, longitude: -79.001, accuracyMeters: 35 },
-      }),
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
+    ).toEqual({
+      message: "Quiero una buena vista",
+      history: [{ role: "user", content: "Estoy en Guaranda" }],
+      location: {
+        latitude: -1.592,
+        longitude: -79.001,
+        accuracyMeters: 10_000,
       },
-      method: "POST",
     });
   });
 
-  it("accepts POI cards and route actions without an internal identifier", async () => {
-    const fetcher = vi.fn().mockResolvedValue({
-      json: async () => ({
+  it("rejects messages beyond the API limit", () => {
+    expect(() => buildAgentRequestBody("x".repeat(2_001), [])).toThrow(
+      ZodError,
+    );
+  });
+});
+
+describe("agent response schema", () => {
+  it("accepts POI cards and route actions without an internal identifier", () => {
+    expect(
+      agentResponseSchema.parse({
         text: "Encontré un punto de interés cercano.",
         cards: [
           {
@@ -103,40 +90,27 @@ describe("askTourismAgent", () => {
           { type: "routing", label: "Cálculo de ruta vial" },
         ],
       }),
-      ok: true,
-    });
-
-    await expect(
-      askTourismAgent("¿Qué hay cerca?", [], {
-        apiUrl: "http://api.test/api/v1",
-        fetcher,
-      }),
-    ).resolves.toMatchObject({
+    ).toMatchObject({
       cards: [{ type: "poi", name: "Plaza cultural" }],
       actions: [{ destination: { type: "poi" } }],
     });
-    expect(fetcher.mock.calls[0]?.[1]).not.toHaveProperty("id");
   });
+});
 
+describe("askTourismAgentStream", () => {
   it("reconstructs fragmented SSE events and forwards cumulative text", async () => {
-    const chunks = [
-      'data: {"type":"text-delta","text":"Ho',
-      'la"}\n\n' +
-        'data: {"type":"complete","response":{"text":"Hola viajero.","cards":[],"actions":[],"sources":[]}}\n\n' +
-        "data: [DONE]\n\n",
-    ];
-    const encoder = new TextEncoder();
     const fetcher = vi.fn().mockResolvedValue(
-      new Response(
-        new ReadableStream<Uint8Array>({
-          start(controller) {
-            for (const chunk of chunks)
-              controller.enqueue(encoder.encode(chunk));
-            controller.close();
-          },
-        }),
-        { headers: { "content-type": "text/event-stream" }, status: 200 },
-      ),
+      sseResponse([
+        'data: {"type":"text-delta","text":"Ho',
+        'la"}\n\n' +
+          completeEvent({
+            text: "Hola viajero.",
+            cards: [],
+            actions: [],
+            sources: [],
+          }) +
+          "data: [DONE]\n\n",
+      ]),
     );
     const textParts: string[] = [];
 
@@ -147,7 +121,11 @@ describe("askTourismAgent", () => {
         (text) => {
           textParts.push(text);
         },
-        { apiUrl: "http://api.test/api/v1", fetcher },
+        {
+          apiUrl,
+          fetcher,
+          location: { latitude: -1.59234, longitude: -79.00123 },
+        },
       ),
     ).resolves.toEqual({
       text: "Hola viajero.",
@@ -157,56 +135,95 @@ describe("askTourismAgent", () => {
     });
 
     expect(textParts).toEqual(["Hola"]);
-    expect(fetcher).toHaveBeenCalledWith(
-      "http://api.test/api/v1/ai/chat/stream",
-      expect.objectContaining({
-        headers: {
-          Accept: "text/event-stream",
-          "Content-Type": "application/json",
-        },
-        method: "POST",
+    expect(fetcher).toHaveBeenCalledWith(`${apiUrl}/ai/chat/stream`, {
+      body: JSON.stringify({
+        message: "Hola",
+        history: [],
+        location: { latitude: -1.592, longitude: -79.001 },
       }),
-    );
+      headers: {
+        Accept: "text/event-stream",
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+      signal: undefined,
+    });
   });
 
   it("rejects a stream without a final response", async () => {
-    const fetcher = vi.fn().mockResolvedValue(
-      new Response('data: {"type":"text-delta","text":"Hola"}\n\n', {
-        headers: { "content-type": "text/event-stream" },
-        status: 200,
-      }),
-    );
+    const fetcher = vi
+      .fn()
+      .mockResolvedValue(
+        sseResponse(['data: {"type":"text-delta","text":"Hola"}\n\n']),
+      );
 
     await expect(
-      askTourismAgentStream("Hola", [], vi.fn(), {
-        apiUrl: "http://api.test/api/v1",
-        fetcher,
-      }),
+      askTourismAgentStream("Hola", [], vi.fn(), { apiUrl, fetcher }),
     ).rejects.toThrow("respuesta incompleta");
   });
 
-  it("rejects malformed structured responses", async () => {
-    const fetcher = vi.fn().mockResolvedValue({
-      json: async () => ({ text: "solo texto" }),
-      ok: true,
+  it("rejects malformed structured responses with a safe message", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValue(sseResponse([completeEvent({ text: "solo texto" })]));
+
+    const request = askTourismAgentStream("Hola", [], vi.fn(), {
+      apiUrl,
+      fetcher,
     });
+    await expect(request).rejects.toBeInstanceOf(ApiError);
+    await expect(request).rejects.toThrow(AGENT_INVALID_FORMAT_MESSAGE);
+  });
+
+  it("surfaces the agent's error events", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValue(
+        sseResponse([
+          'data: {"type":"error","message":"El agente no está disponible en este momento."}\n\n',
+        ]),
+      );
+
     await expect(
-      askTourismAgent("Hola", [], {
-        apiUrl: "http://api.test/api/v1",
-        fetcher,
-      }),
-    ).rejects.toThrow("formato inválido");
+      askTourismAgentStream("Hola", [], vi.fn(), { apiUrl, fetcher }),
+    ).rejects.toThrow("agente no está disponible");
   });
 
   it("surfaces provider errors without exposing response details", async () => {
     const fetcher = vi
       .fn()
-      .mockResolvedValue({ ok: false, text: async () => "secret" });
+      .mockResolvedValue({ ok: false, status: 503, text: async () => "secret" });
+
     await expect(
-      askTourismAgent("Hola", [], {
-        apiUrl: "http://api.test/api/v1",
-        fetcher,
-      }),
+      askTourismAgentStream("Hola", [], vi.fn(), { apiUrl, fetcher }),
     ).rejects.toThrow("agente no está disponible");
+  });
+
+  it("stops reading when the conversation is closed", async () => {
+    const controller = new AbortController();
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start(stream) {
+            stream.enqueue(
+              new TextEncoder().encode(
+                'data: {"type":"text-delta","text":"Hola"}\n\n',
+              ),
+            );
+            // The server keeps the connection open.
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const request = askTourismAgentStream(
+      "Hola",
+      [],
+      () => controller.abort(),
+      { apiUrl, fetcher, signal: controller.signal },
+    );
+
+    await expect(request).rejects.toThrow("respuesta incompleta");
   });
 });

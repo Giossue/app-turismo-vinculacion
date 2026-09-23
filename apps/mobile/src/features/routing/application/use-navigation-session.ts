@@ -1,13 +1,7 @@
 import * as Location from "expo-location";
 import * as Speech from "expo-speech";
 import { AppState, Platform } from "react-native";
-import {
-  useEffect,
-  useEffectEvent,
-  useReducer,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useEffectEvent, useReducer, useRef, useState } from "react";
 
 import type { GeoCoordinate } from "@/core/geo/types";
 import { getLocationAvailability } from "@/core/location/location-availability";
@@ -124,70 +118,68 @@ export function useNavigationSession({
     announcedStepRef.current = 0;
   }, [active, route]);
 
-  const processFix = useEffectEvent(
-    (location: PersistedNavigationLocation) => {
-      if (!isReliableLocationAccuracy(location.accuracy)) {
-        dispatch({ type: "imprecise-fix" });
-        return;
-      }
-      if (location.timestamp <= lastFixAtRef.current) return;
-      lastFixAtRef.current = location.timestamp;
+  const processFix = useEffectEvent((location: PersistedNavigationLocation) => {
+    if (!isReliableLocationAccuracy(location.accuracy)) {
+      dispatch({ type: "imprecise-fix" });
+      return;
+    }
+    if (location.timestamp <= lastFixAtRef.current) return;
+    lastFixAtRef.current = location.timestamp;
 
-      const { coordinate } = location;
-      const remaining = route
-        ? getRouteRemainingMetrics(route, coordinate)
-        : null;
-      if (
-        !arrivedRef.current &&
-        destination &&
-        hasArrivedAtDestination(coordinate, destination)
-      ) {
-        arrivedRef.current = true;
-        replaceSpeech(speechRequestRef, ["Has llegado a tu destino"]);
-      }
-      if (arrivedRef.current || !route) {
-        dispatch({
-          arrived: arrivedRef.current,
-          coordinate,
-          guidance: null,
-          offRoute: false,
-          remaining,
-          type: "fix",
-        });
-        return;
-      }
-
-      const guidance = getNavigationGuidance(route, coordinate);
-      if (
-        guidance &&
-        guidance.stepIndex > announcedStepRef.current &&
-        (guidance.stepIndex === 0 ||
-          guidance.distanceMeters <= voiceTriggerDistanceMeters)
-      ) {
-        replaceSpeech(
-          speechRequestRef,
-          getSpeechInstructions(route, guidance.stepIndex),
-        );
-        announcedStepRef.current = guidance.stepIndex;
-      }
-
-      const now = Date.now();
-      const offRoute =
-        getDistanceToRouteMeters(route, coordinate) > offRouteThresholdMeters &&
-        !isRecalculating &&
-        now - lastRerouteAtRef.current >= rerouteCooldownMs;
-      if (offRoute) lastRerouteAtRef.current = now;
+    const { coordinate } = location;
+    const remaining = route
+      ? getRouteRemainingMetrics(route, coordinate)
+      : null;
+    if (
+      !arrivedRef.current &&
+      destination &&
+      hasArrivedAtDestination(coordinate, destination)
+    ) {
+      arrivedRef.current = true;
+      replaceSpeech(speechRequestRef, ["Has llegado a tu destino"]);
+    }
+    if (arrivedRef.current || !route) {
       dispatch({
-        arrived: false,
+        arrived: arrivedRef.current,
         coordinate,
-        guidance,
-        offRoute,
+        guidance: null,
+        offRoute: false,
         remaining,
         type: "fix",
       });
-      if (offRoute) onReroute(coordinate);
-    },
-  );
+      return;
+    }
+
+    const guidance = getNavigationGuidance(route, coordinate);
+    if (
+      guidance &&
+      guidance.stepIndex > announcedStepRef.current &&
+      (guidance.stepIndex === 0 ||
+        guidance.distanceMeters <= voiceTriggerDistanceMeters)
+    ) {
+      replaceSpeech(
+        speechRequestRef,
+        getSpeechInstructions(route, guidance.stepIndex),
+      );
+      announcedStepRef.current = guidance.stepIndex;
+    }
+
+    const now = Date.now();
+    const offRoute =
+      getDistanceToRouteMeters(route, coordinate) > offRouteThresholdMeters &&
+      !isRecalculating &&
+      now - lastRerouteAtRef.current >= rerouteCooldownMs;
+    if (offRoute) lastRerouteAtRef.current = now;
+    dispatch({
+      arrived: false,
+      coordinate,
+      guidance,
+      offRoute,
+      remaining,
+      type: "fix",
+    });
+    if (offRoute) onReroute(coordinate);
+  });
 
   useEffect(() => {
     if (!active) {
@@ -277,7 +269,10 @@ export function useNavigationSession({
         subscription = nextSubscription;
       } catch {
         if (!disposed) {
-          dispatch({ message: navigationMessages.startFailed, type: "blocked" });
+          dispatch({
+            message: navigationMessages.startFailed,
+            type: "blocked",
+          });
         }
       }
     };

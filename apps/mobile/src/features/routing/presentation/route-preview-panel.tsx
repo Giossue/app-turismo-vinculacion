@@ -170,7 +170,10 @@ export function RoutePreviewPanel({
         accessibilityRole="button"
         accessibilityState={{ expanded }}
         onPress={() => onExpandedChange(!expanded)}
-        style={({ pressed }) => [styles.handleButton, pressed && styles.pressed]}
+        style={({ pressed }) => [
+          styles.handleButton,
+          pressed && styles.pressed,
+        ]}
       >
         <View style={[styles.handle, { backgroundColor: colors.border }]} />
       </Pressable>

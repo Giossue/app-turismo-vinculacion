@@ -1,4 +1,7 @@
-import { OfflineManager, type OfflinePack } from "@maplibre/maplibre-react-native";
+import {
+  OfflineManager,
+  type OfflinePack,
+} from "@maplibre/maplibre-react-native";
 
 import { getCoordinateBounds } from "@/core/geo/bounds";
 import type { GeoBoundingBox } from "@/core/geo/types";

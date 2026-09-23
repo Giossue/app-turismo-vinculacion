@@ -52,7 +52,11 @@ export function CenterInformation({
           />
         ) : null}
       </TourismSection>
-      <TourismSection icon="calendar" title="Ingreso y horario" variant={variant}>
+      <TourismSection
+        icon="calendar"
+        title="Ingreso y horario"
+        variant={variant}
+      >
         {admission ? (
           <>
             <TourismInfoRow

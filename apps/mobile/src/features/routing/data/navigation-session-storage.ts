@@ -134,9 +134,7 @@ export function saveNavigationSession(
 export function saveNavigationProgress(
   progress: NavigationProgress,
 ): Promise<boolean> {
-  return enqueueWrite(() =>
-    writeJson(navigationProgressStorageKey, progress),
-  );
+  return enqueueWrite(() => writeJson(navigationProgressStorageKey, progress));
 }
 
 /**

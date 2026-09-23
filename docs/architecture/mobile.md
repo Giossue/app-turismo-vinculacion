@@ -55,7 +55,12 @@ Las pantallas secundarias usan `TourismScreenFrame` como shell compartido. Este 
 centraliza safe areas, encabezado, ancho máximo de contenido y márgenes horizontales. La
 pantalla principal vive en un `Tabs` de Expo Router para conservar la estructura de rutas,
 pero el shell del mapa no renderiza barra inferior: el mapa ocupa toda la pantalla y sus
-acciones efímeras no crean entradas de navegación. El chat del agente se monta dentro de
+acciones efímeras no crean entradas de navegación. `Cómo llegar` (`src/app/route.tsx`) es
+la otra excepción de mapa a pantalla completa: MapLibre ocupa toda la pantalla y el panel de
+vista previa o el modo de navegación activa se dibujan encima con los mismos tokens y
+controles `Tourism*`; la atribución del mapa se desplaza por encima de ellos. Si el enlace no
+trae un destino válido, la ruta sí usa `TourismScreenFrame` con `Volver` y un estado de
+error. El chat del agente se monta dentro de
 una sheet nativa de altura completa sobre el mapa; no se cierra por gesto y muestra una `X`
 en el encabezado. El compositor usa el manejo nativo de teclado y permanece sobre el área
 visible cuando aparece el teclado del sistema.
@@ -93,6 +98,9 @@ Antes de crear una utilidad o un componente nuevo, reutilizar estos módulos del
   políticas de persistencia y de cierre de sesión. `src/core/api/media-url.ts`:
   `resolveMediaUrl` para fotografías servidas por la API.
 - `src/core/storage/json-storage.ts`: `readJson`/`writeJson`/`removeJson` validados con zod.
+- `src/core/location`: `getLocationAvailability` (permiso foreground y proveedor/GPS, con
+  `locationUnavailableMessages`), `toCoordinate` e `isReliableLocationAccuracy`.
+  `src/core/navigation/use-screen-back-handler.ts`: `useScreenBackHandler`.
 - `src/core/navigation/search-params.ts`: `firstSearchParam`. Las rutas tipadas se construyen
   con `buildRouteHref`/`parseRouteSearchParams` (`features/routing/presentation/route-href.ts`)
   y `buildLoginHref`/`parseReturnTo` (`features/auth/application/login-href.ts`); no usar
@@ -106,6 +114,18 @@ Antes de crear una utilidad o un componente nuevo, reutilizar estos módulos del
   `use-basemap-style`, `use-map-lifecycle`, `MapLoadingOverlay` y `UserLocationLayers`
   (`features/map/presentation`), compartidos por el mapa de Explorar y el de rutas. Los pines
   del catastro se resuelven con `getEstablishmentPin` (`establishment-pins.ts`).
+  `MapAttributionButton` lo dibuja cada mapa (`CenterMap` recibe `attributionInset`);
+  `MapCompass` se suscribe al rumbo mediante `createMapBearingStore` para que girar el mapa
+  no vuelva a renderizar la pantalla, y `MapActionColumn` apila los controles en huecos fijos.
+- Ficha de centro compartida por la sheet de Explorar y `app/centers/[code].tsx`:
+  `features/centers/presentation/center-detail/` (`CenterHero` con huecos `leading`/`trailing`,
+  `CenterRatingSummary`, `CenterDetailTabs`, `CenterDetailPager`, `CenterInformation`,
+  `CenterPhotos` con `expo-image` en caché de disco, `CenterTags` y `useCenterSaveToggle`).
+- Explorar: la ruta `app/(tabs)/index.tsx` solo decide la entrada; la pantalla vive en
+  `features/explore` (`ExploreMapScreen`, hooks `use-explore-search`, `use-explore-overlay`,
+  `use-explore-location-focus` y `use-explore-queries`, y el dominio `explore-overlay.ts`).
+  La búsqueda a pantalla completa, sus sugerencias y los chips de modo están en
+  `features/search/presentation`.
 
 ## Estado
 
@@ -139,6 +159,13 @@ La interfaz sigue el patrón state-driven UI / single source of truth de React N
 visible se deriva del estado y no de efectos implícitos de navegación. Bottom sheets,
 fichas y menús transitorios deben cerrarse o desmontarse explícitamente antes de navegar a
 otra pantalla, para evitar que una ficha quede montada junto a una ruta activa.
+
+En Explorar, un único estado `ExploreOverlay` decide qué overlay está abierto (ficha de
+centro o de establecimiento, opciones superpuestas, enfoque de cámara en curso o agente), de
+modo que dos fichas no pueden coexistir. La sheet de resultados es declarativa: se monta
+mientras hay una búsqueda enviada y ningún overlay abierto, así que al cerrar una ficha
+abierta desde los resultados se vuelve a la lista. Elegir un resultado o una sugerencia
+sigue el mismo camino que tocar un pin: centra la cámara y luego abre la ficha.
 
 Las transiciones nativas de Stack y Tabs están desactivadas para evitar el flash blanco que
 puede aparecer en `react-native-screens` durante cambios entre navegadores anidados. No se

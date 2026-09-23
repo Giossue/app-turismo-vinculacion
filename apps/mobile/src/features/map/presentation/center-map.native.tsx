@@ -51,8 +51,8 @@ type SelectionCallbacks = Pick<
 >;
 
 // Guaranda, until the tourist's position or a selection moves the camera.
-const initialViewState = {
-  center: [-79.00098, -1.59263] as [number, number],
+const initialViewState: CameraState = {
+  center: [-79.00098, -1.59263],
   zoom: 14,
 };
 const maxZoom = 19;

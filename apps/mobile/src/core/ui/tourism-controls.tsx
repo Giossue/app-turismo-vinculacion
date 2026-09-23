@@ -294,6 +294,7 @@ export function TourismChoiceChip({
  * `trailingIcon` draws the icon after the label (e.g. a chevron).
  */
 export function TourismActionButton({
+  accessibilityLabel,
   compact = false,
   disabled = false,
   icon,
@@ -305,6 +306,8 @@ export function TourismActionButton({
   style,
   trailingIcon,
 }: Readonly<{
+  /** Spoken name when the visible label needs context. */
+  accessibilityLabel?: string;
   compact?: boolean;
   disabled?: boolean;
   icon?: TurismoIconName;
@@ -328,6 +331,7 @@ export function TourismActionButton({
   const iconName = trailingIcon ?? icon;
   return (
     <PaperButton
+      accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ busy: loading, disabled }}
       compact={compact}

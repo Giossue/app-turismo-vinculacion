@@ -4,11 +4,13 @@ import { getApiUrl } from "@/core/api/api-url";
 import {
   ApiError,
   assertResponseOk,
-  requestJson,
   sendRequest,
   type ApiRequestOptions,
 } from "@/core/api/http";
 import {
+  AGENT_HISTORY_MAX_ITEMS,
+  AGENT_MAX_ACCURACY_METERS,
+  AGENT_MESSAGE_MAX_LENGTH,
   agentHistoryItemSchema,
   agentLocationSchema,
   agentResponseSchema,
@@ -40,67 +42,84 @@ const streamEventSchema = z.discriminatedUnion("type", [
 
 const requestSchema = z
   .object({
-    message: z.string().trim().min(1).max(2_000),
-    history: z.array(agentHistoryItemSchema).max(12),
+    message: z.string().trim().min(1).max(AGENT_MESSAGE_MAX_LENGTH),
+    history: z.array(agentHistoryItemSchema).max(AGENT_HISTORY_MAX_ITEMS),
     location: agentLocationSchema.optional(),
   })
   .strict();
 
-const unavailableMessage = "El agente no está disponible en este momento.";
-const invalidMessage = "El agente devolvió una respuesta con formato inválido.";
+export const AGENT_UNAVAILABLE_MESSAGE =
+  "El agente no está disponible en este momento.";
+export const AGENT_INVALID_FORMAT_MESSAGE =
+  "El agente devolvió una respuesta con formato inválido.";
+const incompleteMessage = "El agente devolvió una respuesta incompleta.";
 
 /**
  * `fetcher` should be the authenticated `request` from `useAuth()`.
- * `location` is rounded to ~100 m before it leaves the device.
+ * `location` is rounded to ~100 m before it leaves the device; `signal`
+ * stops the request and the event stream.
  */
-export type AgentRequestOptions = Omit<ApiRequestOptions, "signal"> &
+export type AgentRequestOptions = ApiRequestOptions &
   Readonly<{ location?: AgentLocation }>;
 
-export async function askTourismAgent(
+/**
+ * Validated JSON body of a chat request. Throws a `ZodError` when the
+ * message or history break the API contract.
+ */
+export function buildAgentRequestBody(
   message: string,
-  history: readonly AgentHistoryItem[] = [],
-  { apiUrl = getApiUrl(), fetcher, location }: AgentRequestOptions = {},
-): Promise<AgentResponse> {
-  return requestJson(`${apiUrl}/ai/chat`, agentResponseSchema, {
-    errorMessage: unavailableMessage,
-    fetcher,
-    init: {
-      body: JSON.stringify(buildRequestBody(message, history, location)),
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      method: "POST",
-    },
-    invalidMessage,
+  history: readonly AgentHistoryItem[],
+  location?: AgentLocation,
+) {
+  return requestSchema.parse({
+    message,
+    history,
+    location: location ? approximateLocation(location) : undefined,
   });
 }
 
+/**
+ * Asks the agent through its SSE endpoint. `onText` receives the answer's
+ * cumulative text as it is generated; the promise resolves with the final
+ * structured response. Failures reject with an `ApiError` whose message is
+ * safe to show.
+ */
 export async function askTourismAgentStream(
   message: string,
-  history: readonly AgentHistoryItem[] = [],
+  history: readonly AgentHistoryItem[],
   onText: (text: string) => Promise<void> | void,
-  { apiUrl = getApiUrl(), fetcher, location }: AgentRequestOptions = {},
+  {
+    apiUrl = getApiUrl(),
+    fetcher,
+    location,
+    signal,
+  }: AgentRequestOptions = {},
 ): Promise<AgentResponse> {
   const response = await sendRequest(`${apiUrl}/ai/chat/stream`, {
-    errorMessage: unavailableMessage,
+    errorMessage: AGENT_UNAVAILABLE_MESSAGE,
     fetcher,
     init: {
-      body: JSON.stringify(buildRequestBody(message, history, location)),
+      body: JSON.stringify(buildAgentRequestBody(message, history, location)),
       headers: {
         Accept: "text/event-stream",
         "Content-Type": "application/json",
       },
       method: "POST",
+      signal,
     },
   });
-  await assertResponseOk(response, { errorMessage: unavailableMessage });
-  if (!response.body) throw new Error(invalidMessage);
+  await assertResponseOk(response, { errorMessage: AGENT_UNAVAILABLE_MESSAGE });
+  if (!response.body) throw new ApiError(AGENT_INVALID_FORMAT_MESSAGE);
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
   let answer: AgentResponse | undefined;
+  // Some fetch implementations ignore the signal once the body is streaming.
+  const cancelOnAbort = () => {
+    void reader.cancel().catch(() => undefined);
+  };
+  signal?.addEventListener("abort", cancelOnAbort, { once: true });
 
   const handleEvent = async (event: string): Promise<void> => {
     const data = event
@@ -115,17 +134,17 @@ export async function askTourismAgentStream(
     try {
       payload = JSON.parse(data);
     } catch {
-      throw new Error(invalidMessage);
+      throw new ApiError(AGENT_INVALID_FORMAT_MESSAGE);
     }
     const parsed = streamEventSchema.safeParse(payload);
-    if (!parsed.success) throw new Error(invalidMessage);
+    if (!parsed.success) throw new ApiError(AGENT_INVALID_FORMAT_MESSAGE);
 
     if (parsed.data.type === "text-delta") {
       await onText(parsed.data.text);
       return;
     }
     if (parsed.data.type === "error") {
-      throw new Error(parsed.data.message);
+      throw new ApiError(parsed.data.message);
     }
     answer = parsed.data.response;
   };
@@ -158,32 +177,24 @@ export async function askTourismAgentStream(
     await reader.cancel(error).catch(() => undefined);
     // Un corte de red a mitad de la respuesta no debe mostrar texto técnico.
     if (error instanceof TypeError) {
-      throw new ApiError(unavailableMessage, { cause: error });
+      throw new ApiError(AGENT_UNAVAILABLE_MESSAGE, { cause: error });
     }
     throw error;
   } finally {
+    signal?.removeEventListener("abort", cancelOnAbort);
     reader.releaseLock();
   }
 
-  if (!answer) throw new Error("El agente devolvió una respuesta incompleta.");
+  if (!answer) throw new ApiError(incompleteMessage);
   return answer;
-}
-
-function buildRequestBody(
-  message: string,
-  history: readonly AgentHistoryItem[],
-  location: AgentLocation | undefined,
-) {
-  return requestSchema.parse({
-    message,
-    history,
-    location: location ? approximateLocation(location) : undefined,
-  });
 }
 
 function approximateLocation(location: AgentLocation): AgentLocation {
   return {
-    accuracyMeters: location.accuracyMeters,
+    accuracyMeters:
+      location.accuracyMeters === undefined
+        ? undefined
+        : Math.min(location.accuracyMeters, AGENT_MAX_ACCURACY_METERS),
     latitude: roundCoordinate(location.latitude),
     longitude: roundCoordinate(location.longitude),
   };

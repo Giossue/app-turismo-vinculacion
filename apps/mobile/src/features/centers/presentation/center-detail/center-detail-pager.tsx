@@ -8,7 +8,10 @@ import {
 } from "react-native";
 
 import { turismoSpacing } from "@/core/ui/tokens";
-import { centerDetailTabOrder, type CenterDetailTab } from "./center-detail-tabs";
+import {
+  centerDetailTabOrder,
+  type CenterDetailTab,
+} from "./center-detail-tabs";
 
 /**
  * Horizontal pager for the center tabs inside a bottom sheet. Pages render

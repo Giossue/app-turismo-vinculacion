@@ -120,8 +120,8 @@ describe("getSearchPlaceTarget", () => {
       title: "Guaranda",
     };
     expect(getSearchPlaceTarget(base, [], fallbackPin)).toEqual(expected);
-    expect(getSearchPlaceTarget({ ...base, kind: "center" }, [], fallbackPin)).toEqual(
-      expected,
-    );
+    expect(
+      getSearchPlaceTarget({ ...base, kind: "center" }, [], fallbackPin),
+    ).toEqual(expected);
   });
 });

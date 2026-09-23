@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { calculateRoute } from "./routing-api";
+import { ApiError } from "@/core/api/http";
+import { calculateRoute, getRouteErrorMessage } from "./routing-api";
 
 const route = {
   mode: "car",
@@ -91,5 +92,18 @@ describe("calculateRoute", () => {
           .mockRejectedValue(new TypeError("Network request failed")),
       }),
     ).rejects.toThrow("No pudimos calcular la ruta.");
+  });
+});
+
+describe("getRouteErrorMessage", () => {
+  it("shows API messages and hides unexpected errors", () => {
+    expect(
+      getRouteErrorMessage(
+        new ApiError("No encontramos una ruta posible entre esos puntos."),
+      ),
+    ).toBe("No encontramos una ruta posible entre esos puntos.");
+    expect(
+      getRouteErrorMessage(new TypeError("undefined is not a function")),
+    ).toBe("No pudimos calcular la ruta.");
   });
 });

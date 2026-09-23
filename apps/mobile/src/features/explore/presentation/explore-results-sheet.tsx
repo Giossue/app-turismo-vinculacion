@@ -31,7 +31,11 @@ export function ExploreResultsSheet({
   return (
     <TourismBottomSheet onClose={onClose}>
       {mode === "CENTERS" ? (
-        <SearchResultsSheet {...centerResults} onClose={onClose} query={query} />
+        <SearchResultsSheet
+          {...centerResults}
+          onClose={onClose}
+          query={query}
+        />
       ) : (
         <EstablishmentResultsSheet
           {...establishmentResults}

@@ -1,4 +1,10 @@
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 
 import { formatDistance } from "@/core/format/distance";
 import { formatDurationSeconds } from "@/core/format/duration";
@@ -30,7 +36,12 @@ export function RouteModeTabs({
   onChange,
 }: Readonly<{ mode: RouteMode; onChange: (mode: RouteMode) => void }>) {
   return (
-    <TourismTabs fill items={routeModeOptions} onChange={onChange} value={mode} />
+    <TourismTabs
+      fill
+      items={routeModeOptions}
+      onChange={onChange}
+      value={mode}
+    />
   );
 }
 
@@ -145,7 +156,9 @@ function RouteStepRow({
       : { background: colors.primarySoft, foreground: colors.primaryStrong };
   return (
     <View style={styles.stepRow}>
-      <View style={[styles.stepIcon, { backgroundColor: iconColors.background }]}>
+      <View
+        style={[styles.stepIcon, { backgroundColor: iconColors.background }]}
+      >
         <TurismoIcon
           color={iconColors.foreground}
           name={icon}

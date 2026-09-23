@@ -4,7 +4,6 @@ import { useRouter } from "expo-router";
 
 import type { GeoBounds } from "@/core/geo/types";
 import { useTurismoPalette } from "@/core/ui/theme-context";
-import { TourismIconAction } from "@/core/ui/tourism-controls";
 import { useTourismMenu } from "@/core/ui/tourism-navigation";
 import { TourismStateView } from "@/core/ui/tourism-state";
 import type { AgentRouteDestination } from "@/features/agent/domain/agent";
@@ -14,12 +13,7 @@ import type { PublicCenter } from "@/features/centers/domain/public-center";
 import { EstablishmentDetailSheet } from "@/features/establishments/presentation/establishment-detail-sheet";
 import { defaultEstablishmentPin } from "@/features/establishments/presentation/establishment-pins";
 import { CenterMap } from "@/features/map/presentation/center-map";
-import {
-  MapActionColumn,
-  mapActionStyle,
-} from "@/features/map/presentation/map-action-column";
 import { createMapBearingStore } from "@/features/map/presentation/map-bearing-store";
-import { MapCompass } from "@/features/map/presentation/map-compass";
 import { MapFeatureSelectionSheet } from "@/features/map/presentation/map-feature-selection-sheet";
 import type { RouteMode } from "@/features/routing/domain/routing";
 import {
@@ -44,6 +38,7 @@ import {
 import { getSearchPlaceTarget } from "../domain/search-place-target";
 import { ExploreAgentSheet } from "./explore-agent-sheet";
 import { ExploreCenterSheet } from "./explore-center-sheet";
+import { ExploreMapActions } from "./explore-map-actions";
 import { ExploreResultsSheet } from "./explore-results-sheet";
 import { ExploreTopBar } from "./explore-top-bar";
 
@@ -186,7 +181,9 @@ export function ExploreMapScreen() {
           focusCoordinate={search.focusCoordinate?.coordinate}
           focusCoordinateKey={search.focusCoordinate?.key}
           focusLocationKey={location.focusLocationKey}
-          focusSelection={current.kind === "focusing" ? current.selection : null}
+          focusSelection={
+            current.kind === "focusing" ? current.selection : null
+          }
           onBearingChange={bearingStore.setBearing}
           onCenterPress={overlay.selectCenter}
           onEstablishmentPress={overlay.selectEstablishment}
@@ -226,35 +223,17 @@ export function ExploreMapScreen() {
             searchActive={search.active}
             selectedCategory={data.filters.categoryCode}
           />
-          <MapActionColumn
+          <ExploreMapActions
+            agentOpen={current.kind === "agent"}
+            bearingStore={bearingStore}
             landscape={landscape}
-            slots={[
-              <MapCompass
-                key="compass"
-                onPress={() => setResetNorthKey((key) => key + 1)}
-                store={bearingStore}
-                style={mapActionStyle}
-              />,
-              <TourismIconAction
-                accessibilityLabel="Abrir agente turístico"
-                icon="bot"
-                key="agent"
-                onPress={openAgent}
-                selected={current.kind === "agent"}
-                style={mapActionStyle}
-              />,
-              location.showLocateAction ? (
-                <TourismIconAction
-                  accessibilityLabel={location.locateLabel}
-                  disabled={location.status === "requesting"}
-                  icon="locate"
-                  key="locate"
-                  onPress={location.locate}
-                  slashed={location.status === "disabled"}
-                  style={mapActionStyle}
-                />
-              ) : null,
-            ]}
+            locateDisabled={location.status === "requesting"}
+            locateLabel={location.locateLabel}
+            locateSlashed={location.status === "disabled"}
+            onLocate={location.locate}
+            onOpenAgent={openAgent}
+            onResetNorth={() => setResetNorthKey((key) => key + 1)}
+            showLocate={location.showLocateAction}
           />
           {current.kind === "none" && search.submittedQuery ? (
             <ExploreResultsSheet

@@ -40,8 +40,11 @@ export default function RouteScreen() {
   const auth = useAuth();
   const router = useRouter();
   const navigation = useNavigation();
-  const { destination, destinationName, mode: initialMode } =
-    useRouteScreenParams();
+  const {
+    destination,
+    destinationName,
+    mode: initialMode,
+  } = useRouteScreenParams();
   const [mode, setMode] = useState<RouteMode>(initialMode);
   const [origin, setOrigin] = useState<GeoCoordinate | null>(null);
   const [routeRequested, setRouteRequested] = useState(false);
@@ -208,7 +211,7 @@ export default function RouteScreen() {
           navigationNotice={navigationNotice}
           onCalculateRoute={() => void handleCalculateRoute()}
           onClose={() => {
-            if (!startInFlightRef.current) closeRoute();
+            if (!startingNavigation) closeRoute();
           }}
           onExpandedChange={setPreviewExpanded}
           onHeightChange={setMapBottomInset}

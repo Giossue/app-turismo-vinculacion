@@ -32,9 +32,9 @@ describe("getCenterSuggestions", () => {
   ];
 
   it("matches name, category, type or subtype ignoring case", () => {
-    expect(getCenterSuggestions(centers, "  MUSEO ").map((c) => c.code)).toEqual(
-      ["2"],
-    );
+    expect(
+      getCenterSuggestions(centers, "  MUSEO ").map((c) => c.code),
+    ).toEqual(["2"]);
     expect(getCenterSuggestions(centers, "colina")).toHaveLength(3);
   });
 

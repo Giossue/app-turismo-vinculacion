@@ -169,7 +169,11 @@ export function UserLocationProvider({
           handleForegroundLocationError,
         );
 
-        if (!trackingEnabledRef.current || AppState.currentState !== "active") {
+        if (
+          !trackingEnabledRef.current ||
+          foregroundTrackingSuspendedRef.current ||
+          AppState.currentState !== "active"
+        ) {
           subscription.remove();
           return;
         }

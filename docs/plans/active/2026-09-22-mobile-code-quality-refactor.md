@@ -55,4 +55,14 @@ En curso (22 de septiembre de 2026).
   `*-api.ts` migrados a `requestJson`; favoritos con importación única del resumen
   heredado; caché persistida limitada a catálogos públicos; código muerto retirado.
   Documentado en `docs/architecture/mobile.md` («Módulos compartidos»).
+- Ola 2 Explorar completada: `index.tsx` queda como puerta de entrada y la pantalla pasa a
+  `features/explore` (hooks de búsqueda, overlay, ubicación y consultas; un único estado
+  `ExploreOverlay` sin refs espejo); ficha de centro compartida en
+  `features/centers/presentation/center-detail/` para la sheet y `centers/[code].tsx`
+  (carga/error dentro de `TourismScreenFrame` con Volver, código ausente como error);
+  resultados declarativos con `BottomSheetFlatList` y chips compartidos; resultados y
+  sugerencias pasan por el enfoque de cámara; un solo enfoque GPS por lectura; teclado
+  cerrado solo desde `closeFocus`; sheet de centro sin remontar al rotar; brújula aislada;
+  atribución dentro del mapa; botón Cerrar en las sheets del mapa; etiquetas accesibles.
+  Pendiente de verificar en dispositivo (Atrás, TalkBack/VoiceOver, rotación, enfoque).
 - Pendiente: ola 2 (división de pantallas) y revisión manual en dispositivo.
