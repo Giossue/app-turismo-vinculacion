@@ -20,6 +20,8 @@ import {
   CornerUpLeft,
   CornerUpRight,
   Download,
+  Eye,
+  EyeOff,
   Flag,
   Footprints,
   History,
@@ -47,6 +49,7 @@ import {
   Star,
   Store,
   Sun,
+  SunMoon,
   Ticket,
   Undo2,
   Utensils,
@@ -55,6 +58,8 @@ import {
   WifiOff,
   X,
 } from "lucide-react-native";
+
+import { turismoIconSizes } from "./tokens";
 
 const turismoIconMap = {
   arrowLeft: ArrowLeft,
@@ -78,6 +83,8 @@ const turismoIconMap = {
   cornerUpLeft: CornerUpLeft,
   cornerUpRight: CornerUpRight,
   download: Download,
+  eye: Eye,
+  eyeOff: EyeOff,
   flag: Flag,
   foot: Footprints,
   history: History,
@@ -106,6 +113,7 @@ const turismoIconMap = {
   star: Star,
   store: Store,
   sun: Sun,
+  sunMoon: SunMoon,
   ticket: Ticket,
   undo: Undo2,
   restaurant: Utensils,
@@ -118,7 +126,7 @@ export type TurismoIconName = keyof typeof turismoIconMap;
 
 export function TurismoIcon({
   name,
-  size = 22,
+  size = turismoIconSizes.md,
   color = "currentColor",
   strokeWidth = 2,
   ...props

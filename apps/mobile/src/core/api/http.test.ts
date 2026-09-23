@@ -162,9 +162,10 @@ describe("resolveMediaUrl", () => {
 });
 
 describe("query persistence policy", () => {
-  it("persists public catalogs only", () => {
+  it("persists public catalogs and saved places only", () => {
     expect(isPersistedQueryKey([...queryKeys.publishedCenter, "A"])).toBe(true);
-    expect(isPersistedQueryKey([...queryKeys.savedCenters, 7])).toBe(false);
+    expect(isPersistedQueryKey([...queryKeys.savedCenters, 7])).toBe(true);
+    expect(isPersistedQueryKey([...queryKeys.ownOpinion, "A", 7])).toBe(false);
     expect(isPersistedQueryKey([...queryKeys.publicSearch, "mirador"])).toBe(
       false,
     );

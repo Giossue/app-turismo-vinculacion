@@ -1,15 +1,15 @@
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
+import { formatDistance } from "@/core/format/distance";
 import { useTurismoPalette } from "@/core/ui/theme-context";
+import { TourismSheetScrollView } from "@/core/ui/tourism-bottom-sheet";
 import {
-  TourismActionButton,
   TourismBadge,
+  TourismIconAction,
   TourismSurface,
 } from "@/core/ui/tourism-controls";
-import { formatDistance } from "@/core/format/distance";
-import { TurismoIcon } from "@/core/ui/turismo-icons";
+import { TourismStateView } from "@/core/ui/tourism-state";
 import {
-  turismoIconSizes,
   turismoMetrics,
   turismoRadii,
   turismoSpacing,
@@ -17,11 +17,13 @@ import {
 } from "@/core/ui/tokens";
 import type { NearbyEstablishmentsResult } from "../domain/establishment";
 
+/** Body of the map sheet listing the tourism registry near the tourist. */
 export function EstablishmentResultsSheet({
   data,
   error,
   hasLocation,
   isFetching,
+  onClose,
   onRequestLocation,
   onRetry,
   query,
@@ -30,85 +32,70 @@ export function EstablishmentResultsSheet({
   error: Error | null;
   hasLocation: boolean;
   isFetching: boolean;
+  onClose: () => void;
   onRequestLocation: () => void;
   onRetry: () => void;
   query: string;
 }>) {
   const colors = useTurismoPalette();
   const effective = data?.effectiveLocality;
+  const settled = !isFetching && !error && data;
   return (
-    <View style={styles.container}>
+    <TourismSheetScrollView
+      contentStyle={styles.container}
+      landscapeMaxWidth={turismoMetrics.sheetMaxWidth}
+    >
       <View style={styles.header}>
         <View style={styles.headerCopy}>
           <Text style={[styles.query, { color: colors.text }]}>{query}</Text>
-          <Text style={[styles.resultLabel, { color: colors.textMuted }]}>
+          <Text style={[styles.caption, { color: colors.textMuted }]}>
             Catastro turístico
           </Text>
         </View>
+        <TourismIconAction
+          accessibilityLabel="Cerrar resultados"
+          icon="close"
+          onPress={onClose}
+          variant="ghost"
+        />
       </View>
 
       {!hasLocation ? (
-        <TourismSurface style={styles.statusCard}>
-          <TurismoIcon
-            color={colors.primaryStrong}
-            name="locate"
-            size={turismoIconSizes.lg}
-          />
-          <Text style={[styles.statusTitle, { color: colors.text }]}>
-            Necesitamos tu ubicación
-          </Text>
-          <Text style={[styles.statusText, { color: colors.textMuted }]}>
-            La usamos solo para ordenar el catastro cercano y encontrar la
-            ciudad con resultados.
-          </Text>
-          <TourismActionButton
-            icon="locate"
-            label="Usar mi ubicación"
-            mode="outlined"
-            onPress={onRequestLocation}
-          />
-        </TourismSurface>
+        <TourismStateView
+          actionLabel="Usar mi ubicación"
+          icon="locate"
+          layout="card"
+          message="La usamos solo para ordenar el catastro cercano y encontrar la ciudad con resultados."
+          onAction={onRequestLocation}
+          title="Necesitamos tu ubicación"
+          variant="empty"
+        />
       ) : null}
 
       {isFetching ? (
-        <View style={styles.statusRow}>
-          <ActivityIndicator color={colors.primary} size="small" />
-          <Text style={[styles.statusText, { color: colors.textMuted }]}>
-            Buscando establecimientos…
-          </Text>
-        </View>
+        <TourismStateView
+          layout="inline"
+          message="Buscando establecimientos…"
+          variant="loading"
+        />
       ) : null}
 
       {error ? (
-        <TourismSurface style={styles.statusCard}>
-          <TurismoIcon
-            color={colors.danger}
-            name="wifiOff"
-            size={turismoIconSizes.md}
-          />
-          <Text style={[styles.statusTitle, { color: colors.text }]}>
-            No pudimos consultar el catastro.
-          </Text>
-          <Text style={[styles.statusText, { color: colors.textMuted }]}>
-            Conservamos el mapa disponible. Inténtalo de nuevo.
-          </Text>
-          <TourismActionButton
-            icon="refresh"
-            label="Reintentar"
-            mode="outlined"
-            onPress={onRetry}
-          />
-        </TourismSurface>
+        <TourismStateView
+          layout="card"
+          message="Conservamos el mapa disponible. Inténtalo de nuevo."
+          onAction={onRetry}
+          title="No pudimos consultar el catastro."
+          variant="error"
+        />
       ) : null}
 
-      {!isFetching && !error && data && data.fallbackApplied && effective ? (
-        <TourismSurface
-          style={[styles.fallbackCard, { borderColor: colors.border }]}
-        >
+      {settled && data.fallbackApplied && effective ? (
+        <TourismSurface style={styles.fallbackCard}>
           <Text style={[styles.fallbackTitle, { color: colors.text }]}>
             Mostramos opciones en {effective.name}
           </Text>
-          <Text style={[styles.statusText, { color: colors.textMuted }]}>
+          <Text style={[styles.caption, { color: colors.textMuted }]}>
             No encontramos resultados en{" "}
             {data.requestedLocalityName ?? "tu localidad"}. Esta es la ciudad
             más cercana con establecimientos de esta actividad.
@@ -122,21 +109,13 @@ export function EstablishmentResultsSheet({
         </TourismSurface>
       ) : null}
 
-      {!isFetching && !error && data && data.items.length === 0 ? (
-        <TourismSurface style={styles.statusCard}>
-          <TurismoIcon
-            color={colors.primaryStrong}
-            name="search"
-            size={turismoIconSizes.lg}
-          />
-          <Text style={[styles.statusTitle, { color: colors.text }]}>
-            No encontramos establecimientos con “{query}”.
-          </Text>
-          <Text style={[styles.statusText, { color: colors.textMuted }]}>
-            Prueba con otra actividad, por ejemplo alimentación, alojamiento o
-            transporte.
-          </Text>
-        </TourismSurface>
+      {settled && data.items.length === 0 ? (
+        <TourismStateView
+          layout="card"
+          message="Prueba con otra actividad, por ejemplo alimentación, alojamiento o transporte."
+          title={`No encontramos establecimientos con “${query}”.`}
+          variant="empty"
+        />
       ) : null}
 
       {data?.items.map((item) => (
@@ -144,10 +123,7 @@ export function EstablishmentResultsSheet({
           key={`${item.localityName}-${item.nombreComercial}-${item.direccion ?? ""}`}
           style={[
             styles.resultCard,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-            },
+            { backgroundColor: colors.surface, borderColor: colors.border },
           ]}
         >
           <Text style={[styles.resultName, { color: colors.text }]}>
@@ -160,7 +136,7 @@ export function EstablishmentResultsSheet({
             <TourismBadge>{item.categoria}</TourismBadge>
           ) : null}
           {item.direccion ? (
-            <Text style={[styles.statusText, { color: colors.textMuted }]}>
+            <Text style={[styles.caption, { color: colors.textMuted }]}>
               {item.direccion}
             </Text>
           ) : null}
@@ -168,47 +144,29 @@ export function EstablishmentResultsSheet({
             <TourismBadge>{formatDistance(item.distanceMeters)}</TourismBadge>
           ) : null}
           {item.telefono ? (
-            <Text style={[styles.statusText, { color: colors.textMuted }]}>
+            <Text style={[styles.caption, { color: colors.textMuted }]}>
               {item.telefono}
             </Text>
           ) : null}
         </View>
       ))}
-    </View>
+    </TourismSheetScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: turismoSpacing.md, paddingBottom: turismoSpacing.xl },
+  container: { gap: turismoSpacing.md, paddingBottom: turismoSpacing.xxl },
   header: {
-    alignItems: "center",
+    alignItems: "flex-start",
     flexDirection: "row",
     gap: turismoSpacing.sm,
     justifyContent: "space-between",
   },
   headerCopy: { flex: 1, gap: turismoSpacing.xxs },
   query: { ...turismoTypography.title },
-  resultLabel: { ...turismoTypography.caption },
-  statusRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-    paddingVertical: turismoSpacing.sm,
-  },
-  statusCard: {
-    alignItems: "center",
-    gap: turismoSpacing.sm,
-    padding: turismoSpacing.lg,
-  },
-  fallbackCard: {
-    borderRadius: turismoRadii.md,
-    borderWidth: turismoMetrics.borderWidth,
-    gap: turismoSpacing.xs,
-    padding: turismoSpacing.md,
-  },
+  caption: { ...turismoTypography.caption },
+  fallbackCard: { gap: turismoSpacing.xs, padding: turismoSpacing.md },
   fallbackTitle: { ...turismoTypography.heading },
-  statusTitle: { ...turismoTypography.heading, textAlign: "center" },
-  statusText: { ...turismoTypography.caption, textAlign: "center" },
   resultCard: {
     borderRadius: turismoRadii.md,
     borderWidth: turismoMetrics.borderWidth,

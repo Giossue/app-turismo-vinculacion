@@ -1,17 +1,25 @@
 import { Pressable, StyleSheet, Text } from "react-native";
 
 import { useTurismoMapPalette } from "@/core/ui/theme-context";
+import {
+  turismoMetrics,
+  turismoOpacity,
+  turismoSpacing,
+  turismoTypography,
+} from "@/core/ui/tokens";
 
+/** Resting opacity: the "i" stays legible without competing with the map. */
+const idleOpacity = 0.9;
+
+/** Small "i" in a map corner that opens the MapLibre attribution dialog. */
 export function MapAttributionButton({
-  bottom = 4,
+  bottom = turismoSpacing.xxs,
   left,
   onPress,
-  right,
 }: Readonly<{
   bottom?: number;
   left?: number;
   onPress: () => void;
-  right?: number;
 }>) {
   const colors = useTurismoMapPalette();
 
@@ -19,16 +27,11 @@ export function MapAttributionButton({
     <Pressable
       accessibilityLabel="Ver atribución del mapa"
       accessibilityRole="button"
-      hitSlop={8}
+      hitSlop={turismoSpacing.xs}
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
-        {
-          bottom,
-          left,
-          opacity: pressed ? 0.6 : 0.9,
-          right,
-        },
+        { bottom, left, opacity: pressed ? turismoOpacity.pressed : idleOpacity },
       ]}
     >
       <Text style={[styles.icon, { color: colors.attribution }]}>i</Text>
@@ -39,16 +42,12 @@ export function MapAttributionButton({
 const styles = StyleSheet.create({
   button: {
     alignItems: "flex-start",
-    height: 44,
+    height: turismoMetrics.touchTarget,
     justifyContent: "flex-end",
-    paddingBottom: 2,
-    paddingLeft: 2,
+    paddingBottom: turismoSpacing.xxs / 2,
+    paddingLeft: turismoSpacing.xxs / 2,
     position: "absolute",
-    width: 44,
+    width: turismoMetrics.touchTarget,
   },
-  icon: {
-    fontSize: 13,
-    fontWeight: "700",
-    lineHeight: 16,
-  },
+  icon: { ...turismoTypography.caption, fontWeight: "700" },
 });

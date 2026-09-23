@@ -1,7 +1,11 @@
 import { StyleSheet, Text, View } from "react-native";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
-import { TourismActionButton, TourismBadge } from "@/core/ui/tourism-controls";
+import {
+  TourismActionButton,
+  TourismBadge,
+  TourismIconAction,
+} from "@/core/ui/tourism-controls";
 import {
   TourismBottomSheet,
   TourismSheetScrollView,
@@ -37,6 +41,12 @@ export function EstablishmentDetailSheet({
               <TourismBadge>{categoryLabel}</TourismBadge>
             ) : null}
           </View>
+          <TourismIconAction
+            accessibilityLabel="Cerrar"
+            icon="close"
+            onPress={onClose}
+            variant="ghost"
+          />
         </View>
 
         <TourismInfoRow

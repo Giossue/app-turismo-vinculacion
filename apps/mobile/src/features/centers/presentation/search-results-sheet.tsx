@@ -1,207 +1,188 @@
-import { useMemo } from "react";
+import { BottomSheetFlatList } from "@gorhom/bottom-sheet";
 import {
-  ActivityIndicator,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 
+import { formatDistance } from "@/core/format/distance";
+import type { GeoCoordinate } from "@/core/geo/types";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import {
-  TourismActionButton,
   TourismBadge,
   TourismChoiceChip,
-  TourismSurface,
+  TourismIconAction,
 } from "@/core/ui/tourism-controls";
+import { TourismStateView } from "@/core/ui/tourism-state";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
   turismoMetrics,
+  turismoOpacity,
   turismoRadii,
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
-import { formatDistance } from "@/core/format/distance";
-import { getDistanceMeters } from "@/core/geo/distance";
-import type { GeoCoordinate } from "@/core/geo/types";
 import type { PublicSearchResult } from "@/features/search/domain/search-result";
-import type { DiscoveryCatalog, PublicCenter } from "../domain/public-center";
-import { uniqueByCode } from "../domain/unique-by-code";
-import type { DiscoveryFilterValues } from "./discovery-filters";
+import type { PublicCenter } from "../domain/public-center";
+import { FilterChips } from "./discovery-filters";
+import {
+  buildSearchResultItems,
+  type SearchResultItem,
+} from "./search-result-items";
 
+type CategoryOption = Readonly<{ code: string; name: string }>;
+
+/**
+ * Body of the map sheet with the submitted search: category chips, then a
+ * virtualized list of published centers and other search places.
+ */
 export function SearchResultsSheet({
-  catalog,
+  categories,
   centers,
   error,
-  filters,
   isFetching,
-  isPlaceholderData,
-  nearbyOnly,
-  onChangeFilters,
-  onNearbyToggle,
+  onCategoryChange,
+  onClose,
   onRetry,
-  onSelectPlace,
   onSelectCenter,
+  onSelectPlace,
+  onToggleSortByDistance,
   places,
   query,
+  selectedCategory,
+  sortByDistance,
   userLocation,
 }: Readonly<{
-  catalog?: DiscoveryCatalog;
+  categories: readonly CategoryOption[];
   centers: readonly PublicCenter[];
   error: Error | null;
-  filters: DiscoveryFilterValues;
   isFetching: boolean;
-  isPlaceholderData: boolean;
-  nearbyOnly: boolean;
-  onChangeFilters: (filters: DiscoveryFilterValues) => void;
-  onNearbyToggle: () => void;
+  onCategoryChange: (categoryCode: string | undefined) => void;
+  onClose: () => void;
   onRetry: () => void;
-  onSelectPlace: (place: PublicSearchResult) => void;
   onSelectCenter: (center: PublicCenter) => void;
+  onSelectPlace: (place: PublicSearchResult) => void;
+  onToggleSortByDistance: () => void;
   places: readonly PublicSearchResult[];
   query: string;
+  selectedCategory?: string;
+  sortByDistance: boolean;
   userLocation: GeoCoordinate | null;
 }>) {
   const colors = useTurismoPalette();
-  const sortedCenters = useMemo(() => {
-    if (!nearbyOnly || !userLocation) return centers;
-    return [...centers].sort(
-      (left, right) =>
-        getDistanceMeters(left, userLocation) -
-        getDistanceMeters(right, userLocation),
-    );
-  }, [centers, nearbyOnly, userLocation]);
-  const showResults = !isFetching && !isPlaceholderData && !error;
-  const supplementalPlaces = useMemo(
-    () =>
-      places.filter(
-        (place) =>
-          place.kind !== "center" ||
-          !centers.some((center) => center.code === place.centerCode),
-      ),
-    [centers, places],
-  );
-  const hasAnyResults =
-    sortedCenters.length > 0 || supplementalPlaces.length > 0;
+  const { height, width } = useWindowDimensions();
+  const items = buildSearchResultItems({
+    centers,
+    origin: userLocation,
+    places,
+    sortByDistance,
+  });
+  const showResults = !isFetching && !error;
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerCopy}>
-          <Text style={[styles.query, { color: colors.text }]}>{query}</Text>
-        </View>
-      </View>
-
-      <ScrollView
-        accessibilityLabel="Categorías de búsqueda turística"
-        contentContainerStyle={styles.filterChips}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-      >
-        <TourismChoiceChip
-          label="Todo"
-          onPress={() =>
-            onChangeFilters({ ...filters, categoryCode: undefined })
-          }
-          selected={!filters.categoryCode}
+  const header = (
+    <View style={styles.header}>
+      <View style={styles.titleRow}>
+        <Text style={[styles.query, { color: colors.text }]}>{query}</Text>
+        <TourismIconAction
+          accessibilityLabel="Cerrar resultados"
+          icon="close"
+          onPress={onClose}
+          variant="ghost"
         />
-        {uniqueByCode(catalog?.categories ?? []).map((category) => (
-          <TourismChoiceChip
-            key={category.code}
-            label={category.name}
-            onPress={() =>
-              onChangeFilters({
-                ...filters,
-                categoryCode: category.code,
-                typeCode: undefined,
-                subtypeCode: undefined,
-              })
-            }
-            selected={filters.categoryCode === category.code}
-          />
-        ))}
-        {userLocation ? (
-          <TourismChoiceChip
-            label="Cerca de mí"
-            onPress={onNearbyToggle}
-            selected={nearbyOnly}
-          />
-        ) : null}
-      </ScrollView>
-
-      {isFetching || isPlaceholderData ? (
-        <View style={styles.statusRow}>
-          <ActivityIndicator color={colors.primary} size="small" />
-          <Text style={[styles.statusText, { color: colors.textMuted }]}>
-            Buscando atractivos turísticos…
-          </Text>
-        </View>
+      </View>
+      <FilterChips
+        label="Categorías de búsqueda turística"
+        onChange={onCategoryChange}
+        options={categories}
+        selected={selectedCategory}
+        trailing={
+          userLocation ? (
+            <TourismChoiceChip
+              label="Cerca de mí"
+              onPress={onToggleSortByDistance}
+              selected={sortByDistance}
+            />
+          ) : null
+        }
+      />
+      {isFetching ? (
+        <TourismStateView
+          layout="inline"
+          message="Buscando atractivos turísticos…"
+          variant="loading"
+        />
       ) : null}
-
       {error ? (
-        <TourismSurface style={styles.statusCard}>
-          <TurismoIcon
-            color={colors.danger}
-            name="wifiOff"
-            size={turismoIconSizes.md}
-          />
-          <Text style={[styles.statusTitle, { color: colors.text }]}>
-            No pudimos actualizar la búsqueda.
-          </Text>
-          <Text style={[styles.statusText, { color: colors.textMuted }]}>
-            Conservamos el mapa disponible. Inténtalo de nuevo.
-          </Text>
-          <TourismActionButton
-            icon="refresh"
-            label="Reintentar"
-            mode="outlined"
-            onPress={onRetry}
-          />
-        </TourismSurface>
+        <TourismStateView
+          layout="card"
+          message="Conservamos el mapa disponible. Inténtalo de nuevo."
+          onAction={onRetry}
+          title="No pudimos actualizar la búsqueda."
+          variant="error"
+        />
       ) : null}
-
-      {showResults && !hasAnyResults ? (
-        <TourismSurface style={styles.statusCard}>
-          <TurismoIcon
-            color={colors.primaryStrong}
-            name="search"
-            size={turismoIconSizes.lg}
-          />
-          <Text style={[styles.statusTitle, { color: colors.text }]}>
-            No encontramos lugares con “{query}”.
-          </Text>
-          <Text style={[styles.statusText, { color: colors.textMuted }]}>
-            Prueba con otro nombre, categoría o tipo de lugar.
-          </Text>
-        </TourismSurface>
-      ) : null}
-
-      {showResults ? (
-        <View style={styles.resultsList}>
-          {sortedCenters.map((center) => (
-            <SearchResultCard
-              center={center}
-              distance={
-                userLocation ? getDistanceMeters(center, userLocation) : null
-              }
-              key={center.code}
-              onPress={() => onSelectCenter(center)}
-            />
-          ))}
-          {supplementalPlaces.map((place) => (
-            <SearchPlaceCard
-              key={`${place.kind}-${place.title}-${place.latitude}-${place.longitude}`}
-              onPress={() => onSelectPlace(place)}
-              place={place}
-            />
-          ))}
-        </View>
+      {showResults && items.length === 0 ? (
+        <TourismStateView
+          layout="card"
+          message="Prueba con otro nombre, categoría o tipo de lugar."
+          title={`No encontramos lugares con “${query}”.`}
+          variant="empty"
+        />
       ) : null}
     </View>
   );
+
+  return (
+    <BottomSheetFlatList
+      ItemSeparatorComponent={ResultSeparator}
+      ListHeaderComponent={header}
+      contentContainerStyle={[
+        styles.content,
+        width > height && { maxWidth: turismoMetrics.sheetMaxWidth },
+      ]}
+      data={showResults ? items : []}
+      keyExtractor={(item: SearchResultItem) => item.key}
+      renderItem={({ item }: { item: SearchResultItem }) =>
+        item.kind === "center" ? (
+          <SearchResultCard
+            center={item.center}
+            distanceMeters={item.distanceMeters}
+            onPress={() => onSelectCenter(item.center)}
+          />
+        ) : (
+          <SearchPlaceCard
+            onPress={() => onSelectPlace(item.place)}
+            place={item.place}
+          />
+        )
+      }
+      showsVerticalScrollIndicator={false}
+      style={styles.list}
+    />
+  );
 }
+
+function ResultSeparator() {
+  return <View style={styles.separator} />;
+}
+
+const placeKindCopy = {
+  center: {
+    hint: "Centra el mapa y abre la ficha turística",
+    label: "Centro turístico publicado",
+  },
+  establishment: {
+    hint: "Centra el mapa y abre la ficha del establecimiento",
+    label: "Catastro publicado",
+  },
+  geographic: {
+    hint: "Centra el mapa en esta ubicación",
+    label: "Ubicación en Ecuador",
+  },
+} as const;
 
 function SearchPlaceCard({
   onPress,
@@ -211,30 +192,23 @@ function SearchPlaceCard({
   place: PublicSearchResult;
 }>) {
   const colors = useTurismoPalette();
-  const isGeographic = place.kind === "geographic";
-  const label =
-    place.kind === "establishment"
-      ? "Catastro publicado"
-      : place.kind === "geographic"
-        ? "Ubicación en Ecuador"
-        : "Centro turístico publicado";
+  const copy = placeKindCopy[place.kind];
+  const subtitle = place.subtitle || "Ecuador";
   return (
     <Pressable
-      accessibilityLabel={`Centrar mapa en ${place.title}`}
+      accessibilityHint={copy.hint}
+      accessibilityLabel={`${place.title}, ${copy.label}, ${subtitle}`}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
         styles.resultCard,
-        {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-          opacity: pressed ? 0.78 : 1,
-        },
+        { backgroundColor: colors.surface, borderColor: colors.border },
+        pressed && styles.pressed,
       ]}
     >
-      {!isGeographic ? (
+      {place.kind !== "geographic" ? (
         <Text style={[styles.resultCategory, { color: colors.primaryStrong }]}>
-          {label}
+          {copy.label}
         </Text>
       ) : null}
       <Text
@@ -247,7 +221,7 @@ function SearchPlaceCard({
         numberOfLines={2}
         style={[styles.resultMeta, { color: colors.textMuted }]}
       >
-        {place.subtitle || "Ecuador"}
+        {subtitle}
       </Text>
     </Pressable>
   );
@@ -255,26 +229,32 @@ function SearchPlaceCard({
 
 function SearchResultCard({
   center,
-  distance,
+  distanceMeters,
   onPress,
 }: Readonly<{
   center: PublicCenter;
-  distance: number | null;
+  distanceMeters: number | null;
   onPress: () => void;
 }>) {
   const colors = useTurismoPalette();
+  const distance =
+    distanceMeters !== null ? formatDistance(distanceMeters) : null;
   return (
     <Pressable
-      accessibilityLabel={`Ver resultado ${center.name}`}
+      accessibilityHint={placeKindCopy.center.hint}
+      accessibilityLabel={[
+        center.name,
+        center.category,
+        distance ? `a ${distance}` : null,
+      ]
+        .filter(Boolean)
+        .join(", ")}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
         styles.resultCard,
-        {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-          opacity: pressed ? 0.78 : 1,
-        },
+        { backgroundColor: colors.surface, borderColor: colors.border },
+        pressed && styles.pressed,
       ]}
     >
       <Text style={[styles.resultCategory, { color: colors.primaryStrong }]}>
@@ -293,9 +273,7 @@ function SearchResultCard({
         {center.hierarchy ? (
           <TourismBadge>Jerarquía {center.hierarchy}</TourismBadge>
         ) : null}
-        {distance !== null ? (
-          <TourismBadge>{formatDistance(distance)}</TourismBadge>
-        ) : null}
+        {distance ? <TourismBadge>{distance}</TourismBadge> : null}
       </View>
       <Text
         numberOfLines={2}
@@ -311,9 +289,8 @@ function SearchResultCard({
         </Text>
         <TurismoIcon
           color={colors.primaryStrong}
-          name="chevronDown"
+          name="chevronRight"
           size={turismoIconSizes.sm}
-          style={styles.resultActionIcon}
         />
       </View>
     </Pressable>
@@ -321,30 +298,24 @@ function SearchResultCard({
 }
 
 const styles = StyleSheet.create({
-  container: { gap: turismoSpacing.md, paddingBottom: turismoSpacing.xl },
-  header: {
-    alignItems: "center",
+  list: { flex: 1 },
+  content: {
+    alignSelf: "center",
+    flexGrow: 1,
+    padding: turismoSpacing.lg,
+    paddingBottom: turismoSpacing.xxl,
+    width: "100%",
+  },
+  header: { gap: turismoSpacing.md, paddingBottom: turismoSpacing.md },
+  titleRow: {
+    alignItems: "flex-start",
     flexDirection: "row",
     gap: turismoSpacing.sm,
     justifyContent: "space-between",
   },
-  headerCopy: { flex: 1, gap: turismoSpacing.xxs },
-  query: { ...turismoTypography.title },
-  filterChips: { gap: turismoSpacing.xs, paddingRight: turismoSpacing.md },
-  statusRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-    paddingVertical: turismoSpacing.sm,
-  },
-  statusCard: {
-    alignItems: "center",
-    gap: turismoSpacing.sm,
-    padding: turismoSpacing.lg,
-  },
-  statusTitle: { ...turismoTypography.heading, textAlign: "center" },
-  statusText: { ...turismoTypography.caption, textAlign: "center" },
-  resultsList: { gap: turismoSpacing.sm },
+  query: { ...turismoTypography.title, flex: 1 },
+  separator: { height: turismoSpacing.sm },
+  pressed: { opacity: turismoOpacity.pressed },
   resultCard: {
     borderRadius: turismoRadii.md,
     borderWidth: turismoMetrics.borderWidth,
@@ -367,5 +338,4 @@ const styles = StyleSheet.create({
     marginTop: turismoSpacing.xxs,
   },
   resultActionText: { ...turismoTypography.label },
-  resultActionIcon: { transform: [{ rotate: "-90deg" }] },
 });

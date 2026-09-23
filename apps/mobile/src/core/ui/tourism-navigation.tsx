@@ -1,6 +1,5 @@
 import {
   Modal,
-  Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -9,12 +8,15 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   createContext,
+  Fragment,
   useCallback,
   useContext,
-  useEffect,
+  useImperativeHandle,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
+  type Ref,
 } from "react";
 import ReanimatedDrawerLayout, {
   DrawerPosition,
@@ -23,7 +25,8 @@ import ReanimatedDrawerLayout, {
 } from "react-native-gesture-handler/ReanimatedDrawerLayout";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
-import { TurismoIcon } from "./turismo-icons";
+import { TourismPressable } from "./tourism-pressable";
+import { TurismoIcon, type TurismoIconName } from "./turismo-icons";
 import { useTurismoPalette } from "./theme-context";
 import {
   turismoFixedColors,
@@ -35,11 +38,22 @@ import {
   turismoTypography,
 } from "./tokens";
 
+/** One entry of the side menu. Its action runs after the drawer closes. */
+export type TourismMenuItem = Readonly<{
+  icon: TurismoIconName;
+  label: string;
+  onPress: () => void;
+  /** Draws a divider above the item to start a new group. */
+  startsGroup?: boolean;
+}>;
+
 type TourismMenuContextValue = Readonly<{
   closeMenu: () => void;
   menuVisible: boolean;
   openMenu: () => void;
 }>;
+
+type TourismMenuDrawerHandle = Readonly<{ close: () => void }>;
 
 const TourismMenuContext = createContext<TourismMenuContextValue | null>(null);
 
@@ -50,42 +64,26 @@ const TourismMenuContext = createContext<TourismMenuContextValue | null>(null);
  */
 export function TourismMenuProvider({
   children,
-  onAccount,
-  onOfflineMaps,
-  onSaved,
-  onSettings,
-}: Readonly<{
-  children: ReactNode;
-  onAccount: () => void;
-  onOfflineMaps: () => void;
-  onSaved: () => void;
-  onSettings: () => void;
-}>) {
+  items,
+}: Readonly<{ children: ReactNode; items: readonly TourismMenuItem[] }>) {
   const [menuVisible, setMenuVisible] = useState(false);
+  const drawerRef = useRef<TourismMenuDrawerHandle>(null);
   const openMenu = useCallback(() => setMenuVisible(true), []);
-  const closeMenu = useCallback(() => setMenuVisible(false), []);
+  // Closing animates the drawer out; `menuVisible` turns false once it is shut.
+  const closeMenu = useCallback(() => drawerRef.current?.close(), []);
+  const handleClosed = useCallback(() => setMenuVisible(false), []);
+  const value = useMemo<TourismMenuContextValue>(
+    () => ({ closeMenu, menuVisible, openMenu }),
+    [closeMenu, menuVisible, openMenu],
+  );
 
   return (
-    <TourismMenuContext.Provider value={{ closeMenu, menuVisible, openMenu }}>
+    <TourismMenuContext.Provider value={value}>
       {children}
       <TourismMenuDrawer
-        onClose={closeMenu}
-        onAccount={() => {
-          closeMenu();
-          onAccount();
-        }}
-        onOfflineMaps={() => {
-          closeMenu();
-          onOfflineMaps();
-        }}
-        onSaved={() => {
-          closeMenu();
-          onSaved();
-        }}
-        onSettings={() => {
-          closeMenu();
-          onSettings();
-        }}
+        items={items}
+        onClosed={handleClosed}
+        ref={drawerRef}
         visible={menuVisible}
       />
     </TourismMenuContext.Provider>
@@ -101,142 +99,105 @@ export function useTourismMenu(): TourismMenuContextValue {
 }
 
 export function TourismMenuButton({
-  compact = false,
   onPress,
-}: Readonly<{ compact?: boolean; onPress: () => void }>) {
+}: Readonly<{ onPress: () => void }>) {
   const colors = useTurismoPalette();
   return (
-    <Pressable
+    <TourismPressable
       accessibilityLabel="Abrir menú"
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.menuButton,
-        compact && styles.menuButtonCompact,
-        {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-          opacity: pressed ? 0.7 : 1,
-        },
+        { backgroundColor: colors.surface, borderColor: colors.border },
       ]}
     >
       <TurismoIcon color={colors.text} name="menu" size={turismoIconSizes.md} />
-    </Pressable>
+    </TourismPressable>
   );
 }
 
 export function TourismHeader({
   onBack,
-  onMenu,
-  subtitle,
   title,
-}: Readonly<{
-  onBack?: () => void;
-  onMenu?: () => void;
-  subtitle?: string;
-  title: string;
-}>) {
+}: Readonly<{ onBack?: () => void; title: string }>) {
   const colors = useTurismoPalette();
   return (
     <View style={styles.header}>
-      <View style={styles.headerLeading}>
-        {onBack ? (
-          <Pressable
-            accessibilityLabel="Volver"
-            accessibilityRole="button"
-            hitSlop={8}
-            onPress={onBack}
-            style={styles.headerBack}
-          >
-            <TurismoIcon color={colors.text} name="arrowLeft" size={22} />
-          </Pressable>
-        ) : null}
-        <View style={styles.headerCopy}>
-          {subtitle ? (
-            <Text
-              style={[styles.headerSubtitle, { color: colors.primaryStrong }]}
-            >
-              {subtitle}
-            </Text>
-          ) : null}
-          <Text
-            accessibilityRole="header"
-            style={[styles.headerTitle, { color: colors.text }]}
-          >
-            {title}
-          </Text>
-        </View>
-      </View>
-      {onMenu ? <TourismMenuButton onPress={onMenu} /> : null}
+      {onBack ? (
+        <TourismPressable
+          accessibilityLabel="Volver"
+          accessibilityRole="button"
+          borderlessRipple
+          hitSlop={turismoSpacing.xs}
+          onPress={onBack}
+          style={styles.headerBack}
+        >
+          <TurismoIcon
+            color={colors.text}
+            name="arrowLeft"
+            size={turismoIconSizes.md}
+          />
+        </TourismPressable>
+      ) : null}
+      <Text
+        accessibilityRole="header"
+        style={[styles.headerTitle, { color: colors.text }]}
+      >
+        {title}
+      </Text>
     </View>
   );
 }
 
+/**
+ * The drawer lives in a transparent `Modal` that stays visible while
+ * `visible` is true. Opening waits for the modal to be shown; any close
+ * (item, back, scrim or swipe) runs the drawer's own animation and only then
+ * reports `onClosed` and runs the chosen item's action.
+ */
 function TourismMenuDrawer({
-  onAccount,
-  onClose,
-  onOfflineMaps,
-  onSettings,
-  onSaved,
+  items,
+  onClosed,
+  ref,
   visible,
 }: Readonly<{
-  onAccount: () => void;
-  onClose: () => void;
-  onOfflineMaps: () => void;
-  onSettings: () => void;
-  onSaved: () => void;
+  items: readonly TourismMenuItem[];
+  onClosed: () => void;
+  ref: Ref<TourismMenuDrawerHandle>;
   visible: boolean;
 }>) {
   const colors = useTurismoPalette();
   const { width } = useWindowDimensions();
   const drawerWidth = Math.min(width * 0.82, turismoMetrics.drawerMaxWidth);
-  const [mounted, setMounted] = useState(false);
   const drawerRef = useRef<DrawerLayoutMethods>(null);
   const closingRef = useRef(false);
-  const mountedRef = useRef(visible);
   const pendingActionRef = useRef<(() => void) | null>(null);
 
-  const handleDrawerClosed = useCallback(() => {
-    mountedRef.current = false;
-    closingRef.current = false;
-    setMounted(false);
-    const pendingAction = pendingActionRef.current;
-    pendingActionRef.current = null;
-    (pendingAction ?? onClose)();
-  }, [onClose]);
-
-  const closeDrawer = useCallback((afterClose?: () => void) => {
-    if (closingRef.current) return;
+  const closeDrawer = (afterClose?: () => void) => {
+    if (!visible || closingRef.current) return;
     closingRef.current = true;
     pendingActionRef.current = afterClose ?? null;
-    setMounted(true);
     drawerRef.current?.closeDrawer();
-  }, []);
+  };
 
-  useEffect(() => {
-    if (visible) {
-      mountedRef.current = true;
-      closingRef.current = false;
-      pendingActionRef.current = null;
-      // Keep the native modal mounted while DrawerLayout runs its entrance animation.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setMounted(true);
-      return;
-    }
+  useImperativeHandle(ref, () => ({ close: () => closeDrawer() }));
 
-    if (!mountedRef.current || closingRef.current) return;
-    closeDrawer();
-  }, [closeDrawer, visible]);
+  const handleDrawerClose = () => {
+    const pendingAction = pendingActionRef.current;
+    closingRef.current = false;
+    pendingActionRef.current = null;
+    onClosed();
+    pendingAction?.();
+  };
 
   return (
     <Modal
       animationType="none"
-      onRequestClose={() => closeDrawer(onClose)}
-      onShow={() => {
-        if (visible) drawerRef.current?.openDrawer();
-      }}
+      onRequestClose={() => closeDrawer()}
+      onShow={() => drawerRef.current?.openDrawer()}
       transparent
-      visible={mounted}
+      visible={visible}
     >
       <GestureHandlerRootView style={styles.drawerRoot}>
         <ReanimatedDrawerLayout
@@ -245,9 +206,11 @@ function TourismMenuDrawer({
           drawerPosition={DrawerPosition.LEFT}
           drawerType={DrawerType.FRONT}
           drawerWidth={drawerWidth}
-          onDrawerClose={handleDrawerClosed}
+          onDrawerClose={handleDrawerClose}
           onDrawerOpen={() => {
+            // A swipe can reopen the drawer mid-close: forget that close.
             closingRef.current = false;
+            pendingActionRef.current = null;
           }}
           overlayColor={colors.scrim}
           ref={drawerRef}
@@ -260,32 +223,23 @@ function TourismMenuDrawer({
                 style={styles.drawerSafeArea}
               >
                 <View style={styles.drawerContent}>
-                  <DrawerAction
-                    icon="user"
-                    label="Cuenta"
-                    onPress={() => closeDrawer(onAccount)}
-                  />
-                  <DrawerAction
-                    icon="bookmark"
-                    label="Guardados"
-                    onPress={() => closeDrawer(onSaved)}
-                  />
-                  <DrawerAction
-                    icon="download"
-                    label="Mapas sin conexión"
-                    onPress={() => closeDrawer(onOfflineMaps)}
-                  />
-                  <View
-                    style={[
-                      styles.drawerDivider,
-                      { backgroundColor: colors.border },
-                    ]}
-                  />
-                  <DrawerAction
-                    icon="settings"
-                    label="Configuración"
-                    onPress={() => closeDrawer(onSettings)}
-                  />
+                  {items.map((item) => (
+                    <Fragment key={item.label}>
+                      {item.startsGroup ? (
+                        <View
+                          style={[
+                            styles.drawerDivider,
+                            { backgroundColor: colors.border },
+                          ]}
+                        />
+                      ) : null}
+                      <DrawerAction
+                        icon={item.icon}
+                        label={item.label}
+                        onPress={() => closeDrawer(item.onPress)}
+                      />
+                    </Fragment>
+                  ))}
                 </View>
               </SafeAreaView>
             </View>
@@ -302,27 +256,24 @@ function DrawerAction({
   icon,
   label,
   onPress,
-}: Readonly<{
-  icon: "bookmark" | "calendar" | "download" | "settings" | "user";
-  label: string;
-  onPress: () => void;
-}>) {
+}: Readonly<{ icon: TurismoIconName; label: string; onPress: () => void }>) {
   const colors = useTurismoPalette();
   return (
-    <Pressable
+    <TourismPressable
       accessibilityLabel={label}
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.drawerAction,
-        { opacity: pressed ? 0.65 : 1 },
-      ]}
+      style={styles.drawerAction}
     >
-      <TurismoIcon color={colors.primaryStrong} name={icon} size={20} />
+      <TurismoIcon
+        color={colors.primaryStrong}
+        name={icon}
+        size={turismoIconSizes.md}
+      />
       <Text style={[styles.drawerActionText, { color: colors.text }]}>
         {label}
       </Text>
-    </Pressable>
+    </TourismPressable>
   );
 }
 
@@ -333,29 +284,17 @@ const styles = StyleSheet.create({
     borderWidth: turismoMetrics.borderWidth,
     height: turismoMetrics.controlMd,
     justifyContent: "center",
+    overflow: "hidden",
     width: turismoMetrics.controlMd,
-  },
-  menuButtonCompact: {
-    borderWidth: turismoMetrics.borderWidth,
-    height: turismoMetrics.controlSm,
-    width: turismoMetrics.controlSm,
   },
   header: {
     alignItems: "center",
     flexDirection: "row",
-    justifyContent: "space-between",
-    minHeight: 64,
-  },
-  headerLeading: {
-    alignItems: "center",
-    flex: 1,
-    flexDirection: "row",
     gap: turismoSpacing.sm,
+    minHeight: turismoMetrics.headerMinHeight,
   },
   headerBack: { padding: turismoSpacing.xxs },
-  headerCopy: { flex: 1, gap: turismoSpacing.xxs },
-  headerSubtitle: { ...turismoTypography.caption },
-  headerTitle: { ...turismoTypography.title },
+  headerTitle: { ...turismoTypography.title, flex: 1 },
   drawerRoot: {
     flex: 1,
     flexDirection: "row",
@@ -381,9 +320,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderRadius: turismoRadii.sm,
     gap: turismoSpacing.md,
-    minHeight: 52,
+    minHeight: turismoMetrics.controlLg,
+    overflow: "hidden",
     paddingHorizontal: turismoSpacing.sm,
   },
   drawerActionText: { ...turismoTypography.body },
-  drawerDivider: { height: 1, marginVertical: turismoSpacing.md },
+  drawerDivider: {
+    height: turismoMetrics.borderWidth,
+    marginVertical: turismoSpacing.md,
+  },
 });

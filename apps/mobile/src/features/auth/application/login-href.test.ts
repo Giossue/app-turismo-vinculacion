@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildLoginHref, parseReturnTo } from "./login-href";
+import {
+  buildLoginHref,
+  parseReturnTo,
+  returnsThroughHistory,
+} from "./login-href";
 
 describe("login href", () => {
   it("carries the return path as a search param", () => {

@@ -1,7 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import {
   Keyboard,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -22,12 +21,12 @@ import {
   turismoFixedColors,
   turismoIconSizes,
   turismoMetrics,
-  turismoOpacity,
   turismoRadii,
   turismoSpacing,
   turismoTypography,
 } from "./tokens";
 import { useTurismoPalette } from "./theme-context";
+import { TourismPressable } from "./tourism-pressable";
 
 // The clear icon keeps its compact look; hitSlop extends it to a 44dp target.
 const searchClearHitSlop =
@@ -39,10 +38,8 @@ export function TourismSearchField({
   onChangeText,
   onClear,
   onFocus,
-  onBlur,
   onSubmitEditing,
   placeholder,
-  trailing,
   value,
 }: Readonly<{
   accessibilityLabel: string;
@@ -50,10 +47,8 @@ export function TourismSearchField({
   onChangeText: (value: string) => void;
   onClear?: () => void;
   onFocus?: () => void;
-  onBlur?: () => void;
   onSubmitEditing?: () => void;
   placeholder: string;
-  trailing?: ReactNode;
   value: string;
 }>) {
   const colors = useTurismoPalette();
@@ -92,7 +87,6 @@ export function TourismSearchField({
         accessibilityLabel={accessibilityLabel}
         autoCapitalize="none"
         autoFocus={autoFocus}
-        onBlur={onBlur}
         onChangeText={onChangeText}
         onFocus={onFocus}
         placeholder={placeholder}
@@ -105,9 +99,10 @@ export function TourismSearchField({
         value={value}
       />
       {value && onClear ? (
-        <Pressable
+        <TourismPressable
           accessibilityLabel="Limpiar búsqueda"
           accessibilityRole="button"
+          borderlessRipple
           hitSlop={searchClearHitSlop}
           onPress={onClear}
           style={styles.searchClear}
@@ -117,9 +112,8 @@ export function TourismSearchField({
             name="close"
             size={turismoIconSizes.sm}
           />
-        </Pressable>
+        </TourismPressable>
       ) : null}
-      {trailing}
     </View>
   );
 }
@@ -153,24 +147,19 @@ export function TourismIconAction({
   const idleBackground = variant === "ghost" ? "transparent" : colors.surface;
   const idleBorder = variant === "ghost" ? "transparent" : colors.border;
   return (
-    <Pressable
+    <TourismPressable
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ disabled, selected }}
       disabled={disabled}
       hitSlop={10}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.iconAction,
         variant === "ghost" && styles.iconActionGhost,
         {
           backgroundColor: selected ? colors.primary : idleBackground,
           borderColor: selected ? colors.primary : idleBorder,
-          opacity: disabled
-            ? turismoOpacity.disabled
-            : pressed
-              ? turismoOpacity.pressed
-              : 1,
         },
         style,
       ]}
@@ -201,7 +190,7 @@ export function TourismIconAction({
           />
         ) : null}
       </View>
-    </Pressable>
+    </TourismPressable>
   );
 }
 
@@ -219,27 +208,23 @@ export function TourismCompassAction({
   const colors = useTurismoPalette();
 
   return (
-    <Pressable
+    <TourismPressable
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       hitSlop={4}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.compassAction,
-        {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-          opacity: pressed ? turismoOpacity.pressed : 1,
-        },
+        { backgroundColor: colors.surface, borderColor: colors.border },
         style,
       ]}
     >
       <Svg
-        height={42}
+        height={turismoMetrics.compassGraphic}
         pointerEvents="none"
         style={styles.compassGraphic}
         viewBox="0 0 24 24"
-        width={42}
+        width={turismoMetrics.compassGraphic}
       >
         <G rotation={-bearing} origin="12, 12">
           <Polygon
@@ -255,7 +240,7 @@ export function TourismCompassAction({
           <Polygon fill={colors.text} opacity={0.7} points="12,20 9,12 12,10" />
         </G>
       </Svg>
-    </Pressable>
+    </TourismPressable>
   );
 }
 
@@ -300,7 +285,11 @@ export function TourismChoiceChip({
   );
 }
 
-/** Pill button. `loading` shows Paper's spinner in place of the icon. */
+/**
+ * Pill button. `loading` shows Paper's spinner in place of the icon.
+ * `size="lg"` is the prominent call to action of a hero screen;
+ * `trailingIcon` draws the icon after the label (e.g. a chevron).
+ */
 export function TourismActionButton({
   compact = false,
   disabled = false,
@@ -309,7 +298,9 @@ export function TourismActionButton({
   loading = false,
   mode = "contained",
   onPress,
+  size = "md",
   style,
+  trailingIcon,
 }: Readonly<{
   compact?: boolean;
   disabled?: boolean;
@@ -318,7 +309,9 @@ export function TourismActionButton({
   loading?: boolean;
   mode?: "contained" | "outlined" | "ghost";
   onPress?: () => void;
+  size?: "md" | "lg";
   style?: StyleProp<ViewStyle>;
+  trailingIcon?: TurismoIconName;
 }>) {
   const colors = useTurismoPalette();
   const backgroundColor =
@@ -329,6 +322,7 @@ export function TourismActionButton({
         : "transparent";
   const foregroundColor =
     mode === "contained" ? colors.onPrimary : colors.primaryStrong;
+  const iconName = trailingIcon ?? icon;
   return (
     <PaperButton
       accessibilityRole="button"
@@ -338,19 +332,22 @@ export function TourismActionButton({
       contentStyle={[
         styles.actionButtonContent,
         compact && styles.actionButtonContentCompact,
+        size === "lg" && styles.actionButtonContentLarge,
+        trailingIcon && styles.actionButtonContentTrailing,
       ]}
       disabled={disabled}
       hitSlop={compact ? turismoMetrics.chipHitSlop : undefined}
       icon={
-        icon
-          ? ({ color, size }) => (
-              <TurismoIcon color={color} name={icon} size={size} />
+        iconName
+          ? ({ color, size: iconSize }) => (
+              <TurismoIcon color={color} name={iconName} size={iconSize} />
             )
           : undefined
       }
       labelStyle={[
         styles.actionButtonText,
         compact && styles.actionButtonTextCompact,
+        size === "lg" && styles.actionButtonTextLarge,
         { color: foregroundColor },
       ]}
       loading={loading}
@@ -465,9 +462,13 @@ const styles = StyleSheet.create({
     height: turismoMetrics.controlLg,
     justifyContent: "center",
     margin: 0,
+    overflow: "hidden",
     width: turismoMetrics.controlLg,
   },
-  compassGraphic: { height: 42, width: 42 },
+  compassGraphic: {
+    height: turismoMetrics.compassGraphic,
+    width: turismoMetrics.compassGraphic,
+  },
   chip: {
     borderRadius: turismoRadii.pill,
     borderWidth: turismoMetrics.borderWidth,
@@ -488,11 +489,14 @@ const styles = StyleSheet.create({
     minHeight: turismoMetrics.chipHeight,
     paddingHorizontal: turismoSpacing.sm,
   },
+  actionButtonContentLarge: { minHeight: turismoMetrics.controlLg },
+  actionButtonContentTrailing: { flexDirection: "row-reverse" },
   actionButtonText: { ...turismoTypography.label },
   actionButtonTextCompact: {
     ...turismoTypography.label,
     marginVertical: turismoSpacing.xs - turismoSpacing.xxs,
   },
+  actionButtonTextLarge: { ...turismoTypography.labelLarge },
   surface: {
     borderRadius: turismoRadii.lg,
     borderWidth: turismoMetrics.borderWidth,

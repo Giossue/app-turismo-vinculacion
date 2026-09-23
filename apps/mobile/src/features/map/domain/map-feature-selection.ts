@@ -18,9 +18,10 @@ export type MapFeatureSelection = Readonly<
 
 const nearbyMapFeatureRadiusMeters = 50;
 
+/** `[longitude, latitude]` of the selected feature, as MapLibre expects. */
 export function getMapFeatureCoordinate(
   selection: MapFeatureSelection,
-): readonly [number, number] {
+): [number, number] {
   return selection.kind === "center"
     ? [selection.center.longitude, selection.center.latitude]
     : [selection.establishment.longitude, selection.establishment.latitude];

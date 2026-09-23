@@ -1,5 +1,5 @@
 import * as Location from "expo-location";
-import { AppState, Linking, Platform, type AppStateStatus } from "react-native";
+import { AppState, type AppStateStatus } from "react-native";
 import {
   createContext,
   useCallback,
@@ -11,6 +11,12 @@ import {
 } from "react";
 
 import type { GeoCoordinate } from "../geo/types";
+import {
+  getLocationAvailability,
+  locationUnavailableMessages,
+  type LocationUnavailableReason,
+} from "./location-availability";
+import { toCoordinate } from "./location-coordinate";
 import { isReliableLocationAccuracy } from "./location-quality";
 
 type UserLocationStatus =
@@ -44,6 +50,8 @@ const initialState: UserLocationState = {
   status: "idle",
 };
 const currentLocationTimeoutMs = 12_000;
+/** How often the visible session re-checks permission and GPS provider. */
+const availabilitySyncIntervalMs = 5_000;
 const foregroundLocationOptions: Location.LocationOptions = {
   accuracy: Location.Accuracy.High,
   distanceInterval: 10,
@@ -81,11 +89,12 @@ export function UserLocationProvider({
       updater:
         UserLocationState | ((current: UserLocationState) => UserLocationState),
     ) => {
-      setState((current) => {
-        const next = typeof updater === "function" ? updater(current) : updater;
-        stateRef.current = next;
-        return next;
-      });
+      // Every update goes through here, so the ref always holds the latest
+      // state and the next value can be computed outside a pure updater.
+      const next =
+        typeof updater === "function" ? updater(stateRef.current) : updater;
+      stateRef.current = next;
+      setState(next);
     },
     [],
   );
@@ -111,10 +120,7 @@ export function UserLocationProvider({
 
       updateState({
         accuracy,
-        coordinate: {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        },
+        coordinate: toCoordinate(location),
         message: null,
         status: "ready",
       });
@@ -150,26 +156,10 @@ export function UserLocationProvider({
 
     const start = (async () => {
       try {
-        const permission = await Location.getForegroundPermissionsAsync();
-        if (!permission.granted) {
+        const availability = await getLocationAvailability();
+        if (availability !== "available") {
           stopForegroundTracking();
-          updateState((current) => ({
-            ...current,
-            coordinate: null,
-            message: "Activa el permiso de ubicación desde Ajustes.",
-            status: "denied",
-          }));
-          return;
-        }
-
-        if (!(await Location.hasServicesEnabledAsync())) {
-          stopForegroundTracking();
-          updateState((current) => ({
-            ...current,
-            coordinate: null,
-            message: "Activa el GPS para encontrar tu posición.",
-            status: "disabled",
-          }));
+          updateState((current) => toUnavailableState(current, availability));
           return;
         }
 
@@ -227,43 +217,13 @@ export function UserLocationProvider({
         }
 
         try {
-          let permission = await Location.getForegroundPermissionsAsync();
-          if (!permission.granted && options.allowPermissionRequest) {
-            if (!permission.canAskAgain) {
-              updateState((current) => ({
-                ...current,
-                coordinate: null,
-                message: "Activa el permiso de ubicación desde Ajustes.",
-                status: "denied",
-              }));
-              return null;
-            }
-            permission = await Location.requestForegroundPermissionsAsync();
-          }
-
-          if (!permission.granted) {
+          const availability = await getLocationAvailability({
+            promptProvider: options.allowProviderPrompt,
+            requestPermission: options.allowPermissionRequest,
+          });
+          if (availability !== "available") {
             stopForegroundTracking();
-            updateState((current) => ({
-              ...current,
-              coordinate: null,
-              message: options.allowPermissionRequest
-                ? "Necesitamos permiso para mostrar tu posición."
-                : "Activa el permiso de ubicación desde Ajustes.",
-              status: "denied",
-            }));
-            return null;
-          }
-
-          if (
-            !(await ensureLocationServicesEnabled(options.allowProviderPrompt))
-          ) {
-            stopForegroundTracking();
-            updateState((current) => ({
-              ...current,
-              coordinate: null,
-              message: "Activa el GPS para encontrar tu posición.",
-              status: "disabled",
-            }));
+            updateState((current) => toUnavailableState(current, availability));
             return null;
           }
 
@@ -299,10 +259,7 @@ export function UserLocationProvider({
             return null;
           }
 
-          const coordinate = {
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-          } satisfies GeoCoordinate;
+          const coordinate = toCoordinate(location);
 
           updateState({
             accuracy,
@@ -354,26 +311,10 @@ export function UserLocationProvider({
 
       availabilityCheckRef.current = true;
       try {
-        const permission = await Location.getForegroundPermissionsAsync();
-        if (!permission.granted) {
+        const availability = await getLocationAvailability();
+        if (availability !== "available") {
           stopForegroundTracking();
-          updateState((current) => ({
-            ...current,
-            coordinate: null,
-            message: "Activa el permiso de ubicación desde Ajustes.",
-            status: "denied",
-          }));
-          return;
-        }
-
-        if (!(await Location.hasServicesEnabledAsync())) {
-          stopForegroundTracking();
-          updateState((current) => ({
-            ...current,
-            coordinate: null,
-            message: "Activa el GPS para encontrar tu posición.",
-            status: "disabled",
-          }));
+          updateState((current) => toUnavailableState(current, availability));
           return;
         }
 
@@ -464,7 +405,7 @@ export function UserLocationProvider({
       if (AppState.currentState === "active") {
         void syncAvailability(false);
       }
-    }, 5_000);
+    }, availabilitySyncIntervalMs);
 
     return () => {
       subscription.remove();
@@ -496,34 +437,16 @@ export function useUserLocation(): UserLocationContextValue {
   return context;
 }
 
-/**
- * El permiso de la aplicación y el proveedor/GPS del dispositivo son estados
- * distintos. Cuando el permiso ya existe, el botón puede solicitar al sistema
- * que active el proveedor sin volver a mostrar el diálogo de permisos.
- */
-async function ensureLocationServicesEnabled(
-  allowProviderPrompt: boolean,
-): Promise<boolean> {
-  if (await Location.hasServicesEnabledAsync()) return true;
-  if (!allowProviderPrompt) return false;
-
-  if (Platform.OS === "android") {
-    try {
-      await Location.enableNetworkProviderAsync();
-    } catch {
-      return false;
-    }
-    return Location.hasServicesEnabledAsync();
-  }
-
-  // iOS no expone un diálogo equivalente para activar el proveedor global;
-  // abre los ajustes de la aplicación para que la persona lo habilite.
-  try {
-    await Linking.openSettings();
-  } catch {
-    // El estado inferior comunica que debe activarse manualmente.
-  }
-  return Location.hasServicesEnabledAsync();
+function toUnavailableState(
+  current: UserLocationState,
+  reason: LocationUnavailableReason,
+): UserLocationState {
+  return {
+    ...current,
+    coordinate: null,
+    message: locationUnavailableMessages[reason],
+    status: reason === "services-disabled" ? "disabled" : "denied",
+  };
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {

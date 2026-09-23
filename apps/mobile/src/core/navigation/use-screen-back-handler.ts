@@ -1,5 +1,5 @@
-import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useRef } from "react";
+import { useIsFocused, useRouter } from "expo-router";
+import { useEffect, useEffectEvent } from "react";
 import { BackHandler, Platform } from "react-native";
 
 /**
@@ -11,34 +11,31 @@ import { BackHandler, Platform } from "react-native";
  */
 export function useScreenBackHandler(onBeforeBack?: () => boolean): void {
   const router = useRouter();
-  const onBeforeBackRef = useRef(onBeforeBack);
+  const focused = useIsFocused();
+  // Reads the latest `onBeforeBack` without re-subscribing on every render.
+  const consumeBack = useEffectEvent(() => onBeforeBack?.() ?? false);
+
   useEffect(() => {
-    onBeforeBackRef.current = onBeforeBack;
-  }, [onBeforeBack]);
+    if (!focused || Platform.OS !== "android") return undefined;
 
-  useFocusEffect(
-    useCallback(() => {
-      if (Platform.OS !== "android") return undefined;
+    const handleBackPress = () => {
+      if (consumeBack()) return true;
 
-      const handleBackPress = () => {
-        if (onBeforeBackRef.current?.()) return true;
-
-        if (router.canGoBack()) {
-          router.back();
-          return true;
-        }
-
-        // Keep the root route from delegating the event to native map/gesture
-        // handlers. There is no screen to pop, so Android should exit/minimize.
-        BackHandler.exitApp();
+      if (router.canGoBack()) {
+        router.back();
         return true;
-      };
+      }
 
-      const subscription = BackHandler.addEventListener(
-        "hardwareBackPress",
-        handleBackPress,
-      );
-      return () => subscription.remove();
-    }, [router]),
-  );
+      // Keep the root route from delegating the event to native map/gesture
+      // handlers. There is no screen to pop, so Android should exit/minimize.
+      BackHandler.exitApp();
+      return true;
+    };
+
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      handleBackPress,
+    );
+    return () => subscription.remove();
+  }, [focused, router]);
 }

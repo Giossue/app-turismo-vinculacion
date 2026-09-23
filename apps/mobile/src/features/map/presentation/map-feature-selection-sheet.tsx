@@ -5,6 +5,7 @@ import {
   TourismSheetScrollView,
 } from "@/core/ui/tourism-bottom-sheet";
 import { useTurismoPalette } from "@/core/ui/theme-context";
+import { TourismIconAction } from "@/core/ui/tourism-controls";
 import { TurismoIcon, type TurismoIconName } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
@@ -44,6 +45,12 @@ export function MapFeatureSelectionSheet({
               Selecciona cuál quieres abrir.
             </Text>
           </View>
+          <TourismIconAction
+            accessibilityLabel="Cerrar"
+            icon="close"
+            onPress={onClose}
+            variant="ghost"
+          />
         </View>
         <View style={styles.options}>
           {selections.map((selection, index) => {
@@ -60,7 +67,12 @@ export function MapFeatureSelectionSheet({
 
             return (
               <Pressable
-                accessibilityLabel={`Abrir ${title}`}
+                accessibilityHint={
+                  isCenter
+                    ? "Abre la ficha del centro turístico"
+                    : "Abre la ficha del punto de interés"
+                }
+                accessibilityLabel={`${title}, ${subtitle}`}
                 accessibilityRole="button"
                 key={`${getSelectionKey(selection)}:${index}`}
                 onPress={() => onSelect(selection)}
@@ -139,11 +151,10 @@ const styles = StyleSheet.create({
   options: { gap: turismoSpacing.sm },
   option: {
     alignItems: "center",
-    borderRadius: 14,
+    borderRadius: turismoRadii.md,
     borderWidth: turismoMetrics.borderWidth,
     flexDirection: "row",
     gap: turismoSpacing.sm,
-    minHeight: 72,
     paddingHorizontal: turismoSpacing.md,
     paddingVertical: turismoSpacing.sm,
   },

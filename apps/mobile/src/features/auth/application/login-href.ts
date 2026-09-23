@@ -30,3 +30,12 @@ export function parseReturnTo(param: SearchParamValue): LoginReturnPath {
   // Validated above as an internal absolute path.
   return candidate as LoginReturnPath;
 }
+
+/**
+ * Targets whose screen keeps its state in params that `returnTo` does not
+ * carry (the route keeps its destination). Returning to them must go back to
+ * the same history entry; `dismissTo` would reset those params.
+ */
+export function returnsThroughHistory(target: LoginReturnPath): boolean {
+  return target === "/route";
+}

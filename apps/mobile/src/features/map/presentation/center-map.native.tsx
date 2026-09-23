@@ -23,6 +23,7 @@ import {
   type MapFeatureSelection,
 } from "../domain/map-feature-selection";
 import type { CenterMapProps } from "./center-map.types";
+import { MapAttributionButton } from "./map-attribution-button";
 import { MapLoadingOverlay } from "./map-loading-overlay";
 import { useBasemapStyle } from "./use-basemap-style";
 import { useMapLifecycle } from "./use-map-lifecycle";
@@ -43,10 +44,17 @@ type PendingMapFeatureSelection = Readonly<{
 type PendingLocationFocus = Readonly<{
   target: [number, number];
 }>;
+type CameraState = Readonly<{ center: [number, number]; zoom: number }>;
+type SelectionCallbacks = Pick<
+  CenterMapProps,
+  "onCenterPress" | "onEstablishmentPress" | "onOverlappingFeaturePress"
+>;
 
 // Guaranda, until the tourist's position or a selection moves the camera.
-const initialCenter: [number, number] = [-79.00098, -1.59263];
-const initialZoom = 14;
+const initialViewState = {
+  center: [-79.00098, -1.59263] as [number, number],
+  zoom: 14,
+};
 const maxZoom = 19;
 /** Zoom used to focus a selected pin, a search result or the user. */
 const focusZoom = 15;
@@ -89,14 +97,41 @@ const pinLayout = {
   "icon-ignore-placement": true,
 } as const;
 
+/** True when `camera` rests on `target` at the focus zoom. */
+function isCameraAtTarget(
+  { center: [longitude, latitude], zoom }: CameraState,
+  [targetLongitude, targetLatitude]: [number, number],
+): boolean {
+  return (
+    Math.abs(longitude - targetLongitude) <= cameraTargetTolerance &&
+    Math.abs(latitude - targetLatitude) <= cameraTargetTolerance &&
+    Math.abs(zoom - focusZoom) <= cameraZoomTolerance
+  );
+}
+
+/** Opens the sheet for one selection, or the choices for several. */
+function deliverSelections(
+  selections: readonly MapFeatureSelection[],
+  callbacks: SelectionCallbacks,
+): void {
+  const [selection] = selections;
+  if (selections.length > 1) {
+    callbacks.onOverlappingFeaturePress(selections);
+  } else if (selection?.kind === "center") {
+    callbacks.onCenterPress(selection.center);
+  } else if (selection?.kind === "establishment") {
+    callbacks.onEstablishmentPress(selection.establishment);
+  }
+}
+
 export function CenterMap({
+  attributionInset,
   centers,
   establishments = [],
   focusLocationKey,
   focusCoordinate = null,
   focusCoordinateKey,
   focusSelection = null,
-  onAttributionChange,
   onBearingChange,
   onCenterPress,
   onEstablishmentPress,
@@ -114,6 +149,19 @@ export function CenterMap({
     useRef<PendingMapFeatureSelection | null>(null);
   const pendingLocationFocusRef = useRef<PendingLocationFocus | null>(null);
   const focusedLocationKeyRef = useRef<number | undefined>(undefined);
+  const lastCameraRef = useRef<CameraState | null>(null);
+  const selectionCallbacksRef = useRef<SelectionCallbacks>({
+    onCenterPress,
+    onEstablishmentPress,
+    onOverlappingFeaturePress,
+  });
+  useEffect(() => {
+    selectionCallbacksRef.current = {
+      onCenterPress,
+      onEstablishmentPress,
+      onOverlappingFeaturePress,
+    };
+  });
   const { scheme } = useTurismoTheme();
   const colors = useTurismoMapPalette();
   const mapStyle = useBasemapStyle(scheme);
@@ -182,6 +230,29 @@ export function CenterMap({
     [establishments],
   );
 
+  // La selección se confirma cuando MapLibre termina el enfoque, así el zoom
+  // siempre sucede antes de abrir la ficha o las opciones cercanas. MapLibre
+  // omite un easeTo hacia la cámara actual y no emitiría onRegionDidChange:
+  // si la cámara ya descansa sobre el destino, la selección se abre enseguida.
+  const focusSelections = useCallback(
+    (selections: readonly MapFeatureSelection[], target: [number, number]) => {
+      const camera = lastCameraRef.current;
+      if (camera && isCameraAtTarget(camera, target)) {
+        pendingMapFeatureSelectionRef.current = null;
+        deliverSelections(selections, selectionCallbacksRef.current);
+        return;
+      }
+      pendingMapFeatureSelectionRef.current = { selections, target };
+      cameraRef.current?.easeTo({
+        center: target,
+        duration: focusCameraDurationMs,
+        easing: "ease",
+        zoom: focusZoom,
+      });
+    },
+    [],
+  );
+
   const handleFeaturePress = useCallback(
     async (event: NativeSyntheticEvent<PressEventWithFeatures>) => {
       if (!isActive()) return;
@@ -238,22 +309,14 @@ export function CenterMap({
         centers,
         establishments,
       );
-      const target = [...getMapFeatureCoordinate(anchor)] as [number, number];
-      // La selección se confirma cuando MapLibre termina el enfoque. Así el
-      // zoom siempre sucede antes de abrir la ficha o las opciones cercanas.
-      pendingMapFeatureSelectionRef.current = { selections, target };
-      cameraRef.current?.easeTo({
-        center: target,
-        duration: focusCameraDurationMs,
-        easing: "ease",
-        zoom: focusZoom,
-      });
+      focusSelections(selections, getMapFeatureCoordinate(anchor));
     },
     [
       centersByCode,
       centers,
       establishments,
       establishmentsByFeatureKey,
+      focusSelections,
       isActive,
       onLocationFocusChange,
     ],
@@ -261,20 +324,7 @@ export function CenterMap({
 
   useEffect(() => {
     if (!focusSelection || !nativeReady) return;
-    const target = [...getMapFeatureCoordinate(focusSelection)] as [
-      number,
-      number,
-    ];
-    pendingMapFeatureSelectionRef.current = {
-      selections: [focusSelection],
-      target,
-    };
-    cameraRef.current?.easeTo({
-      center: target,
-      duration: focusCameraDurationMs,
-      easing: "ease",
-      zoom: focusZoom,
-    });
+    focusSelections([focusSelection], getMapFeatureCoordinate(focusSelection));
 
     return () => {
       if (
@@ -283,7 +333,7 @@ export function CenterMap({
         pendingMapFeatureSelectionRef.current = null;
       }
     };
-  }, [focusSelection, nativeReady]);
+  }, [focusSelection, focusSelections, nativeReady]);
 
   useEffect(() => {
     if (!nativeReady || !userLocation || focusLocationKey === undefined) {
@@ -333,11 +383,6 @@ export function CenterMap({
     };
   }, [isActive, nativeReady, resetNorthKey]);
 
-  useEffect(() => {
-    onAttributionChange?.(showAttribution);
-    return () => onAttributionChange?.(null);
-  }, [onAttributionChange, showAttribution]);
-
   const selectedCode = selectedCenterCode ?? "";
   const selectedFeatureKey = selectedEstablishmentKey ?? "";
 
@@ -359,6 +404,8 @@ export function CenterMap({
         onRegionDidChange={(event) => {
           const { bounds, center, userInteraction, zoom } = event.nativeEvent;
           onBearingChange?.(event.nativeEvent.bearing);
+          const camera: CameraState = { center, zoom };
+          lastCameraRef.current = camera;
           const pendingSelection = pendingMapFeatureSelectionRef.current;
           const pendingLocationFocus = pendingLocationFocusRef.current;
 
@@ -367,22 +414,10 @@ export function CenterMap({
           const [west, south, east, north] = bounds;
           onViewportChange({ west, south, east, north });
 
-          const reachedTarget = ([targetLongitude, targetLatitude]: [
-            number,
-            number,
-          ]) => {
-            const [longitude, latitude] = center;
-            return (
-              Math.abs(longitude - targetLongitude) <= cameraTargetTolerance &&
-              Math.abs(latitude - targetLatitude) <= cameraTargetTolerance &&
-              Math.abs(zoom - focusZoom) <= cameraZoomTolerance
-            );
-          };
-
           if (
             pendingLocationFocus &&
             !userInteraction &&
-            reachedTarget(pendingLocationFocus.target)
+            isCameraAtTarget(camera, pendingLocationFocus.target)
           ) {
             pendingLocationFocusRef.current = null;
             onLocationFocusChange?.(true);
@@ -391,17 +426,14 @@ export function CenterMap({
           if (
             pendingSelection &&
             !userInteraction &&
-            reachedTarget(pendingSelection.target)
+            isCameraAtTarget(camera, pendingSelection.target)
           ) {
             pendingMapFeatureSelectionRef.current = null;
-            const [selection] = pendingSelection.selections;
-            if (pendingSelection.selections.length > 1) {
-              onOverlappingFeaturePress(pendingSelection.selections);
-            } else if (selection?.kind === "center") {
-              onCenterPress(selection.center);
-            } else if (selection?.kind === "establishment") {
-              onEstablishmentPress(selection.establishment);
-            }
+            deliverSelections(pendingSelection.selections, {
+              onCenterPress,
+              onEstablishmentPress,
+              onOverlappingFeaturePress,
+            });
           }
 
           if (userInteraction) {
@@ -421,7 +453,7 @@ export function CenterMap({
         touchRotate
       >
         <Camera
-          initialViewState={{ center: initialCenter, zoom: initialZoom }}
+          initialViewState={initialViewState}
           maxZoom={maxZoom}
           ref={cameraRef}
         />
@@ -543,6 +575,11 @@ export function CenterMap({
         />
       </MapLibreMap>
       <MapLoadingOverlay visible={showLoadingOverlay} />
+      <MapAttributionButton
+        bottom={attributionInset?.bottom}
+        left={attributionInset?.left}
+        onPress={showAttribution}
+      />
     </View>
   );
 }

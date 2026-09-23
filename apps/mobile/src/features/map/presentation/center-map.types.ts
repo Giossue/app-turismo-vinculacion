@@ -5,6 +5,8 @@ import type { MapFeatureSelection } from "../domain/map-feature-selection";
 
 /** Props shared by the native MapLibre map and its web placeholder. */
 export type CenterMapProps = Readonly<{
+  /** Offset of the "i" attribution control from the bottom-left corner. */
+  attributionInset?: Readonly<{ bottom?: number; left?: number }>;
   centers: readonly PublicCenter[];
   establishments?: readonly PublicMapEstablishment[];
   /** Eases to `focusCoordinate` whenever `focusCoordinateKey` changes. */
@@ -13,7 +15,7 @@ export type CenterMapProps = Readonly<{
   /** Eases to the user's position whenever this key changes. */
   focusLocationKey?: number;
   focusSelection?: MapFeatureSelection | null;
-  onAttributionChange?: (handler: (() => void) | null) => void;
+  /** Called on every camera frame; keep it cheap (see `MapCompass`). */
   onBearingChange?: (bearing: number) => void;
   onCenterPress: (center: PublicCenter) => void;
   onEstablishmentPress: (establishment: PublicMapEstablishment) => void;

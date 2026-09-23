@@ -1,24 +1,35 @@
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
-import { PermissionsAndroid, Platform } from "react-native";
+import { AppState, PermissionsAndroid, Platform } from "react-native";
 
-import { getDistanceMeters } from "@/core/geo/distance";
+import { toCoordinate } from "@/core/location/location-coordinate";
 import { isReliableLocationAccuracy } from "@/core/location/location-quality";
 import { turismoFixedColors } from "@/core/ui/tokens";
 import {
-  patchNavigationSession,
-  readNavigationSession,
+  clearNavigationSession,
+  loadNavigationSession,
+  markNavigationArrived,
+  readNavigationProgress,
+  saveNavigationProgress,
   type PersistedNavigationLocation,
 } from "../data/navigation-session-storage";
 import {
   getNavigationGuidance,
   getNavigationNotification,
+  hasArrivedAtDestination,
 } from "../domain/navigation-guidance";
 
 const navigationLocationTaskName = "turismo-vinculacion-navigation-location";
 
-const arrivalThresholdMeters = 35;
+/** Watch options shared by the foreground watcher and the background task. */
+export const navigationLocationOptions = {
+  accuracy: Location.Accuracy.High,
+  distanceInterval: 10,
+  timeInterval: 2_000,
+} as const satisfies Location.LocationOptions;
+
 let startTaskPromise: Promise<void> | null = null;
+let sessionOwners = 0;
 
 type BackgroundLocationTaskData = Readonly<{
   locations?: Location.LocationObject[];
@@ -31,68 +42,92 @@ if (
   TaskManager.defineTask<BackgroundLocationTaskData>(
     navigationLocationTaskName,
     async ({ data, error }) => {
-      if (error || !data?.locations?.length) return;
-
-      const latest = data.locations[data.locations.length - 1];
-      if (!latest) return;
-
-      if (!isReliableLocationAccuracy(latest.coords.accuracy)) return;
-
-      const persistedLocation: PersistedNavigationLocation = {
-        accuracy: latest.coords.accuracy ?? null,
-        coordinate: {
-          latitude: latest.coords.latitude,
-          longitude: latest.coords.longitude,
-        },
-        timestamp: latest.timestamp,
-      };
-
-      const session = await readNavigationSession();
-      if (!session?.active) {
-        // A route screen can be removed while a native location callback is
-        // already queued. Do not publish another instruction for a session that
-        // has been cancelled, and make the task self-clean if it outlives JS.
-        await stopNavigationLocationTask();
-        return;
-      }
-
-      if (
-        getDistanceMeters(persistedLocation.coordinate, session.destination) <=
-        arrivalThresholdMeters
-      ) {
-        await patchNavigationSession(
-          { active: false },
-          { requireActive: false },
-        );
-        await stopNavigationLocationTask();
-        return;
-      }
-
-      await patchNavigationSession(
-        { lastLocation: persistedLocation },
-        { requireActive: true },
-      );
-
-      if (Platform.OS === "android") {
-        const notification = getNavigationNotification(
-          getNavigationGuidance(session.route, persistedLocation.coordinate),
-        );
-        if (notification.key !== session.lastNotificationKey) {
-          const updated = await updateNavigationLocationTaskNotification(
-            notification.body,
-          )
-            .then(() => true)
-            .catch(() => false);
-          if (updated) {
-            await patchNavigationSession(
-              { lastNotificationKey: notification.key },
-              { requireActive: true },
-            );
-          }
+      if (error) {
+        // A failed delivery (for example, a provider hiccup) is not the end
+        // of the navigation: keep the service and wait for the next fix.
+        if (__DEV__) {
+          console.warn("Navigation location task error", error.message);
         }
+        return;
       }
+
+      const latest = data?.locations?.at(-1);
+      if (!latest || !isReliableLocationAccuracy(latest.coords.accuracy)) {
+        return;
+      }
+      await handleBackgroundFix({
+        accuracy: latest.coords.accuracy ?? null,
+        coordinate: toCoordinate(latest),
+        timestamp: latest.timestamp,
+      });
     },
   );
+}
+
+async function handleBackgroundFix(
+  location: PersistedNavigationLocation,
+): Promise<void> {
+  const session = await loadNavigationSession();
+  // A storage error may be transient: keep the service and retry next fix.
+  if (session.status === "unreadable") return;
+  if (session.status === "missing" || !session.snapshot.active) {
+    // A route screen can be removed while a native location callback is
+    // already queued. Do not publish another instruction for a session that
+    // has been cancelled, and make the task self-clean if it outlives JS.
+    await stopNavigationLocationTask();
+    return;
+  }
+
+  if (sessionOwners === 0 && AppState.currentState === "active") {
+    // The app is visible but no route screen owns this navigation (Android
+    // destroyed the activity while it was hidden and reopened it at the
+    // root). Nothing on screen could stop it, so end it here.
+    await clearNavigationSession();
+    await stopNavigationLocationTask();
+    return;
+  }
+
+  const { destination, route } = session.snapshot;
+  if (hasArrivedAtDestination(location.coordinate, destination)) {
+    await markNavigationArrived();
+    await stopNavigationLocationTask();
+    return;
+  }
+
+  const progress = await readNavigationProgress();
+  let lastNotificationKey = progress?.lastNotificationKey ?? null;
+  if (Platform.OS === "android") {
+    // Only this task updates the notification, so it is published once per
+    // meaningful change whether the app is visible or not.
+    const notification = getNavigationNotification(
+      getNavigationGuidance(route, location.coordinate),
+    );
+    if (notification.key !== lastNotificationKey) {
+      const updated = await updateNavigationLocationTaskNotification(
+        notification.body,
+      ).then(
+        () => true,
+        () => false,
+      );
+      if (updated) lastNotificationKey = notification.key;
+    }
+  }
+
+  await saveNavigationProgress({ lastLocation: location, lastNotificationKey });
+}
+
+/**
+ * Registers the screen that owns the active navigation. While the app is
+ * visible, the task ends a navigation that no mounted screen owns.
+ */
+export function claimNavigationSessionOwnership(): () => void {
+  sessionOwners += 1;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    sessionOwners -= 1;
+  };
 }
 
 export async function requestNavigationBackgroundPermission(): Promise<{
@@ -138,15 +173,17 @@ export async function requestNavigationNotificationPermission(): Promise<boolean
   return result === PermissionsAndroid.RESULTS.GRANTED;
 }
 
+/**
+ * Starts the persistent location service. Idempotent; rejects when the
+ * platform cannot run it (callers map that to user-facing copy).
+ */
 export function startNavigationLocationTask(): Promise<void> {
   if (Platform.OS === "web") return Promise.resolve();
   if (startTaskPromise) return startTaskPromise;
 
   startTaskPromise = (async () => {
     if (!(await TaskManager.isAvailableAsync())) {
-      throw new Error(
-        "El seguimiento en segundo plano requiere una compilación de desarrollo.",
-      );
+      throw new Error("El seguimiento en segundo plano no está disponible.");
     }
 
     if (
@@ -166,7 +203,7 @@ export function startNavigationLocationTask(): Promise<void> {
   return startTaskPromise;
 }
 
-export async function updateNavigationLocationTaskNotification(
+async function updateNavigationLocationTaskNotification(
   notificationBody: string,
 ): Promise<void> {
   if (Platform.OS !== "android") return;
@@ -203,10 +240,11 @@ export async function stopNavigationLocationTask(): Promise<void> {
   }
 }
 
-function getNavigationLocationTaskOptions(notificationBody?: string) {
+function getNavigationLocationTaskOptions(
+  notificationBody?: string,
+): Location.LocationTaskOptions {
   return {
-    accuracy: Location.Accuracy.High,
-    distanceInterval: 10,
+    ...navigationLocationOptions,
     foregroundService: {
       killServiceOnDestroy: false,
       notificationBody:
@@ -217,6 +255,5 @@ function getNavigationLocationTaskOptions(notificationBody?: string) {
     },
     pausesUpdatesAutomatically: false,
     showsBackgroundLocationIndicator: true,
-    timeInterval: 2_000,
   };
 }

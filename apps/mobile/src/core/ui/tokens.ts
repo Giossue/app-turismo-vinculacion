@@ -38,6 +38,13 @@ export const turismoMetrics = {
   drawerMaxWidth: 360,
   borderWidth: 1,
   borderWidthStrong: 2,
+  headerMinHeight: 64,
+  compassGraphic: 42,
+  multilineInputMinHeight: 100,
+  progressTrackHeight: 6,
+  indicatorDot: 6,
+  ratingSummaryMinWidth: 112,
+  ratingPercentWidth: 40,
 } as const;
 
 export const turismoTypography = {
@@ -50,9 +57,16 @@ export const turismoTypography = {
   body: { fontSize: 16, lineHeight: 24, fontWeight: "400" as const },
   label: { fontSize: 14, lineHeight: 20, fontWeight: "600" as const },
   caption: { fontSize: 12, lineHeight: 16, fontWeight: "500" as const },
+  // Secondary running text: chat bubbles, reviews and hero benefits.
+  bodySmall: { fontSize: 14, lineHeight: 20, fontWeight: "400" as const },
+  // Prominent call-to-action labels (large buttons).
+  labelLarge: { fontSize: 16, lineHeight: 20, fontWeight: "700" as const },
+  // A single standalone figure, such as an average rating.
+  stat: { fontSize: 36, lineHeight: 40, fontWeight: "700" as const },
 } as const;
 
 export const turismoIconSizes = {
+  xs: 14,
   sm: 18,
   md: 22,
   lg: 26,
@@ -67,6 +81,7 @@ export const turismoMotion = {
 export const turismoOpacity = {
   pressed: 0.72,
   disabled: 0.38,
+  heroImage: 0.92,
 } as const;
 
 /**
@@ -78,6 +93,28 @@ export const turismoFixedColors = {
   compassNorth: "#EF4444",
   compassNorthShade: "#DC2626",
   shadow: "#000000",
+  // Darkens hero photography so the header stays legible on any image.
+  heroShade: "rgba(0, 0, 0, 0.24)",
+} as const;
+
+/**
+ * Responsive geometry of the account entry hero: an image band clamped to a
+ * fraction of the window height and a centered column of readable widths.
+ */
+export const turismoAccountEntryLayout = {
+  heroHeightRatio: 0.3,
+  heroMinHeight: 240,
+  heroMaxHeight: 300,
+  bodyHeightRatio: 0.68,
+  bodyHeightOffset: 72,
+  bodyMinHeight: 448,
+  bodyOverlap: 14,
+  titleMaxWidth: 390,
+  benefitsMaxWidth: 430,
+  actionsMaxWidth: 500,
+  benefitBadgeSize: 50,
+  benefitIconSize: 24,
+  benefitIconStroke: 1.9,
 } as const;
 
 export const turismoColors = {
@@ -98,6 +135,7 @@ export const turismoColors = {
     danger: "#b91c1c",
     mapSearchIcon: "#52605a",
     scrim: "rgba(0, 0, 0, 0.42)",
+    ripple: "rgba(23, 32, 28, 0.12)",
     onPrimary: "#ffffff",
     map: {
       background: "#E2ECE6",
@@ -130,6 +168,7 @@ export const turismoColors = {
     danger: "#f44336",
     mapSearchIcon: "#ffffff",
     scrim: "rgba(0, 0, 0, 0.58)",
+    ripple: "rgba(245, 245, 245, 0.12)",
     onPrimary: "#06130a",
     map: {
       background: "#10251A",
@@ -157,3 +196,12 @@ export function getTurismoColors(scheme: TurismoColorScheme): TurismoColors {
 export function getTurismoMapColors(scheme: TurismoColorScheme) {
   return turismoColors[scheme].map;
 }
+
+/**
+ * Large figures (route and remaining time) read at a glance, outside the
+ * text hierarchy of `turismoTypography`.
+ */
+export const turismoMetricTypography = {
+  md: { fontSize: 24, lineHeight: 30, fontWeight: "700" as const },
+  lg: { fontSize: 30, lineHeight: 36, fontWeight: "700" as const },
+} as const;

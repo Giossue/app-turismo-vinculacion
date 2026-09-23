@@ -1,7 +1,11 @@
 import { StyleSheet, Text, View } from "react-native";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
-import { turismoMetrics, turismoSpacing } from "@/core/ui/tokens";
+import {
+  turismoMetrics,
+  turismoSpacing,
+  turismoTypography,
+} from "@/core/ui/tokens";
 import type { RouteMapProps } from "./route-map.types";
 
 export function RouteMap(_props: RouteMapProps) {
@@ -14,7 +18,7 @@ export function RouteMap(_props: RouteMapProps) {
       ]}
     >
       <Text style={[styles.text, { color: colors.textMuted }]}>
-        Mapa de ruta disponible en el Development Build móvil.
+        El mapa de la ruta está disponible en la app para Android e iOS.
       </Text>
     </View>
   );
@@ -28,5 +32,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: turismoSpacing.lg,
   },
-  text: { textAlign: "center" },
+  text: { ...turismoTypography.body, textAlign: "center" },
 });

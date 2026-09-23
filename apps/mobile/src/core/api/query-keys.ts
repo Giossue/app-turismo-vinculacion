@@ -9,7 +9,8 @@ export const ONE_DAY_MS = 24 * 60 * 60 * 1000;
  */
 export const queryKeys = {
   calculatedRoute: ["calculated-route"],
-  centerOpinions: ["center-opinions"],
+  // Paginated (infinite) list; the segment discards the single-page shape.
+  centerOpinions: ["center-opinions", "pages-v1"],
   discoveryCatalog: ["discovery-catalog"],
   mapEstablishments: ["public-establishments-map", "osmic-pins-v1"],
   nearbyEstablishments: ["nearby-establishments"],
@@ -30,8 +31,11 @@ export const userScopedQueryKeys: readonly QueryKey[] = [
 ];
 
 /**
- * Public catalog data that may be persisted to AsyncStorage. Anything else
- * (user data, searches, viewport- or GPS-keyed results) stays in memory.
+ * Data that may be persisted to AsyncStorage: the public catalog and the
+ * tourist's saved places, so Guardados opens without a connection. Logout
+ * removes `userScopedQueryKeys` from memory and clears the persisted
+ * snapshot. Anything else (the own opinion, searches, viewport- or GPS-keyed
+ * results) stays in memory.
  */
 export const persistedQueryKeys: readonly QueryKey[] = [
   queryKeys.centerOpinions,
@@ -39,6 +43,7 @@ export const persistedQueryKeys: readonly QueryKey[] = [
   queryKeys.offlineCities,
   queryKeys.publishedCenter,
   queryKeys.publishedCenters,
+  queryKeys.savedCenters,
 ];
 
 const persistedRoots = new Set(persistedQueryKeys.map((key) => key[0]));

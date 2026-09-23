@@ -10,27 +10,22 @@ import { turismoMetrics, turismoSpacing } from "./tokens";
  * Shared mobile shell for every non-map screen.
  *
  * Keeping safe areas, header geometry and content gutters here prevents each
- * feature screen from slowly developing its own visual language.
+ * feature screen from slowly developing its own visual language. Wrap it in
+ * `TurismoSchemeScope` to force a color scheme (e.g. a dark hero).
  */
 export function TourismScreenFrame({
-  backgroundColor,
   children,
   fullBleed = false,
   includeBottomInset = true,
   onBack,
-  onMenu,
   showHeader = true,
-  subtitle,
   title,
 }: Readonly<{
-  backgroundColor?: string;
   children: ReactNode;
   fullBleed?: boolean;
   includeBottomInset?: boolean;
   onBack?: () => void;
-  onMenu?: () => void;
   showHeader?: boolean;
-  subtitle?: string;
   title: string;
 }>) {
   const colors = useTurismoPalette();
@@ -38,19 +33,11 @@ export function TourismScreenFrame({
   return (
     <SafeAreaView
       edges={includeBottomInset ? ["top", "bottom"] : ["top"]}
-      style={[
-        styles.safeArea,
-        { backgroundColor: backgroundColor ?? colors.background },
-      ]}
+      style={[styles.safeArea, { backgroundColor: colors.background }]}
     >
       {showHeader ? (
         <View style={styles.headerWrap}>
-          <TourismHeader
-            onBack={onBack}
-            onMenu={onMenu}
-            subtitle={subtitle}
-            title={title}
-          />
+          <TourismHeader onBack={onBack} title={title} />
         </View>
       ) : null}
       <View

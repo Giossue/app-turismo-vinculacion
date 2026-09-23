@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 import { getApiUrl } from "@/core/api/api-url";
-import { requestJson, type ApiRequestOptions } from "@/core/api/http";
+import {
+  ApiError,
+  requestJson,
+  type ApiRequestOptions,
+} from "@/core/api/http";
 import {
   routeModes,
   type CalculatedRoute,
@@ -33,6 +37,13 @@ export const calculatedRouteSchema = z.object({
 
 const routeResponseSchema = z.object({ data: calculatedRouteSchema });
 
+const routeErrorMessage = "No pudimos calcular la ruta.";
+
+/** User-facing copy for a failed route calculation; never raw error text. */
+export function getRouteErrorMessage(error: unknown): string {
+  return error instanceof ApiError ? error.message : routeErrorMessage;
+}
+
 export async function calculateRoute(
   request: RouteRequest,
   { apiUrl = getApiUrl(), fetcher, signal }: ApiRequestOptions = {},
@@ -41,7 +52,7 @@ export async function calculateRoute(
     `${apiUrl}/routing/route`,
     routeResponseSchema,
     {
-      errorMessage: "No pudimos calcular la ruta.",
+      errorMessage: routeErrorMessage,
       fetcher,
       init: {
         method: "POST",

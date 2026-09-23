@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 
 import { TourismChoiceChip } from "@/core/ui/tourism-controls";
@@ -9,18 +10,24 @@ export type DiscoveryFilterValues = Omit<CenterFilters, "text">;
 
 type FilterOption = Readonly<{ code: string; name: string }>;
 
+/**
+ * Horizontal "Todo" + option chips. `trailing` appends extra chips (for
+ * example "Cerca de mí") after the options.
+ */
 export function FilterChips({
   label,
   onChange,
   options,
   selected,
+  trailing,
 }: Readonly<{
   label: string;
   options: readonly FilterOption[];
   selected?: string;
   onChange: (value: string | undefined) => void;
+  trailing?: ReactNode;
 }>) {
-  if (!options.length) return null;
+  if (!options.length && !trailing) return null;
   const uniqueOptions = uniqueByCode(options);
   return (
     <ScrollView
@@ -43,6 +50,7 @@ export function FilterChips({
           selected={selected === option.code}
         />
       ))}
+      {trailing}
     </ScrollView>
   );
 }

@@ -1,34 +1,47 @@
 import * as Location from "expo-location";
 import * as Speech from "expo-speech";
 import { AppState, Platform } from "react-native";
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 
-import { getDistanceMeters } from "@/core/geo/distance";
 import type { GeoCoordinate } from "@/core/geo/types";
+import { getLocationAvailability } from "@/core/location/location-availability";
+import { toCoordinate } from "@/core/location/location-coordinate";
 import { isReliableLocationAccuracy } from "@/core/location/location-quality";
+import { useUserLocation } from "@/core/location/use-user-location";
 import {
   getDistanceToRouteMeters,
   getNavigationGuidance,
-  getNavigationNotification,
   getRouteRemainingMetrics,
-  type NavigationGuidance,
+  hasArrivedAtDestination,
 } from "../domain/navigation-guidance";
+import {
+  initialNavigationSessionState,
+  navigationMessages,
+  navigationSessionReducer,
+  type NavigationSessionState,
+} from "../domain/navigation-session-state";
 import type { CalculatedRoute, RouteMode } from "../domain/routing";
 import {
+  buildNavigationSnapshot,
   clearNavigationSession,
-  patchNavigationSession,
-  readNavigationSession,
+  loadNavigationSession,
   saveNavigationSession,
   type PersistedNavigationLocation,
 } from "../data/navigation-session-storage";
 import {
+  claimNavigationSessionOwnership,
   hasNavigationBackgroundPermission,
+  navigationLocationOptions,
   startNavigationLocationTask,
   stopNavigationLocationTask,
-  updateNavigationLocationTaskNotification,
 } from "../infrastructure/navigation-background-task";
 
-const arrivalThresholdMeters = 35;
 const offRouteThresholdMeters = 60;
 const rerouteCooldownMs = 12_000;
 const voiceTriggerDistanceMeters = 180;
@@ -38,371 +51,259 @@ type NavigationSessionOptions = Readonly<{
   destination: GeoCoordinate | null;
   isRecalculating: boolean;
   mode: RouteMode;
-  onArrive: () => void;
   onReroute: (origin: GeoCoordinate) => void;
   route: CalculatedRoute | null;
-  voiceEnabled: boolean;
 }>;
 
-type NavigationSessionState = Readonly<{
-  currentLocation: GeoCoordinate | null;
-  remainingDistanceMeters: number | null;
-  remainingDurationSeconds: number | null;
-  message: string | null;
-  nextInstruction: NavigationGuidance | null;
-}>;
-
-const initialState: NavigationSessionState = {
-  currentLocation: null,
-  remainingDistanceMeters: null,
-  remainingDurationSeconds: null,
-  message: null,
-  nextInstruction: null,
-};
-
+/**
+ * Owns an active navigation: foreground watcher, persisted session,
+ * persistent background task, voice guidance and the visible state.
+ *
+ * - `active` false → true: resets the state, saves the session, starts the
+ *   foreground watcher and, when background location is allowed, the
+ *   persistent task. A task failure keeps navigating with the app open and
+ *   exposes `backgroundNotice`.
+ * - `active` true → false: the only place that stops the task, clears the
+ *   stored session, silences the voice and resets the state.
+ * - Unmounting without that transition only drops JS subscriptions. Android
+ *   can destroy the activity while the app is hidden; the task and the
+ *   session must survive it (see `docs/architecture/mobile.md`).
+ */
 export function useNavigationSession({
   active,
   destination,
   isRecalculating,
   mode,
-  onArrive,
   onReroute,
   route,
-  voiceEnabled,
 }: NavigationSessionOptions): NavigationSessionState {
-  const [state, setState] = useState<NavigationSessionState>(initialState);
-  const routeRef = useRef(route);
-  const destinationRef = useRef(destination);
-  const isRecalculatingRef = useRef(isRecalculating);
-  const modeRef = useRef(mode);
-  const onArriveRef = useRef(onArrive);
-  const onRerouteRef = useRef(onReroute);
-  const voiceEnabledRef = useRef(voiceEnabled);
+  const { setForegroundTrackingSuspended } = useUserLocation();
+  const [state, dispatch] = useReducer(
+    navigationSessionReducer,
+    initialNavigationSessionState,
+  );
+  const routeKey = active && route ? getRouteKey(route) : null;
+  const [tracked, setTracked] = useState({ active, routeKey });
+  if (tracked.active !== active || tracked.routeKey !== routeKey) {
+    // Starting or stopping never shows the previous run's puck, instruction
+    // or message; a recalculated route drops guidance of the old steps.
+    setTracked({ active, routeKey });
+    dispatch({ type: tracked.active !== active ? "reset" : "route-changed" });
+  }
+
   const lastRerouteAtRef = useRef(0);
-  const routeKeyRef = useRef<string | null>(null);
   const announcedStepRef = useRef(-1);
+  const spokenRouteKeyRef = useRef<string | null>(null);
   const arrivedRef = useRef(false);
-  const lastProcessedLocationAtRef = useRef(0);
-  const lastLocationRef = useRef<PersistedNavigationLocation | null>(null);
-  const notificationKeyRef = useRef<string | null>(null);
-  const ownsActiveSessionRef = useRef(false);
+  const lastFixAtRef = useRef(0);
   const speechRequestRef = useRef(0);
+  const ownsSessionRef = useRef(false);
+  const sessionSavedRef = useRef<Promise<boolean>>(Promise.resolve(false));
 
+  // The navigation watcher replaces the shared foreground watcher meanwhile.
   useEffect(() => {
-    routeRef.current = route;
-    destinationRef.current = destination;
-    isRecalculatingRef.current = isRecalculating;
-    modeRef.current = mode;
-    onArriveRef.current = onArrive;
-    onRerouteRef.current = onReroute;
-    voiceEnabledRef.current = voiceEnabled;
-  }, [
-    destination,
-    isRecalculating,
-    mode,
-    onArrive,
-    onReroute,
-    route,
-    voiceEnabled,
-  ]);
+    if (!active) return;
+    setForegroundTrackingSuspended(true);
+    return () => setForegroundTrackingSuspended(false);
+  }, [active, setForegroundTrackingSuspended]);
 
-  useEffect(() => {
-    if (!active || !route) return;
-
-    const nextRouteKey = getRouteKey(route);
-    const routeChanged = routeKeyRef.current !== nextRouteKey;
-    routeKeyRef.current = nextRouteKey;
-
-    if (!voiceEnabled) {
-      cancelSpeech(speechRequestRef);
-      announcedStepRef.current = -1;
-      return;
-    }
-
-    if (routeChanged || announcedStepRef.current < 0) {
-      const firstStep = route.steps[0];
-      if (firstStep) {
-        replaceSpeech(speechRequestRef, getSpeechInstructions(route, 0));
-        announcedStepRef.current = 0;
-      }
-    }
-  }, [active, route, voiceEnabled]);
-
+  // Persist on start and whenever a recalculated route replaces the old one.
   useEffect(() => {
     if (!active || !route || !destination) return;
-
-    let disposed = false;
-    void readNavigationSession().then((current) => {
-      if (disposed) return;
-      void saveNavigationSession({
-        active: true,
-        destination,
-        lastLocation: current?.lastLocation ?? lastLocationRef.current,
-        mode,
-        route,
-        updatedAt: Date.now(),
-        version: 1,
-      });
-    });
-
-    return () => {
-      disposed = true;
-    };
+    sessionSavedRef.current = saveNavigationSession(
+      buildNavigationSnapshot({ destination, mode, route }),
+    );
   }, [active, destination, mode, route]);
 
   useEffect(() => {
-    if (!active) {
-      cancelSpeech(speechRequestRef);
-      lastRerouteAtRef.current = 0;
-      routeKeyRef.current = null;
-      announcedStepRef.current = -1;
-      arrivedRef.current = false;
-      lastProcessedLocationAtRef.current = 0;
-      lastLocationRef.current = null;
-      notificationKeyRef.current = null;
-      if (ownsActiveSessionRef.current) {
-        ownsActiveSessionRef.current = false;
-        void stopNavigationLocationTask();
-        void clearNavigationSession();
-      }
-      return;
-    }
+    if (!active || !route) return;
+    const nextRouteKey = getRouteKey(route);
+    if (spokenRouteKeyRef.current === nextRouteKey) return;
+    spokenRouteKeyRef.current = nextRouteKey;
+    replaceSpeech(speechRequestRef, getSpeechInstructions(route, 0));
+    announcedStepRef.current = 0;
+  }, [active, route]);
 
-    ownsActiveSessionRef.current = true;
-    let disposed = false;
-    let subscription: Location.LocationSubscription | null = null;
-
-    const processLocation = (
-      persistedLocation: PersistedNavigationLocation,
-    ) => {
-      if (disposed) return;
-
-      const { accuracy, coordinate } = persistedLocation;
-      if (!isReliableLocationAccuracy(accuracy)) {
-        setState((current) => ({
-          ...current,
-          message: "Ajustando tu ubicación con el GPS…",
-        }));
+  const processFix = useEffectEvent(
+    (location: PersistedNavigationLocation) => {
+      if (!isReliableLocationAccuracy(location.accuracy)) {
+        dispatch({ type: "imprecise-fix" });
         return;
       }
+      if (location.timestamp <= lastFixAtRef.current) return;
+      lastFixAtRef.current = location.timestamp;
 
-      if (persistedLocation.timestamp <= lastProcessedLocationAtRef.current) {
-        return;
-      }
-      lastProcessedLocationAtRef.current = persistedLocation.timestamp;
-      lastLocationRef.current = persistedLocation;
-      void patchNavigationSession(
-        { lastLocation: persistedLocation },
-        { requireActive: true },
-      );
-
-      const destinationCoordinate = destinationRef.current;
-      const destinationDistance = destinationCoordinate
-        ? getDistanceMeters(coordinate, destinationCoordinate)
+      const { coordinate } = location;
+      const remaining = route
+        ? getRouteRemainingMetrics(route, coordinate)
         : null;
-      const currentRoute = routeRef.current;
-      const remaining = currentRoute
-        ? getRouteRemainingMetrics(currentRoute, coordinate)
-        : null;
-
-      setState((current) => ({
-        ...current,
-        currentLocation: coordinate,
-        remainingDistanceMeters: remaining?.distanceMeters ?? null,
-        remainingDurationSeconds: remaining?.durationSeconds ?? null,
-      }));
-
       if (
-        destinationDistance !== null &&
-        destinationDistance <= arrivalThresholdMeters &&
-        !arrivedRef.current
+        !arrivedRef.current &&
+        destination &&
+        hasArrivedAtDestination(coordinate, destination)
       ) {
         arrivedRef.current = true;
         replaceSpeech(speechRequestRef, ["Has llegado a tu destino"]);
-        setState((current) => ({
-          ...current,
-          message: "Has llegado a tu destino.",
-        }));
-        onArriveRef.current();
+      }
+      if (arrivedRef.current || !route) {
+        dispatch({
+          arrived: arrivedRef.current,
+          coordinate,
+          guidance: null,
+          offRoute: false,
+          remaining,
+          type: "fix",
+        });
         return;
       }
 
-      if (!currentRoute) return;
-
-      const guidance = getNavigationGuidance(currentRoute, coordinate);
-      const notification = getNavigationNotification(guidance);
-      if (notification.key !== notificationKeyRef.current) {
-        notificationKeyRef.current = notification.key;
-        void updateNavigationLocationTaskNotification(notification.body);
-      }
-      if (guidance) {
-        setState((current) => ({ ...current, nextInstruction: guidance }));
-        if (
-          voiceEnabledRef.current &&
-          guidance.stepIndex > announcedStepRef.current &&
-          (guidance.stepIndex === 0 ||
-            guidance.distanceMeters <= voiceTriggerDistanceMeters)
-        ) {
-          replaceSpeech(
-            speechRequestRef,
-            getSpeechInstructions(currentRoute, guidance.stepIndex),
-          );
-          announcedStepRef.current = guidance.stepIndex;
-        }
+      const guidance = getNavigationGuidance(route, coordinate);
+      if (
+        guidance &&
+        guidance.stepIndex > announcedStepRef.current &&
+        (guidance.stepIndex === 0 ||
+          guidance.distanceMeters <= voiceTriggerDistanceMeters)
+      ) {
+        replaceSpeech(
+          speechRequestRef,
+          getSpeechInstructions(route, guidance.stepIndex),
+        );
+        announcedStepRef.current = guidance.stepIndex;
       }
 
-      const distanceToRoute = getDistanceToRouteMeters(
-        currentRoute,
-        coordinate,
-      );
       const now = Date.now();
-      const canReroute =
-        !isRecalculatingRef.current &&
+      const offRoute =
+        getDistanceToRouteMeters(route, coordinate) > offRouteThresholdMeters &&
+        !isRecalculating &&
         now - lastRerouteAtRef.current >= rerouteCooldownMs;
-      if (distanceToRoute > offRouteThresholdMeters && canReroute) {
-        lastRerouteAtRef.current = now;
-        setState((current) => ({
-          ...current,
-          message: "Te alejaste de la ruta; buscando un nuevo trayecto.",
-        }));
-        onRerouteRef.current(coordinate);
-      }
-    };
+      if (offRoute) lastRerouteAtRef.current = now;
+      dispatch({
+        arrived: false,
+        coordinate,
+        guidance,
+        offRoute,
+        remaining,
+        type: "fix",
+      });
+      if (offRoute) onReroute(coordinate);
+    },
+  );
+
+  useEffect(() => {
+    if (!active) {
+      if (!ownsSessionRef.current) return;
+      ownsSessionRef.current = false;
+      lastRerouteAtRef.current = 0;
+      announcedStepRef.current = -1;
+      spokenRouteKeyRef.current = null;
+      arrivedRef.current = false;
+      lastFixAtRef.current = 0;
+      cancelSpeech(speechRequestRef);
+      // Clear first so a queued background fix finds no session and stops.
+      void clearNavigationSession();
+      void stopNavigationLocationTask();
+      return;
+    }
+
+    ownsSessionRef.current = true;
+    const releaseOwnership = claimNavigationSessionOwnership();
+    let disposed = false;
+    let subscription: Location.LocationSubscription | null = null;
 
     const handleLocation = (location: Location.LocationObject) => {
-      processLocation({
+      if (disposed) return;
+      processFix({
         accuracy: location.coords.accuracy ?? null,
-        coordinate: {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        },
+        coordinate: toCoordinate(location),
         timestamp: location.timestamp,
       });
     };
 
-    const checkPersistedNavigationState = async () => {
-      const snapshot = await readNavigationSession();
-      if (!disposed && snapshot && !snapshot.active) {
-        onArriveRef.current();
-        return;
+    const handleLocationError = () => {
+      if (!disposed) {
+        dispatch({ message: navigationMessages.trackingLost, type: "blocked" });
       }
     };
 
-    const handleLocationError = () => {
-      if (disposed) return;
-      setState((current) => ({
-        ...current,
-        message:
-          "No pudimos seguir tu ubicación. Revisa el GPS e inténtalo de nuevo.",
-      }));
-    };
-
-    const ensureBackgroundTask = async () => {
-      if (disposed || Platform.OS === "web") return;
-      if (AppState.currentState !== "active") return;
-      if (!(await hasNavigationBackgroundPermission())) return;
-      await startNavigationLocationTask();
+    // Never throws: persistent tracking is optional and must not stop the
+    // foreground watcher (the person keeps navigating with the app open).
+    const startBackgroundTracking = async () => {
+      if (Platform.OS === "web") return;
+      try {
+        if (!(await hasNavigationBackgroundPermission())) return;
+        // The task stops itself when it finds no stored session.
+        const sessionSaved = await sessionSavedRef.current;
+        if (disposed) return;
+        if (!sessionSaved) {
+          dispatch({ type: "background-unavailable" });
+          return;
+        }
+        // No await between the `disposed` check and this call: a stop
+        // requested afterwards waits for this start and then stops it.
+        await startNavigationLocationTask();
+        if (!disposed) dispatch({ type: "background-started" });
+      } catch {
+        if (!disposed) dispatch({ type: "background-unavailable" });
+      }
     };
 
     const startTracking = async () => {
-      setState((current) => ({ ...current, message: null }));
       try {
-        let permission = await Location.getForegroundPermissionsAsync();
-        if (!permission.granted && permission.canAskAgain) {
-          permission = await Location.requestForegroundPermissionsAsync();
-        }
-        if (!permission.granted) {
-          if (!disposed) {
-            setState((current) => ({
-              ...current,
-              message: "Necesitamos permiso de ubicación para navegar.",
-            }));
-          }
-          return;
-        }
-        if (disposed) return;
-
-        if (!(await Location.hasServicesEnabledAsync())) {
-          if (!disposed) {
-            setState((current) => ({
-              ...current,
-              message: "Activa el GPS para iniciar la navegación.",
-            }));
-          }
-          return;
-        }
-        if (disposed) return;
-
-        const currentRoute = routeRef.current;
-        const destinationCoordinate = destinationRef.current;
-        if (!currentRoute || !destinationCoordinate) {
-          throw new Error("La sesión de navegación no está lista.");
-        }
-
-        const currentSession = await readNavigationSession();
-        await saveNavigationSession({
-          active: true,
-          destination: destinationCoordinate,
-          lastLocation: currentSession?.lastLocation ?? null,
-          mode: modeRef.current,
-          route: currentRoute,
-          updatedAt: Date.now(),
-          version: 1,
+        const availability = await getLocationAvailability({
+          requestPermission: true,
         });
         if (disposed) return;
-        await ensureBackgroundTask();
-        if (disposed) {
-          await stopNavigationLocationTask();
+        if (availability !== "available") {
+          dispatch({
+            message:
+              availability === "services-disabled"
+                ? navigationMessages.servicesDisabled
+                : navigationMessages.permissionMissing,
+            type: "blocked",
+          });
           return;
         }
-        await checkPersistedNavigationState();
 
-        subscription = await Location.watchPositionAsync(
-          {
-            accuracy: Location.Accuracy.High,
-            distanceInterval: 10,
-            timeInterval: 2_000,
-          },
+        void startBackgroundTracking();
+        const nextSubscription = await Location.watchPositionAsync(
+          navigationLocationOptions,
           handleLocation,
           handleLocationError,
         );
         if (disposed) {
-          subscription.remove();
-          subscription = null;
+          nextSubscription.remove();
+          return;
         }
-      } catch (error) {
+        subscription = nextSubscription;
+      } catch {
         if (!disposed) {
-          setState((current) => ({
-            ...current,
-            message:
-              error instanceof Error
-                ? error.message
-                : "No pudimos iniciar el seguimiento de ubicación.",
-          }));
+          dispatch({ message: navigationMessages.startFailed, type: "blocked" });
         }
       }
+    };
+
+    const checkBackgroundArrival = async () => {
+      const session = await loadNavigationSession();
+      if (disposed || session.status !== "found" || session.snapshot.active) {
+        return;
+      }
+      arrivedRef.current = true;
+      dispatch({ type: "arrived" });
     };
 
     const appStateSubscription = AppState.addEventListener(
       "change",
       (nextState) => {
-        if (nextState === "active") {
-          // El punto que existía antes de salir puede haber quedado atrás.
-          // Ocúltalo hasta que el watcher entregue una muestra fresca.
-          setState((current) => ({
-            ...current,
-            currentLocation: null,
-            message: "Actualizando tu ubicación…",
-            nextInstruction: null,
-            remainingDistanceMeters: null,
-            remainingDurationSeconds: null,
-          }));
-          void checkPersistedNavigationState();
-          void ensureBackgroundTask().catch(() => undefined);
-          void Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.High,
-          }).then(handleLocation, () => undefined);
-        }
+        if (nextState !== "active" || disposed) return;
+        // El punto que existía antes de salir puede haber quedado atrás.
+        // Ocúltalo hasta que el watcher entregue una muestra fresca.
+        dispatch({ type: "resumed" });
+        void checkBackgroundArrival();
+        // Android may have stopped the service while the app was hidden.
+        void startBackgroundTracking();
+        Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        }).then(handleLocation, () => undefined);
       },
     );
 
@@ -411,14 +312,12 @@ export function useNavigationSession({
       disposed = true;
       subscription?.remove();
       appStateSubscription.remove();
-      // La pantalla puede desmontarse cuando Android manda la actividad a segundo
-      // plano. La tarea del sistema y la sesión persistida solo se detienen desde
-      // la transición explícita a active=false (detener o llegar).
+      releaseOwnership();
       cancelSpeech(speechRequestRef);
     };
   }, [active]);
 
-  return active ? state : initialState;
+  return state;
 }
 
 function getRouteKey(route: CalculatedRoute): string {
