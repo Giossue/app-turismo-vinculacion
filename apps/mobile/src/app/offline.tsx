@@ -1,97 +1,47 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { useEffect } from "react";
+import { ScrollView, StyleSheet, Text } from "react-native";
 
+import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 import { useTurismoPalette } from "@/core/ui/theme-context";
-import {
-  TourismActionButton,
-  TourismBadge,
-  TourismSurface,
-} from "@/core/ui/tourism-controls";
-import { queryKeys } from "@/core/api/query-keys";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
-import { TurismoIcon } from "@/core/ui/turismo-icons";
-import {
-  turismoIconSizes,
-  turismoMetrics,
-  turismoRadii,
-  turismoSpacing,
-  turismoTypography,
-} from "@/core/ui/tokens";
-import { downloadOfflineCity } from "@/features/offline/application/offline-download";
+import { TourismStateView } from "@/core/ui/tourism-state";
+import { turismoSpacing, turismoTypography } from "@/core/ui/tokens";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { buildLoginHref } from "@/features/auth/application/login-href";
 import { useOfflineCities } from "@/features/offline/application/use-offline-cities";
-import { listStoredOfflineCities } from "@/features/offline/data/offline-storage";
-import type { OfflineCity } from "@/features/offline/domain/offline-city";
+import { useOfflineCityDownload } from "@/features/offline/application/use-offline-city-download";
+import { useStoredOfflineCities } from "@/features/offline/application/use-stored-offline-cities";
+import { OfflineCityCard } from "@/features/offline/presentation/offline-city-card";
 
 export default function OfflineMapsScreen() {
   const router = useRouter();
   const colors = useTurismoPalette();
   const auth = useAuth();
-  const queryClient = useQueryClient();
-  const [activeDownload, setActiveDownload] = useState<{
-    slug: string;
-    progress: number;
-  } | null>(null);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
-  const citiesQuery = useOfflineCities(auth.status === "authenticated");
-  const storedQuery = useQuery({
-    enabled: auth.status === "authenticated",
-    queryKey: queryKeys.offlineStoredCities,
-    queryFn: listStoredOfflineCities,
-    staleTime: 0,
-  });
+  const authenticated = auth.status === "authenticated";
+  const citiesQuery = useOfflineCities(authenticated);
+  const storedQuery = useStoredOfflineCities(authenticated);
+  const { downloads, error: downloadError, start } = useOfflineCityDownload();
+  useScreenBackHandler();
 
   useEffect(() => {
     if (auth.status !== "anonymous") return;
     router.replace(buildLoginHref("/offline"));
   }, [auth.status, router]);
 
-  if (auth.status !== "authenticated") {
+  if (!authenticated) {
     return (
       <TourismScreenFrame
         onBack={() => router.back()}
         title="Mapas sin conexión"
       >
-        <View style={styles.state}>
-          <ActivityIndicator color={colors.primary} size="large" />
-          <Text style={[styles.stateText, { color: colors.textMuted }]}>
-            Preparando tus mapas sin conexión…
-          </Text>
-        </View>
+        <TourismStateView
+          message="Preparando tus mapas sin conexión…"
+          variant="loading"
+        />
       </TourismScreenFrame>
     );
   }
-
-  const download = async (city: OfflineCity) => {
-    if (activeDownload || !city.package) return;
-    setDownloadError(null);
-    setActiveDownload({ progress: 0, slug: city.slug });
-    try {
-      await downloadOfflineCity(city, (progress) => {
-        setActiveDownload({ progress, slug: city.slug });
-      });
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.offlineStoredCities,
-      });
-    } catch (error) {
-      setDownloadError(
-        error instanceof Error
-          ? error.message
-          : "No pudimos descargar la ciudad.",
-      );
-    } finally {
-      setActiveDownload(null);
-    }
-  };
 
   return (
     <TourismScreenFrame onBack={() => router.back()} title="Mapas sin conexión">
@@ -100,92 +50,60 @@ export default function OfflineMapsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {downloadError ? (
-          <Text style={[styles.errorText, { color: colors.danger }]}>
+          <Text
+            accessibilityLiveRegion="polite"
+            accessibilityRole="alert"
+            style={[styles.errorText, { color: colors.danger }]}
+          >
             {downloadError}
           </Text>
         ) : null}
 
+        {storedQuery.error ? (
+          <TourismStateView
+            actionPending={storedQuery.isFetching}
+            layout="card"
+            message="No pudimos revisar las ciudades guardadas en este dispositivo."
+            onAction={() => void storedQuery.refetch()}
+            variant="error"
+          />
+        ) : null}
+
         {citiesQuery.isPending ? (
-          <StateMessage label="Cargando ciudades disponibles…" />
+          <TourismStateView
+            layout="inline"
+            message="Cargando ciudades disponibles…"
+            variant="loading"
+          />
         ) : citiesQuery.error ? (
-          <StateMessage label="No pudimos cargar las ciudades offline." error />
-        ) : citiesQuery.data?.length ? (
-          citiesQuery.data.map((city) => {
-            const stored = storedQuery.data?.includes(city.slug) ?? false;
-            const downloading = activeDownload?.slug === city.slug;
-            return (
-              <TourismSurface key={city.slug} style={styles.cityCard}>
-                <View style={styles.cityHeading}>
-                  <View style={styles.cityIcon}>
-                    <TurismoIcon
-                      color={colors.primaryStrong}
-                      name="mapPin"
-                      size={turismoIconSizes.md}
-                    />
-                  </View>
-                  <View style={styles.cityCopy}>
-                    <Text style={[styles.cityName, { color: colors.text }]}>
-                      {city.name}
-                    </Text>
-                    <Text
-                      style={[styles.cityMeta, { color: colors.textMuted }]}
-                    >
-                      {city.canton} · {city.province}
-                    </Text>
-                  </View>
-                  {stored ? <TourismBadge>Disponible</TourismBadge> : null}
-                </View>
-                {city.package ? (
-                  <TourismActionButton
-                    disabled={Boolean(activeDownload) || stored}
-                    icon={stored ? "check" : "download"}
-                    label={
-                      stored
-                        ? "Guardado en el dispositivo"
-                        : downloading
-                          ? `Descargando ${Math.round(activeDownload?.progress ?? 0)}%`
-                          : "Descargar ciudad"
-                    }
-                    onPress={() => void download(city)}
-                  />
-                ) : (
-                  <Text
-                    style={[styles.unavailable, { color: colors.textFaint }]}
-                  >
-                    El paquete institucional aún no está publicado.
-                  </Text>
-                )}
-              </TourismSurface>
-            );
-          })
+          <TourismStateView
+            actionPending={citiesQuery.isFetching}
+            layout="inline"
+            message="No pudimos cargar las ciudades offline."
+            onAction={() => void citiesQuery.refetch()}
+            variant="error"
+          />
+        ) : citiesQuery.data.length ? (
+          citiesQuery.data.map((city) => (
+            <OfflineCityCard
+              city={city}
+              disabled={downloads.size > 0}
+              key={city.slug}
+              onDownload={() => start(city)}
+              progress={downloads.get(city.slug) ?? null}
+              stored={storedQuery.data?.includes(city.slug) ?? false}
+            />
+          ))
         ) : (
-          <StateMessage label="Aún no hay ciudades con un paquete offline publicado." />
+          <TourismStateView
+            icon="mapPin"
+            layout="inline"
+            message="Aún no hay ciudades con un paquete offline publicado."
+            variant="empty"
+          />
         )}
       </ScrollView>
     </TourismScreenFrame>
-  );
-}
-
-function StateMessage({
-  error = false,
-  label,
-}: Readonly<{ error?: boolean; label: string }>) {
-  const colors = useTurismoPalette();
-  return (
-    <View style={styles.state}>
-      {error ? (
-        <TurismoIcon
-          color={colors.danger}
-          name="wifiOff"
-          size={turismoIconSizes.lg}
-        />
-      ) : (
-        <ActivityIndicator color={colors.primary} />
-      )}
-      <Text style={[styles.stateText, { color: colors.textMuted }]}>
-        {label}
-      </Text>
-    </View>
   );
 }
 
@@ -195,29 +113,5 @@ const styles = StyleSheet.create({
     paddingBottom: turismoSpacing.xl,
     paddingVertical: turismoSpacing.md,
   },
-  cityCard: { gap: turismoSpacing.md, padding: turismoSpacing.md },
-  cityHeading: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-  },
-  cityIcon: {
-    alignItems: "center",
-    backgroundColor: "transparent",
-    borderRadius: turismoRadii.pill,
-    height: turismoMetrics.controlSm,
-    justifyContent: "center",
-    width: turismoMetrics.controlSm,
-  },
-  cityCopy: { flex: 1, gap: turismoSpacing.xxs },
-  cityName: { ...turismoTypography.heading },
-  cityMeta: { ...turismoTypography.caption },
-  unavailable: { ...turismoTypography.caption },
   errorText: { ...turismoTypography.caption },
-  state: {
-    alignItems: "center",
-    gap: turismoSpacing.sm,
-    padding: turismoSpacing.xl,
-  },
-  stateText: { ...turismoTypography.body, textAlign: "center" },
 });

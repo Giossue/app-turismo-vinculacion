@@ -1,12 +1,17 @@
 import { z } from "zod";
 
 import { getApiUrl } from "@/core/api/api-url";
-import { acceptJsonHeaders, requestJson, type Fetcher } from "@/core/api/http";
+import {
+  acceptJsonHeaders,
+  requestJson,
+  type ApiRequestOptions,
+} from "@/core/api/http";
 import type { AuthorizedFetcher } from "@/features/auth/data/auth-api";
 import {
   ownOpinionStateSchema,
   publicOpinionPageSchema,
   type OpinionContent,
+  type OpinionPageRequest,
   type OwnOpinionState,
   type PublicOpinionPage,
 } from "../domain/opinion";
@@ -15,18 +20,23 @@ const listSchema = z.object({ data: publicOpinionPageSchema });
 const ownSchema = z.object({ data: ownOpinionStateSchema.nullable() });
 const submittedSchema = z.object({ data: ownOpinionStateSchema });
 
+/** One page of published opinions, newest first (the API's order). */
 export async function listCenterOpinions(
   code: string,
-  fetcher: Fetcher = fetch,
-  apiUrl = getApiUrl(),
+  { limit, offset }: OpinionPageRequest,
+  { apiUrl = getApiUrl(), fetcher = fetch, signal }: ApiRequestOptions = {},
 ): Promise<PublicOpinionPage> {
+  const query = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
   const payload = await requestJson(
-    `${apiUrl}/centers/${encodeURIComponent(code)}/opinions`,
+    `${apiUrl}/centers/${encodeURIComponent(code)}/opinions?${query}`,
     listSchema,
     {
       errorMessage: "No se pudieron cargar las opiniones.",
       fetcher,
-      init: { headers: acceptJsonHeaders },
+      init: { headers: acceptJsonHeaders, signal },
       invalidMessage: "Las opiniones no tienen el formato esperado.",
     },
   );

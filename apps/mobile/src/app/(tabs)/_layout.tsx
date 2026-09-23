@@ -1,6 +1,9 @@
 import { Tabs, useRouter } from "expo-router";
 
-import { TourismMenuProvider } from "@/core/ui/tourism-navigation";
+import {
+  TourismMenuProvider,
+  type TourismMenuItem,
+} from "@/core/ui/tourism-navigation";
 import { useAuth } from "@/features/auth/application/auth-context";
 import {
   buildLoginHref,
@@ -10,17 +13,35 @@ import {
 export default function TabsLayout() {
   const router = useRouter();
   const auth = useAuth();
-  const openAccountScreen = (path: LoginReturnPath) => {
-    router.push(auth.status === "authenticated" ? path : buildLoginHref(path));
+
+  // While the session is still being restored the screen itself waits (its
+  // `AuthGate`), so only a known anonymous visitor goes to the login first.
+  const openProtected = (path: LoginReturnPath) => {
+    router.push(auth.status === "anonymous" ? buildLoginHref(path) : path);
   };
 
+  const menuItems: readonly TourismMenuItem[] = [
+    { icon: "user", label: "Cuenta", onPress: () => openProtected("/account") },
+    {
+      icon: "bookmark",
+      label: "Guardados",
+      onPress: () => openProtected("/saved"),
+    },
+    {
+      icon: "download",
+      label: "Mapas sin conexión",
+      onPress: () => openProtected("/offline"),
+    },
+    {
+      icon: "settings",
+      label: "Configuración",
+      onPress: () => router.push("/settings"),
+      startsGroup: true,
+    },
+  ];
+
   return (
-    <TourismMenuProvider
-      onAccount={() => openAccountScreen("/account")}
-      onOfflineMaps={() => openAccountScreen("/offline")}
-      onSaved={() => openAccountScreen("/saved")}
-      onSettings={() => router.push("/settings")}
-    >
+    <TourismMenuProvider items={menuItems}>
       <PrimaryTabs />
     </TourismMenuProvider>
   );

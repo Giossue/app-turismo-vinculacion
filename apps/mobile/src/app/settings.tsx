@@ -1,51 +1,55 @@
 import { useRouter } from "expo-router";
-import { useCallback } from "react";
-import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text } from "react-native";
 
-import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
+import {
+  useTurismoPalette,
+  useTurismoTheme,
+  type ThemePreference,
+} from "@/core/ui/theme-context";
 import { TourismSurface } from "@/core/ui/tourism-controls";
+import {
+  TourismRadioGroup,
+  type TourismRadioOption,
+} from "@/core/ui/tourism-fields";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
-import { useTurismoPalette, useTurismoTheme } from "@/core/ui/theme-context";
 import { turismoSpacing, turismoTypography } from "@/core/ui/tokens";
+
+const appearanceOptions: readonly TourismRadioOption<ThemePreference>[] = [
+  {
+    description: "Sigue la apariencia del dispositivo.",
+    icon: "sunMoon",
+    label: "Sistema",
+    value: "system",
+  },
+  { icon: "sun", label: "Claro", value: "light" },
+  { icon: "moon", label: "Oscuro", value: "dark" },
+];
 
 export default function SettingsScreen() {
   const router = useRouter();
   const colors = useTurismoPalette();
-  const { scheme, setPreference } = useTurismoTheme();
-
-  const handleBack = useCallback(() => {
-    router.back();
-  }, [router]);
-
-  useScreenBackHandler(() => false);
+  const { preference, setPreference } = useTurismoTheme();
 
   return (
-    <TourismScreenFrame onBack={handleBack} title="Configuración">
+    <TourismScreenFrame onBack={() => router.back()} title="Configuración">
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.title, { color: colors.text }]}>Apariencia</Text>
-
+        <Text
+          accessibilityRole="header"
+          style={[styles.title, { color: colors.text }]}
+        >
+          Apariencia
+        </Text>
         <TourismSurface style={styles.preferenceCard}>
-          <View style={styles.preferenceRow}>
-            <View style={styles.preferenceCopy}>
-              <Text style={[styles.preferenceTitle, { color: colors.text }]}>
-                Modo oscuro
-              </Text>
-            </View>
-            <Switch
-              accessibilityLabel="Activar modo oscuro"
-              accessibilityRole="switch"
-              ios_backgroundColor={colors.surfaceStrong}
-              onValueChange={(enabled) =>
-                setPreference(enabled ? "dark" : "light")
-              }
-              thumbColor={colors.surface}
-              trackColor={{ false: colors.surfaceStrong, true: colors.primary }}
-              value={scheme === "dark"}
-            />
-          </View>
+          <TourismRadioGroup
+            accessibilityLabel="Apariencia"
+            layout="column"
+            onChange={setPreference}
+            options={appearanceOptions}
+            value={preference}
+          />
         </TourismSurface>
       </ScrollView>
     </TourismScreenFrame>
@@ -59,12 +63,5 @@ const styles = StyleSheet.create({
     paddingBottom: turismoSpacing.xxl,
   },
   title: { ...turismoTypography.title },
-  preferenceCard: { padding: turismoSpacing.md },
-  preferenceRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-  },
-  preferenceCopy: { flex: 1, gap: turismoSpacing.xxs },
-  preferenceTitle: { ...turismoTypography.heading },
+  preferenceCard: { padding: turismoSpacing.sm },
 });

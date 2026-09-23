@@ -63,3 +63,49 @@ export type OpinionRatingSummary = Pick<
 >;
 export type OpinionVersion = Readonly<z.infer<typeof opinionVersionSchema>>;
 export type OwnOpinionState = Readonly<z.infer<typeof ownOpinionStateSchema>>;
+
+/** Longest comment the API accepts (`OpinionContentDto`). */
+export const OPINION_COMMENT_MAX_LENGTH = 2_000;
+
+/** Page size of the public list; the API accepts up to 50. */
+export const OPINIONS_PAGE_SIZE = 20;
+
+export type OpinionPageRequest = Readonly<{ limit: number; offset: number }>;
+
+/**
+ * Stable React key for a published opinion. The public API exposes no id;
+ * an author publishes at most one current version per place, so the
+ * timestamp and the author's name identify it.
+ */
+export function getOpinionKey(opinion: PublicOpinion): string {
+  return `${opinion.publishedAt}|${opinion.authorName}`;
+}
+
+/** Offset of the next page, or `undefined` once every opinion is loaded. */
+export function getNextOpinionOffset(
+  page: PublicOpinionPage,
+): number | undefined {
+  const next = page.offset + page.items.length;
+  return page.items.length > 0 && next < page.total ? next : undefined;
+}
+
+/**
+ * Joins the loaded pages (newest first) under the first page's summary.
+ * Opinions published between page loads shift the offsets, so repeated
+ * entries are dropped.
+ */
+export function mergeOpinionPages(
+  pages: readonly [PublicOpinionPage, ...PublicOpinionPage[]],
+): PublicOpinionPage {
+  const seen = new Set<string>();
+  const items: PublicOpinion[] = [];
+  for (const page of pages) {
+    for (const item of page.items) {
+      const key = getOpinionKey(item);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push(item);
+    }
+  }
+  return { ...pages[0], items };
+}

@@ -27,4 +27,11 @@ describe("login href", () => {
     expect(parseReturnTo("//evil.test/path")).toBe("/");
     expect(parseReturnTo("/login?returnTo=/saved")).toBe("/");
   });
+
+  it("returns to the route through history to keep its destination", () => {
+    expect(returnsThroughHistory("/route")).toBe(true);
+    expect(returnsThroughHistory("/centers/ABC")).toBe(false);
+    expect(returnsThroughHistory("/")).toBe(false);
+    expect(returnsThroughHistory("/account")).toBe(false);
+  });
 });

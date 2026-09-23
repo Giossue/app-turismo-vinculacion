@@ -50,11 +50,15 @@ describe("opinions API", () => {
     });
 
     await expect(
-      listCenterOpinions("CENTER-1", fetcher, "http://api.test/api/v1"),
+      listCenterOpinions(
+        "CENTER-1",
+        { limit: 20, offset: 40 },
+        { apiUrl: "http://api.test/api/v1", fetcher },
+      ),
     ).resolves.toMatchObject({ total: 1, items: [{ authorName: "Ana" }] });
     expect(fetcher).toHaveBeenCalledWith(
-      "http://api.test/api/v1/centers/CENTER-1/opinions",
-      { headers: { Accept: "application/json" } },
+      "http://api.test/api/v1/centers/CENTER-1/opinions?limit=20&offset=40",
+      { headers: { Accept: "application/json" }, signal: undefined },
     );
   });
 

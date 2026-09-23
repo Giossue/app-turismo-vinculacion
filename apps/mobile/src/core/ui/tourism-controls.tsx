@@ -37,6 +37,7 @@ export function TourismSearchField({
   autoFocus = false,
   onChangeText,
   onClear,
+  onBlur,
   onFocus,
   onSubmitEditing,
   placeholder,
@@ -46,6 +47,7 @@ export function TourismSearchField({
   autoFocus?: boolean;
   onChangeText: (value: string) => void;
   onClear?: () => void;
+  onBlur?: () => void;
   onFocus?: () => void;
   onSubmitEditing?: () => void;
   placeholder: string;
@@ -87,6 +89,7 @@ export function TourismSearchField({
         accessibilityLabel={accessibilityLabel}
         autoCapitalize="none"
         autoFocus={autoFocus}
+        onBlur={onBlur}
         onChangeText={onChangeText}
         onFocus={onFocus}
         placeholder={placeholder}

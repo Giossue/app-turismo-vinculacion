@@ -8,7 +8,7 @@ import {
   type MapRef,
 } from "@maplibre/maplibre-react-native";
 import * as Location from "expo-location";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { getCoordinateBounds } from "@/core/geo/bounds";
@@ -20,6 +20,12 @@ import { MapLoadingOverlay } from "@/features/map/presentation/map-loading-overl
 import { useBasemapStyle } from "@/features/map/presentation/use-basemap-style";
 import { useMapLifecycle } from "@/features/map/presentation/use-map-lifecycle";
 import { UserLocationLayers } from "@/features/map/presentation/user-location-layers";
+import {
+  normalizeBearing,
+  shouldPublishHeading,
+  smoothBearing,
+  type PublishedHeading,
+} from "../domain/navigation-heading";
 import type { CalculatedRoute } from "../domain/routing";
 import type { RouteMapProps } from "./route-map.types";
 
@@ -29,7 +35,6 @@ type EndpointProperties = Readonly<{
 }>;
 
 const navigationCameraLeadMeters = 30;
-const navigationHeadingSmoothingFactor = 0.18;
 const navigationCameraAnimationDurationMs = 260;
 const recenterDurationMs = 400;
 const fitBoundsDurationMs = 450;
@@ -42,12 +47,14 @@ const routeMapImages = {
 };
 
 export function RouteMap({
+  attributionBottom,
   currentLocation = null,
   destination,
+  following = false,
   navigationActive = false,
+  onFollowingChange,
   onUserInteraction,
   origin,
-  recenterKey = 0,
   route,
 }: RouteMapProps) {
   const cameraRef = useRef<CameraRef>(null);
@@ -64,19 +71,19 @@ export function RouteMap({
     showAttribution,
     showLoadingOverlay,
   } = useMapLifecycle(mapRef);
-  const latestCenterRef = useRef(currentLocation ?? origin);
-  const isFollowingRef = useRef(navigationActive);
-  const wasNavigationActiveRef = useRef(navigationActive);
-  const headingRef = useRef(0);
-  const hasHeadingRef = useRef(false);
-  const headingSubscriptionRef = useRef<Location.LocationSubscription | null>(
-    null,
-  );
+  // Smoothed compass bearing (every event) and the last one drawn/used by
+  // the camera (throttled), so the compass does not re-render per event.
+  const headingRef = useRef<number | null>(null);
+  const publishedHeadingRef = useRef<PublishedHeading | null>(null);
   const [navigationHeading, setNavigationHeading] = useState(0);
-
-  useEffect(() => {
-    latestCenterRef.current = currentLocation ?? origin;
-  }, [currentLocation, origin]);
+  // While a fresh fix is pending (e.g. after returning to the app), the
+  // camera stays on the last drawn position instead of the route origin.
+  const [lastLocation, setLastLocation] = useState<GeoCoordinate | null>(null);
+  const latestLocation = navigationActive
+    ? (currentLocation ?? lastLocation)
+    : null;
+  if (latestLocation !== lastLocation) setLastLocation(latestLocation);
+  const followCenter = latestLocation ?? origin;
 
   const routeData = useMemo<GeoJSON.FeatureCollection<GeoJSON.LineString>>(
     () => ({
@@ -128,110 +135,91 @@ export function RouteMap({
 
   useEffect(() => {
     if (!nativeReady || navigationActive) return;
+    // Overview: north up and flat, also right after navigation stops.
     cameraRef.current?.fitBounds(bounds, {
+      bearing: 0,
       duration: fitBoundsDurationMs,
       padding: routeBoundsPadding,
+      pitch: 0,
     });
   }, [bounds, nativeReady, navigationActive]);
 
-  useEffect(() => {
-    if (!navigationActive || !nativeReady) {
-      if (!navigationActive) {
-        headingRef.current = 0;
-        hasHeadingRef.current = false;
-        headingSubscriptionRef.current?.remove();
-        headingSubscriptionRef.current = null;
+  const handleHeading = useEffectEvent(
+    ({ magHeading, trueHeading }: Location.LocationHeadingObject) => {
+      if (!isActive()) return;
+      const nextHeading = trueHeading >= 0 ? trueHeading : magHeading;
+      if (!Number.isFinite(nextHeading) || nextHeading < 0) return;
+
+      const targetBearing = normalizeBearing(nextHeading);
+      const bearing =
+        headingRef.current === null
+          ? targetBearing
+          : smoothBearing(headingRef.current, targetBearing);
+      headingRef.current = bearing;
+
+      const now = Date.now();
+      if (!shouldPublishHeading(publishedHeadingRef.current, bearing, now)) {
+        return;
       }
-      return;
-    }
+      publishedHeadingRef.current = { at: now, bearing };
+      setNavigationHeading(bearing);
+      if (!following || !followCenter) return;
+      cameraRef.current?.easeTo({
+        bearing,
+        center: getNavigationCameraCenter(followCenter, bearing),
+        duration: navigationCameraAnimationDurationMs,
+        easing: "linear",
+        pitch: navigationPitch,
+        zoom: navigationZoom,
+      });
+    },
+  );
+
+  useEffect(() => {
+    if (!navigationActive || !nativeReady) return;
 
     let cancelled = false;
-    void Location.watchHeadingAsync(
-      ({ magHeading, trueHeading }) => {
-        if (cancelled || !isActive()) return;
-        const nextHeading = trueHeading >= 0 ? trueHeading : magHeading;
-        if (!Number.isFinite(nextHeading) || nextHeading < 0) return;
-
-        const targetBearing = normalizeBearing(nextHeading);
-        const bearing = hasHeadingRef.current
-          ? smoothBearing(
-              headingRef.current,
-              targetBearing,
-              navigationHeadingSmoothingFactor,
-            )
-          : targetBearing;
-        hasHeadingRef.current = true;
-        headingRef.current = bearing;
-        setNavigationHeading(bearing);
-        if (!isFollowingRef.current) return;
-        const center = latestCenterRef.current;
-        if (!center) return;
-
-        cameraRef.current?.easeTo({
-          bearing,
-          center: getNavigationCameraCenter(center, bearing),
-          duration: navigationCameraAnimationDurationMs,
-          easing: "linear",
-          pitch: navigationPitch,
-          zoom: navigationZoom,
-        });
+    let subscription: Location.LocationSubscription | null = null;
+    Location.watchHeadingAsync(
+      (heading) => {
+        if (!cancelled) handleHeading(heading);
       },
       () => undefined,
-    )
-      .then((subscription) => {
+    ).then(
+      (nextSubscription) => {
         if (cancelled || !isActive()) {
-          subscription.remove();
+          nextSubscription.remove();
           return;
         }
-        headingSubscriptionRef.current = subscription;
-      })
-      .catch(() => undefined);
+        subscription = nextSubscription;
+      },
+      () => undefined,
+    );
 
     return () => {
       cancelled = true;
-      headingSubscriptionRef.current?.remove();
-      headingSubscriptionRef.current = null;
+      subscription?.remove();
+      headingRef.current = null;
+      publishedHeadingRef.current = null;
     };
   }, [isActive, nativeReady, navigationActive]);
 
+  // Follow mode is owned by the screen; the camera only reacts to it while
+  // navigating, so stopping navigation never overrides the overview above.
   useEffect(() => {
-    const becameActive = navigationActive && !wasNavigationActiveRef.current;
-    wasNavigationActiveRef.current = navigationActive;
-
-    if (!navigationActive) {
-      isFollowingRef.current = false;
+    if (!nativeReady || !navigationActive || !following || !followCenter) {
       return;
     }
-    if (becameActive) isFollowingRef.current = true;
-    if (!nativeReady) return;
-    const center = currentLocation ?? latestCenterRef.current;
-    if (!isFollowingRef.current || !center) return;
+    const bearing = headingRef.current ?? 0;
     cameraRef.current?.easeTo({
-      bearing: headingRef.current,
-      center: getNavigationCameraCenter(center, headingRef.current),
+      bearing,
+      center: getNavigationCameraCenter(followCenter, bearing),
       duration: recenterDurationMs,
       easing: "ease",
       pitch: navigationPitch,
       zoom: navigationZoom,
     });
-  }, [currentLocation, loadState, nativeReady, navigationActive]);
-
-  useEffect(() => {
-    if (!recenterKey || !nativeReady) return;
-    const center = latestCenterRef.current;
-    if (!center) return;
-    isFollowingRef.current = true;
-    cameraRef.current?.easeTo({
-      bearing: headingRef.current,
-      center: navigationActive
-        ? getNavigationCameraCenter(center, headingRef.current)
-        : [center.longitude, center.latitude],
-      duration: recenterDurationMs,
-      easing: "ease",
-      pitch: navigationActive ? navigationPitch : 0,
-      zoom: navigationZoom,
-    });
-  }, [loadState, nativeReady, navigationActive, recenterKey]);
+  }, [followCenter, following, loadState, nativeReady, navigationActive]);
 
   return (
     <View style={styles.container}>
@@ -248,7 +236,8 @@ export function RouteMap({
         onDidFinishLoadingStyle={markReady}
         onRegionWillChange={(event) => {
           if (!event.nativeEvent.userInteraction) return;
-          isFollowingRef.current = false;
+          // Every gesture pauses following again (and restarts its resume).
+          if (navigationActive) onFollowingChange?.(false);
           onUserInteraction?.();
         }}
         ref={mapRef}
@@ -326,7 +315,10 @@ export function RouteMap({
         />
       </MapLibreMap>
 
-      <MapAttributionButton onPress={showAttribution} />
+      <MapAttributionButton
+        bottom={attributionBottom}
+        onPress={showAttribution}
+      />
       <MapLoadingOverlay visible={showLoadingOverlay} />
     </View>
   );
@@ -344,20 +336,6 @@ function pointFeature<P extends EndpointProperties>(
       coordinates: [coordinate.longitude, coordinate.latitude],
     },
   };
-}
-
-function normalizeBearing(heading: number): number {
-  const bearing = heading % 360;
-  return bearing < 0 ? bearing + 360 : bearing;
-}
-
-function smoothBearing(
-  currentBearing: number,
-  targetBearing: number,
-  factor: number,
-): number {
-  const delta = ((targetBearing - currentBearing + 540) % 360) - 180;
-  return normalizeBearing(currentBearing + delta * factor);
 }
 
 /** Puts the camera slightly ahead so more of the upcoming road is visible. */

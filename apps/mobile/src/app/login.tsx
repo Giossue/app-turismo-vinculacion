@@ -1,209 +1,85 @@
-import DateTimePicker, {
-  type DateTimePickerChangeEvent,
-} from "@react-native-community/datetimepicker";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import {
-  ActivityIndicator,
-  ImageBackground,
   KeyboardAvoidingView,
-  Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
-import { formatLongDate, toIsoDate } from "@/core/format/date";
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
-import { useTurismoPalette } from "@/core/ui/theme-context";
-import { TourismActionButton } from "@/core/ui/tourism-controls";
-import { TourismHeader } from "@/core/ui/tourism-navigation";
+import { TurismoSchemeScope } from "@/core/ui/theme-context";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
-import { TurismoIcon } from "@/core/ui/turismo-icons";
+import { turismoSpacing } from "@/core/ui/tokens";
 import {
-  turismoIconSizes,
-  turismoMetrics,
-  turismoRadii,
-  turismoSpacing,
-  turismoTypography,
-  getTurismoColors,
-} from "@/core/ui/tokens";
-import { useAuth } from "@/features/auth/application/auth-context";
-import { parseReturnTo } from "@/features/auth/application/login-href";
+  parseReturnTo,
+  returnsThroughHistory,
+} from "@/features/auth/application/login-href";
 import { chooseGuestAccess } from "@/features/auth/data/auth-entry-storage";
-import {
-  getBirthDateBounds,
-  isValidBirthDate,
-} from "@/features/auth/domain/birth-date";
-import {
-  touristGenderOptions,
-  type TouristGender,
-} from "@/features/auth/domain/registration-options";
+import { AccountEntry } from "@/features/auth/presentation/account-entry";
+import { LoginForm } from "@/features/auth/presentation/login-form";
+import { RegisterForm } from "@/features/auth/presentation/register-form";
 
 type AuthMode = "entry" | "login" | "register";
 
-const accountHeroImage = require("../../assets/images/account-hero.png");
-const accountEntryColors = getTurismoColors("dark");
-
 export default function LoginScreen() {
   const router = useRouter();
-  const colors = useTurismoPalette();
-  const auth = useAuth();
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const [mode, setMode] = useState<AuthMode>("entry");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [gender, setGender] = useState<TouristGender | "">("");
-  const [birthDate, setBirthDate] = useState<Date | null>(null);
-  const [showBirthDatePicker, setShowBirthDatePicker] = useState(false);
-  const [password, setPassword] = useState("");
-  const [passwordConfirmation, setPasswordConfirmation] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const target = parseReturnTo(returnTo);
 
-  const targetPath = parseReturnTo(returnTo);
-  // La ruta sigue en el historial con su destino: volver conserva sus params.
-  const returningToRoute = targetPath === "/route";
-  const canGoBack = mode !== "entry" || Boolean(returnTo);
+  // The entry is the screen's first state: Back closes an open form first.
+  const closeForm = () => {
+    if (mode === "entry") return false;
+    setMode("entry");
+    return true;
+  };
+  const handleBack = () => {
+    if (!closeForm()) router.back();
+  };
+  useScreenBackHandler(closeForm);
 
-  const handleBack = useCallback(() => {
-    if (mode !== "entry") {
-      setMode("entry");
-      setFormError(null);
-      return;
+  // `dismissTo` pops back to the target when it is already below the login
+  // (so no screen is duplicated) and otherwise replaces the login with it.
+  const returnToTarget = () => {
+    if (returnsThroughHistory(target) && router.canGoBack()) {
+      router.back();
+    } else {
+      router.dismissTo(target);
     }
-    router.back();
-  }, [mode, router]);
-
-  const openMode = (nextMode: Exclude<AuthMode, "entry">) => {
-    setFormError(null);
-    setMode(nextMode);
   };
 
-  const handleGuest = async () => {
-    const persistChoice = chooseGuestAccess();
+  const handleGuest = () => {
+    // The choice is cached synchronously, before the map reads it.
+    void chooseGuestAccess().catch(() => undefined);
     if (returnTo) {
       router.back();
     } else {
       router.replace("/");
     }
-    await persistChoice;
   };
-
-  const handleBirthDateChange = useCallback(
-    (_event: DateTimePickerChangeEvent, selectedDate: Date) => {
-      setShowBirthDatePicker(Platform.OS === "ios");
-      setBirthDate(selectedDate);
-    },
-    [],
-  );
-
-  useScreenBackHandler(() => {
-    if (mode !== "entry") {
-      setMode("entry");
-      setFormError(null);
-      return true;
-    }
-    return false;
-  });
 
   if (mode === "entry") {
     return (
-      <TourismScreenFrame
-        backgroundColor={accountEntryColors.background}
-        fullBleed
-        showHeader={false}
-        title="Cuenta"
-      >
-        <StatusBar style="light" />
-        <AccountEntryContent
-          onCreateAccount={() => openMode("register")}
-          onBack={canGoBack ? handleBack : undefined}
-          onGuest={() => void handleGuest()}
-          onLogin={() => openMode("login")}
-        />
-      </TourismScreenFrame>
+      <TurismoSchemeScope scheme="dark">
+        <TourismScreenFrame fullBleed showHeader={false} title="Cuenta">
+          <StatusBar style="light" />
+          <AccountEntry
+            onBack={returnTo ? handleBack : undefined}
+            onCreateAccount={() => setMode("register")}
+            onGuest={handleGuest}
+            onLogin={() => setMode("login")}
+          />
+        </TourismScreenFrame>
+      </TurismoSchemeScope>
     );
   }
 
-  const handleSubmit = async () => {
-    setFormError(null);
-    const trimmedName = name.trim();
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail || !trimmedEmail.includes("@")) {
-      setFormError("Escribe un correo electrónico válido.");
-      return;
-    }
-    if (mode === "register") {
-      if (trimmedName.length < 2) {
-        setFormError("Escribe tu nombre.");
-        return;
-      }
-      if (!gender) {
-        setFormError("Selecciona tu género.");
-        return;
-      }
-      if (!birthDate || !isValidBirthDate(birthDate)) {
-        setFormError("Fecha inválida.");
-        return;
-      }
-      if (password.length < 12) {
-        setFormError("La contraseña debe tener al menos 12 caracteres.");
-        return;
-      }
-      if (password !== passwordConfirmation) {
-        setFormError("Las contraseñas no coinciden.");
-        return;
-      }
-    } else if (password.length < 8) {
-      setFormError("Escribe tu contraseña.");
-      return;
-    }
-
-    const formattedBirthDate =
-      mode === "register" && birthDate ? toIsoDate(birthDate) : undefined;
-
-    setSubmitting(true);
-    try {
-      if (mode === "register") {
-        await auth.register({
-          birthDate: formattedBirthDate,
-          email: trimmedEmail,
-          gender: gender as TouristGender,
-          name: trimmedName,
-          password,
-        });
-      } else {
-        await auth.login(trimmedEmail, password);
-      }
-      if (returningToRoute && router.canGoBack()) {
-        router.back();
-      } else {
-        router.replace(targetPath);
-      }
-    } catch (error) {
-      setFormError(
-        error instanceof Error
-          ? error.message
-          : mode === "register"
-            ? "No se pudo crear la cuenta."
-            : "No se pudo iniciar sesión.",
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   return (
     <TourismScreenFrame
-      onBack={canGoBack ? handleBack : undefined}
-      title={modeLabel(mode)}
+      onBack={handleBack}
+      title={mode === "register" ? "Crear cuenta" : "Iniciar sesión"}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -214,772 +90,28 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <FormContent
-            birthDate={birthDate}
-            colors={colors}
-            email={email}
-            gender={gender}
-            mode={mode}
-            name={name}
-            onBirthDateChange={handleBirthDateChange}
-            onCloseBirthDatePicker={() => setShowBirthDatePicker(false)}
-            onEmailChange={setEmail}
-            onGenderChange={setGender}
-            onNameChange={setName}
-            onOpenBirthDatePicker={() => setShowBirthDatePicker(true)}
-            onPasswordChange={setPassword}
-            onPasswordConfirmationChange={setPasswordConfirmation}
-            password={password}
-            passwordConfirmation={passwordConfirmation}
-            showBirthDatePicker={showBirthDatePicker}
-          />
-
-          {formError || auth.error ? (
-            <Text style={[styles.error, { color: colors.danger }]}>
-              {formError ?? auth.error}
-            </Text>
-          ) : null}
-
-          <TourismActionButton
-            disabled={submitting || auth.status === "loading"}
-            label={
-              submitting
-                ? mode === "register"
-                  ? "Creando cuenta…"
-                  : "Iniciando sesión…"
-                : mode === "register"
-                  ? "Crear cuenta"
-                  : "Iniciar sesión"
-            }
-            onPress={() => void handleSubmit()}
-          />
-          {submitting ? <ActivityIndicator color={colors.primary} /> : null}
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => openMode(mode === "login" ? "register" : "login")}
-            style={styles.switchAction}
-          >
-            <Text style={[styles.switchText, { color: colors.primaryStrong }]}>
-              {mode === "login"
-                ? "¿Aún no tienes cuenta? Crear cuenta"
-                : "¿Ya tienes cuenta? Iniciar sesión"}
-            </Text>
-          </Pressable>
+          {mode === "register" ? (
+            <RegisterForm
+              onSignedIn={returnToTarget}
+              onSwitchMode={() => setMode("login")}
+            />
+          ) : (
+            <LoginForm
+              onSignedIn={returnToTarget}
+              onSwitchMode={() => setMode("register")}
+            />
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </TourismScreenFrame>
   );
 }
 
-function AccountEntryContent({
-  onCreateAccount,
-  onBack,
-  onGuest,
-  onLogin,
-}: Readonly<{
-  onCreateAccount: () => void;
-  onBack?: () => void;
-  onGuest: () => void;
-  onLogin: () => void;
-}>) {
-  const { height } = useWindowDimensions();
-  const heroHeight = Math.min(Math.max(height * 0.3, 240), 300);
-
-  return (
-    <ScrollView
-      contentContainerStyle={styles.accountScrollContent}
-      showsVerticalScrollIndicator={false}
-      style={styles.accountScroll}
-    >
-      <View
-        style={[
-          styles.accountEntry,
-          { backgroundColor: accountEntryColors.background },
-        ]}
-      >
-        <ImageBackground
-          imageStyle={styles.accountHeroImage}
-          resizeMode="contain"
-          source={accountHeroImage}
-          style={[styles.accountHero, { height: heroHeight }]}
-        >
-          <View pointerEvents="none" style={styles.accountHeroShade} />
-          <View style={styles.accountHeaderOverlay}>
-            <TourismHeader onBack={onBack} title="Cuenta" />
-          </View>
-        </ImageBackground>
-
-        <View
-          style={[
-            styles.accountBodyContent,
-            {
-              backgroundColor: accountEntryColors.background,
-              minHeight: Math.max(height * 0.68 - 72, 448),
-            },
-          ]}
-        >
-          <View style={styles.accountCopy}>
-            <Text accessibilityRole="header" style={styles.accountTitle}>
-              Descubre <Text style={styles.accountTitleAccent}>Ecuador</Text>
-            </Text>
-          </View>
-
-          <View style={styles.accountBenefits}>
-            <AccountBenefit
-              icon="bookmark"
-              label={"Guarda tus\nlugares favoritos"}
-            />
-            <AccountBenefit
-              icon="map"
-              label={"Accede a rutas\npersonalizadas"}
-            />
-            <AccountBenefit
-              icon="bot"
-              label={"Accede a un\nagente IA turístico"}
-            />
-          </View>
-
-          <View style={styles.accountActions}>
-            <AccountEntryButton
-              label="Iniciar sesión"
-              onPress={onLogin}
-              variant="primary"
-            />
-            <AccountEntryButton
-              label="Crear cuenta"
-              onPress={onCreateAccount}
-              variant="outline"
-            />
-          </View>
-
-          <Pressable
-            accessibilityLabel="Explorar como invitado"
-            accessibilityRole="button"
-            onPress={onGuest}
-            style={({ pressed }) => [
-              styles.accountGuestLink,
-              { opacity: pressed ? 0.65 : 1 },
-            ]}
-          >
-            <Text style={styles.accountGuestText}>Explorar como invitado</Text>
-          </Pressable>
-        </View>
-      </View>
-    </ScrollView>
-  );
-}
-
-function AccountBenefit({
-  icon,
-  label,
-}: Readonly<{
-  icon: "bookmark" | "bot" | "map";
-  label: string;
-}>) {
-  return (
-    <View style={styles.accountBenefit}>
-      <View
-        style={[
-          styles.accountBenefitIcon,
-          { backgroundColor: accountEntryColors.primarySoft },
-        ]}
-      >
-        <TurismoIcon
-          color={accountEntryColors.primaryStrong}
-          name={icon}
-          size={24}
-          strokeWidth={1.9}
-        />
-      </View>
-      <Text style={styles.accountBenefitText}>{label}</Text>
-    </View>
-  );
-}
-
-function AccountEntryButton({
-  icon,
-  label,
-  onPress,
-  variant,
-}: Readonly<{
-  icon?: "user";
-  label: string;
-  onPress: () => void;
-  variant: "outline" | "primary";
-}>) {
-  const primary = variant === "primary";
-  return (
-    <Pressable
-      accessibilityLabel={label}
-      accessibilityRole="button"
-      android_ripple={{
-        color: primary ? "rgba(0, 0, 0, 0.12)" : "rgba(34, 197, 94, 0.12)",
-      }}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.accountButton,
-        {
-          backgroundColor: primary ? accountEntryColors.primary : "transparent",
-          borderColor: primary
-            ? accountEntryColors.primary
-            : accountEntryColors.border,
-          opacity: pressed ? 0.84 : 1,
-        },
-      ]}
-    >
-      <View style={styles.accountButtonLabel}>
-        {icon ? (
-          <TurismoIcon
-            color={accountEntryColors.onPrimary}
-            name={icon}
-            size={22}
-            strokeWidth={2.2}
-          />
-        ) : null}
-        <Text
-          style={[
-            styles.accountButtonText,
-            {
-              color: primary
-                ? accountEntryColors.onPrimary
-                : accountEntryColors.primaryStrong,
-            },
-          ]}
-        >
-          {label}
-        </Text>
-      </View>
-      <TurismoIcon
-        color={
-          primary
-            ? accountEntryColors.onPrimary
-            : accountEntryColors.primaryStrong
-        }
-        name="chevronRight"
-        size={22}
-        strokeWidth={2.3}
-      />
-    </Pressable>
-  );
-}
-
-function FormContent({
-  birthDate,
-  colors,
-  email,
-  gender,
-  mode,
-  name,
-  onBirthDateChange,
-  onCloseBirthDatePicker,
-  onEmailChange,
-  onGenderChange,
-  onNameChange,
-  onOpenBirthDatePicker,
-  onPasswordChange,
-  onPasswordConfirmationChange,
-  password,
-  passwordConfirmation,
-  showBirthDatePicker,
-}: Readonly<{
-  birthDate: Date | null;
-  colors: ReturnType<typeof useTurismoPalette>;
-  email: string;
-  gender: TouristGender | "";
-  mode: Exclude<AuthMode, "entry">;
-  name: string;
-  onBirthDateChange: (
-    event: DateTimePickerChangeEvent,
-    selectedDate: Date,
-  ) => void;
-  onCloseBirthDatePicker: () => void;
-  onEmailChange: (value: string) => void;
-  onGenderChange: (value: TouristGender) => void;
-  onNameChange: (value: string) => void;
-  onOpenBirthDatePicker: () => void;
-  onPasswordChange: (value: string) => void;
-  onPasswordConfirmationChange: (value: string) => void;
-  password: string;
-  passwordConfirmation: string;
-  showBirthDatePicker: boolean;
-}>) {
-  return (
-    <View style={styles.formContent}>
-      <View style={styles.form}>
-        {mode === "register" ? (
-          <Field
-            accessibilityLabel="Nombre completo"
-            autoCapitalize="words"
-            colors={colors}
-            label="Nombre completo *"
-            onChangeText={onNameChange}
-            placeholder="Tu nombre"
-            value={name}
-          />
-        ) : null}
-        <Field
-          accessibilityLabel="Correo electrónico"
-          autoCapitalize="none"
-          autoComplete="email"
-          autoCorrect={false}
-          colors={colors}
-          keyboardType="email-address"
-          label="Correo electrónico *"
-          onChangeText={onEmailChange}
-          placeholder="tu@correo.com"
-          value={email}
-        />
-        {mode === "register" ? (
-          <>
-            <GenderOptions
-              colors={colors}
-              onChange={onGenderChange}
-              value={gender}
-            />
-            <BirthDateField
-              birthDate={birthDate}
-              colors={colors}
-              onChange={onBirthDateChange}
-              onOpen={onOpenBirthDatePicker}
-              onClose={onCloseBirthDatePicker}
-              showPicker={showBirthDatePicker}
-            />
-          </>
-        ) : null}
-        <Field
-          accessibilityLabel="Contraseña"
-          autoComplete={mode === "register" ? "new-password" : "password"}
-          colors={colors}
-          label="Contraseña *"
-          onChangeText={onPasswordChange}
-          placeholder="Tu contraseña"
-          secureTextEntry
-          value={password}
-        />
-        {mode === "register" ? (
-          <Field
-            accessibilityLabel="Repetir contraseña"
-            autoComplete="new-password"
-            colors={colors}
-            label="Repetir contraseña *"
-            onChangeText={onPasswordConfirmationChange}
-            placeholder="Repite tu contraseña"
-            secureTextEntry
-            value={passwordConfirmation}
-          />
-        ) : null}
-      </View>
-      {mode === "register" ? (
-        <Text style={[styles.helper, { color: colors.textFaint }]}>
-          La contraseña debe tener al menos 12 caracteres.
-        </Text>
-      ) : null}
-    </View>
-  );
-}
-
-function GenderOptions({
-  colors,
-  onChange,
-  value,
-}: Readonly<{
-  colors: ReturnType<typeof useTurismoPalette>;
-  onChange: (value: TouristGender) => void;
-  value: TouristGender | "";
-}>) {
-  return (
-    <View style={styles.field}>
-      <Text style={[styles.label, { color: colors.text }]}>Género *</Text>
-      <View style={styles.genderOptions}>
-        {touristGenderOptions.map((option) => {
-          const selected = value === option;
-          return (
-            <Pressable
-              accessibilityLabel={option}
-              accessibilityRole="radio"
-              accessibilityState={{ selected }}
-              key={option}
-              onPress={() => onChange(option)}
-              style={({ pressed }) => [
-                styles.genderOption,
-                {
-                  backgroundColor: selected
-                    ? colors.primarySoft
-                    : colors.surface,
-                  borderColor: selected ? colors.primary : colors.border,
-                  opacity: pressed ? 0.72 : 1,
-                },
-              ]}
-            >
-              <TurismoIcon
-                color={selected ? colors.primaryStrong : colors.textMuted}
-                name={option === "Masculino" ? "genderMale" : "genderFemale"}
-                size={turismoIconSizes.md}
-              />
-              <Text
-                style={[
-                  styles.genderOptionText,
-                  { color: selected ? colors.primaryStrong : colors.text },
-                ]}
-              >
-                {option}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-function BirthDateField({
-  birthDate,
-  colors,
-  onChange,
-  onClose,
-  onOpen,
-  showPicker,
-}: Readonly<{
-  birthDate: Date | null;
-  colors: ReturnType<typeof useTurismoPalette>;
-  onChange: (event: DateTimePickerChangeEvent, selectedDate: Date) => void;
-  onClose: () => void;
-  onOpen: () => void;
-  showPicker: boolean;
-}>) {
-  const { maximumDate, minimumDate } = getBirthDateBounds();
-  const pickerValue =
-    birthDate && isValidBirthDate(birthDate) ? birthDate : maximumDate;
-
-  return (
-    <View style={styles.field}>
-      <Text style={[styles.label, { color: colors.text }]}>
-        Fecha de nacimiento *
-      </Text>
-      <Pressable
-        accessibilityLabel="Elegir fecha de nacimiento"
-        accessibilityRole="button"
-        onPress={onOpen}
-        style={({ pressed }) => [
-          styles.dateButton,
-          {
-            backgroundColor: colors.surface,
-            borderColor: colors.border,
-            opacity: pressed ? 0.72 : 1,
-          },
-        ]}
-      >
-        <TurismoIcon
-          color={colors.primaryStrong}
-          name="calendar"
-          size={turismoIconSizes.md}
-        />
-        <Text
-          style={[
-            styles.dateButtonText,
-            { color: birthDate ? colors.text : colors.textFaint },
-          ]}
-        >
-          {birthDate ? formatLongDate(birthDate) : "Selecciona una fecha"}
-        </Text>
-      </Pressable>
-
-      {Platform.OS === "android" && showPicker ? (
-        <DateTimePicker
-          display="calendar"
-          maximumDate={maximumDate}
-          minimumDate={minimumDate}
-          mode="date"
-          onDismiss={onClose}
-          onValueChange={onChange}
-          value={pickerValue}
-        />
-      ) : null}
-
-      {Platform.OS === "ios" ? (
-        <Modal
-          animationType="slide"
-          onRequestClose={onClose}
-          transparent
-          visible={showPicker}
-        >
-          <View
-            style={[
-              styles.dateModalBackdrop,
-              { backgroundColor: colors.scrim },
-            ]}
-          >
-            <View
-              style={[
-                styles.dateModalCard,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              <View style={styles.dateModalHeader}>
-                <Text style={[styles.dateModalTitle, { color: colors.text }]}>
-                  Fecha de nacimiento
-                </Text>
-                <Pressable
-                  accessibilityLabel="Cerrar selector de fecha"
-                  accessibilityRole="button"
-                  hitSlop={8}
-                  onPress={onClose}
-                >
-                  <TurismoIcon
-                    color={colors.textMuted}
-                    name="close"
-                    size={turismoIconSizes.md}
-                  />
-                </Pressable>
-              </View>
-              <DateTimePicker
-                display="inline"
-                maximumDate={maximumDate}
-                minimumDate={minimumDate}
-                mode="date"
-                onDismiss={onClose}
-                onValueChange={onChange}
-                value={pickerValue}
-              />
-              <TourismActionButton label="Listo" onPress={onClose} />
-            </View>
-          </View>
-        </Modal>
-      ) : null}
-    </View>
-  );
-}
-
-function Field({
-  accessibilityLabel,
-  autoCapitalize,
-  autoComplete,
-  autoCorrect,
-  colors,
-  keyboardType,
-  label,
-  onChangeText,
-  placeholder,
-  secureTextEntry = false,
-  value,
-}: Readonly<{
-  accessibilityLabel: string;
-  autoCapitalize?: "none" | "sentences" | "words";
-  autoComplete?: "email" | "new-password" | "password";
-  autoCorrect?: boolean;
-  colors: ReturnType<typeof useTurismoPalette>;
-  keyboardType?: "email-address" | "numbers-and-punctuation";
-  label: string;
-  onChangeText: (value: string) => void;
-  placeholder: string;
-  secureTextEntry?: boolean;
-  value: string;
-}>) {
-  return (
-    <View style={styles.field}>
-      <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
-      <TextInput
-        accessibilityLabel={accessibilityLabel}
-        autoCapitalize={autoCapitalize}
-        autoComplete={autoComplete}
-        autoCorrect={autoCorrect}
-        keyboardType={keyboardType}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textFaint}
-        secureTextEntry={secureTextEntry}
-        style={[
-          styles.input,
-          {
-            backgroundColor: colors.surface,
-            borderColor: colors.border,
-            color: colors.text,
-          },
-        ]}
-        value={value}
-      />
-    </View>
-  );
-}
-
-function modeLabel(mode: Exclude<AuthMode, "entry">): string {
-  return mode === "register" ? "Crear cuenta" : "Iniciar sesión";
-}
-
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: {
     flexGrow: 1,
-    gap: turismoSpacing.lg,
-    paddingTop: turismoSpacing.md,
     paddingBottom: turismoSpacing.xxl,
+    paddingTop: turismoSpacing.md,
   },
-  accountScroll: { flex: 1, width: "100%" },
-  accountScrollContent: {
-    alignItems: "stretch",
-    flexGrow: 1,
-    width: "100%",
-  },
-  accountEntry: { alignSelf: "stretch", flexGrow: 1, width: "100%" },
-  accountHero: { overflow: "hidden", width: "100%" },
-  accountHeroImage: { opacity: 0.92 },
-  accountHeaderOverlay: {
-    paddingHorizontal: turismoSpacing.md,
-    width: "100%",
-  },
-  accountHeroShade: {
-    backgroundColor: "rgba(0, 0, 0, 0.24)",
-    bottom: 0,
-    left: 0,
-    position: "absolute",
-    right: 0,
-    top: 0,
-  },
-  accountBodyContent: {
-    alignItems: "center",
-    flexGrow: 1,
-    marginTop: -14,
-    paddingBottom: turismoSpacing.xl,
-    paddingHorizontal: turismoSpacing.md,
-    width: "100%",
-  },
-  accountCopy: {
-    alignItems: "center",
-    gap: turismoSpacing.xs,
-    marginTop: turismoSpacing.xs,
-    maxWidth: 390,
-    width: "100%",
-  },
-  accountTitle: {
-    color: accountEntryColors.text,
-    fontSize: 27,
-    fontWeight: "700",
-    lineHeight: 34,
-    textAlign: "center",
-  },
-  accountTitleAccent: { color: accountEntryColors.primaryStrong },
-  accountBenefits: {
-    flexDirection: "row",
-    gap: turismoSpacing.xs,
-    marginTop: turismoSpacing.xl,
-    maxWidth: 430,
-    width: "100%",
-  },
-  accountBenefit: {
-    alignItems: "center",
-    flex: 1,
-    gap: turismoSpacing.xs,
-  },
-  accountBenefitIcon: {
-    alignItems: "center",
-    borderRadius: turismoRadii.pill,
-    height: 50,
-    justifyContent: "center",
-    width: 50,
-  },
-  accountBenefitText: {
-    color: accountEntryColors.textMuted,
-    fontSize: 14,
-    lineHeight: 18,
-    textAlign: "center",
-  },
-  accountActions: {
-    gap: turismoSpacing.sm,
-    marginTop: turismoSpacing.xl,
-    maxWidth: 500,
-    width: "100%",
-  },
-  accountButton: {
-    alignItems: "center",
-    borderRadius: turismoRadii.pill,
-    borderWidth: turismoMetrics.borderWidth,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    minHeight: turismoMetrics.controlLg,
-    paddingHorizontal: turismoSpacing.lg,
-    width: "100%",
-  },
-  accountButtonLabel: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-    flex: 1,
-    justifyContent: "center",
-  },
-  accountButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    lineHeight: 20,
-  },
-  accountGuestLink: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: turismoSpacing.xs,
-    minHeight: turismoMetrics.touchTarget,
-    paddingHorizontal: turismoSpacing.md,
-  },
-  accountGuestText: {
-    color: accountEntryColors.textFaint,
-    fontSize: 14,
-    fontWeight: "600",
-    lineHeight: 20,
-  },
-  formContent: { gap: turismoSpacing.lg },
-  form: { gap: turismoSpacing.md },
-  field: { gap: turismoSpacing.xs },
-  label: { ...turismoTypography.label },
-  genderOptions: { flexDirection: "row", gap: turismoSpacing.sm },
-  genderOption: {
-    alignItems: "center",
-    borderRadius: turismoRadii.pill,
-    borderWidth: turismoMetrics.borderWidth,
-    flex: 1,
-    flexDirection: "row",
-    gap: turismoSpacing.xs,
-    justifyContent: "center",
-    minHeight: turismoMetrics.controlLg,
-    paddingHorizontal: turismoSpacing.sm,
-  },
-  genderOptionText: { ...turismoTypography.label },
-  dateButton: {
-    alignItems: "center",
-    borderRadius: turismoRadii.sm,
-    borderWidth: turismoMetrics.borderWidth,
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-    minHeight: turismoMetrics.controlLg,
-    paddingHorizontal: turismoSpacing.md,
-  },
-  dateButtonText: { ...turismoTypography.body },
-  dateModalBackdrop: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  dateModalCard: {
-    borderTopLeftRadius: turismoRadii.lg,
-    borderTopRightRadius: turismoRadii.lg,
-    borderWidth: turismoMetrics.borderWidth,
-    gap: turismoSpacing.md,
-    padding: turismoSpacing.lg,
-  },
-  dateModalHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  dateModalTitle: { ...turismoTypography.heading },
-  input: {
-    borderRadius: turismoRadii.sm,
-    borderWidth: turismoMetrics.borderWidth,
-    ...turismoTypography.body,
-    minHeight: turismoMetrics.controlLg,
-    paddingHorizontal: turismoSpacing.md,
-  },
-  helper: { ...turismoTypography.caption },
-  error: { ...turismoTypography.label },
-  switchAction: { alignItems: "center", minHeight: turismoMetrics.touchTarget },
-  switchText: { ...turismoTypography.label },
 });
