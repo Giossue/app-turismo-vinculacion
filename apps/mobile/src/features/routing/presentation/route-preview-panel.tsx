@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,12 +20,10 @@ import {
   TourismGlassFill,
   turismoGlassBorderWidth,
 } from "@/core/ui/tourism-glass";
+import { TourismSheetHandle } from "@/core/ui/tourism-sheet-handle";
 import { TourismStateView } from "@/core/ui/tourism-state";
-import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
-  turismoIconSizes,
   turismoMetrics,
-  turismoOpacity,
   turismoRadii,
   turismoSpacing,
   turismoTypography,
@@ -164,22 +161,17 @@ export function RoutePreviewPanel({
 
   const header = (
     <View style={styles.header}>
-      <Pressable
-        accessibilityLabel={
+      <TourismSheetHandle
+        closeLabel="Cerrar ruta"
+        indicatorAccessibilityLabel={
           expanded
             ? "Contraer detalles de la ruta"
             : "Expandir detalles de la ruta"
         }
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        onPress={() => onExpandedChange(!expanded)}
-        style={({ pressed }) => [
-          styles.handleButton,
-          pressed && styles.pressed,
-        ]}
-      >
-        <View style={[styles.handle, { backgroundColor: colors.border }]} />
-      </Pressable>
+        indicatorExpanded={expanded}
+        onClose={onClose}
+        onIndicatorPress={() => onExpandedChange(!expanded)}
+      />
       <View style={styles.headerRow}>
         <View style={styles.titleCopy}>
           <Text style={[styles.title, { color: colors.text }]}>
@@ -192,21 +184,6 @@ export function RoutePreviewPanel({
             Ruta hacia {destinationName}
           </Text>
         </View>
-        <Pressable
-          accessibilityLabel="Cerrar ruta"
-          accessibilityRole="button"
-          onPress={onClose}
-          style={({ pressed }) => [
-            styles.closeButton,
-            pressed && styles.pressed,
-          ]}
-        >
-          <TurismoIcon
-            color={colors.text}
-            name="close"
-            size={turismoIconSizes.lg}
-          />
-        </Pressable>
       </View>
     </View>
   );
@@ -329,17 +306,6 @@ const styles = StyleSheet.create({
     paddingBottom: turismoSpacing.sm,
     paddingHorizontal: turismoSpacing.md,
   },
-  handleButton: {
-    alignItems: "center",
-    alignSelf: "stretch",
-    justifyContent: "center",
-    minHeight: turismoMetrics.touchTarget,
-  },
-  handle: {
-    borderRadius: turismoRadii.pill,
-    height: turismoSpacing.xxs,
-    width: turismoSpacing.xxl,
-  },
   headerRow: {
     alignItems: "center",
     flexDirection: "row",
@@ -348,13 +314,6 @@ const styles = StyleSheet.create({
   titleCopy: { flex: 1, gap: turismoSpacing.xxs, minWidth: 0 },
   eyebrow: { ...turismoTypography.caption },
   title: { ...turismoTypography.title, flexShrink: 1 },
-  closeButton: {
-    alignItems: "center",
-    height: turismoMetrics.touchTarget,
-    justifyContent: "center",
-    width: turismoMetrics.touchTarget,
-  },
-  pressed: { opacity: turismoOpacity.pressed },
   scroll: { flex: 1 },
   scrollContent: {
     gap: turismoSpacing.md,

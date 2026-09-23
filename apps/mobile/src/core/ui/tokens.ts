@@ -45,6 +45,8 @@ export const turismoMetrics = {
   indicatorDot: 6,
   ratingSummaryMinWidth: 112,
   ratingPercentWidth: 40,
+  sheetHandleWidth: 36,
+  sheetHandleHeight: 4,
 } as const;
 
 export const turismoTypography = {

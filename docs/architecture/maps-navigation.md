@@ -200,8 +200,9 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   En el mapa en línea, ese conjunto proviene exclusivamente de una respuesta exitosa de
   `GET /api/v1/centers`; si la respuesta remota está vacía, no se crean pines de ejemplo ni
   se reutiliza el manifiesto offline.
-- La selección es estado de la pantalla: el toque primero centra la cámara en el atractivo
-  con el zoom de detalle predeterminado y luego presenta la ficha. El pin seleccionado se ve
+- La selección es estado de la pantalla: el toque presenta la ficha enseguida y, al mismo
+  tiempo, la cámara centra el atractivo con el zoom de detalle predeterminado en la parte
+  visible del mapa, encima de la ficha. El pin seleccionado se ve
   igual que el resto: no se agranda ni cambia de icono.
 - Al abrir la pantalla principal no se solicita la ubicación: `while in use` se pide al tocar
   "mi ubicación", activar "Servicios cercanos" o iniciar una ruta; si la

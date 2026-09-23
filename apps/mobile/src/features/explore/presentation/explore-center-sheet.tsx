@@ -6,10 +6,7 @@ import {
   TourismBottomSheet,
   TourismSheetScrollView,
 } from "@/core/ui/tourism-bottom-sheet";
-import {
-  TourismActionButton,
-  TourismIconAction,
-} from "@/core/ui/tourism-controls";
+import { TourismActionButton } from "@/core/ui/tourism-controls";
 import { TourismStateView } from "@/core/ui/tourism-state";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
@@ -65,13 +62,6 @@ export function ExploreCenterSheet({
         landscapeMaxWidth={turismoMetrics.sheetMaxWidth}
       >
         <CenterHero
-          leading={
-            <TourismIconAction
-              accessibilityLabel="Volver a explorar"
-              icon="arrowLeft"
-              onPress={onClose}
-            />
-          }
           name={center.name}
           photo={detail?.photos[0]}
           style={styles.hero}

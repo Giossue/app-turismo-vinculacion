@@ -22,8 +22,14 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import Animated, {
+  interpolate,
+  useAnimatedStyle,
+} from "react-native-reanimated";
+
 import { useTurismoPalette } from "./theme-context";
 import { TourismGlassFill, turismoGlassBorderWidth } from "./tourism-glass";
+import { TourismSheetHandle } from "./tourism-sheet-handle";
 import { turismoRadii, turismoSpacing } from "./tokens";
 
 /**
@@ -43,17 +49,43 @@ export function TourismSheetTopInsetProvider({
   );
 }
 
-/** Fondo de vidrio de las sheets que flotan sobre el mapa. */
-function GlassSheetBackground({ style }: BottomSheetBackgroundProps) {
+/**
+ * Fondo de las sheets del mapa: vidrio abierta a media altura y superficie
+ * sólida al expandirse a pantalla completa, para que el buscador y los chips
+ * no se transparenten por detrás (patrón `animatedIndex` de gorhom).
+ */
+function GlassSheetBackground({
+  animatedIndex,
+  style,
+}: BottomSheetBackgroundProps) {
   const colors = useTurismoPalette();
+  const solidStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(animatedIndex.value, [0, 1], [0, 1], "clamp"),
+  }));
   return (
     <View
       pointerEvents="none"
       style={[style, styles.glassBackground, { borderColor: colors.border }]}
     >
       <TourismGlassFill material="regular" />
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: colors.surface },
+          solidStyle,
+        ]}
+      />
     </View>
   );
+}
+
+/** Acción de cerrar de la sheet visible, para el botón de su asa. */
+const TourismSheetCloseContext = createContext<() => void>(() => undefined);
+
+/** Asa estándar (barra + cerrar) conectada a la sheet visible. */
+function SheetHandle() {
+  const close = useContext(TourismSheetCloseContext);
+  return <TourismSheetHandle onClose={close} />;
 }
 
 /** Fracción de pantalla que ocupa una sheet del mapa al abrirse. */
@@ -61,7 +93,7 @@ export const tourismSheetOpenRatio = 0.44;
 
 const tourismFlexibleSheetSnapPoints = [
   `${tourismSheetOpenRatio * 100}%`,
-  "92%",
+  "100%",
 ];
 
 const tourismFlexibleSheetBehavior = {
@@ -117,6 +149,7 @@ export function TourismBottomSheetHost({
     duration: sheetAnimationDurationMs,
   });
   const isOpen = entry !== null;
+  const closeVisible = () => entryRef.current?.onClose();
 
   if (entry !== null && shown !== entry) setShown(entry);
 
@@ -132,22 +165,25 @@ export function TourismBottomSheetHost({
   return (
     <TourismSheetHostContext.Provider value={setEntry}>
       {children}
-      <BottomSheet
-        {...tourismFlexibleSheetBehavior}
-        animationConfigs={animationConfigs}
-        backgroundComponent={GlassSheetBackground}
-        index={-1}
-        onChange={(index) => {
-          if (index === -1 && entryRef.current === null) setShown(null);
-        }}
-        // Deslizar hacia abajo cierra la sheet visible como su propio botón.
-        onClose={() => entryRef.current?.onClose()}
-        ref={sheetRef}
-        snapPoints={tourismFlexibleSheetSnapPoints}
-        topInset={topInset}
-      >
-        {shown?.children ?? null}
-      </BottomSheet>
+      <TourismSheetCloseContext.Provider value={closeVisible}>
+        <BottomSheet
+          {...tourismFlexibleSheetBehavior}
+          animationConfigs={animationConfigs}
+          backgroundComponent={GlassSheetBackground}
+          handleComponent={SheetHandle}
+          index={-1}
+          onChange={(index) => {
+            if (index === -1 && entryRef.current === null) setShown(null);
+          }}
+          // Deslizar hacia abajo cierra la sheet visible como su botón.
+          onClose={closeVisible}
+          ref={sheetRef}
+          snapPoints={tourismFlexibleSheetSnapPoints}
+          topInset={topInset}
+        >
+          {shown?.children ?? null}
+        </BottomSheet>
+      </TourismSheetCloseContext.Provider>
     </TourismSheetHostContext.Provider>
   );
 }
@@ -180,61 +216,46 @@ export function TourismBottomSheet({
 
   if (host) return null;
   return (
-    <BottomSheet
-      {...tourismFlexibleSheetBehavior}
-      animationConfigs={animationConfigs}
-      backgroundComponent={GlassSheetBackground}
-      topInset={topInset}
-      index={0}
-      onClose={onClose}
-      snapPoints={tourismFlexibleSheetSnapPoints}
-    >
-      {children}
-    </BottomSheet>
+    <TourismSheetCloseContext.Provider value={onClose}>
+      <BottomSheet
+        {...tourismFlexibleSheetBehavior}
+        animationConfigs={animationConfigs}
+        backgroundComponent={GlassSheetBackground}
+        handleComponent={SheetHandle}
+        topInset={topInset}
+        index={0}
+        onClose={onClose}
+        snapPoints={tourismFlexibleSheetSnapPoints}
+      >
+        {children}
+      </BottomSheet>
+    </TourismSheetCloseContext.Provider>
   );
 }
 
 /**
- * Imperative sheet presented with `ref.current?.present()`. `flexible` matches
- * `TourismBottomSheet`; `agent` is the full-height chat sheet that only closes
- * from its own button and has no drag handle.
+ * Full-height sheet presented with `ref.current?.present()` (the agent chat).
+ * It only closes from its own `TourismSheetHandle`, not by dragging.
  */
 export function TourismBottomSheetModal({
   children,
   onDismiss,
   ref,
-  variant = "flexible",
 }: Readonly<{
   children: ReactNode;
   onDismiss: () => void;
   ref?: Ref<BottomSheetModal>;
-  variant?: "flexible" | "agent";
 }>) {
   const colors = useTurismoPalette();
-  const backgroundStyle = { backgroundColor: colors.surface };
-  if (variant === "agent") {
-    return (
-      <BottomSheetModal
-        {...tourismAgentSheetBehavior}
-        backgroundStyle={backgroundStyle}
-        handleComponent={null}
-        index={0}
-        onDismiss={onDismiss}
-        ref={ref}
-        snapPoints={tourismAgentSheetSnapPoints}
-      >
-        {children}
-      </BottomSheetModal>
-    );
-  }
   return (
     <BottomSheetModal
-      {...tourismFlexibleSheetBehavior}
-      backgroundComponent={GlassSheetBackground}
+      {...tourismAgentSheetBehavior}
+      backgroundStyle={{ backgroundColor: colors.surface }}
+      handleComponent={null}
       index={0}
       onDismiss={onDismiss}
       ref={ref}
-      snapPoints={tourismFlexibleSheetSnapPoints}
+      snapPoints={tourismAgentSheetSnapPoints}
     >
       {children}
     </BottomSheetModal>

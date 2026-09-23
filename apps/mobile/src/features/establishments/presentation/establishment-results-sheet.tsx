@@ -3,11 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { formatDistance } from "@/core/format/distance";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismSheetScrollView } from "@/core/ui/tourism-bottom-sheet";
-import {
-  TourismBadge,
-  TourismIconAction,
-  TourismSurface,
-} from "@/core/ui/tourism-controls";
+import { TourismBadge, TourismSurface } from "@/core/ui/tourism-controls";
 import { TourismStateView } from "@/core/ui/tourism-state";
 import {
   turismoMetrics,
@@ -52,12 +48,6 @@ export function EstablishmentResultsSheet({
             Catastro turístico
           </Text>
         </View>
-        <TourismIconAction
-          accessibilityLabel="Cerrar resultados"
-          icon="close"
-          onPress={onClose}
-          variant="ghost"
-        />
       </View>
 
       {!hasLocation ? (

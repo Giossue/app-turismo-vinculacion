@@ -9,11 +9,11 @@
 - [x] La búsqueda textual coincide con nombre, descripción y clasificación, y solo devuelve
       centros activos publicados.
 - [x] Existe prueba unitaria del caso de uso y verificación de integración local (`q=mirador`)
-  ejecutada contra la API.
+      ejecutada contra la API.
 - [x] OpenAPI se genera desde los controladores y la especificación está documentada.
 - [x] En móvil, un marcador abre una ficha inferior con resumen y permite expandirla para
-  consultar el detalle público disponible sin navegar a otra pantalla.
-- [x] Al seleccionar un marcador, la cámara centra el punto con zoom predeterminado y el
-  pin usa un color de selección distinguible antes de mostrar la ficha.
+      consultar el detalle público disponible sin navegar a otra pantalla.
+- [x] Al seleccionar un marcador, la ficha se abre enseguida y la cámara centra el punto con
+      zoom predeterminado en la parte visible del mapa, encima de la ficha.
 - [x] La búsqueda móvil se envía desde el teclado, muestra coincidencias en un bottom sheet
-  y conserva el mapa visible.
+      y conserva el mapa visible.

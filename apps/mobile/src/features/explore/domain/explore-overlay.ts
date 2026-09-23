@@ -6,8 +6,8 @@ import type { MapFeatureSelection } from "@/features/map/domain/map-feature-sele
  * The one transient overlay over the Explore map (single source of truth):
  * - `center` / `establishment`: its detail sheet.
  * - `choices`: several pins overlap and the tourist picks one.
- * - `focusing`: the camera moves to a feature; its sheet opens once the map
- *   confirms the camera arrived.
+ * - `focusing`: a feature picked from search; the map opens its sheet right
+ *   away and moves the camera at the same time.
  * - `agent`: the full-height agent chat.
  */
 export type ExploreOverlay =

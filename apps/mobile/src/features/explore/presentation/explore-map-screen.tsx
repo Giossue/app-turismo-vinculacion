@@ -17,7 +17,6 @@ import {
   useTourismTabGlassTarget,
 } from "@/core/ui/tourism-tab-bar";
 import { TourismStateView } from "@/core/ui/tourism-state";
-import { turismoMetrics, turismoSpacing } from "@/core/ui/tokens";
 import type { AgentRouteDestination } from "@/features/agent/domain/agent";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { buildLoginHref } from "@/features/auth/application/login-href";
@@ -84,8 +83,7 @@ export function ExploreMapScreen() {
         current.center)
       : null;
   // Con una ficha abierta, la barra de pestañas se oculta para que la ficha
-  // quede encima y use toda la parte inferior; al expandirse, la ficha se
-  // detiene debajo del buscador en vez de pasar por detrás de él.
+  // quede encima y use toda la parte inferior.
   const sheetOpen =
     !search.focused &&
     (current.kind === "choices" ||
@@ -94,8 +92,8 @@ export function ExploreMapScreen() {
       (current.kind === "none" && Boolean(search.submittedQuery)));
   useHideTourismTabBar(sheetOpen);
   const insets = useSafeAreaInsets();
-  const sheetTopInset =
-    insets.top + turismoMetrics.controlMd + turismoSpacing.sm;
+  // Expandida, la sheet ocupa toda la pantalla salvo la barra de estado.
+  const sheetTopInset = insets.top;
 
   /** Closing a center returns to the submitted results, if any. */
   const closeCenter = () => {

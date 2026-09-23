@@ -200,7 +200,7 @@ centro o de establecimiento, opciones superpuestas, enfoque de cámara en curso 
 modo que dos fichas no pueden coexistir. La sheet de resultados es declarativa: se monta
 mientras hay una búsqueda enviada y ningún overlay abierto, así que al cerrar una ficha
 abierta desde los resultados se vuelve a la lista. Elegir un resultado o una sugerencia
-sigue el mismo camino que tocar un pin: centra la cámara y luego abre la ficha.
+sigue el mismo camino que tocar un pin: abre la ficha y, a la vez, centra la cámara.
 
 Las transiciones de pantalla usan movimiento en ambas plataformas: el Stack usa
 `animation: "slide_from_right"` (en iOS también se vuelve deslizando desde el borde) y las

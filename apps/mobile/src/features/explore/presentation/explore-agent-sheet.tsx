@@ -5,7 +5,7 @@ import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismBottomSheetModal } from "@/core/ui/tourism-bottom-sheet";
-import { TourismIconAction } from "@/core/ui/tourism-controls";
+import { TourismSheetHandle } from "@/core/ui/tourism-sheet-handle";
 import {
   turismoMetrics,
   turismoSpacing,
@@ -51,13 +51,16 @@ export function ExploreAgentSheet({
         onClose();
       }}
       ref={sheetRef}
-      variant="agent"
     >
       <BottomSheetView style={styles.sheet}>
         <SafeAreaView
           edges={sheetEdges}
           style={[styles.safeArea, { backgroundColor: colors.surface }]}
         >
+          <TourismSheetHandle
+            closeLabel="Cerrar agente turístico"
+            onClose={onClose}
+          />
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <Text
               accessibilityRole="header"
@@ -65,12 +68,6 @@ export function ExploreAgentSheet({
             >
               Agente turístico
             </Text>
-            <TourismIconAction
-              accessibilityLabel="Cerrar agente turístico"
-              icon="close"
-              onPress={onClose}
-              variant="ghost"
-            />
           </View>
           <View style={styles.content}>
             <AgentChatContent

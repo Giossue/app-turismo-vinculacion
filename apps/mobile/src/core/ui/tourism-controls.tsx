@@ -179,9 +179,7 @@ export function TourismIconAction({
         style,
       ]}
     >
-      {variant === "glass" && !selected ? (
-        <TourismGlassFill material="tint" />
-      ) : null}
+      {variant === "glass" && !selected ? <TourismGlassFill /> : null}
       <View
         pointerEvents="none"
         style={[
@@ -243,7 +241,7 @@ export function TourismCompassAction({
         style,
       ]}
     >
-      {glass ? <TourismGlassFill material="tint" /> : null}
+      {glass ? <TourismGlassFill /> : null}
       <Svg
         height={turismoMetrics.compassGraphic}
         pointerEvents="none"
@@ -320,7 +318,7 @@ export function TourismChoiceChip({
   if (!frosted) return chip;
   return (
     <View style={styles.chipGlass}>
-      <TourismGlassFill material="tint" />
+      <TourismGlassFill />
       {chip}
     </View>
   );

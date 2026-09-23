@@ -33,9 +33,12 @@ botones del mapa, sheets, barra inferior, paneles de ruta y menú lateral) usan 
 `TourismGlassFill` de `src/core/ui/tourism-glass.tsx` (material del sistema de `expo-blur`).
 El fondo que se desenfoca va en `TourismGlassScope` y lo flotante como hermano, nunca dentro
 (Android lo exige). Las pantallas de fondo liso (listas, formularios) mantienen superficies
-sólidas: ahí el vidrio no aporta. Los controles pequeños y numerosos (chips, botones
-redondos) usan `material="tint"`, translúcido sin desenfoque: en Android cada desenfoque
-recaptura el mapa en cada cuadro y muchos a la vez traban la cámara y las sheets.
+sólidas: ahí el vidrio no aporta.
+
+Toda sheet o panel inferior (fichas del mapa, panel de ruta, agente) usa
+`TourismSheetHandle` (`src/core/ui/tourism-sheet-handle.tsx`): barra de arrastre centrada y
+botón de cerrar a su altura, arriba a la derecha. No se crean asas ni botones de cerrar
+propios en los encabezados, ni estilos sueltos: las medidas viven en `tokens.ts`.
 
 Antes de escribir utilidades o componentes nuevos, reutiliza los módulos compartidos
 listados en `docs/architecture/mobile.md` (sección «Módulos compartidos»): geografía,
@@ -77,5 +80,6 @@ de MapLibre, dejando el clustering en el motor nativo. No crear un `Marker` o un
 React por cada centro: los iconos se registran con `Images` y las capas se mantienen
 estables durante zoom y paneo. Los clusters pueden tener su propia capa visual separada.
 La selección de un centro debe mantener el código seleccionado en el estado de pantalla y
-centrar la cámara con un zoom predeterminado antes de mostrar la ficha. Los pines no cambian
+abrir la ficha enseguida, mientras la cámara se mueve al zoom predeterminado; la cámara
+centra el pin en la parte visible del mapa, encima de la ficha (padding inferior). Los pines no cambian
 de tamaño ni de icono al seleccionarse: no hay capa ni estilo de pin seleccionado.

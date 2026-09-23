@@ -1,11 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { BottomSheetFlatList } from "@gorhom/bottom-sheet";
 
-import {
-  TourismBottomSheet,
-  TourismSheetScrollView,
-} from "@/core/ui/tourism-bottom-sheet";
+import { TourismBottomSheet } from "@/core/ui/tourism-bottom-sheet";
 import { useTurismoPalette } from "@/core/ui/theme-context";
-import { TourismIconAction } from "@/core/ui/tourism-controls";
 import { TurismoIcon, type TurismoIconName } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
@@ -22,6 +19,9 @@ import {
 import { getEstablishmentPin } from "@/features/establishments/presentation/establishment-pins";
 import type { MapFeatureSelection } from "../domain/map-feature-selection";
 
+/** Tarjetas creadas al abrir; el resto se crea de a este número al bajar. */
+const optionsBatchSize = 5;
+
 export function MapFeatureSelectionSheet({
   selections,
   onClose,
@@ -35,92 +35,103 @@ export function MapFeatureSelectionSheet({
 
   return (
     <TourismBottomSheet onClose={onClose}>
-      <TourismSheetScrollView contentStyle={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerCopy}>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Varios lugares aquí
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-              Selecciona cuál quieres abrir.
-            </Text>
+      {/* Lista virtualizada: con muchos lugares cercanos, crear todas las
+          tarjetas al abrir retrasaba la sheet. */}
+      <BottomSheetFlatList
+        ItemSeparatorComponent={OptionSeparator}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <View style={styles.headerCopy}>
+              <Text style={[styles.title, { color: colors.text }]}>
+                Varios lugares aquí
+              </Text>
+              <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+                Selecciona cuál quieres abrir.
+              </Text>
+            </View>
           </View>
-          <TourismIconAction
-            accessibilityLabel="Cerrar"
-            icon="close"
-            onPress={onClose}
-            variant="ghost"
-          />
-        </View>
-        <View style={styles.options}>
-          {selections.map((selection, index) => {
-            const isCenter = selection.kind === "center";
-            const title = isCenter
-              ? selection.center.name
-              : selection.establishment.name;
-            const category = isCenter
-              ? selection.center.category
-              : getEstablishmentLabel(selection.establishment);
-            const subtitle = isCenter
-              ? `Centro turístico · ${category}`
-              : `Punto de interés · ${category ?? "Establecimiento turístico"}`;
-
-            return (
-              <Pressable
-                accessibilityHint={
-                  isCenter
-                    ? "Abre la ficha del centro turístico"
-                    : "Abre la ficha del punto de interés"
-                }
-                accessibilityLabel={`${title}, ${subtitle}`}
-                accessibilityRole="button"
-                key={`${getSelectionKey(selection)}:${index}`}
-                onPress={() => onSelect(selection)}
-                style={({ pressed }) => [
-                  styles.option,
-                  {
-                    borderColor: colors.border,
-                    backgroundColor: colors.surfaceMuted,
-                  },
-                  pressed && styles.optionPressed,
-                ]}
-              >
-                <View
-                  style={[
-                    styles.iconContainer,
-                    { backgroundColor: colors.primarySoft },
-                  ]}
-                >
-                  <TurismoIcon
-                    color={colors.primaryStrong}
-                    name={getSelectionIcon(selection)}
-                    size={turismoIconSizes.md}
-                  />
-                </View>
-                <View style={styles.optionCopy}>
-                  <Text
-                    numberOfLines={2}
-                    style={[styles.optionTitle, { color: colors.text }]}
-                  >
-                    {title}
-                  </Text>
-                  <Text
-                    style={[styles.optionSubtitle, { color: colors.textMuted }]}
-                  >
-                    {subtitle}
-                  </Text>
-                </View>
-                <TurismoIcon
-                  color={colors.textMuted}
-                  name="chevronRight"
-                  size={turismoIconSizes.md}
-                />
-              </Pressable>
-            );
-          })}
-        </View>
-      </TourismSheetScrollView>
+        }
+        contentContainerStyle={styles.container}
+        data={selections}
+        initialNumToRender={optionsBatchSize}
+        keyExtractor={(selection, index) =>
+          `${getSelectionKey(selection)}:${index}`
+        }
+        maxToRenderPerBatch={optionsBatchSize}
+        renderItem={({ item }) => (
+          <SelectionOption onPress={() => onSelect(item)} selection={item} />
+        )}
+        showsVerticalScrollIndicator={false}
+        style={styles.list}
+        windowSize={optionsBatchSize}
+      />
     </TourismBottomSheet>
+  );
+}
+
+function OptionSeparator() {
+  return <View style={styles.separator} />;
+}
+
+function SelectionOption({
+  onPress,
+  selection,
+}: Readonly<{ onPress: () => void; selection: MapFeatureSelection }>) {
+  const colors = useTurismoPalette();
+  const isCenter = selection.kind === "center";
+  const title = isCenter ? selection.center.name : selection.establishment.name;
+  const category = isCenter
+    ? selection.center.category
+    : getEstablishmentLabel(selection.establishment);
+  const subtitle = isCenter
+    ? `Centro turístico · ${category}`
+    : `Punto de interés · ${category ?? "Establecimiento turístico"}`;
+
+  return (
+    <Pressable
+      accessibilityHint={
+        isCenter
+          ? "Abre la ficha del centro turístico"
+          : "Abre la ficha del punto de interés"
+      }
+      accessibilityLabel={`${title}, ${subtitle}`}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.option,
+        {
+          borderColor: colors.border,
+          backgroundColor: colors.surfaceMuted,
+        },
+        pressed && styles.optionPressed,
+      ]}
+    >
+      <View
+        style={[styles.iconContainer, { backgroundColor: colors.primarySoft }]}
+      >
+        <TurismoIcon
+          color={colors.primaryStrong}
+          name={getSelectionIcon(selection)}
+          size={turismoIconSizes.md}
+        />
+      </View>
+      <View style={styles.optionCopy}>
+        <Text
+          numberOfLines={2}
+          style={[styles.optionTitle, { color: colors.text }]}
+        >
+          {title}
+        </Text>
+        <Text style={[styles.optionSubtitle, { color: colors.textMuted }]}>
+          {subtitle}
+        </Text>
+      </View>
+      <TurismoIcon
+        color={colors.textMuted}
+        name="chevronRight"
+        size={turismoIconSizes.md}
+      />
+    </Pressable>
   );
 }
 
@@ -135,8 +146,9 @@ function getSelectionKey(selection: MapFeatureSelection): string {
 }
 
 const styles = StyleSheet.create({
+  list: { flex: 1 },
   container: {
-    gap: turismoSpacing.lg,
+    padding: turismoSpacing.lg,
     paddingBottom: turismoSpacing.xxl,
   },
   header: {
@@ -144,11 +156,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: turismoSpacing.sm,
     justifyContent: "space-between",
+    marginBottom: turismoSpacing.lg,
   },
   headerCopy: { flex: 1, gap: turismoSpacing.xs },
   title: { ...turismoTypography.heading },
   subtitle: { ...turismoTypography.body },
-  options: { gap: turismoSpacing.sm },
+  separator: { height: turismoSpacing.sm },
   option: {
     alignItems: "center",
     borderRadius: turismoRadii.md,

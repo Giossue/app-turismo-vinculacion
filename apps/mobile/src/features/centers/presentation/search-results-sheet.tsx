@@ -10,11 +10,7 @@ import {
 import { formatDistance } from "@/core/format/distance";
 import type { GeoCoordinate } from "@/core/geo/types";
 import { useTurismoPalette } from "@/core/ui/theme-context";
-import {
-  TourismBadge,
-  TourismChoiceChip,
-  TourismIconAction,
-} from "@/core/ui/tourism-controls";
+import { TourismBadge, TourismChoiceChip } from "@/core/ui/tourism-controls";
 import { TourismStateView } from "@/core/ui/tourism-state";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
@@ -86,12 +82,6 @@ export function SearchResultsSheet({
     <View style={styles.header}>
       <View style={styles.titleRow}>
         <Text style={[styles.query, { color: colors.text }]}>{query}</Text>
-        <TourismIconAction
-          accessibilityLabel="Cerrar resultados"
-          icon="close"
-          onPress={onClose}
-          variant="ghost"
-        />
       </View>
       <FilterChips
         label="Categorías de búsqueda turística"
