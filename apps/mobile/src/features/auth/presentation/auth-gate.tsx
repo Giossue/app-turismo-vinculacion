@@ -18,18 +18,25 @@ export function AuthGate({
   children,
   loadingMessage = "Preparando tu cuenta turística…",
   returnTo,
+  tab = false,
   title,
 }: Readonly<{
   children: (user: AuthUser) => ReactNode;
   loadingMessage?: string;
   returnTo: LoginReturnPath;
+  /** Pestaña principal: sin botón Atrás y sin margen inferior (lo pone la barra). */
+  tab?: boolean;
   title: string;
 }>) {
   const router = useRouter();
   const access = useRequireAuth(returnTo);
 
   return (
-    <TourismScreenFrame onBack={() => router.back()} title={title}>
+    <TourismScreenFrame
+      includeBottomInset={!tab}
+      onBack={tab ? undefined : () => router.back()}
+      title={title}
+    >
       {access.status === "authenticated" ? (
         children(access.user)
       ) : (

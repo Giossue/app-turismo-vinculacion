@@ -2,7 +2,6 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
-import { TourismMenuButton } from "@/core/ui/tourism-navigation";
 import { turismoMetrics, turismoSpacing } from "@/core/ui/tokens";
 import { FilterChips } from "@/features/centers/presentation/discovery-filters";
 import {
@@ -19,7 +18,7 @@ type CategoryOption = Readonly<{ code: string; name: string }>;
 const topEdges: readonly Edge[] = ["top"];
 
 /**
- * Search box and menu over the map. Below it, the category chips; while a
+ * Search box over the map. Below it, the category chips; while a
  * search is active, the Atractivos / Servicios cercanos chips instead.
  */
 export function ExploreTopBar({
@@ -28,7 +27,6 @@ export function ExploreTopBar({
   landscape,
   onCategoryChange,
   onModeChange,
-  onOpenMenu,
   refreshing,
   searchActive,
   selectedCategory,
@@ -38,7 +36,6 @@ export function ExploreTopBar({
   landscape: boolean;
   onCategoryChange: (categoryCode: string | undefined) => void;
   onModeChange: (mode: SearchMode) => void;
-  onOpenMenu: () => void;
   refreshing: boolean;
   searchActive: boolean;
   selectedCategory?: string;
@@ -55,7 +52,6 @@ export function ExploreTopBar({
           <View style={styles.field}>
             <SearchModeField {...field} />
           </View>
-          <TourismMenuButton onPress={onOpenMenu} />
         </View>
         {searchActive ? (
           <SearchModeChips mode={field.mode} onChange={onModeChange} />

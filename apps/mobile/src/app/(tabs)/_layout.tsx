@@ -1,7 +1,9 @@
-import { Tabs, useRouter } from "expo-router";
+import { Tabs, usePathname, useRouter } from "expo-router";
 
+import { TourismTabBar } from "@/core/ui/tourism-tab-bar";
 import {
   TourismMenuProvider,
+  useTourismMenu,
   type TourismMenuItem,
 } from "@/core/ui/tourism-navigation";
 import { useAuth } from "@/features/auth/application/auth-context";
@@ -22,11 +24,6 @@ export default function TabsLayout() {
 
   const menuItems: readonly TourismMenuItem[] = [
     { icon: "user", label: "Cuenta", onPress: () => openProtected("/account") },
-    {
-      icon: "bookmark",
-      label: "Guardados",
-      onPress: () => openProtected("/saved"),
-    },
     {
       icon: "download",
       label: "Mapas sin conexión",
@@ -55,9 +52,52 @@ function PrimaryTabs() {
         animation: "none",
         headerShown: false,
       }}
-      tabBar={() => null}
+      tabBar={() => <PrimaryTabBar />}
     >
       <Tabs.Screen name="index" options={{ title: "Explorar" }} />
+      <Tabs.Screen name="saved" options={{ title: "Guardados" }} />
     </Tabs>
+  );
+}
+
+/**
+ * Explorar y Guardados son pestañas (se cambian con `replace`, sin crear
+ * historial); Menú no es una pantalla: abre el menú lateral.
+ */
+function PrimaryTabBar() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const auth = useAuth();
+  const menu = useTourismMenu();
+
+  return (
+    <TourismTabBar
+      items={[
+        {
+          icon: "map",
+          key: "explore",
+          label: "Explorar",
+          onPress: () => router.replace("/"),
+          selected: pathname === "/",
+        },
+        {
+          icon: "bookmark",
+          key: "saved",
+          label: "Guardados",
+          // Sin cuenta se pasa por el login, que vuelve a Guardados.
+          onPress: () =>
+            auth.status === "anonymous"
+              ? router.push(buildLoginHref("/saved"))
+              : router.replace("/saved"),
+          selected: pathname === "/saved",
+        },
+        {
+          icon: "menu",
+          key: "menu",
+          label: "Menú",
+          onPress: menu.openMenu,
+        },
+      ]}
+    />
   );
 }

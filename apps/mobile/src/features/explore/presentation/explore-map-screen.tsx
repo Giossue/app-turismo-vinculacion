@@ -218,7 +218,6 @@ export function ExploreMapScreen() {
             landscape={landscape}
             onCategoryChange={data.changeCategory}
             onModeChange={search.changeMode}
-            onOpenMenu={menu.openMenu}
             refreshing={data.isRefreshingMap}
             searchActive={search.active}
             selectedCategory={data.filters.categoryCode}

@@ -58,10 +58,12 @@ React Native Paper es el único kit externo de componentes del móvil. Los compo
 la web se desarrollará en un repositorio separado.
 
 Las pantallas secundarias usan `TourismScreenFrame` como shell compartido. Este componente
-centraliza safe areas, encabezado, ancho máximo de contenido y márgenes horizontales. La
-pantalla principal vive en un `Tabs` de Expo Router para conservar la estructura de rutas,
-pero el shell del mapa no renderiza barra inferior: el mapa ocupa toda la pantalla y sus
-acciones efímeras no crean entradas de navegación. `Cómo llegar` (`src/app/route.tsx`) es
+centraliza safe areas, encabezado, ancho máximo de contenido y márgenes horizontales. Las
+pantallas principales viven en un `Tabs` de Expo Router con una barra inferior propia
+(`TourismTabBar`): `Explorar` (mapa), `Guardados` (`src/app/(tabs)/saved.tsx`) y `Menú`,
+que no es una pantalla sino la acción que abre el menú lateral. Las pestañas se cambian con
+`replace`; sin sesión, `Guardados` pasa por el login y vuelve a la pestaña. El mapa ocupa
+todo el espacio sobre la barra y sus acciones efímeras no crean entradas de navegación. `Cómo llegar` (`src/app/route.tsx`) es
 la otra excepción de mapa a pantalla completa: MapLibre ocupa toda la pantalla y el panel de
 vista previa o el modo de navegación activa se dibujan encima con los mismos tokens y
 controles `Tourism*`; la atribución del mapa se desplaza por encima de ellos. Si el enlace no
@@ -71,10 +73,10 @@ una sheet nativa de altura completa sobre el mapa; no se cierra por gesto y mues
 en el encabezado. El compositor usa el manejo nativo de teclado y permanece sobre el área
 visible cuando aparece el teclado del sistema.
 
-El acceso al menú lateral se presenta en la fila superior, junto al buscador del mapa. Un
+El menú lateral se abre desde la pestaña `Menú` de la barra inferior. Un
 `TourismMenuProvider` posee un único drawer para el shell principal. Las pantallas
-secundarias (ficha, ruta, cuenta, guardados, mapas sin conexión y configuración) no muestran
-el botón de menú: su encabezado ofrece `Volver` y el drawer solo se abre desde `Explorar`.
+secundarias (ficha, ruta, cuenta, mapas sin conexión y configuración) no muestran la barra:
+su encabezado ofrece `Volver`.
 
 Las decisiones de layout siguen las primitivas oficiales de React Native: dimensiones en
 puntos independientes de densidad, Flexbox y `useWindowDimensions` para adaptación,

@@ -98,25 +98,6 @@ export function useTourismMenu(): TourismMenuContextValue {
   return context;
 }
 
-export function TourismMenuButton({
-  onPress,
-}: Readonly<{ onPress: () => void }>) {
-  const colors = useTurismoPalette();
-  return (
-    <TourismPressable
-      accessibilityLabel="Abrir menú"
-      accessibilityRole="button"
-      onPress={onPress}
-      style={[
-        styles.menuButton,
-        { backgroundColor: colors.surface, borderColor: colors.border },
-      ]}
-    >
-      <TurismoIcon color={colors.text} name="menu" size={turismoIconSizes.md} />
-    </TourismPressable>
-  );
-}
-
 export function TourismHeader({
   onBack,
   title,
@@ -278,15 +259,6 @@ function DrawerAction({
 }
 
 const styles = StyleSheet.create({
-  menuButton: {
-    alignItems: "center",
-    borderRadius: turismoRadii.pill,
-    borderWidth: turismoMetrics.borderWidth,
-    height: turismoMetrics.controlMd,
-    justifyContent: "center",
-    overflow: "hidden",
-    width: turismoMetrics.controlMd,
-  },
   header: {
     alignItems: "center",
     flexDirection: "row",

@@ -24,7 +24,7 @@ import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/save
 
 export default function SavedScreen() {
   return (
-    <AuthGate returnTo="/saved" title="Guardados">
+    <AuthGate returnTo="/saved" tab title="Guardados">
       {() => <SavedCenterList />}
     </AuthGate>
   );
