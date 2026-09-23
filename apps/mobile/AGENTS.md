@@ -28,6 +28,13 @@ excepciones de mapa a pantalla completa y reutilizan los mismos tokens. Las pant
 principales (`Explorar` y `Guardados`) comparten la barra inferior `TourismTabBar`, cuya
 acción `Menú` abre el menú lateral de `TourismMenuProvider`.
 
+Las superficies que flotan sobre otro contenido (sobre todo sobre el mapa: buscador, chips,
+botones del mapa, sheets, barra inferior, paneles de ruta y menú lateral) usan vidrio con
+`TourismGlassFill` de `src/core/ui/tourism-glass.tsx` (material del sistema de `expo-blur`).
+El fondo que se desenfoca va en `TourismGlassScope` y lo flotante como hermano, nunca dentro
+(Android lo exige). Las pantallas de fondo liso (listas, formularios) mantienen superficies
+sólidas: ahí el vidrio no aporta.
+
 Antes de escribir utilidades o componentes nuevos, reutiliza los módulos compartidos
 listados en `docs/architecture/mobile.md` (sección «Módulos compartidos»): geografía,
 formatos, cliente HTTP, claves de consulta y componentes `Tourism*`.

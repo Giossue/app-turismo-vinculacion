@@ -54,9 +54,9 @@ describe("normalizeSelfHostedStyle", () => {
       ],
       "dark",
     );
-    expect(residential.paint).toMatchObject({ "fill-color": "#303331" });
+    expect(residential.paint).toMatchObject({ "fill-color": "#232624" });
     expect(aeroway.paint).toMatchObject({
-      "fill-extrusion-color": "#3c3f3c",
+      "fill-extrusion-color": "#2e302e",
       "fill-extrusion-opacity": 0.9,
     });
   });

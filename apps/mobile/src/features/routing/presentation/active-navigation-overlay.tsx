@@ -5,6 +5,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatDistance } from "@/core/format/distance";
 import { formatClockTime, formatDurationSeconds } from "@/core/format/duration";
 import { useTurismoPalette } from "@/core/ui/theme-context";
+import {
+  TourismGlassFill,
+  turismoGlassBorderWidth,
+} from "@/core/ui/tourism-glass";
 import { TourismIconAction } from "@/core/ui/tourism-controls";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
@@ -149,11 +153,12 @@ export function ActiveNavigationOverlay({
         style={[
           styles.bottomBar,
           {
-            backgroundColor: colors.background,
+            borderTopColor: colors.border,
             paddingBottom: Math.max(insets.bottom, turismoSpacing.sm),
           },
         ]}
       >
+        <TourismGlassFill material="regular" />
         <TourismIconAction
           accessibilityLabel="Cerrar navegación"
           icon="close"
@@ -235,10 +240,12 @@ const styles = StyleSheet.create({
   nextText: { ...turismoTypography.label, flexShrink: 1, minWidth: 0 },
   bottomBar: {
     alignItems: "center",
+    borderTopWidth: turismoGlassBorderWidth,
     bottom: 0,
     flexDirection: "row",
     gap: turismoSpacing.sm,
     left: 0,
+    overflow: "hidden",
     paddingHorizontal: turismoSpacing.md,
     paddingTop: turismoSpacing.sm,
     position: "absolute",

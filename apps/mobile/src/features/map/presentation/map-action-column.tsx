@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 
+import { useTourismTabBarInset } from "@/core/ui/tourism-tab-bar";
 import { turismoMetrics, turismoSpacing } from "@/core/ui/tokens";
 
 /**
@@ -11,10 +12,16 @@ export function MapActionColumn({
   landscape,
   slots,
 }: Readonly<{ landscape: boolean; slots: readonly ReactNode[] }>) {
+  // Sobre la barra de pestañas flotante.
+  const tabBarInset = useTourismTabBarInset();
   return (
     <View
       pointerEvents="box-none"
-      style={[styles.layer, landscape && styles.layerLandscape]}
+      style={[
+        styles.layer,
+        landscape && styles.layerLandscape,
+        { marginBottom: tabBarInset },
+      ]}
     >
       <View style={styles.column}>
         {slots.map((slot, index) => (

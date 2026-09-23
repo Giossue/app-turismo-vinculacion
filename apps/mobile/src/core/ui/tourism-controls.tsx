@@ -26,6 +26,7 @@ import {
   turismoTypography,
 } from "./tokens";
 import { useTurismoPalette } from "./theme-context";
+import { TourismGlassFill, turismoGlassBorderWidth } from "./tourism-glass";
 import { TourismPressable } from "./tourism-pressable";
 
 // The clear icon keeps its compact look; hitSlop extends it to a 44dp target.
@@ -35,6 +36,7 @@ const searchClearHitSlop =
 export function TourismSearchField({
   accessibilityLabel,
   autoFocus = false,
+  glass = false,
   onChangeText,
   onClear,
   onBlur,
@@ -45,6 +47,8 @@ export function TourismSearchField({
 }: Readonly<{
   accessibilityLabel: string;
   autoFocus?: boolean;
+  /** Fondo de vidrio, para el buscador que flota sobre el mapa. */
+  glass?: boolean;
   onChangeText: (value: string) => void;
   onClear?: () => void;
   onBlur?: () => void;
@@ -77,9 +81,14 @@ export function TourismSearchField({
     <View
       style={[
         styles.searchbar,
-        { backgroundColor: colors.surface, borderColor: colors.border },
+        {
+          backgroundColor: glass ? "transparent" : colors.surface,
+          borderColor: colors.border,
+        },
+        glass && styles.glassBorder,
       ]}
     >
+      {glass ? <TourismGlassFill /> : null}
       <TurismoIcon
         color={colors.mapSearchIcon}
         name="search"
@@ -122,8 +131,10 @@ export function TourismSearchField({
 }
 
 /**
- * Round icon button. `surface` draws the bordered map-control chip; `ghost`
- * keeps only the icon, for headers and toolbars that already have a surface.
+ * Round icon button. `surface` draws the bordered map-control chip; `glass`
+ * is the same chip in frosted glass, for controls floating over the map;
+ * `ghost` keeps only the icon, for headers and toolbars that already have a
+ * surface.
  */
 export function TourismIconAction({
   accessibilityLabel,
@@ -144,10 +155,10 @@ export function TourismIconAction({
   selected?: boolean;
   slashed?: boolean;
   style?: StyleProp<ViewStyle>;
-  variant?: "surface" | "ghost";
+  variant?: "surface" | "glass" | "ghost";
 }>) {
   const colors = useTurismoPalette();
-  const idleBackground = variant === "ghost" ? "transparent" : colors.surface;
+  const idleBackground = variant === "surface" ? colors.surface : "transparent";
   const idleBorder = variant === "ghost" ? "transparent" : colors.border;
   return (
     <TourismPressable
@@ -164,9 +175,11 @@ export function TourismIconAction({
           backgroundColor: selected ? colors.primary : idleBackground,
           borderColor: selected ? colors.primary : idleBorder,
         },
+        variant === "glass" && styles.glassBorder,
         style,
       ]}
     >
+      {variant === "glass" && !selected ? <TourismGlassFill /> : null}
       <View
         pointerEvents="none"
         style={[
@@ -200,11 +213,13 @@ export function TourismIconAction({
 export function TourismCompassAction({
   accessibilityLabel,
   bearing,
+  glass = false,
   onPress,
   style,
 }: Readonly<{
   accessibilityLabel: string;
   bearing: number;
+  glass?: boolean;
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
 }>) {
@@ -218,10 +233,15 @@ export function TourismCompassAction({
       onPress={onPress}
       style={[
         styles.compassAction,
-        { backgroundColor: colors.surface, borderColor: colors.border },
+        {
+          backgroundColor: glass ? "transparent" : colors.surface,
+          borderColor: colors.border,
+        },
+        glass && styles.glassBorder,
         style,
       ]}
     >
+      {glass ? <TourismGlassFill /> : null}
       <Svg
         height={turismoMetrics.compassGraphic}
         pointerEvents="none"
@@ -249,17 +269,21 @@ export function TourismCompassAction({
 
 export function TourismChoiceChip({
   disabled = false,
+  glass = false,
   label,
   onPress,
   selected,
 }: Readonly<{
   disabled?: boolean;
+  /** Fondo de vidrio cuando no está seleccionado (chips sobre el mapa). */
+  glass?: boolean;
   label: string;
   onPress: () => void;
   selected: boolean;
 }>) {
   const colors = useTurismoPalette();
-  return (
+  const frosted = glass && !selected;
+  const chip = (
     <PaperChip
       accessibilityRole="button"
       accessibilityState={{ disabled, selected }}
@@ -274,9 +298,14 @@ export function TourismChoiceChip({
       style={[
         styles.chip,
         {
-          backgroundColor: selected ? colors.primary : colors.surface,
+          backgroundColor: selected
+            ? colors.primary
+            : frosted
+              ? "transparent"
+              : colors.surface,
           borderColor: selected ? colors.primary : colors.border,
         },
+        glass && styles.glassBorder,
       ]}
       textStyle={[
         styles.chipText,
@@ -285,6 +314,13 @@ export function TourismChoiceChip({
     >
       {label}
     </PaperChip>
+  );
+  if (!frosted) return chip;
+  return (
+    <View style={styles.chipGlass}>
+      <TourismGlassFill />
+      {chip}
+    </View>
   );
 }
 
@@ -483,6 +519,8 @@ const styles = StyleSheet.create({
     minHeight: turismoMetrics.chipHeight,
   },
   chipText: { ...turismoTypography.label },
+  chipGlass: { borderRadius: turismoRadii.pill, overflow: "hidden" },
+  glassBorder: { borderWidth: turismoGlassBorderWidth },
   actionButton: {
     borderRadius: turismoRadii.pill,
     borderWidth: turismoMetrics.borderWidth,

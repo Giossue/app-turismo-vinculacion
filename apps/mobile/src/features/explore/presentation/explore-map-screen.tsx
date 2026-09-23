@@ -5,6 +5,11 @@ import { useRouter } from "expo-router";
 import type { GeoBounds } from "@/core/geo/types";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { useTourismMenu } from "@/core/ui/tourism-navigation";
+import { TourismGlassScope } from "@/core/ui/tourism-glass";
+import {
+  useTourismTabBarInset,
+  useTourismTabGlassTarget,
+} from "@/core/ui/tourism-tab-bar";
 import { TourismStateView } from "@/core/ui/tourism-state";
 import type { AgentRouteDestination } from "@/features/agent/domain/agent";
 import { useAuth } from "@/features/auth/application/auth-context";
@@ -42,14 +47,14 @@ import { ExploreMapActions } from "./explore-map-actions";
 import { ExploreResultsSheet } from "./explore-results-sheet";
 import { ExploreTopBar } from "./explore-top-bar";
 
-const mapAttributionInset = { bottom: 0, left: 0 };
-
 /** Full-screen map with search, map controls and one overlay at a time. */
 export function ExploreMapScreen() {
   const router = useRouter();
   const colors = useTurismoPalette();
   const auth = useAuth();
   const menu = useTourismMenu();
+  const tabBarInset = useTourismTabBarInset();
+  const glassTarget = useTourismTabGlassTarget();
   const { height, width } = useWindowDimensions();
   const landscape = width > height;
   const [bearingStore] = useState(createMapBearingStore);
@@ -165,37 +170,42 @@ export function ExploreMapScreen() {
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.map.background }]}>
-      {/* The full-screen search is modal: hide the map from screen readers. */}
-      <View
-        accessibilityElementsHidden={search.focused}
-        importantForAccessibility={
-          search.focused ? "no-hide-descendants" : "auto"
-        }
-        style={styles.screen}
-      >
-        <CenterMap
-          attributionInset={mapAttributionInset}
-          centers={data.centers}
-          establishments={data.mapEstablishments}
-          focusCoordinate={search.focusCoordinate?.coordinate}
-          focusCoordinateKey={search.focusCoordinate?.key}
-          focusLocationKey={location.focusLocationKey}
-          focusSelection={
-            current.kind === "focusing" ? current.selection : null
+    <TourismGlassScope
+      backdrop={
+        // The full-screen search is modal: hide the map from screen readers.
+        <View
+          accessibilityElementsHidden={search.focused}
+          importantForAccessibility={
+            search.focused ? "no-hide-descendants" : "auto"
           }
-          onBearingChange={bearingStore.setBearing}
-          onCenterPress={overlay.selectCenter}
-          onEstablishmentPress={overlay.selectEstablishment}
-          onLocationFocusChange={location.onLocationFocusChange}
-          onOverlappingFeaturePress={overlay.showChoices}
-          onViewportChange={handleViewportChange}
-          resetNorthKey={resetNorthKey}
-          selectedCenterCode={getSelectedCenterCode(current)}
-          selectedEstablishmentKey={getSelectedEstablishmentKey(current)}
-          userLocation={location.userLocation}
-        />
-      </View>
+          style={styles.screen}
+        >
+          <CenterMap
+            attributionInset={{ bottom: tabBarInset, left: 0 }}
+            centers={data.centers}
+            establishments={data.mapEstablishments}
+            focusCoordinate={search.focusCoordinate?.coordinate}
+            focusCoordinateKey={search.focusCoordinate?.key}
+            focusLocationKey={location.focusLocationKey}
+            focusSelection={
+              current.kind === "focusing" ? current.selection : null
+            }
+            onBearingChange={bearingStore.setBearing}
+            onCenterPress={overlay.selectCenter}
+            onEstablishmentPress={overlay.selectEstablishment}
+            onLocationFocusChange={location.onLocationFocusChange}
+            onOverlappingFeaturePress={overlay.showChoices}
+            onViewportChange={handleViewportChange}
+            resetNorthKey={resetNorthKey}
+            selectedCenterCode={getSelectedCenterCode(current)}
+            selectedEstablishmentKey={getSelectedEstablishmentKey(current)}
+            userLocation={location.userLocation}
+          />
+        </View>
+      }
+      style={[styles.screen, { backgroundColor: colors.map.background }]}
+      targetRef={glassTarget}
+    >
       {search.focused ? (
         <SearchOverlay
           field={searchField}
@@ -296,7 +306,7 @@ export function ExploreMapScreen() {
         onStartRoute={openAgentRoute}
         open={current.kind === "agent"}
       />
-    </View>
+    </TourismGlassScope>
   );
 }
 

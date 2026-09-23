@@ -13,11 +13,13 @@ export function SearchModeChips({
   return (
     <View style={styles.row}>
       <TourismChoiceChip
+        glass
         label="Atractivos"
         onPress={() => onChange("CENTERS")}
         selected={mode === "CENTERS"}
       />
       <TourismChoiceChip
+        glass
         label="Servicios cercanos"
         onPress={() => onChange("ESTABLISHMENTS")}
         selected={mode === "ESTABLISHMENTS"}

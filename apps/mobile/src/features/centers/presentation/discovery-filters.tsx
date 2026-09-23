@@ -15,12 +15,15 @@ type FilterOption = Readonly<{ code: string; name: string }>;
  * example "Cerca de mí") after the options.
  */
 export function FilterChips({
+  glass,
   label,
   onChange,
   options,
   selected,
   trailing,
 }: Readonly<{
+  /** Chips de vidrio, cuando flotan sobre el mapa. */
+  glass?: boolean;
   label: string;
   options: readonly FilterOption[];
   selected?: string;
@@ -38,12 +41,14 @@ export function FilterChips({
       showsHorizontalScrollIndicator={false}
     >
       <TourismChoiceChip
+        glass={glass}
         label="Todo"
         onPress={() => onChange(undefined)}
         selected={!selected}
       />
       {uniqueOptions.map((option) => (
         <TourismChoiceChip
+          glass={glass}
           key={option.code}
           label={option.name}
           onPress={() => onChange(option.code)}

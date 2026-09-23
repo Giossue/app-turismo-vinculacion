@@ -1,6 +1,11 @@
 import { Tabs, usePathname, useRouter } from "expo-router";
+import { useWindowDimensions } from "react-native";
 
-import { TourismTabBar } from "@/core/ui/tourism-tab-bar";
+import { useTurismoPalette } from "@/core/ui/theme-context";
+import {
+  TourismTabBar,
+  TourismTabBarInsetProvider,
+} from "@/core/ui/tourism-tab-bar";
 import {
   TourismMenuProvider,
   useTourismMenu,
@@ -39,19 +44,41 @@ export default function TabsLayout() {
 
   return (
     <TourismMenuProvider items={menuItems}>
-      <PrimaryTabs />
+      <TourismTabBarInsetProvider>
+        <PrimaryTabs />
+      </TourismTabBarInsetProvider>
     </TourismMenuProvider>
   );
 }
 
 function PrimaryTabs() {
+  const colors = useTurismoPalette();
+  const { width } = useWindowDimensions();
   return (
     <Tabs
       detachInactiveScreens={false}
       screenOptions={{
-        animation: "none",
+        // Las pestañas se deslizan de lado, sin el fundido de `shift`: la
+        // escena entra desde el lado de su pestaña y se desplaza el ancho
+        // completo. El fondo del tema evita el destello blanco.
+        animation: "shift",
+        sceneStyleInterpolator: ({ current }) => ({
+          sceneStyle: {
+            transform: [
+              {
+                translateX: current.progress.interpolate({
+                  inputRange: [-1, 0, 1],
+                  outputRange: [-width, 0, width],
+                }),
+              },
+            ],
+          },
+        }),
+        sceneStyle: { backgroundColor: colors.background },
         headerShown: false,
       }}
+      // La barra se posiciona en absoluto: flota sobre el contenido y el mapa
+      // se ve por debajo.
       tabBar={() => <PrimaryTabBar />}
     >
       <Tabs.Screen name="index" options={{ title: "Explorar" }} />

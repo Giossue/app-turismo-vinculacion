@@ -17,6 +17,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
+import {
+  TourismGlassFill,
+  turismoGlassBorderWidth,
+} from "@/core/ui/tourism-glass";
 import { TourismStateView } from "@/core/ui/tourism-state";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
@@ -52,7 +56,6 @@ const panelExpandVelocity = 650;
 const panelDragActivationOffset = turismoSpacing.xs;
 /** The expanded panel leaves part of the route visible above it. */
 const panelMaxHeightRatio = 0.72;
-const panelElevation = 24;
 /** Used until the collapsed content is measured the first time. */
 const estimatedCompactContentHeight =
   turismoMetrics.controlLg * 3 + turismoSpacing.xxl + turismoSpacing.lg;
@@ -250,7 +253,6 @@ export function RoutePreviewPanel({
             style={[
               styles.footer,
               {
-                backgroundColor: colors.surface,
                 borderTopColor: colors.border,
                 paddingBottom: bottomPadding,
               },
@@ -268,7 +270,7 @@ export function RoutePreviewPanel({
       <View
         onLayout={(event) =>
           setMeasuredCompactHeight(
-            event.nativeEvent.layout.height + turismoMetrics.borderWidth * 2,
+            event.nativeEvent.layout.height + turismoGlassBorderWidth * 2,
           )
         }
       >
@@ -299,10 +301,11 @@ export function RoutePreviewPanel({
         <Animated.View
           style={[
             styles.surface,
-            { backgroundColor: colors.surface, borderColor: colors.border },
+            { borderColor: colors.border },
             panelAnimatedStyle,
           ]}
         >
+          <TourismGlassFill material="regular" />
           {content}
         </Animated.View>
       </GestureDetector>
@@ -314,9 +317,9 @@ const styles = StyleSheet.create({
   surface: {
     borderTopLeftRadius: turismoRadii.lg,
     borderTopRightRadius: turismoRadii.lg,
-    borderWidth: turismoMetrics.borderWidth,
+    borderWidth: turismoGlassBorderWidth,
     bottom: 0,
-    elevation: panelElevation,
+    // Sin `elevation`: en Android su sombra se vería a través del vidrio.
     left: 0,
     overflow: "hidden",
     position: "absolute",

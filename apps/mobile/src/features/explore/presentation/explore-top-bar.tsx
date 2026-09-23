@@ -50,13 +50,14 @@ export function ExploreTopBar({
       <View style={[styles.controls, landscape && styles.controlsLandscape]}>
         <View style={styles.searchRow}>
           <View style={styles.field}>
-            <SearchModeField {...field} />
+            <SearchModeField {...field} glass />
           </View>
         </View>
         {searchActive ? (
           <SearchModeChips mode={field.mode} onChange={onModeChange} />
         ) : (
           <FilterChips
+            glass
             label="Categorías de atractivos"
             onChange={onCategoryChange}
             options={categories}

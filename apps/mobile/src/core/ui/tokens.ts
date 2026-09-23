@@ -73,10 +73,6 @@ export const turismoIconSizes = {
   xl: 30,
 } as const;
 
-export const turismoMotion = {
-  drawerAnimationSpeed: 1,
-} as const;
-
 /** Opacity feedback shared by pressable controls. */
 export const turismoOpacity = {
   pressed: 0.72,

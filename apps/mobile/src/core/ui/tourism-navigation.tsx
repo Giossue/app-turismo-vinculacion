@@ -28,11 +28,11 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { TourismPressable } from "./tourism-pressable";
 import { TurismoIcon, type TurismoIconName } from "./turismo-icons";
 import { useTurismoPalette } from "./theme-context";
+import { TourismGlassFill, turismoGlassBorderWidth } from "./tourism-glass";
 import {
   turismoFixedColors,
   turismoIconSizes,
   turismoMetrics,
-  turismoMotion,
   turismoRadii,
   turismoSpacing,
   turismoTypography,
@@ -182,8 +182,7 @@ function TourismMenuDrawer({
     >
       <GestureHandlerRootView style={styles.drawerRoot}>
         <ReanimatedDrawerLayout
-          animationSpeed={turismoMotion.drawerAnimationSpeed}
-          drawerBackgroundColor={colors.surface}
+          drawerBackgroundColor="transparent"
           drawerPosition={DrawerPosition.LEFT}
           drawerType={DrawerType.FRONT}
           drawerWidth={drawerWidth}
@@ -196,9 +195,8 @@ function TourismMenuDrawer({
           overlayColor={colors.scrim}
           ref={drawerRef}
           renderNavigationView={() => (
-            <View
-              style={[styles.drawerPanel, { backgroundColor: colors.surface }]}
-            >
+            <View style={[styles.drawerPanel, { borderColor: colors.border }]}>
+              <TourismGlassFill material="regular" />
               <SafeAreaView
                 edges={["top", "bottom"]}
                 style={styles.drawerSafeArea}
@@ -273,7 +271,9 @@ const styles = StyleSheet.create({
   },
   drawerPanel: {
     flex: 1,
-    elevation: 12,
+    borderRightWidth: turismoGlassBorderWidth,
+    // Sin `elevation`: en Android su sombra se vería a través del vidrio.
+    overflow: "hidden",
     shadowColor: turismoFixedColors.shadow,
     shadowOffset: { height: 0, width: 4 },
     shadowOpacity: 0.2,

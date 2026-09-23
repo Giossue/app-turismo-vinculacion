@@ -18,6 +18,11 @@
   mantienen la identidad visual, mientras `StyleSheet` resuelve el layout nativo.
 - `@gorhom/bottom-sheet` sobre Gesture Handler/Reanimated para sheets con arrastre continuo
   desde el contenido y scroll coordinado; no actúa como kit visual.
+- `expo-blur` (SDK 57, MIT, mantenido por Expo) solo para el desenfoque de la barra inferior
+  flotante (`TourismTabBar`). En iOS usa el material nativo; en Android usa
+  `dimezisBlurViewSdk31Plus` sobre un `BlurTargetView` y en Android 11 o inferior cae a un
+  tinte semitransparente. Superficie de riesgo: módulo nativo (requiere recompilar el
+  binario) y coste de GPU en Android; no procesa datos.
 - expo-secure-store para credenciales mínimas; caché/drafts solo cuando se especifique.
 - expo-notifications y Sentry cuando la feature los requiera.
 

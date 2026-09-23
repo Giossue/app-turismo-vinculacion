@@ -23,6 +23,7 @@ export function MapCompass({
     <TourismCompassAction
       accessibilityLabel="Orientar mapa al norte"
       bearing={bearing}
+      glass
       onPress={onPress}
       style={style}
     />

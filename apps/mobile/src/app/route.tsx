@@ -1,11 +1,12 @@
 import { Stack, useNavigation, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
 
 import type { GeoCoordinate } from "@/core/geo/types";
 import { useUserLocation } from "@/core/location/use-user-location";
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 import { useTurismoPalette } from "@/core/ui/theme-context";
+import { TourismGlassScope } from "@/core/ui/tourism-glass";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import { TourismStateView } from "@/core/ui/tourism-state";
 import { turismoSpacing } from "@/core/ui/tokens";
@@ -181,24 +182,28 @@ export default function RouteScreen() {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.map.background }]}>
+    <TourismGlassScope
+      backdrop={
+        <RouteMap
+          attributionBottom={mapBottomInset + turismoSpacing.xxs}
+          currentLocation={
+            navigationActive ? navigationSession.currentLocation : null
+          }
+          destination={destination}
+          following={follow.following}
+          navigationActive={navigationActive}
+          onFollowingChange={follow.setFollowing}
+          onUserInteraction={
+            navigationActive ? undefined : () => setPreviewExpanded(false)
+          }
+          origin={origin}
+          route={route}
+        />
+      }
+      style={[styles.screen, { backgroundColor: colors.map.background }]}
+    >
       <Stack.Screen
         options={{ gestureEnabled: !navigationActive, headerShown: false }}
-      />
-      <RouteMap
-        attributionBottom={mapBottomInset + turismoSpacing.xxs}
-        currentLocation={
-          navigationActive ? navigationSession.currentLocation : null
-        }
-        destination={destination}
-        following={follow.following}
-        navigationActive={navigationActive}
-        onFollowingChange={follow.setFollowing}
-        onUserInteraction={
-          navigationActive ? undefined : () => setPreviewExpanded(false)
-        }
-        origin={origin}
-        route={route}
       />
       {!navigationActive ? (
         <RoutePreviewPanel
@@ -238,7 +243,7 @@ export default function RouteScreen() {
           route={route}
         />
       ) : null}
-    </View>
+    </TourismGlassScope>
   );
 }
 

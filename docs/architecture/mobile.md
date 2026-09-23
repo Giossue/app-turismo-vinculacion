@@ -202,9 +202,13 @@ mientras hay una búsqueda enviada y ningún overlay abierto, así que al cerrar
 abierta desde los resultados se vuelve a la lista. Elegir un resultado o una sugerencia
 sigue el mismo camino que tocar un pin: centra la cámara y luego abre la ficha.
 
-Las transiciones nativas de Stack y Tabs están desactivadas para evitar el flash blanco que
-puede aparecer en `react-native-screens` durante cambios entre navegadores anidados. No se
-añaden capas de animación al shell de pantalla. Los overlays que necesiten movimiento usan
+Las transiciones de pantalla usan movimiento en ambas plataformas: el Stack usa
+`animation: "slide_from_right"` (en iOS también se vuelve deslizando desde el borde) y las
+pestañas se desplazan de lado el ancho completo, sin fundido (`animation: "shift"` con un
+`sceneStyleInterpolator` que solo traslada). Para evitar el flash blanco
+que `react-native-screens` puede mostrar entre navegadores anidados, el Stack pinta el fondo
+del tema en `contentStyle` y las pestañas en `sceneStyle`. No se añaden capas de animación
+propias al shell de pantalla; el menú lateral usa la velocidad por defecto de su librería. Los overlays que necesiten movimiento usan
 Reanimated con tokens compartidos de movimiento y respetan `ReduceMotion.System`; los drawers aprovechan
 `ReanimatedDrawerLayout` de Gesture
 Handler para mantener panel, scrim y gesto en un único progreso nativo. React Native Paper

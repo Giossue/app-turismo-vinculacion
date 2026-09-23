@@ -13,6 +13,7 @@ export type SearchModeFieldProps = Readonly<{
 /** Map search box; its spoken label follows the search mode. */
 export function SearchModeField({
   autoFocus,
+  glass,
   mode,
   onBlur,
   onChangeText,
@@ -21,7 +22,7 @@ export function SearchModeField({
   onSubmit,
   value,
 }: SearchModeFieldProps &
-  Readonly<{ autoFocus?: boolean; onBlur?: () => void }>) {
+  Readonly<{ autoFocus?: boolean; glass?: boolean; onBlur?: () => void }>) {
   return (
     <TourismSearchField
       accessibilityLabel={
@@ -30,6 +31,7 @@ export function SearchModeField({
           : "Buscar atractivos"
       }
       autoFocus={autoFocus}
+      glass={glass}
       onBlur={onBlur}
       onChangeText={onChangeText}
       onClear={onClear}

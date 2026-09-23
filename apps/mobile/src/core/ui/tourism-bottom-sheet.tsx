@@ -1,17 +1,34 @@
 import BottomSheet, {
   BottomSheetModal,
   BottomSheetScrollView,
+  type BottomSheetBackgroundProps,
 } from "@gorhom/bottom-sheet";
 import type { ReactNode, Ref } from "react";
 import {
   StyleSheet,
+  View,
   useWindowDimensions,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
 
+import { useTourismTabBarInset } from "./tourism-tab-bar";
 import { useTurismoPalette } from "./theme-context";
-import { turismoSpacing } from "./tokens";
+import { TourismGlassFill, turismoGlassBorderWidth } from "./tourism-glass";
+import { turismoRadii, turismoSpacing } from "./tokens";
+
+/** Fondo de vidrio de las sheets que flotan sobre el mapa. */
+function GlassSheetBackground({ style }: BottomSheetBackgroundProps) {
+  const colors = useTurismoPalette();
+  return (
+    <View
+      pointerEvents="none"
+      style={[style, styles.glassBackground, { borderColor: colors.border }]}
+    >
+      <TourismGlassFill material="regular" />
+    </View>
+  );
+}
 
 const tourismFlexibleSheetSnapPoints = ["44%", "92%"];
 
@@ -43,11 +60,12 @@ export function TourismBottomSheet({
   children,
   onClose,
 }: Readonly<{ children: ReactNode; onClose: () => void }>) {
-  const colors = useTurismoPalette();
+  const tabBarInset = useTourismTabBarInset();
   return (
     <BottomSheet
       {...tourismFlexibleSheetBehavior}
-      backgroundStyle={{ backgroundColor: colors.surface }}
+      backgroundComponent={GlassSheetBackground}
+      bottomInset={tabBarInset}
       index={0}
       onClose={onClose}
       snapPoints={tourismFlexibleSheetSnapPoints}
@@ -93,7 +111,7 @@ export function TourismBottomSheetModal({
   return (
     <BottomSheetModal
       {...tourismFlexibleSheetBehavior}
-      backgroundStyle={backgroundStyle}
+      backgroundComponent={GlassSheetBackground}
       index={0}
       onDismiss={onDismiss}
       ref={ref}
@@ -135,6 +153,12 @@ export function TourismSheetScrollView({
 }
 
 const styles = StyleSheet.create({
+  glassBackground: {
+    borderTopLeftRadius: turismoRadii.lg,
+    borderTopRightRadius: turismoRadii.lg,
+    borderWidth: turismoGlassBorderWidth,
+    overflow: "hidden",
+  },
   scroll: { flex: 1 },
   content: {
     alignSelf: "center",

@@ -5,6 +5,11 @@ import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismActionButton } from "@/core/ui/tourism-controls";
 import { TourismPressable } from "@/core/ui/tourism-pressable";
 import { TourismStateView } from "@/core/ui/tourism-state";
+import { TourismGlassScope } from "@/core/ui/tourism-glass";
+import {
+  useTourismTabBarInset,
+  useTourismTabGlassTarget,
+} from "@/core/ui/tourism-tab-bar";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
@@ -23,10 +28,17 @@ import type { SavedCenter } from "@/features/favorites/domain/saved-center";
 import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/saved-center-error-snackbar";
 
 export default function SavedScreen() {
+  const glassTarget = useTourismTabGlassTarget();
   return (
-    <AuthGate returnTo="/saved" tab title="Guardados">
-      {() => <SavedCenterList />}
-    </AuthGate>
+    <TourismGlassScope
+      backdrop={
+        <AuthGate returnTo="/saved" tab title="Guardados">
+          {() => <SavedCenterList />}
+        </AuthGate>
+      }
+      style={styles.screen}
+      targetRef={glassTarget}
+    />
   );
 }
 
@@ -36,6 +48,7 @@ function SavedCenterList() {
   const savedCenters = useSavedCenters();
   const savedMutation = useSavedCenterMutation();
   const discoveryCatalog = useDiscoveryCatalog();
+  const tabBarInset = useTourismTabBarInset();
   const cantonNames = new Map(
     (discoveryCatalog.data?.cantons ?? []).map((canton) => [
       canton.code,
@@ -60,7 +73,10 @@ function SavedCenterList() {
   return (
     <>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: turismoSpacing.xxl + tabBarInset },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {savedCenters.data.length > 0 ? (
@@ -161,6 +177,7 @@ function SavedCenterRow({
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1 },
   content: {
     gap: turismoSpacing.lg,
     paddingVertical: turismoSpacing.md,

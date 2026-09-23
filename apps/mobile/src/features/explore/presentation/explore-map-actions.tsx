@@ -48,6 +48,7 @@ export function ExploreMapActions({
           onPress={onOpenAgent}
           selected={agentOpen}
           style={mapActionStyle}
+          variant="glass"
         />,
         showLocate ? (
           <TourismIconAction
@@ -58,6 +59,7 @@ export function ExploreMapActions({
             onPress={onLocate}
             slashed={locateSlashed}
             style={mapActionStyle}
+            variant="glass"
           />
         ) : null,
       ]}

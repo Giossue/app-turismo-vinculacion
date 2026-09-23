@@ -1,12 +1,29 @@
+import { useIsFocused } from "expo-router";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTurismoPalette } from "./theme-context";
+import {
+  TourismGlassFill,
+  TourismGlassTargetProvider,
+  turismoGlassBorderWidth,
+} from "./tourism-glass";
 import { TourismPressable } from "./tourism-pressable";
 import { TurismoIcon, type TurismoIconName } from "./turismo-icons";
 import {
+  turismoFixedColors,
   turismoIconSizes,
   turismoMetrics,
+  turismoRadii,
   turismoSpacing,
   turismoTypography,
 } from "./tokens";
@@ -20,25 +37,81 @@ export type TourismTabBarItem = Readonly<{
   onPress: () => void;
 }>;
 
+const itemHeight = turismoMetrics.touchTarget + turismoSpacing.md;
+const barGap = turismoSpacing.sm;
+
 /**
- * Barra de navegación inferior de las pantallas principales. Cada elemento
- * decide qué hace al tocarlo: cambiar de pestaña (con `replace`) o abrir un
- * overlay como el menú lateral.
+ * Espacio inferior que ocupa la barra flotante (incluida la zona segura). Las
+ * pantallas dentro de las pestañas lo usan para que botones, fichas y listas
+ * no queden debajo de ella. Fuera de las pestañas vale 0.
+ */
+const TourismTabBarInsetContext = createContext(0);
+
+export function useTourismTabBarInset(): number {
+  return useContext(TourismTabBarInsetContext);
+}
+
+type GlassTarget = RefObject<View | null>;
+
+/** Vista de la pestaña visible, que desenfoca la barra en Android. */
+const TourismTabGlassContext = createContext<{
+  target: GlassTarget | null;
+  setTarget: (target: GlassTarget) => void;
+}>({ target: null, setTarget: () => undefined });
+
+export function TourismTabBarInsetProvider({
+  children,
+}: Readonly<{ children: ReactNode }>) {
+  const insets = useSafeAreaInsets();
+  const inset = insets.bottom + barGap * 2 + itemHeight;
+  const [target, setTarget] = useState<GlassTarget | null>(null);
+  return (
+    <TourismTabBarInsetContext.Provider value={inset}>
+      <TourismTabGlassContext.Provider value={{ target, setTarget }}>
+        {children}
+      </TourismTabGlassContext.Provider>
+    </TourismTabBarInsetContext.Provider>
+  );
+}
+
+/**
+ * Ref para el `targetRef` del `TourismGlassScope` raíz de una pestaña: mientras
+ * la pestaña está visible, la barra flotante desenfoca ese fondo.
+ */
+export function useTourismTabGlassTarget(): GlassTarget {
+  const ref = useRef<View>(null);
+  const focused = useIsFocused();
+  const { setTarget } = useContext(TourismTabGlassContext);
+  useEffect(() => {
+    if (focused) setTarget(ref);
+  }, [focused, setTarget]);
+  return ref;
+}
+
+/**
+ * Barra de navegación inferior flotante y semitransparente de las pantallas
+ * principales. Cada elemento decide qué hace al tocarlo: cambiar de pestaña
+ * (con `replace`) o abrir un overlay como el menú lateral.
  */
 export function TourismTabBar({
   items,
 }: Readonly<{ items: readonly TourismTabBarItem[] }>) {
   const colors = useTurismoPalette();
+  const insets = useSafeAreaInsets();
+  const { target } = useContext(TourismTabGlassContext);
 
   return (
-    <SafeAreaView
-      edges={["bottom"]}
-      style={[
-        styles.bar,
-        { backgroundColor: colors.surface, borderTopColor: colors.border },
-      ]}
+    <View
+      pointerEvents="box-none"
+      style={[styles.layer, { bottom: insets.bottom + barGap }]}
     >
-      <View accessibilityRole="tablist" style={styles.row}>
+      <View
+        accessibilityRole="tablist"
+        style={[styles.bar, { borderColor: colors.border }]}
+      >
+        <TourismGlassTargetProvider target={target}>
+          <TourismGlassFill />
+        </TourismGlassTargetProvider>
         {items.map((item) => {
           const color = item.selected ? colors.primary : colors.textMuted;
           return (
@@ -70,25 +143,37 @@ export function TourismTabBar({
           );
         })}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  bar: { borderTopWidth: StyleSheet.hairlineWidth },
-  row: {
-    alignSelf: "center",
+  layer: {
+    alignItems: "center",
+    left: turismoSpacing.lg,
+    position: "absolute",
+    right: turismoSpacing.lg,
+  },
+  bar: {
+    borderRadius: turismoRadii.pill,
+    borderWidth: turismoGlassBorderWidth,
+    // Sin `elevation`: en Android su sombra se vería a través del vidrio.
     flexDirection: "row",
     maxWidth: turismoMetrics.contentMaxWidth,
+    overflow: "hidden",
+    paddingHorizontal: turismoSpacing.xs,
+    shadowColor: turismoFixedColors.shadow,
+    shadowOffset: { height: 4, width: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
     width: "100%",
   },
   item: {
     alignItems: "center",
     flex: 1,
     gap: turismoSpacing.xxs,
+    height: itemHeight,
     justifyContent: "center",
-    minHeight: turismoMetrics.touchTarget + turismoSpacing.md,
-    paddingVertical: turismoSpacing.xs,
   },
   label: { ...turismoTypography.caption },
   labelSelected: { fontWeight: "700" },
