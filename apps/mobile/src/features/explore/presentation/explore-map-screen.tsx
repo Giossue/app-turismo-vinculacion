@@ -1,16 +1,20 @@
 import { useState } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
 import type { GeoBounds } from "@/core/geo/types";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { useTourismMenu } from "@/core/ui/tourism-navigation";
+import { TourismSheetTopInsetProvider } from "@/core/ui/tourism-bottom-sheet";
 import { TourismGlassScope } from "@/core/ui/tourism-glass";
 import {
+  useHideTourismTabBar,
   useTourismTabBarInset,
   useTourismTabGlassTarget,
 } from "@/core/ui/tourism-tab-bar";
 import { TourismStateView } from "@/core/ui/tourism-state";
+import { turismoMetrics, turismoSpacing } from "@/core/ui/tokens";
 import type { AgentRouteDestination } from "@/features/agent/domain/agent";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { buildLoginHref } from "@/features/auth/application/login-href";
@@ -79,6 +83,19 @@ export function ExploreMapScreen() {
       ? (data.centers.find((center) => center.code === current.center.code) ??
         current.center)
       : null;
+  // Con una ficha abierta, la barra de pestañas se oculta para que la ficha
+  // quede encima y use toda la parte inferior; al expandirse, la ficha se
+  // detiene debajo del buscador en vez de pasar por detrás de él.
+  const sheetOpen =
+    !search.focused &&
+    (current.kind === "choices" ||
+      current.kind === "establishment" ||
+      selectedCenter !== null ||
+      (current.kind === "none" && Boolean(search.submittedQuery)));
+  useHideTourismTabBar(sheetOpen);
+  const insets = useSafeAreaInsets();
+  const sheetTopInset =
+    insets.top + turismoMetrics.controlMd + turismoSpacing.sm;
 
   /** Closing a center returns to the submitted results, if any. */
   const closeCenter = () => {
@@ -221,7 +238,7 @@ export function ExploreMapScreen() {
           }
         />
       ) : (
-        <>
+        <TourismSheetTopInsetProvider value={sheetTopInset}>
           <ExploreTopBar
             categories={data.categories}
             field={searchField}
@@ -298,7 +315,7 @@ export function ExploreMapScreen() {
               onOpenRoute={() => openRoute(current.establishment)}
             />
           ) : null}
-        </>
+        </TourismSheetTopInsetProvider>
       )}
       <ExploreAgentSheet
         onClose={overlay.closeAgent}

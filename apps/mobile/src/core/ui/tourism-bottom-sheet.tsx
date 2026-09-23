@@ -3,7 +3,7 @@ import BottomSheet, {
   BottomSheetScrollView,
   type BottomSheetBackgroundProps,
 } from "@gorhom/bottom-sheet";
-import type { ReactNode, Ref } from "react";
+import { createContext, useContext, type ReactNode, type Ref } from "react";
 import {
   StyleSheet,
   View,
@@ -16,6 +16,23 @@ import { useTourismTabBarInset } from "./tourism-tab-bar";
 import { useTurismoPalette } from "./theme-context";
 import { TourismGlassFill, turismoGlassBorderWidth } from "./tourism-glass";
 import { turismoRadii, turismoSpacing } from "./tokens";
+
+/**
+ * Borde superior que no deben cruzar las sheets al expandirse (por ejemplo,
+ * el buscador fijo de Explorar), para no quedar por detrás de él.
+ */
+const TourismSheetTopInsetContext = createContext(0);
+
+export function TourismSheetTopInsetProvider({
+  children,
+  value,
+}: Readonly<{ children: ReactNode; value: number }>) {
+  return (
+    <TourismSheetTopInsetContext.Provider value={value}>
+      {children}
+    </TourismSheetTopInsetContext.Provider>
+  );
+}
 
 /** Fondo de vidrio de las sheets que flotan sobre el mapa. */
 function GlassSheetBackground({ style }: BottomSheetBackgroundProps) {
@@ -61,11 +78,13 @@ export function TourismBottomSheet({
   onClose,
 }: Readonly<{ children: ReactNode; onClose: () => void }>) {
   const tabBarInset = useTourismTabBarInset();
+  const topInset = useContext(TourismSheetTopInsetContext);
   return (
     <BottomSheet
       {...tourismFlexibleSheetBehavior}
       backgroundComponent={GlassSheetBackground}
       bottomInset={tabBarInset}
+      topInset={topInset}
       index={0}
       onClose={onClose}
       snapPoints={tourismFlexibleSheetSnapPoints}

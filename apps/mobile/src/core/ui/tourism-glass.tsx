@@ -6,9 +6,15 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import {
+  Platform,
+  StyleSheet,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 
-import { useTurismoTheme } from "./theme-context";
+import { useTurismoPalette, useTurismoTheme } from "./theme-context";
 
 type GlassTarget = RefObject<View | null>;
 
@@ -18,6 +24,9 @@ type GlassTarget = RefObject<View | null>;
  * paneles.
  */
 export const turismoGlassBorderWidth = StyleSheet.hairlineWidth;
+
+/** Opacidad (hex) de la superficie cuando Android no puede desenfocar. */
+const solidFallbackAlpha = "F2";
 
 /** Intensidad del desenfoque de las superficies de vidrio. */
 const glassIntensity = 60;
@@ -94,11 +103,26 @@ export function TourismGlassFill({
   material = "thin",
 }: Readonly<{ material?: GlassMaterial }>) {
   const { scheme } = useTurismoTheme();
+  const colors = useTurismoPalette();
   const target = useContext(TourismGlassTargetContext);
+  if (Platform.OS === "android" && (!target || Platform.Version < 31)) {
+    // Sin algo que desenfocar (un `Modal`, como el menú lateral, abre otra
+    // ventana) o en Android 11 o inferior, el modo sin desenfoque de
+    // expo-blur es un tinte casi transparente: se usa la superficie del tema
+    // casi opaca para que el contenido se lea.
+    return (
+      <View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: `${colors.surface}${solidFallbackAlpha}` },
+        ]}
+      />
+    );
+  }
   return (
     <BlurView
-      // Sin vista objetivo, Android usa solo el tinte del material.
-      blurMethod={target ? "dimezisBlurViewSdk31Plus" : "none"}
+      blurMethod="dimezisBlurViewSdk31Plus"
       blurTarget={target ?? undefined}
       intensity={glassIntensity}
       pointerEvents="none"

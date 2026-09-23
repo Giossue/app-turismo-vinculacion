@@ -48,16 +48,37 @@ const barGap = turismoSpacing.sm;
 const TourismTabBarInsetContext = createContext(0);
 
 export function useTourismTabBarInset(): number {
-  return useContext(TourismTabBarInsetContext);
+  const inset = useContext(TourismTabBarInsetContext);
+  const { hidden } = useContext(TourismTabGlassContext);
+  return hidden ? 0 : inset;
+}
+
+/**
+ * Oculta la barra mientras `hidden` sea verdadero, por ejemplo con una ficha
+ * abierta sobre el mapa: la ficha ocupa la parte inferior sin quedar debajo.
+ */
+export function useHideTourismTabBar(hidden: boolean): void {
+  const { setHidden } = useContext(TourismTabGlassContext);
+  useEffect(() => {
+    setHidden(hidden);
+    return () => setHidden(false);
+  }, [hidden, setHidden]);
 }
 
 type GlassTarget = RefObject<View | null>;
 
 /** Vista de la pestaña visible, que desenfoca la barra en Android. */
 const TourismTabGlassContext = createContext<{
+  hidden: boolean;
+  setHidden: (hidden: boolean) => void;
   target: GlassTarget | null;
   setTarget: (target: GlassTarget) => void;
-}>({ target: null, setTarget: () => undefined });
+}>({
+  hidden: false,
+  setHidden: () => undefined,
+  target: null,
+  setTarget: () => undefined,
+});
 
 export function TourismTabBarInsetProvider({
   children,
@@ -65,9 +86,12 @@ export function TourismTabBarInsetProvider({
   const insets = useSafeAreaInsets();
   const inset = insets.bottom + barGap * 2 + itemHeight;
   const [target, setTarget] = useState<GlassTarget | null>(null);
+  const [hidden, setHidden] = useState(false);
   return (
     <TourismTabBarInsetContext.Provider value={inset}>
-      <TourismTabGlassContext.Provider value={{ target, setTarget }}>
+      <TourismTabGlassContext.Provider
+        value={{ hidden, setHidden, target, setTarget }}
+      >
         {children}
       </TourismTabGlassContext.Provider>
     </TourismTabBarInsetContext.Provider>
@@ -98,7 +122,8 @@ export function TourismTabBar({
 }: Readonly<{ items: readonly TourismTabBarItem[] }>) {
   const colors = useTurismoPalette();
   const insets = useSafeAreaInsets();
-  const { target } = useContext(TourismTabGlassContext);
+  const { hidden, target } = useContext(TourismTabGlassContext);
+  if (hidden) return null;
 
   return (
     <View
