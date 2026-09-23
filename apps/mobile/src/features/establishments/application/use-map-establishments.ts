@@ -4,18 +4,30 @@ import { queryKeys } from "@/core/api/query-keys";
 import type { GeoBounds } from "@/core/geo/types";
 import { getMapEstablishments } from "../data/establishments-api";
 import type { MapEstablishmentsResult } from "../domain/establishment";
+import type { EstablishmentMapGroup } from "../domain/establishment-groups";
 
 // ~110 m: small camera movements reuse the cached viewport instead of creating
 // a new query for every sub-meter change in the visible bounds.
 const viewportPrecision = 1_000;
 
-export function useMapEstablishments(viewport: GeoBounds | null) {
+/**
+ * Pins of the tourism registry in the viewport, optionally only one `group`.
+ * `enabled: false` skips the request (e.g. while the map shows only centers).
+ */
+export function useMapEstablishments(
+  viewport: GeoBounds | null,
+  {
+    enabled = true,
+    group,
+  }: Readonly<{ enabled?: boolean; group?: EstablishmentMapGroup }> = {},
+) {
   const roundedViewport = viewport ? roundViewportOutward(viewport) : null;
   return useQuery<MapEstablishmentsResult>({
-    enabled: roundedViewport !== null,
+    enabled: enabled && roundedViewport !== null,
     placeholderData: (previous) => previous,
-    queryKey: [...queryKeys.mapEstablishments, roundedViewport],
-    queryFn: ({ signal }) => getMapEstablishments(roundedViewport, { signal }),
+    queryKey: [...queryKeys.mapEstablishments, roundedViewport, group ?? null],
+    queryFn: ({ signal }) =>
+      getMapEstablishments(roundedViewport, { group, signal }),
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });

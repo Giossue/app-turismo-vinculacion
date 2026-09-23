@@ -10,6 +10,10 @@ import { useMapEstablishments } from "@/features/establishments/application/use-
 import { useNearbyEstablishments } from "@/features/establishments/application/use-nearby-establishments";
 import { usePublicSearch } from "@/features/search/application/use-public-search";
 import type { SearchMode } from "@/features/search/presentation/search-mode-chips";
+import {
+  toggleMapFilter,
+  type ExploreMapFilter,
+} from "../domain/explore-map-filter";
 
 /**
  * Remote data behind Explore: published centers (filtered by category and
@@ -28,6 +32,7 @@ export function useExploreQueries({
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<DiscoveryFilterValues>({});
   const [viewport, setViewport] = useState<GeoBounds | null>(null);
+  const [mapFilter, setMapFilter] = useState<ExploreMapFilter>(null);
   const centersQuery = usePublishedCenters({
     ...filters,
     text: mode === "CENTERS" ? submittedQuery || undefined : undefined,
@@ -37,7 +42,10 @@ export function useExploreQueries({
     null,
   );
   const catalog = useDiscoveryCatalog();
-  const mapEstablishments = useMapEstablishments(viewport);
+  const mapEstablishments = useMapEstablishments(viewport, {
+    enabled: mapFilter?.kind !== "tourism",
+    group: mapFilter?.kind === "establishments" ? mapFilter.group : undefined,
+  });
   const nearbyEstablishments = useNearbyEstablishments(
     mode === "ESTABLISHMENTS" && submittedQuery && userLocation
       ? {
@@ -53,7 +61,16 @@ export function useExploreQueries({
     categories: catalog.data?.categories ?? [],
     centers,
     filters,
-    mapEstablishments: mapEstablishments.data?.items ?? [],
+    mapFilter,
+    /** Selects a map chip; selecting the active one shows everything again. */
+    changeMapFilter: (next: ExploreMapFilter) =>
+      setMapFilter((current) => toggleMapFilter(current, next)),
+    /** Centers drawn on the map: hidden while a registry group is selected. */
+    mapCenters: mapFilter?.kind === "establishments" ? [] : centers,
+    mapEstablishments:
+      mapFilter?.kind === "tourism"
+        ? []
+        : (mapEstablishments.data?.items ?? []),
     nearbyEstablishments,
     publicSearch,
     setViewport,

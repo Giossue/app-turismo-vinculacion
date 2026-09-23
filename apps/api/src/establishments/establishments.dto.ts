@@ -14,6 +14,11 @@ import {
   MinLength,
 } from "class-validator";
 
+import {
+  ESTABLISHMENT_MAP_GROUP_KEYS,
+  type EstablishmentMapGroup,
+} from "./establishment-groups";
+
 const toOptionalTrimmedString = ({ value }: { value: unknown }) => {
   if (value === undefined || value === null || value === "") return undefined;
   return typeof value === "string" ? value.trim() : value;
@@ -260,6 +265,11 @@ export class PublicEstablishmentsMapQueryDto {
   @Min(1)
   @Max(500)
   limit = 500;
+
+  /** Muestra solo un grupo (restaurantes, alojamiento…); sin él, todos. */
+  @IsOptional()
+  @IsIn(ESTABLISHMENT_MAP_GROUP_KEYS)
+  group?: EstablishmentMapGroup;
 }
 
 export class PublicEstablishmentsQueryDto {

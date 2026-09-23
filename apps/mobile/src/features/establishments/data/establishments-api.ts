@@ -10,6 +10,7 @@ import {
   type ApiRequestOptions,
 } from "@/core/api/http";
 import type { GeoBounds } from "@/core/geo/types";
+import type { EstablishmentMapGroup } from "../domain/establishment-groups";
 import type {
   MapEstablishmentsResult,
   NearbyEstablishmentsQuery,
@@ -67,9 +68,15 @@ const mapErrorMessage = "No pudimos cargar los establecimientos del mapa.";
 
 export async function getMapEstablishments(
   viewport: GeoBounds | null = null,
-  { apiUrl = getApiUrl(), fetcher, signal }: ApiRequestOptions = {},
+  {
+    apiUrl = getApiUrl(),
+    fetcher,
+    group,
+    signal,
+  }: ApiRequestOptions & { group?: EstablishmentMapGroup } = {},
 ): Promise<MapEstablishmentsResult> {
   const params = new URLSearchParams();
+  if (group) params.set("group", group);
   if (viewport) {
     params.set("west", String(viewport.west));
     params.set("south", String(viewport.south));

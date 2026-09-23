@@ -45,6 +45,7 @@ import { useExploreSearch } from "../application/use-explore-search";
 import {} from "../domain/explore-overlay";
 import { getSearchPlaceTarget } from "../domain/search-place-target";
 import { ExploreAgentSheet } from "./explore-agent-sheet";
+import { ExploreMoreFiltersSheet } from "./explore-more-filters-sheet";
 import { ExploreCenterSheet } from "./explore-center-sheet";
 import { ExploreMapActions } from "./explore-map-actions";
 import { ExploreResultsSheet } from "./explore-results-sheet";
@@ -87,6 +88,7 @@ export function ExploreMapScreen() {
   const sheetOpen =
     !search.focused &&
     (current.kind === "choices" ||
+      current.kind === "moreFilters" ||
       current.kind === "establishment" ||
       selectedCenter !== null ||
       (current.kind === "none" && Boolean(search.submittedQuery)));
@@ -197,7 +199,7 @@ export function ExploreMapScreen() {
         >
           <CenterMap
             attributionInset={{ bottom: tabBarInset, left: 0 }}
-            centers={data.centers}
+            centers={data.mapCenters}
             establishments={data.mapEstablishments}
             focusCoordinate={search.focusCoordinate?.coordinate}
             focusCoordinateKey={search.focusCoordinate?.key}
@@ -237,14 +239,14 @@ export function ExploreMapScreen() {
         <TourismSheetTopInsetProvider value={sheetTopInset}>
           <TourismBottomSheetHost>
             <ExploreTopBar
-              categories={data.categories}
               field={searchField}
               landscape={landscape}
-              onCategoryChange={data.changeCategory}
+              mapFilter={data.mapFilter}
+              onMapFilterChange={data.changeMapFilter}
               onModeChange={search.changeMode}
+              onMoreFilters={overlay.openMoreFilters}
               refreshing={data.isRefreshingMap}
               searchActive={search.active}
-              selectedCategory={data.filters.categoryCode}
             />
             <ExploreMapActions
               agentOpen={current.kind === "agent"}
@@ -287,6 +289,16 @@ export function ExploreMapScreen() {
                 mode={search.mode}
                 onClose={search.clear}
                 query={search.submittedQuery}
+              />
+            ) : null}
+            {current.kind === "moreFilters" ? (
+              <ExploreMoreFiltersSheet
+                filter={data.mapFilter}
+                onClose={overlay.close}
+                onSelect={(filter) => {
+                  overlay.close();
+                  data.changeMapFilter(filter);
+                }}
               />
             ) : null}
             {current.kind === "choices" ? (

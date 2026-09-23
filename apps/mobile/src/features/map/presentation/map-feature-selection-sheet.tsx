@@ -1,17 +1,11 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { BottomSheetFlatList } from "@gorhom/bottom-sheet";
 
 import { TourismBottomSheet } from "@/core/ui/tourism-bottom-sheet";
+import { TourismOptionRow } from "@/core/ui/tourism-option-row";
 import { useTurismoPalette } from "@/core/ui/theme-context";
-import { TurismoIcon, type TurismoIconName } from "@/core/ui/turismo-icons";
-import {
-  turismoIconSizes,
-  turismoMetrics,
-  turismoOpacity,
-  turismoRadii,
-  turismoSpacing,
-  turismoTypography,
-} from "@/core/ui/tokens";
+import type { TurismoIconName } from "@/core/ui/turismo-icons";
+import { turismoSpacing, turismoTypography } from "@/core/ui/tokens";
 import {
   getEstablishmentKey,
   getEstablishmentLabel,
@@ -77,61 +71,27 @@ function SelectionOption({
   onPress,
   selection,
 }: Readonly<{ onPress: () => void; selection: MapFeatureSelection }>) {
-  const colors = useTurismoPalette();
   const isCenter = selection.kind === "center";
-  const title = isCenter ? selection.center.name : selection.establishment.name;
   const category = isCenter
     ? selection.center.category
     : getEstablishmentLabel(selection.establishment);
-  const subtitle = isCenter
-    ? `Centro turístico · ${category}`
-    : `Punto de interés · ${category ?? "Establecimiento turístico"}`;
 
   return (
-    <Pressable
+    <TourismOptionRow
       accessibilityHint={
         isCenter
           ? "Abre la ficha del centro turístico"
           : "Abre la ficha del punto de interés"
       }
-      accessibilityLabel={`${title}, ${subtitle}`}
-      accessibilityRole="button"
+      icon={getSelectionIcon(selection)}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.option,
-        {
-          borderColor: colors.border,
-          backgroundColor: colors.surfaceMuted,
-        },
-        pressed && styles.optionPressed,
-      ]}
-    >
-      <View
-        style={[styles.iconContainer, { backgroundColor: colors.primarySoft }]}
-      >
-        <TurismoIcon
-          color={colors.primaryStrong}
-          name={getSelectionIcon(selection)}
-          size={turismoIconSizes.md}
-        />
-      </View>
-      <View style={styles.optionCopy}>
-        <Text
-          numberOfLines={2}
-          style={[styles.optionTitle, { color: colors.text }]}
-        >
-          {title}
-        </Text>
-        <Text style={[styles.optionSubtitle, { color: colors.textMuted }]}>
-          {subtitle}
-        </Text>
-      </View>
-      <TurismoIcon
-        color={colors.textMuted}
-        name="chevronRight"
-        size={turismoIconSizes.md}
-      />
-    </Pressable>
+      subtitle={
+        isCenter
+          ? `Centro turístico · ${category}`
+          : `Punto de interés · ${category ?? "Establecimiento turístico"}`
+      }
+      title={isCenter ? selection.center.name : selection.establishment.name}
+    />
   );
 }
 
@@ -162,24 +122,4 @@ const styles = StyleSheet.create({
   title: { ...turismoTypography.heading },
   subtitle: { ...turismoTypography.body },
   separator: { height: turismoSpacing.sm },
-  option: {
-    alignItems: "center",
-    borderRadius: turismoRadii.md,
-    borderWidth: turismoMetrics.borderWidth,
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-    paddingHorizontal: turismoSpacing.md,
-    paddingVertical: turismoSpacing.sm,
-  },
-  optionPressed: { opacity: turismoOpacity.pressed },
-  iconContainer: {
-    alignItems: "center",
-    borderRadius: turismoRadii.lg,
-    height: turismoMetrics.touchTarget,
-    justifyContent: "center",
-    width: turismoMetrics.touchTarget,
-  },
-  optionCopy: { flex: 1, gap: turismoSpacing.xxs },
-  optionTitle: { ...turismoTypography.body, fontWeight: "700" },
-  optionSubtitle: { ...turismoTypography.caption },
 });

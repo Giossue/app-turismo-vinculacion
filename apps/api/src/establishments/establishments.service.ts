@@ -7,6 +7,7 @@ import {
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource, EntityManager } from "typeorm";
 
+import { ESTABLISHMENT_MAP_GROUPS } from "./establishment-groups";
 import type {
   AdminEstablishmentsQueryDto,
   CreateEstablishmentDto,
@@ -570,6 +571,22 @@ export class EstablishmentsService {
         `${longitudeExpression} BETWEEN ${west} AND ${east}`,
         `${latitudeExpression} BETWEEN ${south} AND ${north}`,
       );
+    }
+    if (query.group) {
+      const group: Readonly<{
+        activities?: readonly string[];
+        classifications?: readonly string[];
+      }> = ESTABLISHMENT_MAP_GROUPS[query.group];
+      const matches: string[] = [];
+      if (group.activities) {
+        matches.push(`activity_catalog.nombre = ANY(${add(group.activities)})`);
+      }
+      if (group.classifications) {
+        matches.push(
+          `classification_catalog.nombre = ANY(${add(group.classifications)})`,
+        );
+      }
+      where.push(`(${matches.join(" OR ")})`);
     }
     const limit = add(Math.min(query.limit ?? 500, 500));
     const rows = (await this.dataSource.query(

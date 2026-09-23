@@ -9,6 +9,7 @@ import type { MapFeatureSelection } from "@/features/map/domain/map-feature-sele
  * - `focusing`: a feature picked from search; the map opens its sheet right
  *   away and moves the camera at the same time.
  * - `agent`: the full-height agent chat.
+ * - `moreFilters`: the "Ver más" sheet with the remaining map filters.
  */
 export type ExploreOverlay =
   | Readonly<{ kind: "none" }>
@@ -16,7 +17,8 @@ export type ExploreOverlay =
   | Readonly<{ kind: "establishment"; establishment: PublicMapEstablishment }>
   | Readonly<{ kind: "choices"; selections: readonly MapFeatureSelection[] }>
   | Readonly<{ kind: "focusing"; selection: MapFeatureSelection }>
-  | Readonly<{ kind: "agent" }>;
+  | Readonly<{ kind: "agent" }>
+  | Readonly<{ kind: "moreFilters" }>;
 
 export const noExploreOverlay: ExploreOverlay = { kind: "none" };
 

@@ -27,6 +27,7 @@ export function useExploreOverlay() {
     focusFeature: (selection: MapFeatureSelection) =>
       setOverlay({ kind: "focusing", selection }),
     openAgent: () => setOverlay({ kind: "agent" }),
+    openMoreFilters: () => setOverlay({ kind: "moreFilters" }),
     selectCenter: (center: PublicCenter) =>
       setOverlay({ kind: "center", center }),
     selectEstablishment: (establishment: PublicMapEstablishment) =>

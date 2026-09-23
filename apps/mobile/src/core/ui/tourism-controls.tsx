@@ -270,6 +270,7 @@ export function TourismCompassAction({
 export function TourismChoiceChip({
   disabled = false,
   glass = false,
+  icon,
   label,
   onPress,
   selected,
@@ -277,12 +278,15 @@ export function TourismChoiceChip({
   disabled?: boolean;
   /** Fondo de vidrio cuando no está seleccionado (chips sobre el mapa). */
   glass?: boolean;
+  /** Ícono monocromo antes del texto, del mismo color que la etiqueta. */
+  icon?: TurismoIconName;
   label: string;
   onPress: () => void;
   selected: boolean;
 }>) {
   const colors = useTurismoPalette();
   const frosted = glass && !selected;
+  const contentColor = selected ? colors.onPrimary : colors.textMuted;
   const chip = (
     <PaperChip
       accessibilityRole="button"
@@ -290,6 +294,17 @@ export function TourismChoiceChip({
       compact
       disabled={disabled}
       hitSlop={turismoMetrics.chipHitSlop}
+      icon={
+        icon
+          ? () => (
+              <TurismoIcon
+                color={contentColor}
+                name={icon}
+                size={turismoIconSizes.sm}
+              />
+            )
+          : undefined
+      }
       mode={selected ? "flat" : "outlined"}
       onPress={onPress}
       selected={selected}
@@ -307,10 +322,7 @@ export function TourismChoiceChip({
         },
         glass && styles.glassBorder,
       ]}
-      textStyle={[
-        styles.chipText,
-        { color: selected ? colors.onPrimary : colors.textMuted },
-      ]}
+      textStyle={[styles.chipText, { color: contentColor }]}
     >
       {label}
     </PaperChip>

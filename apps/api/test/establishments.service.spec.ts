@@ -75,6 +75,23 @@ describe("EstablishmentsService", () => {
     );
   });
 
+  it("filters the map by a catalog group (activity or type)", async () => {
+    const query = vi.fn().mockResolvedValue([]);
+    const service = new EstablishmentsService({ query } as never);
+
+    await service.map({ limit: 500, group: "lodging" });
+    expect(query.mock.calls[0]?.[0]).toContain(
+      "(activity_catalog.nombre = ANY($1))",
+    );
+    expect(query.mock.calls[0]?.[1]).toEqual([["ALOJAMIENTO"], 500]);
+
+    await service.map({ limit: 500, group: "bars" });
+    expect(query.mock.calls[1]?.[0]).toContain(
+      "(classification_catalog.nombre = ANY($1))",
+    );
+    expect(query.mock.calls[1]?.[1]).toEqual([["BAR", "DISCOTECA"], 500]);
+  });
+
   it("rejects an incomplete map viewport", async () => {
     const service = new EstablishmentsService({ query: vi.fn() } as never);
 

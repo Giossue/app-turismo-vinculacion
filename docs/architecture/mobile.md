@@ -215,6 +215,14 @@ Handler para mantener panel, scrim y gesto en un único progreso nativo. React N
 conserva las interacciones y animaciones propias de sus controles. La animación no añade
 entradas al historial ni sustituye el estado visible declarado por la pantalla.
 
+Los chips sobre el mapa de Explorar (`ExploreFilterChips`) filtran lo que se dibuja:
+"Turismo" (solo atractivos) y los grupos principales del catastro (Restaurantes, Cafeterías,
+Alojamiento, Bares), con ícono monocromo; "Ver más" abre una sheet con el resto de grupos. Sin
+chip seleccionado se ve todo y tocar el chip activo lo quita. Los grupos se definen en
+`features/establishments/domain/establishment-groups.ts` con las mismas claves que el
+parámetro `group` de `GET /establishments/map` (`apps/api/src/establishments/establishment-groups.ts`),
+que filtra por la actividad o el tipo del catálogo del catastro.
+
 En Explorar las fichas comparten una única sheet siempre montada y cerrada
 (`TourismBottomSheetHost`, `index: -1`): cada `TourismBottomSheet` le entrega su contenido y
 el host la abre con `snapToIndex`, porque montar una `BottomSheet` nueva en cada apertura
