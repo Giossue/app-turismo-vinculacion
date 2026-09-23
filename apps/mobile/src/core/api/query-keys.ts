@@ -37,7 +37,7 @@ export const userScopedQueryKeys: readonly QueryKey[] = [
  * snapshot. Anything else (the own opinion, searches, viewport- or GPS-keyed
  * results) stays in memory.
  */
-export const persistedQueryKeys: readonly QueryKey[] = [
+const persistedQueryKeys: readonly QueryKey[] = [
   queryKeys.centerOpinions,
   queryKeys.discoveryCatalog,
   queryKeys.offlineCities,

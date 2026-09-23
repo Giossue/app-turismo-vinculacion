@@ -9,7 +9,7 @@ const metersPerDegreeLatitude = 111_320;
  * Distance to the destination at which navigation counts as arrived. Shared
  * by the foreground session and the background location task.
  */
-export const navigationArrivalThresholdMeters = 35;
+const navigationArrivalThresholdMeters = 35;
 
 export type NavigationGuidance = Readonly<{
   stepIndex: number;

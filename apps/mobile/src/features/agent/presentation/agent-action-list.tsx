@@ -106,7 +106,7 @@ function AgentActionItem({
   );
 }
 
-export function AgentRouteConfirmation({
+function AgentRouteConfirmation({
   destinationName,
   onCancel,
   onConfirm,

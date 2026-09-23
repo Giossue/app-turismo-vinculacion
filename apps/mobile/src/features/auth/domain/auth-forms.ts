@@ -9,12 +9,12 @@ import {
 } from "./registration-options";
 
 // Limits mirror the API's LoginDto and RegisterDto (apps/api/src/auth).
-export const LOGIN_PASSWORD_MIN_LENGTH = 8;
-export const PASSWORD_MIN_LENGTH = 12;
+const LOGIN_PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MIN_LENGTH = 12;
 export const PASSWORD_MAX_LENGTH = 128;
-export const NAME_MIN_LENGTH = 2;
-export const NAME_MAX_LENGTH = 150;
-export const EMAIL_MAX_LENGTH = 254;
+const NAME_MIN_LENGTH = 2;
+const NAME_MAX_LENGTH = 150;
+const EMAIL_MAX_LENGTH = 254;
 
 /** Shown as helper text under the password of a new account. */
 export const passwordRequirementMessage = `La contraseña debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres.`;
@@ -80,7 +80,6 @@ export const registrationFormSchema = z
   );
 
 export type LoginFormValues = Readonly<{ email: string; password: string }>;
-export type LoginCredentials = z.infer<typeof loginFormSchema>;
 
 /** What the registration form holds before validation. */
 export type RegistrationFormValues = Readonly<{

@@ -1,7 +1,7 @@
 /** Share of the gap to the new compass reading applied on each event. */
-export const headingSmoothingFactor = 0.18;
+const headingSmoothingFactor = 0.18;
 /** Smaller rotations are not worth a re-render and a camera animation. */
-export const headingMinimumChangeDegrees = 2;
+const headingMinimumChangeDegrees = 2;
 /** Caps map updates from the compass at about 5 per second. */
 export const headingMinimumIntervalMs = 200;
 

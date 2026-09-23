@@ -224,7 +224,12 @@ se deshacen con el botón Atrás. En Android, cada pantalla enfocada usa un úni
 handler que cierra primero sus overlays y después retira exactamente una pantalla; en la
 raíz, el evento sale de la aplicación. El mapa es la única pestaña visible del shell
 principal; el agente es estado efímero de una sheet y no una pestaña. Las fichas y rutas se
-abren con `push` porque sí representan una pantalla que puede cerrarse.
+abren con `push` porque sí representan una pantalla que puede cerrarse. Las pantallas
+secundarias sin overlays (cuenta, guardados, configuración) no registran back handler: el
+stack retira una pantalla. En la entrada de cuenta, Atrás cierra primero el formulario
+abierto. El drawer vive en un `Modal` visible mientras el menú está abierto; cualquier
+cierre (entrada, Atrás, scrim o gesto) anima el drawer y solo en `onDrawerClose` oculta el
+modal y ejecuta la acción elegida.
 
 ## Caché y funcionamiento sin conexión
 

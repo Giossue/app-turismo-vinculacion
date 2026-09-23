@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const ratingSchema = z.number().int().min(1).max(5).nullable();
 
-export const publicOpinionSchema = z.object({
+const publicOpinionSchema = z.object({
   authorName: z.string(),
   rating: ratingSchema,
   comment: z.string().nullable(),
@@ -61,7 +61,6 @@ export type OpinionRatingSummary = Pick<
   PublicOpinionPage["summary"],
   "averageRating" | "total"
 >;
-export type OpinionVersion = Readonly<z.infer<typeof opinionVersionSchema>>;
 export type OwnOpinionState = Readonly<z.infer<typeof ownOpinionStateSchema>>;
 
 /** Longest comment the API accepts (`OpinionContentDto`). */

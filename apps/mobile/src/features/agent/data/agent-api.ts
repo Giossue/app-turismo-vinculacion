@@ -48,7 +48,7 @@ const requestSchema = z
   })
   .strict();
 
-export const AGENT_UNAVAILABLE_MESSAGE =
+const AGENT_UNAVAILABLE_MESSAGE =
   "El agente no está disponible en este momento.";
 export const AGENT_INVALID_FORMAT_MESSAGE =
   "El agente devolvió una respuesta con formato inválido.";

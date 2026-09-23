@@ -1,12 +1,12 @@
 import type { GeoCoordinate } from "./types";
 
-export const earthRadiusMeters = 6_371_000;
+const earthRadiusMeters = 6_371_000;
 
 export function toRadians(degrees: number): number {
   return (degrees * Math.PI) / 180;
 }
 
-export function toDegrees(radians: number): number {
+function toDegrees(radians: number): number {
   return (radians * 180) / Math.PI;
 }
 

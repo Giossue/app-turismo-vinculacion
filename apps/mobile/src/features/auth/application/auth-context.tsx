@@ -68,14 +68,15 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     } catch {
       // El estado en memoria se limpia aunque el almacén seguro falle.
     }
-    setUser(null);
-    setStatus("anonymous");
-    // Nada de la cuenta anterior debe quedar visible para el siguiente
-    // turista: ni en memoria ni en la copia persistida de la caché.
+    // Nada de la cuenta anterior debe quedar para el siguiente turista, ni en
+    // memoria ni en disco: se borra la copia persistida y luego las consultas
+    // de la cuenta, cuyo borrado reescribe la copia solo con el catálogo.
+    await clearPersistedQueryCache();
     for (const queryKey of userScopedQueryKeys) {
       queryClient.removeQueries({ queryKey });
     }
-    await clearPersistedQueryCache();
+    setUser(null);
+    setStatus("anonymous");
   }, [queryClient]);
 
   const setSession = useCallback(async (result: SessionResult) => {

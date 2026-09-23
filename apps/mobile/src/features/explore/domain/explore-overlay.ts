@@ -27,7 +27,7 @@ export const noExploreOverlay: ExploreOverlay = { kind: "none" };
  * Pins painted as selected: the open sheet's feature, or the feature the
  * camera is focusing before its sheet opens.
  */
-export function getSelectedMapFeature(
+function getSelectedMapFeature(
   overlay: ExploreOverlay,
 ): MapFeatureSelection | null {
   switch (overlay.kind) {

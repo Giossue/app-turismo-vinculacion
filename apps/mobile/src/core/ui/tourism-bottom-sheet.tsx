@@ -13,18 +13,18 @@ import {
 import { useTurismoPalette } from "./theme-context";
 import { turismoSpacing } from "./tokens";
 
-export const tourismFlexibleSheetSnapPoints = ["44%", "92%"];
+const tourismFlexibleSheetSnapPoints = ["44%", "92%"];
 
-export const tourismFlexibleSheetBehavior = {
+const tourismFlexibleSheetBehavior = {
   enableContentPanningGesture: true,
   enableDynamicSizing: false,
   enableHandlePanningGesture: true,
   enablePanDownToClose: true,
 } as const;
 
-export const tourismAgentSheetSnapPoints = ["100%"];
+const tourismAgentSheetSnapPoints = ["100%"];
 
-export const tourismAgentSheetBehavior = {
+const tourismAgentSheetBehavior = {
   android_keyboardInputMode: "adjustResize",
   enableContentPanningGesture: true,
   enableDynamicSizing: false,

@@ -132,7 +132,8 @@ secundarias reales, como una ficha o una ruta, deben usar `push`.
   La futura web tendrá su propio repositorio y decisiones de UI independientes.
 - Las pantallas secundarias del móvil deben usar `TourismScreenFrame`, que centraliza safe
   area, encabezado, ancho máximo, márgenes y barra inferior cuando corresponda. `Explorar`
-  mantiene un shell de mapa a pantalla completa y reutiliza los mismos tokens y navegación.
+  y `Cómo llegar` mantienen un shell de mapa a pantalla completa y reutilizan los mismos
+  tokens y navegación.
 - Instalar paquetes Expo con `corepack pnpm expo install`; no elegir manualmente versiones
   que puedan quedar fuera del SDK fijado ni mezclar gestores de paquetes.
 - Expo Router es la navegación file-based del móvil. Usar sus APIs (`useRouter`, `Link`,

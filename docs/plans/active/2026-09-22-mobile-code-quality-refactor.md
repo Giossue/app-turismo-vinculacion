@@ -75,4 +75,17 @@ En curso (22 de septiembre de 2026).
   `useMutation`; `core/location` comparte disponibilidad y coordenadas. Pendiente: paquetes
   offline desde el estilo normalizado y verificación en dispositivo (segundo plano, Atrás,
   descarga offline, TalkBack/VoiceOver).
-- Pendiente: ola 2 (división de pantallas) y revisión manual en dispositivo.
+- Ola 2 Pantallas completada: `login.tsx` queda en composición (~110 líneas) sobre
+  `features/auth` (`AccountEntry`, `LoginForm`, `RegisterForm`, `useAuthForm`, esquemas zod
+  `auth-forms` con los límites de la API) y controles compartidos `TourismTextField`,
+  `TourismRadioGroup`, `TourismDateField`, `TourismPressable` y `TourismSnackbar`; errores
+  solo locales al formulario; vuelta a `returnTo` con `dismissTo`; `AuthGate` declarativo en
+  cuenta y guardados; cierre de sesión de mejor esfuerzo con una sola navegación; la sesión
+  sobrevive a fallos de red y el token solo va a la API; guardados persistidos y borrados del
+  disco al cerrar sesión; errores de guardado visibles; opiniones paginadas con estrellas
+  accesibles; agente dividido (`useAgentConversation`, historial solo de intercambios
+  completos, cancelación al cerrar); drawer sin efectos espejo con `items`; tema persistido
+  en `setPreference` con radio `Sistema/Claro/Oscuro`. Pendiente de verificar en dispositivo
+  (vuelta tras iniciar sesión, cierre de sesión, drawer, tema, arranque sin conexión,
+  TalkBack/VoiceOver).
+- Pendiente: revisión manual en dispositivo.

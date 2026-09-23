@@ -48,7 +48,7 @@ export function useSavedCenterMutation() {
       if (auth.status !== "authenticated") {
         throw new ApiError("Inicia sesión para usar tus guardados.");
       }
-      if (isCurrentlySaved(variables)) {
+      if (variables.currentlySaved) {
         await removeRemoteCenter(variables.center.code, auth.request);
       } else {
         await saveRemoteCenter(variables.center.code, auth.request);
@@ -60,7 +60,7 @@ export function useSavedCenterMutation() {
         queryClient.getQueryData<readonly PublicCenter[]>(queryKey);
       const current = previous ?? [];
       const { center } = variables;
-      const next = isCurrentlySaved(variables)
+      const next = variables.currentlySaved
         ? current.filter((item) => item.code !== center.code)
         : [center, ...current.filter((item) => item.code !== center.code)];
       queryClient.setQueryData(queryKey, next);
@@ -83,18 +83,7 @@ export function describeSavedCenterError(error: unknown): string {
     : "No pudimos actualizar tus guardados.";
 }
 
-export type SavedCenterMutation = Readonly<
-  { center: PublicCenter } & (
-    | { currentlySaved: boolean }
-    | {
-        /** @deprecated Use `currentlySaved`; `saved: true` removes the place. */
-        saved: boolean;
-      }
-  )
->;
-
-function isCurrentlySaved(variables: SavedCenterMutation): boolean {
-  return "currentlySaved" in variables
-    ? variables.currentlySaved
-    : variables.saved;
-}
+export type SavedCenterMutation = Readonly<{
+  center: PublicCenter;
+  currentlySaved: boolean;
+}>;

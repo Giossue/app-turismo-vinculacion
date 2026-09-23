@@ -23,9 +23,10 @@ añadir NativeWind, Tailwind ni otra librería visual al móvil. La versión web
 fuera de este paquete y se desarrollará en otro repositorio.
 
 Las pantallas secundarias deben montarse dentro de `TourismScreenFrame` para compartir safe
-area, encabezado, ancho máximo y márgenes. La pantalla `Explorar` es la excepción de mapa a
-pantalla completa: no tiene barra inferior, reutiliza los mismos tokens y abre el menú
-lateral de `TourismMenuProvider` desde el botón junto al buscador.
+area, encabezado, ancho máximo y márgenes. `Explorar` y `Cómo llegar` (`route.tsx`) son las
+excepciones de mapa a pantalla completa: no tienen barra inferior y reutilizan los mismos
+tokens; `Explorar` abre el menú lateral de `TourismMenuProvider` desde el botón junto al
+buscador.
 
 Antes de escribir utilidades o componentes nuevos, reutiliza los módulos compartidos
 listados en `docs/architecture/mobile.md` (sección «Módulos compartidos»): geografía,

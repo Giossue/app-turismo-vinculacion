@@ -144,7 +144,7 @@ export type AgentItinerary = z.infer<typeof agentItinerarySchema>;
 export type AgentAction = z.infer<typeof agentActionSchema>;
 export type AgentRouteDestination = z.infer<typeof agentRouteDestinationSchema>;
 export type AgentResponse = z.infer<typeof agentResponseSchema>;
-export type AgentSource = z.infer<typeof agentSourceSchema>;
+type AgentSource = z.infer<typeof agentSourceSchema>;
 export type AgentHistoryItem = Readonly<z.infer<typeof agentHistoryItemSchema>>;
 
 export type StartRouteAction = Extract<AgentAction, { type: "start_route" }>;

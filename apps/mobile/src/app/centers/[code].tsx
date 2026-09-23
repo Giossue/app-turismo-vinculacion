@@ -24,6 +24,7 @@ import { CenterInformation } from "@/features/centers/presentation/center-detail
 import { CenterPhotos } from "@/features/centers/presentation/center-detail/center-photos";
 import { CenterRatingSummary } from "@/features/centers/presentation/center-detail/center-rating-summary";
 import { useCenterSaveToggle } from "@/features/centers/presentation/center-detail/use-center-save-toggle";
+import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/saved-center-error-snackbar";
 import { useCenterOpinions } from "@/features/opinions/application/use-center-opinions";
 import { CenterOpinions } from "@/features/opinions/presentation/center-opinions";
 import { buildRouteHref } from "@/features/routing/presentation/route-href";
@@ -160,6 +161,7 @@ function CenterDetailContent({
           </View>
         </TourismSurface>
       </ScrollView>
+      <SavedCenterErrorSnackbar mutation={save.mutation} />
     </TourismScreenFrame>
   );
 }

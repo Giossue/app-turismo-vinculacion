@@ -26,9 +26,9 @@ export const queryPersistOptions = {
 } satisfies Omit<PersistQueryClientOptions, "queryClient">;
 
 /**
- * Deletes the persisted snapshot right away. Used at logout after removing
- * the account's queries from memory, so a pending throttled write cannot
- * leave them on disk; the next cache change writes a fresh snapshot.
+ * Deletes the persisted snapshot right away instead of waiting for the
+ * throttled write. Used at logout just before removing the account's
+ * queries; that removal writes a fresh snapshot without them.
  */
 export async function clearPersistedQueryCache(): Promise<void> {
   try {
