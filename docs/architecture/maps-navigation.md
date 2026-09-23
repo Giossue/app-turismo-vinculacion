@@ -95,16 +95,18 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   persistente ni promete actualizaciones al cambiar de aplicación. En Android 13 o posterior
   también se solicita `POST_NOTIFICATIONS` cuando el seguimiento persistente está habilitado,
   para mostrar el servicio en el cajón de notificaciones.
-- Al detenerla con la `X`, cancelar o abandonar la pantalla antes de iniciar la navegación, se
-  eliminan el watcher, la tarea del sistema, la sesión persistida, la notificación foreground
-  y la voz. Al llegar al destino, el modo activo conserva su pantalla y muestra el estado de
+- Al detenerla con la `X` o cuando otra pantalla cubre la ruta, se eliminan el watcher, la
+  tarea del sistema, la sesión persistida, la notificación foreground y la voz, y el estado
+  visible se reinicia; antes de iniciarla no hay seguimiento que limpiar. Si la tarea
+  persistente no puede iniciarse, la navegación continúa con la app abierta y lo avisa en
+  pantalla. Al llegar al destino, el modo activo conserva su pantalla y muestra el estado de
   llegada hasta que la persona lo cierre explícitamente. Minimizar la app o cambiar temporalmente
   de aplicación no equivale a cancelar:
   mientras la navegación siga activa, la tarea continúa bajo las condiciones permitidas por
   Android. La tarea también comprueba la distancia al destino cuando recibe una ubicación en
-  segundo plano, para cerrar la sesión al llegar aunque la app no esté visible. El cuerpo de
-  la misma notificación foreground se actualiza con la próxima maniobra y la distancia
-  redondeada, sin crear notificaciones duplicadas. Cuando no hay una maniobra disponible
+  segundo plano, para cerrar la sesión al llegar aunque la app no esté visible. Solo la tarea
+  actualiza el cuerpo de la misma notificación foreground con la próxima maniobra y la
+  distancia redondeada, sin crear notificaciones duplicadas. Cuando no hay una maniobra disponible
   comunica que la navegación sigue activa.
   Android 13 o posterior permite descartar manualmente notificaciones de foreground services;
   por eso el parche nativo comprueba la presencia del mismo registro en cada actualización de
@@ -126,10 +128,13 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   tiempo restante, distancia y hora estimada. Mientras el seguimiento está activo, la cámara usa
   zoom 19 y una inclinación de 60 grados; su rumbo se orienta con la brújula del dispositivo
   usando el rumbo verdadero cuando está disponible y el magnético como respaldo, con un suavizado
-  circular para evitar saltos bruscos sin cambiar la fuente del sensor. El objetivo
+  circular para evitar saltos bruscos sin cambiar la fuente del sensor; el rumbo llega al mapa
+  como máximo unas cinco veces por segundo y solo con cambios de 2 grados o más. El objetivo
   geográfico de la cámara se adelanta 30 m en ese rumbo para que el icono quede detrás, en la
   zona inferior de la pantalla, y la perspectiva mantenga visible el trayecto que viene delante.
-  Un gesto manual libera el seguimiento y el control de recentrado lo restablece. El mapa permite
+  Un gesto manual libera el seguimiento; el control de recentrado lo restablece y, sin nuevos
+  gestos, se reanuda solo a los 7 segundos. Al cerrar la navegación, la cámara vuelve a la
+  vista general de la ruta orientada al norte y sin inclinación. El mapa permite
   inclinación táctil de tres dedos y rotación
   para que la perspectiva se pueda ajustar sin otro control de brújula. Ese modo bloquea el
   gesto de salida y el Atrás del sistema; la `X` regresa a la vista previa. Desde la vista
@@ -225,7 +230,9 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 La API pública expone `GET /api/v1/offline/cities` y
 `GET /api/v1/offline/cities/:slug/manifest`. El manifiesto incluye atractivos publicados,
 límites oficiales cuando están importados y rutas de transporte con una versión PUBLICADA.
-La app descarga los tiles con `OfflineManager` y guarda el manifiesto en Expo SQLite. No se
+La app descarga los tiles con `OfflineManager` y guarda el manifiesto en Expo SQLite. Cada
+descarga usa un paquete nuevo; los anteriores de la ciudad se borran solo al completarse, y
+después se guarda el manifiesto. No se
 intenta recalcular una ruta sin red: la fase offline usa rutas institucionales registradas.
 
 La migración `20260917_offline_routes_and_city_packages.sql` crea los límites oficiales,

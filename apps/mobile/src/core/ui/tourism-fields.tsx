@@ -193,7 +193,9 @@ export function TourismRadioGroup<T extends string>({
               style={[
                 column ? styles.radioOptionRow : styles.radioOptionPill,
                 {
-                  backgroundColor: checked ? colors.primarySoft : colors.surface,
+                  backgroundColor: checked
+                    ? colors.primarySoft
+                    : colors.surface,
                   borderColor: checked ? colors.primary : colors.border,
                 },
               ]}

@@ -110,7 +110,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
           setUser((current) => current ?? offlineUser);
           setStatus("authenticated");
         } else {
-          setStatus((current) => (current === "loading" ? "anonymous" : current));
+          setStatus((current) =>
+            current === "loading" ? "anonymous" : current,
+          );
         }
         return false;
       }

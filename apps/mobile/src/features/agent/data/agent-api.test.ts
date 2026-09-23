@@ -192,7 +192,11 @@ describe("askTourismAgentStream", () => {
   it("surfaces provider errors without exposing response details", async () => {
     const fetcher = vi
       .fn()
-      .mockResolvedValue({ ok: false, status: 503, text: async () => "secret" });
+      .mockResolvedValue({
+        ok: false,
+        status: 503,
+        text: async () => "secret",
+      });
 
     await expect(
       askTourismAgentStream("Hola", [], vi.fn(), { apiUrl, fetcher }),

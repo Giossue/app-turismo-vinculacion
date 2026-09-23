@@ -47,10 +47,7 @@ export function TourismDateField({
   const pickerValue = clampDate(value ?? maximumDate, minimumDate, maximumDate);
   const close = () => setOpen(false);
 
-  const handleValueChange = (
-    _event: DateTimePickerChangeEvent,
-    date: Date,
-  ) => {
+  const handleValueChange = (_event: DateTimePickerChangeEvent, date: Date) => {
     // The Android dialog closes itself on selection; iOS stays open.
     if (Platform.OS !== "ios") setOpen(false);
     onChange(date);

@@ -49,14 +49,19 @@ describe("authorized request", () => {
     expect(isRejectedSessionError(new ApiError("x", { status: 503 }))).toBe(
       false,
     );
-    expect(isRejectedSessionError(new TypeError("Network request failed"))).toBe(
-      false,
-    );
+    expect(
+      isRejectedSessionError(new TypeError("Network request failed")),
+    ).toBe(false);
   });
 });
 
 describe("stored user", () => {
-  const user = { id: 7, name: "Ana", email: "ana@mail.com", roles: ["TURISTA"] };
+  const user = {
+    id: 7,
+    name: "Ana",
+    email: "ana@mail.com",
+    roles: ["TURISTA"],
+  };
 
   it("round-trips a valid profile", () => {
     expect(parseStoredUser(serializeStoredUser(user))).toEqual(user);

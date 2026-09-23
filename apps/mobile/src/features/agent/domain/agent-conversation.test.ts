@@ -52,7 +52,10 @@ describe("agent history", () => {
   it("keeps the latest twelve items within the content limit", () => {
     const messages = Array.from({ length: 8 }, (_, turn) => [
       user(turn * 2, `Pregunta ${turn}`),
-      assistant(turn * 2 + 1, turn === 7 ? "x".repeat(2_100) : `Respuesta ${turn}`),
+      assistant(
+        turn * 2 + 1,
+        turn === 7 ? "x".repeat(2_100) : `Respuesta ${turn}`,
+      ),
     ]).flat();
 
     const history = buildAgentHistory(messages);

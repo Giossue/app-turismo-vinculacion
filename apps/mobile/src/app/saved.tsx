@@ -85,8 +85,7 @@ function SavedCenterList() {
         ) : (
           <>
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-              Abre una ficha turística y toca el marcador para conservarla
-              aquí.
+              Abre una ficha turística y toca el marcador para conservarla aquí.
             </Text>
             <TourismActionButton
               icon="map"

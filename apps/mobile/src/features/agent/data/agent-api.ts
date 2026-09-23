@@ -88,12 +88,7 @@ export async function askTourismAgentStream(
   message: string,
   history: readonly AgentHistoryItem[],
   onText: (text: string) => Promise<void> | void,
-  {
-    apiUrl = getApiUrl(),
-    fetcher,
-    location,
-    signal,
-  }: AgentRequestOptions = {},
+  { apiUrl = getApiUrl(), fetcher, location, signal }: AgentRequestOptions = {},
 ): Promise<AgentResponse> {
   const response = await sendRequest(`${apiUrl}/ai/chat/stream`, {
     errorMessage: AGENT_UNAVAILABLE_MESSAGE,

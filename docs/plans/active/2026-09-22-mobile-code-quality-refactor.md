@@ -65,4 +65,14 @@ En curso (22 de septiembre de 2026).
   cerrado solo desde `closeFocus`; sheet de centro sin remontar al rotar; brújula aislada;
   atribución dentro del mapa; botón Cerrar en las sheets del mapa; etiquetas accesibles.
   Pendiente de verificar en dispositivo (Atrás, TalkBack/VoiceOver, rotación, enfoque).
+- Ola 2 Ruta completada: `route.tsx` queda en composición (~250 líneas) sobre
+  `features/routing` (panel de vista previa, overlay de navegación, seguimiento de cámara
+  controlado, flujo de consentimiento y parámetros). `useNavigationSession` es el único
+  dueño del ciclo de vida (reducer probado; `blur` termina la navegación, un desmontaje no);
+  la tarea de fondo arranca tras guardar la sesión, su fallo no detiene el watcher, escribe
+  solo un registro pequeño por lectura y es la única que actualiza la notificación. Descargas
+  offline con paquete nuevo, borrado posterior de los antiguos, guarda en vuelo por ciudad y
+  `useMutation`; `core/location` comparte disponibilidad y coordenadas. Pendiente: paquetes
+  offline desde el estilo normalizado y verificación en dispositivo (segundo plano, Atrás,
+  descarga offline, TalkBack/VoiceOver).
 - Pendiente: ola 2 (división de pantallas) y revisión manual en dispositivo.

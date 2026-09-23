@@ -44,7 +44,9 @@ export function AgentItineraryCard({
             <View
               style={[styles.stopNumber, { backgroundColor: colors.primary }]}
             >
-              <Text style={[styles.stopNumberText, { color: colors.onPrimary }]}>
+              <Text
+                style={[styles.stopNumberText, { color: colors.onPrimary }]}
+              >
                 {stop.order}
               </Text>
             </View>

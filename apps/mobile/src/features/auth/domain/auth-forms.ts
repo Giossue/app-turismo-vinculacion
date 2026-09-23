@@ -64,7 +64,13 @@ export const registrationFormSchema = z
     path: ["passwordConfirmation"],
   })
   .transform(
-    ({ birthDate, email, gender, name, password }): TouristRegistrationInput => ({
+    ({
+      birthDate,
+      email,
+      gender,
+      name,
+      password,
+    }): TouristRegistrationInput => ({
       birthDate: toIsoDate(birthDate),
       email,
       gender,

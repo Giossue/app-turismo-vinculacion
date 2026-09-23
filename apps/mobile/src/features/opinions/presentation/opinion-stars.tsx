@@ -67,7 +67,9 @@ export function OpinionRatingInput({
             accessibilityHint={
               checked ? "Toca de nuevo para quitar la calificación." : undefined
             }
-            accessibilityLabel={value === 1 ? "1 estrella" : `${value} estrellas`}
+            accessibilityLabel={
+              value === 1 ? "1 estrella" : `${value} estrellas`
+            }
             accessibilityRole="radio"
             accessibilityState={{ checked, disabled }}
             borderlessRipple
@@ -92,7 +94,9 @@ export function OpinionRatingInput({
 
 function describeRating(rating: number | null): string {
   if (rating === null) return "Sin calificación";
-  const value = Number.isInteger(rating) ? String(rating) : formatRating(rating);
+  const value = Number.isInteger(rating)
+    ? String(rating)
+    : formatRating(rating);
   return `Calificación: ${value} de 5`;
 }
 

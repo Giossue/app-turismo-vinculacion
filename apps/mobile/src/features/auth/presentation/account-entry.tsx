@@ -83,8 +83,7 @@ export function AccountEntry({
           accessibilityRole="header"
           style={[styles.title, { color: colors.text }]}
         >
-          Descubre{" "}
-          <Text style={{ color: colors.primaryStrong }}>Ecuador</Text>
+          Descubre <Text style={{ color: colors.primaryStrong }}>Ecuador</Text>
         </Text>
 
         <View style={styles.benefits}>

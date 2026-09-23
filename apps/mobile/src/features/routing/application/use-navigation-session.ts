@@ -277,13 +277,17 @@ export function useNavigationSession({
       }
     };
 
-    const checkBackgroundArrival = async () => {
+    const resumeBackgroundTracking = async () => {
       const session = await loadNavigationSession();
-      if (disposed || session.status !== "found" || session.snapshot.active) {
+      if (disposed) return;
+      if (session.status === "found" && !session.snapshot.active) {
+        // The task reached the destination while the app was hidden.
+        arrivedRef.current = true;
+        dispatch({ type: "arrived" });
         return;
       }
-      arrivedRef.current = true;
-      dispatch({ type: "arrived" });
+      // Android may have stopped the service while the app was hidden.
+      if (!arrivedRef.current) await startBackgroundTracking();
     };
 
     const appStateSubscription = AppState.addEventListener(
@@ -293,9 +297,7 @@ export function useNavigationSession({
         // El punto que existía antes de salir puede haber quedado atrás.
         // Ocúltalo hasta que el watcher entregue una muestra fresca.
         dispatch({ type: "resumed" });
-        void checkBackgroundArrival();
-        // Android may have stopped the service while the app was hidden.
-        void startBackgroundTracking();
+        void resumeBackgroundTracking();
         Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.High,
         }).then(handleLocation, () => undefined);

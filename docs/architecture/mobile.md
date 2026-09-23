@@ -31,12 +31,18 @@ texto, tarjetas, acciones propuestas y fuentes. Las tarjetas de centros publicad
 ficha; las tarjetas de catastro muestran únicamente campos públicos. Una acción de ruta se
 presenta como propuesta y requiere confirmación explícita antes de navegar a `/route`. La
 app puede enviar una ubicación puntual redondeada para consultas cercanas, sin historial ni
-seguimiento en segundo plano.
+seguimiento en segundo plano. Como contexto solo se reenvían los intercambios completados
+(ni el saludo, ni los errores, ni respuestas cortadas), con los límites del contrato de la
+API; cerrar el chat cancela la respuesta en curso.
 
-La preferencia de apariencia se administra desde `Menú > Configuración`. El proveedor de
-tema mantiene una única fuente de verdad (`system`, `light` o `dark`), la persiste en
-AsyncStorage y expone el esquema efectivo a los tokens, Paper, MapLibre y la barra de estado.
-El cambio no crea una ruta adicional ni altera el historial de navegación.
+La preferencia de apariencia se administra desde `Menú > Configuración`, con tres opciones
+(`Sistema`, `Claro` y `Oscuro`) presentadas como un grupo de radio donde toda la fila es el
+control. El proveedor de tema mantiene una única fuente de verdad (`system`, `light` o
+`dark`), la persiste en AsyncStorage dentro de `setPreference` (una elección hecha mientras
+se lee el valor guardado prevalece sobre él) y expone el esquema efectivo a los tokens,
+Paper, MapLibre y la barra de estado. `TurismoSchemeScope` fija el esquema de un subárbol
+—la entrada de cuenta siempre es oscura— sin cambiar la preferencia. El cambio no crea una
+ruta adicional ni altera el historial de navegación.
 
 ## Compatibilidad y referencias de plataforma
 
@@ -110,6 +116,20 @@ Antes de crear una utilidad o un componente nuevo, reutilizar estos módulos del
   `TourismBottomSheetModal` y `TourismSheetScrollView`; `useTurismoPalette` y
   `useTurismoMapPalette` viven en `theme-context.tsx`, y `turismoOpacity` y
   `turismoFixedColors` en `tokens.ts`.
+- Controles y formularios (`src/core/ui`): `TourismPressable` (ripple de Android y opacidad
+  al presionar en iOS, atenuado si está deshabilitado) reemplaza a los `Pressable` crudos;
+  `TourismTextField` (etiqueta, `helper`, `error` anunciado, `secure` con mostrar/ocultar,
+  `multiline` y `ref` para encadenar el foco), `TourismRadioGroup` (`radiogroup` de opciones
+  `radio` con estado `checked`, en fila o en columna), `TourismDateField` (calendario nativo
+  con límites; en iOS un modal con cierre de 44dp) y `TourismSnackbar` (aviso breve de Paper
+  en un portal). `TourismActionButton` admite `loading`, `size="lg"`, `trailingIcon`,
+  `accessibilityLabel` y `mode="ghost"` para enlaces; el menú lateral recibe sus entradas como
+  `items` (`TourismMenuItem`).
+- Cuenta (`features/auth`): `loginFormSchema`/`registrationFormSchema` (zod, con los límites
+  de los DTO de la API y el recorte de espacios en un único lugar) y `useAuthForm`; las
+  pantallas protegidas usan `AuthGate` (o `useRequireAuth`), que muestra la carga mientras
+  se restaura la sesión y redirige de forma declarativa a `buildLoginHref(returnTo)`.
+  `features/favorites/presentation/SavedCenterErrorSnackbar` informa de un guardado fallido.
 - Mapas: `features/map/data/basemap-style.ts` (estilo autoalojado, paleta y respaldo),
   `use-basemap-style`, `use-map-lifecycle`, `MapLoadingOverlay` y `UserLocationLayers`
   (`features/map/presentation`), compartidos por el mapa de Explorar y el de rutas. Los pines
@@ -131,7 +151,8 @@ Antes de crear una utilidad o un componente nuevo, reutilizar estos módulos del
 
 - TanStack Query: estado remoto, cancelación y caché explícita.
 - Zustand: sesión, dependencias de UI y estado local de feature.
-- Expo SecureStore: refresh token y material sensible mínimo.
+- Expo SecureStore: refresh token y material sensible mínimo (el perfil público de la
+  sesión —id, nombre, correo y roles— para restaurarla sin conexión).
 - SQLite/AsyncStorage: catálogos descargados y borradores solo cuando se especifique su
   política de retención. Los guardados viven en la cuenta (`favoritos_centros`), no en el
   dispositivo.
@@ -143,15 +164,27 @@ autenticado o lleva a la entrada de autenticación cuando no hay sesión. Mapa, 
 públicas y la vista previa de rutas funcionan como invitado; iniciar navegación, descargar
 mapas sin conexión, guardar, abrir Guardados, el agente y futuras opiniones/itinerarios
 llevan a la autenticación. El access token vive en memoria y el
-refresh token en SecureStore. Una cuenta nueva se crea con rol `TURISTA` mediante
+refresh token en SecureStore. `request` solo adjunta el token a URL de la API configurada.
+Si la renovación falla por red o por un error 5xx, la sesión guardada se conserva: con el
+perfil guardado la app sigue autenticada sin access token y la siguiente solicitud
+autenticada vuelve a renovarla; solo una negativa de la API (400, 401 o 403) la borra.
+Cerrar sesión es de mejor esfuerzo: intenta revocar el token y, aunque falle sin conexión,
+borra la sesión local; la pantalla protegida redirige una sola vez a la entrada de cuenta.
+Tras iniciar sesión, la entrada vuelve a `returnTo` con `router.dismissTo`, que retira la
+entrada si el destino ya está debajo (sin duplicar pantallas) o la reemplaza; `/route`
+vuelve con `back()` para conservar su destino. Los errores de cada formulario viven en el
+propio formulario. Una cuenta nueva se crea con rol `TURISTA` mediante
 `/auth/mobile/register`; el género es obligatorio y usa las opciones `Masculino` o
 `Femenino`, mientras que la fecha de nacimiento se elige con el calendario nativo. Los
 guardados se sincronizan con `favoritos_centros`; un favorito no autenticado no se asigna a un `usuario_id` ficticio.
 El resumen local de guardados de versiones anteriores se importa una sola vez a la primera
 cuenta que inicia sesión en el dispositivo y después se borra, para que otra cuenta no lo
 herede; solo se conservan, para reintentar, los lugares que no se pudieron subir por falta
-de conexión. La app ya no replica la lista remota en el dispositivo ni la escribe al guardar
-o quitar un lugar.
+de conexión. La app no escribe un resumen local propio al guardar o quitar un lugar: la
+lista de la cuenta solo se conserva como consulta persistida de TanStack Query (ver
+«Caché y funcionamiento sin conexión»). Si guardar o quitar falla, el marcador vuelve a su
+estado anterior y un `TourismSnackbar` lo explica. La mutación recibe `currentlySaved`
+(el estado antes del toque; `saved` queda como alias obsoleto).
 
 ### UI declarativa y overlays
 
@@ -195,12 +228,15 @@ abren con `push` porque sí representan una pantalla que puede cerrarse.
 
 ## Caché y funcionamiento sin conexión
 
-TanStack Query persiste el catálogo público en AsyncStorage durante un máximo de 24 horas.
-La persistencia usa una lista de claves permitidas (`persistedQueryKeys` en
-`src/core/api/query-keys.ts`): centros y fichas publicados, filtros, opiniones públicas y
-ciudades offline. Los datos de la cuenta (guardados, opinión propia), las búsquedas y las
-consultas por viewport o GPS solo viven en memoria, y al cerrar sesión se eliminan de la
-caché todas las claves de `userScopedQueryKeys`. Si la API no responde, la ficha de un
+TanStack Query persiste en AsyncStorage durante un máximo de 24 horas
+(`src/core/api/query-persistence.ts`) una lista de claves permitidas (`persistedQueryKeys`
+en `src/core/api/query-keys.ts`): centros y fichas publicados, filtros, opiniones públicas
+(paginadas, 20 por página con `Cargar más`), ciudades offline y los guardados de la cuenta,
+para que `Guardados` abra sin conexión; tras 5 minutos la lista se revalida y, si falla, se
+sigue mostrando la copia. La opinión propia, las búsquedas y las consultas por viewport o GPS
+solo viven en memoria. Al cerrar sesión se eliminan de la caché todas las claves de
+`userScopedQueryKeys` y se borra de inmediato la copia persistida, que se reescribe con el
+siguiente cambio sin los datos de la cuenta. Si la API no responde, la ficha de un
 atractivo usa la copia offline solo ante errores de conexión o del servidor; un 404 se
 muestra como tal.
 El mapa en línea revalida los centros publicados al montar. Los centros confirmados en caché
@@ -213,7 +249,10 @@ sesión turística autenticada. MapLibre `OfflineManager` persiste tiles del est
 y Expo SQLite conserva el manifiesto, fichas y rutas publicadas. Si la API no está
 disponible, el descubrimiento y la ficha básica se hidratan desde ese manifiesto local.
 Solo las ciudades con un paquete institucional PUBLICADO aparecen como descargables; sus
-límites proceden de una fuente oficial y no se editan en el móvil.
+límites proceden de una fuente oficial y no se editan en el móvil. Cada descarga crea un
+paquete nuevo y, solo cuando termina, borra los anteriores de esa ciudad y guarda el
+manifiesto: una descarga fallida conserva el paquete previo. Una ciudad nunca se descarga dos
+veces a la vez y la descarga sigue aunque se salga de la pantalla.
 
 ## Ubicación
 
@@ -244,21 +283,33 @@ límites proceden de una fuente oficial y no se editan en el móvil.
   explicar el beneficio y ofrecer rechazo. La navegación visible siempre combina el watcher
   de primer plano con una tarea `expo-location` registrada en `expo-task-manager` solo cuando
   se concede el segundo plano; si se rechaza, la ruta sigue funcionando mientras la app está
-  visible. El servicio foreground se registra desde la acción de inicio y Android muestra una
-  notificación persistente cuando el seguimiento persistente está habilitado. En Android 13 o
-  posterior se solicita también `POST_NOTIFICATIONS` para hacer visible esa notificación.
+  visible. El flujo de inicio solo pide consentimiento y permisos; el servicio foreground se
+  registra al activar la navegación, después de guardar la sesión, y Android muestra una
+  notificación persistente cuando el seguimiento persistente está habilitado. Si la tarea no
+  puede iniciarse, el watcher de primer plano continúa y la pantalla avisa que la ruta sigue
+  solo con la app abierta. En Android 13 o posterior se solicita también
+  `POST_NOTIFICATIONS` para hacer visible esa notificación.
 - Persistir únicamente ruta, destino, modo y última posición para que el servicio activo
   conserve continuidad; la posición persistida no se presenta como actual ni se usa para
   recalcular hasta recibir una lectura foreground o background fresca y con precisión de
-  100 m o menos. No conservar trazas precisas por defecto.
-- Detener seguimiento, eliminar la sesión local y limpiar la tarea y su notificación al
-  cancelar/cerrar la ruta con la `X` o al salir de la pantalla antes de iniciar la navegación
-  con Atrás. La tarea comprueba también la llegada mientras la app está en segundo plano y
-  detiene el seguimiento persistente al alcanzar el destino. Minimizar la aplicación o cambiar
-  temporalmente de aplicación no cancela la sesión; desmontar la pantalla por ese cambio de
-  estado no debe limpiarla. La
-  misma notificación foreground muestra la próxima maniobra y distancia redondeada y se
-  actualiza solo cuando cambia ese contenido. Android 13 o posterior puede permitir que el
+  100 m o menos. No conservar trazas precisas por defecto. Ruta, destino y modo se escriben
+  al iniciar y al recalcular; la última posición y la última notificación publicada viven en
+  un registro pequeño aparte que la tarea reescribe en cada lectura, sin reescribir la ruta.
+  Las escrituras nunca rechazan: un fallo se informa como resultado y no bloquea la cola.
+- `useNavigationSession` es el único dueño del ciclo de vida de la navegación; la pantalla de
+  ruta solo cambia `navigationActive`. Al cerrar con la `X` o al perder el foco —Expo Router
+  emite `blur` cuando otra pantalla cubre la ruta— pasa a `false` y la sesión detiene el
+  watcher, la tarea y su notificación, elimina la sesión local, silencia la voz y reinicia su
+  estado. La pantalla escucha `blur` en vez de la limpieza de `useFocusEffect`, que también
+  corre al desmontar: un desmontaje sin `blur` (Android puede destruir la actividad mientras
+  la app está oculta) no cambia nada, porque minimizar o cambiar temporalmente de aplicación
+  no cancela la sesión. Antes de iniciar no hay seguimiento que limpiar. Si la app vuelve a
+  primer plano sin una pantalla de ruta montada que posea la navegación, la tarea la termina
+  para no dejar una notificación imposible de cerrar. La tarea comprueba también la llegada
+  mientras la app está en segundo plano y detiene el seguimiento persistente al alcanzar el
+  destino; un error transitorio al leer la sesión no la detiene. La
+  misma notificación foreground muestra la próxima maniobra y distancia redondeada; solo la
+  tarea la actualiza y únicamente cuando cambia ese contenido. Android 13 o posterior puede permitir que el
   usuario la descarte, así que el servicio vuelve a publicar el mismo registro en la siguiente
   actualización de ubicación mientras la navegación siga activa; el Task Manager puede detener
   toda la aplicación. El sistema también puede limitar el segundo plano por batería, permisos

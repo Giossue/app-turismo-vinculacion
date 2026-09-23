@@ -29,7 +29,11 @@ export function AgentResultCard({
     card.type === "center"
       ? []
       : [
-          [card.category, card.localityName, formatOptionalDistance(card.distanceMeters)]
+          [
+            card.category,
+            card.localityName,
+            formatOptionalDistance(card.distanceMeters),
+          ]
             .filter(Boolean)
             .join(" · "),
           card.type === "establishment" ? card.address : null,
@@ -43,7 +47,10 @@ export function AgentResultCard({
         {card.summary}
       </Text>
       {details.map((detail) => (
-        <Text key={detail} style={[styles.caption, { color: colors.textMuted }]}>
+        <Text
+          key={detail}
+          style={[styles.caption, { color: colors.textMuted }]}
+        >
           {detail}
         </Text>
       ))}
