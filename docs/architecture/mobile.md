@@ -215,6 +215,12 @@ Handler para mantener panel, scrim y gesto en un único progreso nativo. React N
 conserva las interacciones y animaciones propias de sus controles. La animación no añade
 entradas al historial ni sustituye el estado visible declarado por la pantalla.
 
+En Explorar las fichas comparten una única sheet siempre montada y cerrada
+(`TourismBottomSheetHost`, `index: -1`): cada `TourismBottomSheet` le entrega su contenido y
+el host la abre con `snapToIndex`, porque montar una `BottomSheet` nueva en cada apertura
+obliga a calcular su layout antes de animarla (`animateOnMount`). Abren y cierran con una
+animación de 250 ms (`useBottomSheetTimingConfigs`).
+
 Las bottom sheets interactivas del mapa usan `@gorhom/bottom-sheet` 5 sobre Gesture Handler
 y Reanimated. Se eligió porque su gesto de contenido empieza desde el primer contacto y
 coordina el arrastre con sus scrollables; `@expo/ui/community/bottom-sheet` se descartó para
@@ -267,8 +273,9 @@ veces a la vez y la descarga sigue aunque se salga de la pantalla.
 
 ## Ubicación
 
-- Explorar solicita `while in use` al abrirse; el mapa y el resto del catálogo siguen
-  disponibles si la persona lo deniega.
+- Explorar no solicita la ubicación al abrirse: `while in use` se pide solo cuando la
+  persona toca "mi ubicación", activa "Servicios cercanos" o inicia una ruta. El mapa y el
+  resto del catálogo siguen disponibles si la deniega.
 - El control “mi ubicación”, la cercanía y el inicio de ruta reutilizan la misma sesión.
   La sesión comprueba que el GPS esté activo, obtiene una lectura fresca con precisión de
   100 m o menos y centra la cámara en un nivel de zoom estable. No usa la última posición

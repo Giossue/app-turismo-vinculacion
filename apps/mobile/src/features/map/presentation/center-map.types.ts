@@ -26,8 +26,5 @@ export type CenterMapProps = Readonly<{
   onViewportChange: (bounds: GeoBounds) => void;
   /** Rotates the camera back to north whenever this key changes. */
   resetNorthKey?: number;
-  selectedCenterCode?: string | null;
-  /** `getEstablishmentKey` of the selected establishment. */
-  selectedEstablishmentKey?: string | null;
   userLocation?: GeoCoordinate | null;
 }>;

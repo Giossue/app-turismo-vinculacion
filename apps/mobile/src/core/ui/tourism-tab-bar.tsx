@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -48,9 +49,26 @@ const barGap = turismoSpacing.sm;
 const TourismTabBarInsetContext = createContext(0);
 
 export function useTourismTabBarInset(): number {
-  const inset = useContext(TourismTabBarInsetContext);
-  const { hidden } = useContext(TourismTabGlassContext);
-  return hidden ? 0 : inset;
+  return useContext(TourismTabBarInsetContext);
+}
+
+// Visibilidad de la barra fuera del árbol de React: solo la barra se suscribe,
+// así ocultarla al abrir una sheet no vuelve a renderizar el navegador, el
+// mapa ni los controles mientras la sheet se anima.
+let tabBarHidden = false;
+const tabBarListeners = new Set<() => void>();
+
+function setTabBarHidden(hidden: boolean) {
+  if (tabBarHidden === hidden) return;
+  tabBarHidden = hidden;
+  for (const listener of tabBarListeners) listener();
+}
+
+function subscribeTabBarHidden(listener: () => void) {
+  tabBarListeners.add(listener);
+  return () => {
+    tabBarListeners.delete(listener);
+  };
 }
 
 /**
@@ -58,27 +76,19 @@ export function useTourismTabBarInset(): number {
  * abierta sobre el mapa: la ficha ocupa la parte inferior sin quedar debajo.
  */
 export function useHideTourismTabBar(hidden: boolean): void {
-  const { setHidden } = useContext(TourismTabGlassContext);
   useEffect(() => {
-    setHidden(hidden);
-    return () => setHidden(false);
-  }, [hidden, setHidden]);
+    setTabBarHidden(hidden);
+    return () => setTabBarHidden(false);
+  }, [hidden]);
 }
 
 type GlassTarget = RefObject<View | null>;
 
 /** Vista de la pestaña visible, que desenfoca la barra en Android. */
 const TourismTabGlassContext = createContext<{
-  hidden: boolean;
-  setHidden: (hidden: boolean) => void;
   target: GlassTarget | null;
   setTarget: (target: GlassTarget) => void;
-}>({
-  hidden: false,
-  setHidden: () => undefined,
-  target: null,
-  setTarget: () => undefined,
-});
+}>({ target: null, setTarget: () => undefined });
 
 export function TourismTabBarInsetProvider({
   children,
@@ -86,12 +96,9 @@ export function TourismTabBarInsetProvider({
   const insets = useSafeAreaInsets();
   const inset = insets.bottom + barGap * 2 + itemHeight;
   const [target, setTarget] = useState<GlassTarget | null>(null);
-  const [hidden, setHidden] = useState(false);
   return (
     <TourismTabBarInsetContext.Provider value={inset}>
-      <TourismTabGlassContext.Provider
-        value={{ hidden, setHidden, target, setTarget }}
-      >
+      <TourismTabGlassContext.Provider value={{ target, setTarget }}>
         {children}
       </TourismTabGlassContext.Provider>
     </TourismTabBarInsetContext.Provider>
@@ -122,7 +129,11 @@ export function TourismTabBar({
 }: Readonly<{ items: readonly TourismTabBarItem[] }>) {
   const colors = useTurismoPalette();
   const insets = useSafeAreaInsets();
-  const { hidden, target } = useContext(TourismTabGlassContext);
+  const { target } = useContext(TourismTabGlassContext);
+  const hidden = useSyncExternalStore(
+    subscribeTabBarHidden,
+    () => tabBarHidden,
+  );
   if (hidden) return null;
 
   return (

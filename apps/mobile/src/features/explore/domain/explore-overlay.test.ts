@@ -1,14 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { PublicCenter } from "@/features/centers/domain/public-center";
-import type { PublicMapEstablishment } from "@/features/establishments/domain/establishment";
-import {
-  getExploreBackAction,
-  getSelectedCenterCode,
-  getSelectedEstablishmentKey,
-  noExploreOverlay,
-  type ExploreOverlay,
-} from "./explore-overlay";
+import { getExploreBackAction, noExploreOverlay } from "./explore-overlay";
 
 const center: PublicCenter = {
   code: "C-1",
@@ -28,43 +21,6 @@ const center: PublicCenter = {
   parishCode: "020101",
   hierarchyCode: null,
 };
-
-const establishment: PublicMapEstablishment = {
-  name: "Hostal",
-  category: "Hotel",
-  latitude: -1.6,
-  longitude: -79.01,
-  approximate: false,
-  icon: "hotel",
-  color: "#7c3aed",
-};
-
-describe("selected map features", () => {
-  it("paints the open sheet and the feature being focused", () => {
-    const focusing: ExploreOverlay = {
-      kind: "focusing",
-      selection: { kind: "center", center },
-    };
-    expect(getSelectedCenterCode({ kind: "center", center })).toBe("C-1");
-    expect(getSelectedCenterCode(focusing)).toBe("C-1");
-    expect(getSelectedEstablishmentKey(focusing)).toBeNull();
-    expect(
-      getSelectedEstablishmentKey({ kind: "establishment", establishment }),
-    ).toBe("Hostal:-1.6:-79.01");
-  });
-
-  it("paints nothing for choices, the agent or no overlay", () => {
-    const overlays: ExploreOverlay[] = [
-      noExploreOverlay,
-      { kind: "agent" },
-      { kind: "choices", selections: [{ kind: "center", center }] },
-    ];
-    for (const overlay of overlays) {
-      expect(getSelectedCenterCode(overlay)).toBeNull();
-      expect(getSelectedEstablishmentKey(overlay)).toBeNull();
-    }
-  });
-});
 
 describe("getExploreBackAction", () => {
   const idle = {

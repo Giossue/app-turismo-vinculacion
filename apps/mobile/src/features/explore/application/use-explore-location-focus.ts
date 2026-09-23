@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { useUserLocation } from "@/core/location/use-user-location";
 
 /**
- * GPS session for Explore: asks for the location when the screen opens,
- * recenters the map each time a fresh position becomes ready, and tracks
- * whether the camera still rests on it (to show the locate button).
+ * GPS session for Explore. The location is only requested when the tourist
+ * taps "my location" (never when the screen opens); each fresh position
+ * recenters the map, and the hook tracks whether the camera still rests on it
+ * (to show the locate button).
  */
 export function useExploreLocationFocus() {
   const { coordinate, requestLocation, status } = useUserLocation();
@@ -13,7 +14,7 @@ export function useExploreLocationFocus() {
     null,
   );
   const hasFreshLocation = status === "ready" && coordinate !== null;
-  // Every request (initial, button, return to foreground) passes through
+  // Every request (button or return to foreground) passes through
   // `requesting`, so a position turning ready is the only trigger that
   // moves the camera to the user; the button does not recenter again.
   const [locationFocus, setLocationFocus] = useState({ fresh: false, key: 0 });
@@ -24,10 +25,6 @@ export function useExploreLocationFocus() {
     });
   }
   const focusLocationKey = locationFocus.key;
-
-  useEffect(() => {
-    if (status === "idle") void requestLocation({ forceRefresh: true });
-  }, [requestLocation, status]);
 
   const locationFocused =
     status === "ready" && confirmedFocusKey === focusLocationKey;

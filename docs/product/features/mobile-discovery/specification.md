@@ -9,7 +9,7 @@ ubicación foreground para mostrar su posición; si la deniega, puede seguir exp
 ## Actores y permisos
 
 - Visitante: consulta centros públicos.
-- La ubicación se solicita al abrir Explorar o al activar “Servicios cercanos” o una ruta;
+- La ubicación se solicita solo al tocar “mi ubicación”, al activar “Servicios cercanos” o una ruta;
   explorar atractivos continúa disponible aunque se deniegue el permiso. La sesión
   foreground se conserva entre pantallas mientras la app está abierta.
 

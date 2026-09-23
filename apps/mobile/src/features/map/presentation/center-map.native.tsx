@@ -9,8 +9,14 @@ import {
   type PressEventWithFeatures,
 } from "@maplibre/maplibre-react-native";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { type NativeSyntheticEvent, StyleSheet, View } from "react-native";
+import {
+  type NativeSyntheticEvent,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
+import { tourismSheetOpenRatio } from "@/core/ui/tourism-bottom-sheet";
 import { useTurismoMapPalette, useTurismoTheme } from "@/core/ui/theme-context";
 import { getEstablishmentKey } from "@/features/establishments/domain/establishment";
 import {
@@ -37,10 +43,6 @@ type EstablishmentFeatureCollection = GeoJSON.FeatureCollection<
   GeoJSON.Point,
   Readonly<{ color: string; featureKey: string; iconImage: string }>
 >;
-type PendingMapFeatureSelection = Readonly<{
-  selections: readonly MapFeatureSelection[];
-  target: [number, number];
-}>;
 type PendingLocationFocus = Readonly<{
   target: [number, number];
 }>;
@@ -58,37 +60,30 @@ const initialViewState: CameraState = {
 const maxZoom = 19;
 /** Zoom used to focus a selected pin, a search result or the user. */
 const focusZoom = 15;
-const focusCameraDurationMs = 500;
+const focusCameraDurationMs = 300;
 const resetNorthDurationMs = 240;
 /** Below this zoom every pin collapses to a small colored dot. */
 const pinMinZoom = 13;
 const pinIconSize = 0.42;
-const selectedPinIconSize = 0.52;
 const dotRadius = 3;
 const establishmentDotRadius = 3.5;
-const selectedDotRadius = 5;
 const featureHitbox = { bottom: 22, left: 22, right: 22, top: 22 };
 const cameraTargetTolerance = 0.001;
 const cameraZoomTolerance = 0.15;
+/** MapLibre conserva el padding entre movimientos: los demás enfoques lo anulan. */
+const noPadding = { bottom: 0, left: 0, right: 0, top: 0 };
 
 const layerIds = {
   centerDots: "tourism-center-dots",
   centerIcons: "tourism-center-icons",
-  centerSelectedDot: "tourism-center-selected-dot",
-  centerSelectedIcon: "tourism-center-selected-icon",
   establishmentDots: "tourism-establishment-dots",
   establishmentPins: "tourism-establishment-pins",
-  establishmentSelectedDot: "tourism-establishment-selected-dot",
-  establishmentSelectedPin: "tourism-establishment-selected-pin",
 } as const;
-const pressableLayerIds = Object.values(layerIds);
 
 const mapImages = {
   ...establishmentPinImages,
   "tourism-center-monument-dark": require("../../../../assets/images/tourism-center-monument-dark.png"),
   "tourism-center-monument-light": require("../../../../assets/images/tourism-center-monument-light.png"),
-  "tourism-center-monument-selected-dark": require("../../../../assets/images/tourism-center-monument-selected-dark.png"),
-  "tourism-center-monument-selected-light": require("../../../../assets/images/tourism-center-monument-selected-light.png"),
 };
 
 const pinLayout = {
@@ -139,17 +134,12 @@ export function CenterMap({
   onLocationFocusChange,
   onViewportChange,
   resetNorthKey,
-  selectedCenterCode = null,
-  selectedEstablishmentKey = null,
   userLocation = null,
 }: CenterMapProps) {
   const cameraRef = useRef<CameraRef>(null);
   const mapRef = useRef<MapRef>(null);
-  const pendingMapFeatureSelectionRef =
-    useRef<PendingMapFeatureSelection | null>(null);
   const pendingLocationFocusRef = useRef<PendingLocationFocus | null>(null);
   const focusedLocationKeyRef = useRef<number | undefined>(undefined);
-  const lastCameraRef = useRef<CameraState | null>(null);
   const selectionCallbacksRef = useRef<SelectionCallbacks>({
     onCenterPress,
     onEstablishmentPress,
@@ -230,61 +220,42 @@ export function CenterMap({
     [establishments],
   );
 
-  // La selección se confirma cuando MapLibre termina el enfoque, así el zoom
-  // siempre sucede antes de abrir la ficha o las opciones cercanas. MapLibre
-  // omite un easeTo hacia la cámara actual y no emitiría onRegionDidChange:
-  // si la cámara ya descansa sobre el destino, la selección se abre enseguida.
+  // La ficha se abre enseguida, mientras la cámara se mueve: no se espera a
+  // que MapLibre termine el enfoque. El pin queda centrado en la parte visible
+  // del mapa, encima de la sheet abierta (padding inferior).
+  const { height: windowHeight } = useWindowDimensions();
   const focusSelections = useCallback(
     (selections: readonly MapFeatureSelection[], target: [number, number]) => {
-      const camera = lastCameraRef.current;
-      if (camera && isCameraAtTarget(camera, target)) {
-        pendingMapFeatureSelectionRef.current = null;
-        deliverSelections(selections, selectionCallbacksRef.current);
-        return;
-      }
-      pendingMapFeatureSelectionRef.current = { selections, target };
+      deliverSelections(selections, selectionCallbacksRef.current);
       cameraRef.current?.easeTo({
         center: target,
         duration: focusCameraDurationMs,
         easing: "ease",
+        padding: {
+          bottom: windowHeight * tourismSheetOpenRatio,
+          left: 0,
+          right: 0,
+          top: 0,
+        },
         zoom: focusZoom,
       });
     },
-    [],
+    [windowHeight],
   );
 
   const handleFeaturePress = useCallback(
-    async (event: NativeSyntheticEvent<PressEventWithFeatures>) => {
+    (event: NativeSyntheticEvent<PressEventWithFeatures>) => {
       if (!isActive()) return;
       pendingLocationFocusRef.current = null;
-      pendingMapFeatureSelectionRef.current = null;
       onLocationFocusChange?.(false);
 
-      const nativeEvent = event?.nativeEvent;
-      if (!nativeEvent?.point) return;
-      const [pointX, pointY] = nativeEvent.point;
-      const sourceFeatures = Array.isArray(nativeEvent.features)
-        ? nativeEvent.features
+      // El evento de la fuente ya trae el pin tocado: no hace falta una
+      // consulta asíncrona al mapa (queryRenderedFeatures) antes de enfocar.
+      // Los lugares relacionados se calculan luego por distancia geográfica,
+      // no por el tamaño del hitbox ni por el nivel de zoom actual.
+      const features = Array.isArray(event?.nativeEvent?.features)
+        ? event.nativeEvent.features
         : [];
-      let renderedFeatures: GeoJSON.Feature[] = [];
-      try {
-        renderedFeatures =
-          (await mapRef.current?.queryRenderedFeatures([pointX, pointY], {
-            layers: pressableLayerIds,
-          })) ?? [];
-      } catch {
-        // Mientras el estilo termina de cargar, el evento de la fuente sigue
-        // permitiendo abrir el marcador que recibió el toque.
-      }
-      if (!isActive()) return;
-
-      // La consulta renderizada sirve solo para reconocer el pin ancla. Los
-      // lugares relacionados se calculan luego por distancia geográfica, no
-      // por el tamaño del hitbox ni por el nivel de zoom actual.
-      const features =
-        renderedFeatures.length > 0
-          ? [...sourceFeatures.slice(0, 1), ...renderedFeatures]
-          : sourceFeatures.slice(0, 1);
       const anchor = features.reduce<MapFeatureSelection | null>(
         (selection, feature) => {
           if (selection) return selection;
@@ -325,14 +296,6 @@ export function CenterMap({
   useEffect(() => {
     if (!focusSelection || !nativeReady) return;
     focusSelections([focusSelection], getMapFeatureCoordinate(focusSelection));
-
-    return () => {
-      if (
-        pendingMapFeatureSelectionRef.current?.selections[0] === focusSelection
-      ) {
-        pendingMapFeatureSelectionRef.current = null;
-      }
-    };
   }, [focusSelection, focusSelections, nativeReady]);
 
   useEffect(() => {
@@ -347,6 +310,7 @@ export function CenterMap({
     cameraRef.current?.easeTo({
       center: [userLocation.longitude, userLocation.latitude],
       duration: focusCameraDurationMs,
+      padding: noPadding,
       zoom: focusZoom,
     });
   }, [focusLocationKey, nativeReady, userLocation]);
@@ -358,6 +322,7 @@ export function CenterMap({
     cameraRef.current?.easeTo({
       center: [focusCoordinate.longitude, focusCoordinate.latitude],
       duration: focusCameraDurationMs,
+      padding: noPadding,
       zoom: focusZoom,
     });
   }, [focusCoordinate, focusCoordinateKey, nativeReady]);
@@ -383,9 +348,6 @@ export function CenterMap({
     };
   }, [isActive, nativeReady, resetNorthKey]);
 
-  const selectedCode = selectedCenterCode ?? "";
-  const selectedFeatureKey = selectedEstablishmentKey ?? "";
-
   return (
     <View style={styles.container}>
       <MapLibreMap
@@ -405,8 +367,6 @@ export function CenterMap({
           const { bounds, center, userInteraction, zoom } = event.nativeEvent;
           onBearingChange?.(event.nativeEvent.bearing);
           const camera: CameraState = { center, zoom };
-          lastCameraRef.current = camera;
-          const pendingSelection = pendingMapFeatureSelectionRef.current;
           const pendingLocationFocus = pendingLocationFocusRef.current;
 
           if (!isActive()) return;
@@ -423,24 +383,9 @@ export function CenterMap({
             onLocationFocusChange?.(true);
           }
 
-          if (
-            pendingSelection &&
-            !userInteraction &&
-            isCameraAtTarget(camera, pendingSelection.target)
-          ) {
-            pendingMapFeatureSelectionRef.current = null;
-            deliverSelections(pendingSelection.selections, {
-              onCenterPress,
-              onEstablishmentPress,
-              onOverlappingFeaturePress,
-            });
-          }
-
           if (userInteraction) {
-            // Si el turista retoma el gesto durante el enfoque, cancela la
-            // ficha y el enfoque GPS pendientes: la selección ya no representa
-            // el centro visible y la cámara tampoco llegó a la ubicación.
-            pendingMapFeatureSelectionRef.current = null;
+            // Si el turista retoma el gesto durante el enfoque GPS, lo cancela:
+            // la cámara ya no llegará a su ubicación.
             pendingLocationFocusRef.current = null;
             onLocationFocusChange?.(false);
           }
@@ -462,10 +407,9 @@ export function CenterMap({
           data={centerFeatures}
           hitbox={featureHitbox}
           id="tourism-centers-source"
-          onPress={(event) => void handleFeaturePress(event)}
+          onPress={handleFeaturePress}
         >
           <Layer
-            filter={["!=", ["get", "code"], selectedCode]}
             id={layerIds.centerDots}
             maxzoom={pinMinZoom}
             paint={{
@@ -475,17 +419,6 @@ export function CenterMap({
             type="circle"
           />
           <Layer
-            filter={["==", ["get", "code"], selectedCode]}
-            id={layerIds.centerSelectedDot}
-            maxzoom={pinMinZoom}
-            paint={{
-              "circle-color": colors.primaryStrong,
-              "circle-radius": selectedDotRadius,
-            }}
-            type="circle"
-          />
-          <Layer
-            filter={["!=", ["get", "code"], selectedCode]}
             id={layerIds.centerIcons}
             layout={{
               ...pinLayout,
@@ -498,29 +431,14 @@ export function CenterMap({
             minzoom={pinMinZoom}
             type="symbol"
           />
-          <Layer
-            filter={["==", ["get", "code"], selectedCode]}
-            id={layerIds.centerSelectedIcon}
-            layout={{
-              ...pinLayout,
-              "icon-image":
-                scheme === "dark"
-                  ? "tourism-center-monument-selected-dark"
-                  : "tourism-center-monument-selected-light",
-              "icon-size": selectedPinIconSize,
-            }}
-            minzoom={pinMinZoom}
-            type="symbol"
-          />
         </GeoJSONSource>
         <GeoJSONSource
           data={establishmentFeatures}
           hitbox={featureHitbox}
           id="tourism-establishments-source"
-          onPress={(event) => void handleFeaturePress(event)}
+          onPress={handleFeaturePress}
         >
           <Layer
-            filter={["!=", ["get", "featureKey"], selectedFeatureKey]}
             id={layerIds.establishmentPins}
             layout={{
               ...pinLayout,
@@ -531,18 +449,6 @@ export function CenterMap({
             type="symbol"
           />
           <Layer
-            filter={["==", ["get", "featureKey"], selectedFeatureKey]}
-            id={layerIds.establishmentSelectedPin}
-            layout={{
-              ...pinLayout,
-              "icon-image": ["get", "iconImage"],
-              "icon-size": selectedPinIconSize,
-            }}
-            minzoom={pinMinZoom}
-            type="symbol"
-          />
-          <Layer
-            filter={["!=", ["get", "featureKey"], selectedFeatureKey]}
             id={layerIds.establishmentDots}
             maxzoom={pinMinZoom}
             paint={{
@@ -551,18 +457,6 @@ export function CenterMap({
               "circle-radius": establishmentDotRadius,
               "circle-stroke-color": colors.surface,
               "circle-stroke-width": 1,
-            }}
-            type="circle"
-          />
-          <Layer
-            filter={["==", ["get", "featureKey"], selectedFeatureKey]}
-            id={layerIds.establishmentSelectedDot}
-            maxzoom={pinMinZoom}
-            paint={{
-              "circle-color": ["get", "color"],
-              "circle-radius": selectedDotRadius,
-              "circle-stroke-color": colors.surface,
-              "circle-stroke-width": 2,
             }}
             type="circle"
           />

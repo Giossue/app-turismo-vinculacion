@@ -1,8 +1,5 @@
 import type { PublicCenter } from "@/features/centers/domain/public-center";
-import {
-  getEstablishmentKey,
-  type PublicMapEstablishment,
-} from "@/features/establishments/domain/establishment";
+import type { PublicMapEstablishment } from "@/features/establishments/domain/establishment";
 import type { MapFeatureSelection } from "@/features/map/domain/map-feature-selection";
 
 /**
@@ -22,39 +19,6 @@ export type ExploreOverlay =
   | Readonly<{ kind: "agent" }>;
 
 export const noExploreOverlay: ExploreOverlay = { kind: "none" };
-
-/**
- * Pins painted as selected: the open sheet's feature, or the feature the
- * camera is focusing before its sheet opens.
- */
-function getSelectedMapFeature(
-  overlay: ExploreOverlay,
-): MapFeatureSelection | null {
-  switch (overlay.kind) {
-    case "center":
-      return { kind: "center", center: overlay.center };
-    case "establishment":
-      return { kind: "establishment", establishment: overlay.establishment };
-    case "focusing":
-      return overlay.selection;
-    default:
-      return null;
-  }
-}
-
-export function getSelectedCenterCode(overlay: ExploreOverlay): string | null {
-  const selection = getSelectedMapFeature(overlay);
-  return selection?.kind === "center" ? selection.center.code : null;
-}
-
-export function getSelectedEstablishmentKey(
-  overlay: ExploreOverlay,
-): string | null {
-  const selection = getSelectedMapFeature(overlay);
-  return selection?.kind === "establishment"
-    ? getEstablishmentKey(selection.establishment)
-    : null;
-}
 
 /** What the Android Back button closes first on the Explore screen. */
 export type ExploreBackAction =

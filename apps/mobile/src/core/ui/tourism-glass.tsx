@@ -81,11 +81,19 @@ export function TourismGlassScope({
   );
 }
 
-/** Grosor del material: `thin` para controles, `regular` para paneles con texto. */
-type GlassMaterial = "thin" | "regular";
+/**
+ * Grosor del material: `thin` para barras, `regular` para paneles con texto y
+ * `tint` para controles pequeños y numerosos (chips, botones redondos): solo
+ * translúcido, sin desenfoque. En Android cada desenfoque vuelve a capturar el
+ * mapa en cada cuadro; con decenas de chips la cámara y las sheets se trababan.
+ */
+type GlassMaterial = "thin" | "regular" | "tint";
 
 // Sobre el mapa claro un material fino casi no se distingue: el tema claro usa
 // un grosor más que el oscuro.
+/** Opacidad (hex) de la superficie del material `tint`. */
+const tintAlpha = "CC";
+
 const materialTints = {
   thin: {
     dark: "systemUltraThinMaterialDark",
@@ -105,6 +113,17 @@ export function TourismGlassFill({
   const { scheme } = useTurismoTheme();
   const colors = useTurismoPalette();
   const target = useContext(TourismGlassTargetContext);
+  if (material === "tint") {
+    return (
+      <View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: `${colors.surface}${tintAlpha}` },
+        ]}
+      />
+    );
+  }
   if (Platform.OS === "android" && (!target || Platform.Version < 31)) {
     // Sin algo que desenfocar (un `Modal`, como el menú lateral, abre otra
     // ventana) o en Android 11 o inferior, el modo sin desenfoque de

@@ -33,7 +33,9 @@ botones del mapa, sheets, barra inferior, paneles de ruta y menú lateral) usan 
 `TourismGlassFill` de `src/core/ui/tourism-glass.tsx` (material del sistema de `expo-blur`).
 El fondo que se desenfoca va en `TourismGlassScope` y lo flotante como hermano, nunca dentro
 (Android lo exige). Las pantallas de fondo liso (listas, formularios) mantienen superficies
-sólidas: ahí el vidrio no aporta.
+sólidas: ahí el vidrio no aporta. Los controles pequeños y numerosos (chips, botones
+redondos) usan `material="tint"`, translúcido sin desenfoque: en Android cada desenfoque
+recaptura el mapa en cada cuadro y muchos a la vez traban la cámara y las sheets.
 
 Antes de escribir utilidades o componentes nuevos, reutiliza los módulos compartidos
 listados en `docs/architecture/mobile.md` (sección «Módulos compartidos»): geografía,
@@ -74,6 +76,6 @@ Los centros públicos estáticos deben renderizarse con `GeoJSONSource` y `Layer
 de MapLibre, dejando el clustering en el motor nativo. No crear un `Marker` o una vista
 React por cada centro: los iconos se registran con `Images` y las capas se mantienen
 estables durante zoom y paneo. Los clusters pueden tener su propia capa visual separada.
-La selección de un centro debe mantener el código seleccionado en el estado de pantalla,
-centrar la cámara con un zoom predeterminado y pintar el icono seleccionado en una capa
-separada antes de mostrar la ficha.
+La selección de un centro debe mantener el código seleccionado en el estado de pantalla y
+centrar la cámara con un zoom predeterminado antes de mostrar la ficha. Los pines no cambian
+de tamaño ni de icono al seleccionarse: no hay capa ni estilo de pin seleccionado.

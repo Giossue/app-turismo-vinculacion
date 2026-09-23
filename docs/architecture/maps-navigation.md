@@ -201,9 +201,10 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   `GET /api/v1/centers`; si la respuesta remota está vacía, no se crean pines de ejemplo ni
   se reutiliza el manifiesto offline.
 - La selección es estado de la pantalla: el toque primero centra la cámara en el atractivo
-  con el zoom de detalle predeterminado y luego presenta la ficha; una capa de símbolo
-  separada pinta el pin seleccionado con el color de énfasis.
-- Al abrir la pantalla principal, la aplicación solicita el permiso `while in use`; si la
+  con el zoom de detalle predeterminado y luego presenta la ficha. El pin seleccionado se ve
+  igual que el resto: no se agranda ni cambia de icono.
+- Al abrir la pantalla principal no se solicita la ubicación: `while in use` se pide al tocar
+  "mi ubicación", activar "Servicios cercanos" o iniciar una ruta; si la
   persona lo concede, espera una posición fresca con precisión de 100 m o menos, centra la
   cámara con zoom 15 y dibuja un punto azul en una fuente GeoJSON separada. Una única
   sesión global mantiene `Location.watchPositionAsync` con alta precisión mientras la app
