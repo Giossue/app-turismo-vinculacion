@@ -26,6 +26,7 @@ export const agentChatSchema = z
       .max(12)
       .default([]),
     location: agentLocationSchema.optional(),
+    conversationId: z.uuid().optional(),
   })
   .strict();
 
@@ -154,6 +155,7 @@ const agentRouteDestinationSchema = z
   .strict();
 
 export const agentActionSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("request_location") }).strict(),
   z
     .object({
       type: z.literal("open_center"),
@@ -183,7 +185,9 @@ export const agentResponseSchema = z
     cards: z.array(agentCardSchema).max(6),
     actions: z.array(agentActionSchema).max(4),
     itinerary: agentItinerarySchema.optional(),
-    sources: z.array(agentSourceSchema).max(8),
+    sources: z.array(agentSourceSchema).max(24),
+    conversationId: z.uuid().optional(),
+    historySaveError: z.boolean().optional(),
   })
   .strict();
 

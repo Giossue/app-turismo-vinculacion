@@ -633,6 +633,55 @@ export class EstablishmentsService {
     );
   }
 
+  /** Bounded public catalog search; it does not need or infer user location. */
+  async browsePublic(query: {
+    kind: "food" | "lodging" | "other";
+    text?: string;
+    locality?: string;
+    limit: number;
+  }) {
+    const rows = await this.dataSource.query<PublicEstablishmentRow[]>(
+      `${publicEstablishmentSelect}
+         ${establishmentJoin}
+        WHERE e.activo = TRUE
+          AND e.estado_revision = 'PUBLICADO'
+          AND l.activo = TRUE
+          AND co.activo = TRUE
+          AND p.activo = TRUE
+          AND (
+            ($1::text = 'food' AND (
+              COALESCE(classification_catalog.nombre, e.clasificacion) ILIKE 'RESTAURANTE'
+              OR COALESCE(classification_catalog.nombre, e.clasificacion) ILIKE 'CAFETERÍA'
+            ))
+            OR ($1::text = 'lodging' AND
+              COALESCE(activity_catalog.nombre, e.actividad) ILIKE 'ALOJAMIENTO')
+            OR $1::text = 'other'
+          )
+          AND (
+            $2::text IS NULL
+            OR POSITION(lower($2::text) IN lower(e.nombre_comercial)) > 0
+            OR POSITION(lower($2::text) IN lower(COALESCE(activity_catalog.nombre, e.actividad))) > 0
+            OR POSITION(lower($2::text) IN lower(COALESCE(classification_catalog.nombre, e.clasificacion, ''))) > 0
+            OR POSITION(lower($2::text) IN lower(COALESCE(category_catalog.nombre, e.categoria, ''))) > 0
+          )
+          AND (
+            $3::text IS NULL
+            OR POSITION(lower($3::text) IN lower(l.nombre)) > 0
+            OR POSITION(lower($3::text) IN lower(co.nombre)) > 0
+            OR POSITION(lower($3::text) IN lower(p.nombre)) > 0
+          )
+        ORDER BY l.nombre, e.nombre_comercial, e.id
+        LIMIT $4`,
+      [
+        query.kind,
+        query.text?.trim() || null,
+        query.locality?.trim() || null,
+        query.limit,
+      ],
+    );
+    return rows.map((row) => this.toPublicItem(row));
+  }
+
   async nearbyPublicPlaces(query: {
     latitude: number;
     longitude: number;

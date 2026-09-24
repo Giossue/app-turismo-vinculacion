@@ -41,9 +41,7 @@ describe("EstablishmentsService", () => {
     const query = vi.fn().mockResolvedValue([{ tile }]);
     const service = new EstablishmentsService({ query } as never);
 
-    await expect(service.tile({ z: 14, x: 4596, y: 8264 })).resolves.toBe(
-      tile,
-    );
+    await expect(service.tile({ z: 14, x: 4596, y: 8264 })).resolves.toBe(tile);
     const [sql, params] = query.mock.calls[0] ?? [];
     expect(sql).toContain("e.estado_revision = 'PUBLICADO'");
     expect(sql).toContain("ST_AsMVT(features, 'establishments'");
@@ -153,6 +151,29 @@ describe("EstablishmentsService", () => {
     expect(query).toHaveBeenCalledTimes(2);
     expect(query.mock.calls[1]?.[0]).toContain("e.localidad_id = $1");
     expect(query.mock.calls[1]?.[0]).toContain("e.actividad");
+  });
+
+  it("browses only published establishments without requiring GPS or exposing fiscal data", async () => {
+    const query = vi.fn().mockResolvedValue([row]);
+    const service = new EstablishmentsService({ query } as never);
+
+    const items = await service.browsePublic({
+      kind: "food",
+      locality: "Guaranda",
+      limit: 6,
+    });
+
+    expect(items).toMatchObject([
+      { nombreComercial: "Comedor de prueba", localityName: "Guaranda" },
+    ]);
+    expect(items[0]).not.toHaveProperty("ruc");
+    expect(items[0]).not.toHaveProperty("numeroRegistro");
+    const [sql, params] = query.mock.calls[0] ?? [];
+    expect(sql).toContain("e.estado_revision = 'PUBLICADO'");
+    expect(sql).toContain("e.activo = TRUE");
+    expect(sql).toContain("l.activo = TRUE");
+    expect(sql).toContain("'RESTAURANTE'");
+    expect(params).toEqual(["food", null, "Guaranda", 6]);
   });
 
   it("falls back to the nearest locality when the requested one has no matching record", async () => {

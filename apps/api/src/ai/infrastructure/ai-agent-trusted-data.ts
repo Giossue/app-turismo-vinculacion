@@ -38,12 +38,10 @@ export function sanitizeAgentResponse(
 
   const addSource = (source: AgentSource) => {
     const sourceKey = `${source.type}:${source.label}`;
-    if (seenSources.has(sourceKey)) return;
+    if (seenSources.has(sourceKey) || sources.length >= 24) return;
     seenSources.add(sourceKey);
     sources.push(source);
   };
-
-  trustedSources.forEach(addSource);
 
   for (const requestedCard of output.cards) {
     if (seenCardRefs.has(requestedCard.ref)) continue;
@@ -79,6 +77,7 @@ export function sanitizeAgentResponse(
     entities,
     addSource,
   );
+  trustedSources.forEach(addSource);
 
   return {
     actions,

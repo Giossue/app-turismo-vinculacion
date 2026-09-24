@@ -72,7 +72,8 @@ function catalogCodeBase(name: string) {
     .replace(/[^A-Z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "")
     .slice(0, 100);
-  if (!base) throw new ConflictException("El nombre no genera un código válido.");
+  if (!base)
+    throw new ConflictException("El nombre no genera un código válido.");
   return base;
 }
 
@@ -2405,15 +2406,30 @@ export class AdminCentersService {
       throw new ConflictException("Debes seleccionar el catálogo superior.");
     }
     if (!requiresParent && input.parentId !== undefined) {
-      throw new ConflictException("Este catálogo no admite un catálogo superior.");
+      throw new ConflictException(
+        "Este catálogo no admite un catálogo superior.",
+      );
     }
-    if (catalog === "ESTABLISHMENT_CLASSIFICATION" && input.scheme !== undefined) {
-      throw new ConflictException("El sistema solo aplica a categorías de catastro.");
+    if (
+      catalog === "ESTABLISHMENT_CLASSIFICATION" &&
+      input.scheme !== undefined
+    ) {
+      throw new ConflictException(
+        "El sistema solo aplica a categorías de catastro.",
+      );
     }
-    if (catalog !== "ESTABLISHMENT_CATEGORY" && input.numericValue !== undefined) {
-      throw new ConflictException("El valor numérico solo aplica a categorías de catastro.");
+    if (
+      catalog !== "ESTABLISHMENT_CATEGORY" &&
+      input.numericValue !== undefined
+    ) {
+      throw new ConflictException(
+        "El valor numérico solo aplica a categorías de catastro.",
+      );
     }
-    if (catalog !== "ESTABLISHMENT_CLASSIFICATION" && input.icon !== undefined) {
+    if (
+      catalog !== "ESTABLISHMENT_CLASSIFICATION" &&
+      input.icon !== undefined
+    ) {
       throw new ConflictException(
         "El icono solo está disponible para tipos de establecimiento.",
       );
@@ -2435,11 +2451,7 @@ export class AdminCentersService {
         throw new ConflictException("No se pudo generar un código único.");
       };
 
-      const ensureParent = async (
-        table: string,
-        id: number,
-        label: string,
-      ) => {
+      const ensureParent = async (table: string, id: number, label: string) => {
         const rows = await manager.query(
           `SELECT id FROM ${table} WHERE id = $1 AND activo = TRUE`,
           [id],
@@ -2468,7 +2480,11 @@ export class AdminCentersService {
         )) as Array<{ id: string }>;
         id = Number(rows[0]?.id);
       } else if (catalog === "ACTIVITY") {
-        await ensureParent("grupos_actividad", input.parentId!, "el grupo de actividad");
+        await ensureParent(
+          "grupos_actividad",
+          input.parentId!,
+          "el grupo de actividad",
+        );
         const duplicate = await manager.query(
           `SELECT 1 FROM actividades_turisticas
             WHERE grupo_actividad_id = $2 AND lower(nombre) = lower($1)
@@ -2476,7 +2492,9 @@ export class AdminCentersService {
           [name, input.parentId],
         );
         if (duplicate[0]) {
-          throw new ConflictException("Ya existe una actividad con ese nombre en el grupo seleccionado.");
+          throw new ConflictException(
+            "Ya existe una actividad con ese nombre en el grupo seleccionado.",
+          );
         }
         code = await nextCode("actividades_turisticas");
         const rows = (await manager.query(
@@ -2486,7 +2504,11 @@ export class AdminCentersService {
         )) as Array<{ id: string }>;
         id = Number(rows[0]?.id);
       } else if (catalog === "FACILITY") {
-        await ensureParent("categorias_facilidad", input.parentId!, "la categoría de facilidad");
+        await ensureParent(
+          "categorias_facilidad",
+          input.parentId!,
+          "la categoría de facilidad",
+        );
         const duplicate = await manager.query(
           `SELECT 1 FROM tipos_facilidad
             WHERE categoria_facilidad_id = $2 AND lower(nombre) = lower($1)
@@ -2494,7 +2516,9 @@ export class AdminCentersService {
           [name, input.parentId],
         );
         if (duplicate[0]) {
-          throw new ConflictException("Ya existe una facilidad con ese nombre en la categoría seleccionada.");
+          throw new ConflictException(
+            "Ya existe una facilidad con ese nombre en la categoría seleccionada.",
+          );
         }
         code = await nextCode("tipos_facilidad");
         const rows = (await manager.query(
@@ -2516,12 +2540,16 @@ export class AdminCentersService {
           [name, input.parentId],
         );
         if (duplicate[0]) {
-          throw new ConflictException("Ya existe un tipo de establecimiento con ese nombre en la actividad seleccionada.");
+          throw new ConflictException(
+            "Ya existe un tipo de establecimiento con ese nombre en la actividad seleccionada.",
+          );
         }
         code = await nextCode("catalogo_catastro_clasificaciones");
         visual = {
           icon: input.icon ?? DEFAULT_ESTABLISHMENT_ICON,
-          color: getEstablishmentVisualColor(input.icon ?? DEFAULT_ESTABLISHMENT_ICON),
+          color: getEstablishmentVisualColor(
+            input.icon ?? DEFAULT_ESTABLISHMENT_ICON,
+          ),
         };
         const rows = (await manager.query(
           `INSERT INTO catalogo_catastro_clasificaciones
@@ -2544,14 +2572,19 @@ export class AdminCentersService {
           [name, input.parentId],
         );
         if (duplicate[0]) {
-          throw new ConflictException("Ya existe una categoría con ese nombre en la clasificación seleccionada.");
+          throw new ConflictException(
+            "Ya existe una categoría con ese nombre en la clasificación seleccionada.",
+          );
         }
         const parentRows = (await manager.query(
           `SELECT icono AS icon, color FROM catalogo_catastro_clasificaciones WHERE id = $1`,
           [input.parentId],
         )) as Array<{ icon: string; color: string }>;
         const parent = parentRows[0];
-        if (!parent) throw new NotFoundException("No se encontró la clasificación del catastro.");
+        if (!parent)
+          throw new NotFoundException(
+            "No se encontró la clasificación del catastro.",
+          );
         const orderRows = (await manager.query(
           `SELECT COALESCE(MAX(orden), -1) + 1 AS next_order
              FROM catalogo_catastro_categorias WHERE clasificacion_id = $1`,

@@ -4,6 +4,8 @@ import { ApiError } from "@/core/api/http";
 import { useUserLocation } from "@/core/location/use-user-location";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { askTourismAgentStream } from "../data/agent-api";
+import type { SavedAgentConversationDetail } from "../data/agent-history-api";
+import { analyzeAgentPhoto } from "../data/agent-media-api";
 import type {
   AgentMessage,
   AgentResponse,
@@ -14,6 +16,7 @@ import {
   agentIntroMessage,
   buildAgentHistory,
   getRetryableAgentTurn,
+  shouldShareAgentLocation,
 } from "../domain/agent-conversation";
 
 /**
@@ -36,6 +39,7 @@ export function useAgentConversation() {
   const nextIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const answerIdRef = useRef<string | null>(null);
+  const conversationIdRef = useRef<string | null>(null);
   const sendingRef = useRef(false);
   const userIdRef = useRef(auth.user?.id);
 
@@ -75,6 +79,7 @@ export function useAgentConversation() {
     abortRef.current?.abort();
     abortRef.current = null;
     answerIdRef.current = null;
+    conversationIdRef.current = null;
     sendingRef.current = false;
     messagesRef.current = [agentIntroMessage];
     setMessages(messagesRef.current);
@@ -82,6 +87,35 @@ export function useAgentConversation() {
     setAwaitingText(false);
     setPendingRouteAction(null);
     setDraft("");
+  }, []);
+
+  const loadSavedConversation = useCallback(
+    (saved: SavedAgentConversationDetail) => {
+      abortRef.current?.abort();
+      abortRef.current = null;
+      answerIdRef.current = null;
+      sendingRef.current = false;
+      conversationIdRef.current = saved.id;
+      messagesRef.current = [
+        agentIntroMessage,
+        ...saved.messages.map((message, index): AgentMessage => ({
+          id: `history-${saved.id}-${index}`,
+          role: message.role,
+          text: message.text,
+          sources: message.sources,
+        })),
+      ];
+      setMessages(messagesRef.current);
+      setSending(false);
+      setAwaitingText(false);
+      setPendingRouteAction(null);
+      setDraft("");
+    },
+    [],
+  );
+
+  const forgetSavedConversation = useCallback((id: string) => {
+    if (conversationIdRef.current === id) conversationIdRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -134,16 +168,20 @@ export function useAgentConversation() {
     try {
       const answer = await askTourismAgentStream(message, history, showText, {
         fetcher: auth.request,
-        location: coordinate
-          ? {
-              accuracyMeters: accuracy ?? undefined,
-              latitude: coordinate.latitude,
-              longitude: coordinate.longitude,
-            }
-          : undefined,
+        conversationId: conversationIdRef.current ?? undefined,
+        location:
+          coordinate && shouldShareAgentLocation(message)
+            ? {
+                accuracyMeters: accuracy ?? undefined,
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude,
+              }
+            : undefined,
         signal: controller.signal,
       });
       if (controller.signal.aborted) return;
+      if (answer.conversationId)
+        conversationIdRef.current = answer.conversationId;
       updateMessages((current) =>
         upsertMessage(current, toCompleteMessage(answerId, answer)),
       );
@@ -175,15 +213,74 @@ export function useAgentConversation() {
     if (turn) void send(turn.question, turn.previous);
   };
 
+  const sendPhoto = async (upload: {
+    uri: string;
+    mimeType: string;
+    name: string;
+  }) => {
+    if (sendingRef.current) return;
+    sendingRef.current = true;
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const question: AgentMessage = {
+      id: createId("user"),
+      role: "user",
+      text: "Foto enviada para consultar un lugar",
+    };
+    const answerId = createId("assistant");
+    answerIdRef.current = answerId;
+    setSending(true);
+    setAwaitingText(true);
+    setPendingRouteAction(null);
+    updateMessages((current) => [...current, question]);
+    try {
+      const result = await analyzeAgentPhoto(
+        upload,
+        auth.request,
+        controller.signal,
+      );
+      if (!controller.signal.aborted) {
+        updateMessages((current) =>
+          upsertMessage(current, toCompleteMessage(answerId, result)),
+        );
+      }
+    } catch (failure) {
+      if (!controller.signal.aborted) {
+        updateMessages((current) =>
+          upsertMessage(current, {
+            id: answerId,
+            role: "assistant",
+            kind: "error",
+            text:
+              failure instanceof ApiError
+                ? failure.message
+                : agentFallbackErrorMessage,
+          }),
+        );
+      }
+    } finally {
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+        answerIdRef.current = null;
+        sendingRef.current = false;
+        setSending(false);
+        setAwaitingText(false);
+      }
+    }
+  };
+
   return {
     /** True until the first words of the answer arrive. */
     awaitingText: sending && awaitingText,
     cancel,
     draft,
+    forgetSavedConversation,
+    loadSavedConversation,
     messages,
     newConversation,
     pendingRouteAction,
     retry,
+    sendPhoto,
     send,
     sending,
     setDraft,
@@ -209,6 +306,8 @@ function toCompleteMessage(id: string, answer: AgentResponse): AgentMessage {
     itinerary: answer.itinerary,
     role: "assistant",
     sources: answer.sources,
-    text: answer.text,
+    text: answer.historySaveError
+      ? `${answer.text}\n\nNo se pudo guardar esta respuesta en el historial.`
+      : answer.text,
   };
 }

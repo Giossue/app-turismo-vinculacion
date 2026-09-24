@@ -77,7 +77,8 @@ export function useExploreQueries({
     isFetchingCenters: centersQuery.isFetching,
     isFetchingSearch: centersQuery.isFetching || publicSearch.isFetching,
     isRefreshingMap:
-      mode === "CENTERS" && (centersQuery.isFetching || publicSearch.isFetching),
+      mode === "CENTERS" &&
+      (centersQuery.isFetching || publicSearch.isFetching),
     searchError:
       centersQuery.error ?? (centers.length === 0 ? publicSearch.error : null),
     changeCategory: (categoryCode: string | undefined) => {

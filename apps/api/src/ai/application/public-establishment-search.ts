@@ -10,6 +10,13 @@ export type PublicEstablishmentSearchQuery = Readonly<{
   limit: number;
 }>;
 
+export type PublicEstablishmentBrowseQuery = Readonly<{
+  kind: "food" | "lodging" | "other";
+  text?: string;
+  locality?: string;
+  limit: number;
+}>;
+
 export type PublicEstablishmentSearchItem = Readonly<{
   nombreComercial: string;
   actividad: string;
@@ -37,6 +44,9 @@ export type PublicEstablishmentSearchResult = Readonly<{
 }>;
 
 export interface PublicEstablishmentSearch {
+  browse(
+    query: PublicEstablishmentBrowseQuery,
+  ): Promise<readonly PublicEstablishmentSearchItem[]>;
   nearby(
     query: PublicEstablishmentSearchQuery,
   ): Promise<PublicEstablishmentSearchResult>;

@@ -1,6 +1,12 @@
 import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import { useRef } from "react";
-import { type ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { useRef, useState } from "react";
+import {
+  type ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import Animated, {
   useAnimatedKeyboard,
   useAnimatedStyle,
@@ -22,6 +28,7 @@ import {
 } from "@/core/ui/tokens";
 import type { RouteMode } from "@/features/routing/domain/routing";
 import type { useAgentConversation } from "../application/use-agent-conversation";
+import type { useAgentPlans } from "../application/use-agent-plans";
 import {
   AGENT_MESSAGE_MAX_LENGTH,
   type AgentRouteDestination,
@@ -33,20 +40,36 @@ import {
 } from "../domain/agent-conversation";
 import { AgentMessageBubble } from "./agent-message-bubble";
 import { AgentThinkingIndicator } from "./agent-thinking-indicator";
+import { AgentVoiceInput } from "./agent-voice-input";
+import { AgentPhotoInput } from "./agent-photo-input";
 
 /** Conversation and composer of the agent sheet. */
 export function AgentChatContent({
   conversation,
+  plans,
   onOpenCenter,
   onStartRoute,
 }: Readonly<{
   conversation: ReturnType<typeof useAgentConversation>;
+  plans: ReturnType<typeof useAgentPlans>;
   onOpenCenter: (code: string) => void;
   onStartRoute: (destination: AgentRouteDestination, mode: RouteMode) => void;
 }>) {
   const colors = useTurismoPalette();
+  const [mediaStatus, setMediaStatus] = useState<{
+    text: string;
+    error: boolean;
+  } | null>(null);
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const onMediaStatus = (value: string | null, error = false) =>
+    setMediaStatus(value ? { text: value, error } : null);
   const messagesScrollRef = useRef<ScrollView>(null);
-  const canSend = Boolean(conversation.draft.trim()) && !conversation.sending;
+  const canSend =
+    Boolean(conversation.draft.trim()) &&
+    !conversation.sending &&
+    !voiceBusy &&
+    !photoBusy;
   const canRetry = Boolean(getRetryableAgentTurn(conversation.messages));
   // Con edge-to-edge Android ya no redimensiona la ventana: el chat reserva
   // abajo el alto del teclado (menos el área segura que ya pinta la sheet),
@@ -59,6 +82,7 @@ export function AgentChatContent({
 
   const sendDraft = () => {
     if (!canSend) return;
+    setMediaStatus(null);
     conversation.setDraft("");
     void conversation.send(conversation.draft);
   };
@@ -82,8 +106,14 @@ export function AgentChatContent({
               message={message}
               onChangePendingRoute={conversation.setPendingRouteAction}
               onOpenCenter={onOpenCenter}
+              onSaveItinerary={() => {
+                if (message.itinerary)
+                  void plans.saveFromMessage(message.id, message.itinerary);
+              }}
               onStartRoute={onStartRoute}
               pendingRouteAction={conversation.pendingRouteAction}
+              savedItinerary={plans.savedMessageIds.has(message.id)}
+              savingItinerary={plans.busy}
             />
           ))}
           {!conversation.sending &&
@@ -109,10 +139,37 @@ export function AgentChatContent({
               style={styles.retry}
             />
           ) : null}
+          {plans.error ? (
+            <Text style={[styles.error, { color: colors.danger }]}>
+              {plans.error}
+            </Text>
+          ) : null}
         </View>
       </BottomSheetScrollView>
 
+      {mediaStatus ? (
+        <Text
+          style={[
+            styles.mediaStatus,
+            { color: mediaStatus.error ? colors.danger : colors.textMuted },
+          ]}
+        >
+          {mediaStatus.text}
+        </Text>
+      ) : null}
       <TourismSurface style={styles.composer}>
+        <AgentVoiceInput
+          disabled={conversation.sending || photoBusy}
+          onStatus={onMediaStatus}
+          onTranscript={conversation.setDraft}
+          onWorkingChange={setVoiceBusy}
+        />
+        <AgentPhotoInput
+          disabled={conversation.sending || voiceBusy}
+          onPhoto={conversation.sendPhoto}
+          onStatus={onMediaStatus}
+          onWorkingChange={setPhotoBusy}
+        />
         {/* TextInput normal: la sheet no se desplaza con el teclado, el
             espacio lo reserva `keyboardStyle`. */}
         <TextInput
@@ -161,6 +218,11 @@ const styles = StyleSheet.create({
   // Alineadas con la burbuja del agente, a la derecha de su ícono.
   starters: { gap: turismoSpacing.xs, marginLeft: turismoSpacing.xxl },
   retry: { alignSelf: "flex-start", marginLeft: turismoSpacing.xxl },
+  error: { ...turismoTypography.bodySmall, marginLeft: turismoSpacing.xxl },
+  mediaStatus: {
+    ...turismoTypography.caption,
+    marginHorizontal: turismoSpacing.sm,
+  },
   composer: {
     alignItems: "flex-end",
     borderRadius: turismoRadii.md,

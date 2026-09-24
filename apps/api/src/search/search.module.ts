@@ -1,10 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 
-import {
-  PHOTON_FETCHER,
-  PhotonClient,
-} from "./infrastructure/photon.client";
+import { PHOTON_FETCHER, PhotonClient } from "./infrastructure/photon.client";
 import { SearchController } from "./search.controller";
 import { SearchService } from "./search.service";
 

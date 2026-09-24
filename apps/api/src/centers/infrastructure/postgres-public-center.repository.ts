@@ -53,12 +53,13 @@ export class PostgresPublicCenterRepository implements PublicCenterRepository {
       query.cantonCode ?? null,
       query.parishCode ?? null,
       query.hierarchyCode ?? null,
+      query.locality ?? null,
     ];
     const from = this.publishedCentersFromClause();
     const where = this.publishedCentersWhereClause();
     const [rows, counts] = await Promise.all([
       this.dataSource.query<CenterRow[]>(
-        `SELECT ${this.publicFields()} ${from} ${where} ORDER BY ${this.searchRelevanceExpression()} DESC, c.nombre ASC, c.codigo_atractivo ASC LIMIT $13`,
+        `SELECT ${this.publicFields()} ${from} ${where} ORDER BY ${this.searchRelevanceExpression()} DESC, c.nombre ASC, c.codigo_atractivo ASC LIMIT $14`,
         [...values, query.limit],
       ),
       this.dataSource.query<readonly { total: string }[]>(
@@ -196,7 +197,8 @@ export class PostgresPublicCenterRepository implements PublicCenterRepository {
       AND ($6::text IS NULL OR ca.codigo = $6) AND ($7::text IS NULL OR ta.codigo = $7)
       AND ($8::text IS NULL OR sa.codigo = $8) AND ($9::text IS NULL OR p.codigo_dpa = $9)
       AND ($10::text IS NULL OR ct.codigo_cton = $10) AND ($11::text IS NULL OR pa.codigo_pqa = $11)
-      AND ($12::text IS NULL OR rj.codigo = $12)`;
+      AND ($12::text IS NULL OR rj.codigo = $12)
+      AND ($13::text IS NULL OR p.nombre ILIKE $13 OR ct.nombre ILIKE $13 OR pa.nombre ILIKE $13)`;
   }
 
   private searchRelevanceExpression(): string {

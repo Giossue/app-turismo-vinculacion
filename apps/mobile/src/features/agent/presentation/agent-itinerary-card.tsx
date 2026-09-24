@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismPressable } from "@/core/ui/tourism-pressable";
+import { TourismActionButton } from "@/core/ui/tourism-controls";
 import {
   turismoMetrics,
   turismoRadii,
@@ -14,9 +15,15 @@ import type { AgentItinerary } from "../domain/agent";
 export function AgentItineraryCard({
   itinerary,
   onOpenCenter,
+  onSave,
+  saved,
+  saving,
 }: Readonly<{
   itinerary: AgentItinerary;
   onOpenCenter: (code: string) => void;
+  onSave: () => void;
+  saved: boolean;
+  saving: boolean;
 }>) {
   const colors = useTurismoPalette();
   return (
@@ -66,6 +73,12 @@ export function AgentItineraryCard({
         Propuesta con lugares publicados. Los horarios y tiempos de traslado
         todavía no están confirmados.
       </Text>
+      <TourismActionButton
+        compact
+        disabled={saved || saving}
+        label={saved ? "Plan guardado" : saving ? "Guardando…" : "Guardar plan"}
+        onPress={onSave}
+      />
     </View>
   );
 }

@@ -88,6 +88,7 @@ function routeUseCase(): CalculateRouteUseCase {
 
 function service(calculateRoute: CalculateRouteUseCase) {
   const establishments: PublicEstablishmentSearch = {
+    browse: async () => [],
     nearby: async () => ({
       items: [],
       fallbackApplied: false,

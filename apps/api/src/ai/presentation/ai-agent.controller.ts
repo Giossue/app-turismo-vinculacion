@@ -16,10 +16,13 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import type { FastifyReply } from "fastify";
+import { RouteConfig } from "@nestjs/platform-fastify";
 
-import { Roles } from "../../auth/auth.decorators";
+import { CurrentUser, Roles } from "../../auth/auth.decorators";
 import { AuthGuard } from "../../auth/auth.guard";
+import type { AuthenticatedUser } from "../../auth/auth.types";
 import { RolesGuard } from "../../auth/roles.guard";
+import { AgentHistoryService } from "../application/agent-history.service";
 
 import {
   AiAgentService,
@@ -33,9 +36,13 @@ import { agentResponseSchema } from "../application/ai-agent.contracts";
 @Roles("TURISTA", "ADMINISTRADOR")
 @Controller("ai")
 export class AiAgentController {
-  constructor(@Inject(AiAgentService) private readonly agent: AiAgentService) {}
+  constructor(
+    @Inject(AiAgentService) private readonly agent: AiAgentService,
+    @Inject(AgentHistoryService) private readonly history: AgentHistoryService,
+  ) {}
 
   @Post("chat")
+  @RouteConfig({ rateLimit: { max: 30, timeWindow: "1 minute" } })
   @ApiOkResponse({
     description:
       "Respuesta estructurada con texto, tarjetas, acciones propuestas y fuentes.",
@@ -65,17 +72,21 @@ export class AiAgentController {
   @ApiServiceUnavailableResponse({
     description: "El proveedor o el catálogo del agente no está disponible.",
   })
-  async chat(@Body() body: unknown) {
+  async chat(@Body() body: unknown, @CurrentUser() user: AuthenticatedUser) {
     const parsed = agentChatSchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException(
         parsed.error.issues.map((issue) => issue.message).join(" "),
       );
     }
-    return agentResponseSchema.parse(await this.agent.generate(parsed.data));
+    const result = agentResponseSchema.parse(
+      await this.agent.generate(parsed.data),
+    );
+    return this.withHistory(user.id, parsed.data, result);
   }
 
   @Post("chat/stream")
+  @RouteConfig({ rateLimit: { max: 30, timeWindow: "1 minute" } })
   @ApiProduces("text/event-stream")
   @ApiOkResponse({
     description:
@@ -89,6 +100,7 @@ export class AiAgentController {
   })
   async chatStream(
     @Body() body: unknown,
+    @CurrentUser() user: AuthenticatedUser,
     @Res() response: FastifyReply,
   ): Promise<void> {
     const parsed = agentChatSchema.safeParse(body);
@@ -122,7 +134,11 @@ export class AiAgentController {
         abortController.signal,
       );
       if (abortController.signal.aborted) return;
-      const finalResponse = agentResponseSchema.parse(result);
+      const finalResponse = await this.withHistory(
+        user.id,
+        parsed.data,
+        agentResponseSchema.parse(result),
+      );
       writeSseEvent(response.raw, {
         type: "complete",
         response: finalResponse,
@@ -144,6 +160,24 @@ export class AiAgentController {
       if (!response.raw.destroyed && !response.raw.writableEnded) {
         response.raw.end();
       }
+    }
+  }
+
+  private async withHistory(
+    userId: number,
+    input: { message: string; conversationId?: string },
+    response: ReturnType<typeof agentResponseSchema.parse>,
+  ) {
+    try {
+      const conversationId = await this.history.recordTurn(
+        userId,
+        input.conversationId,
+        input.message,
+        response,
+      );
+      return conversationId ? { ...response, conversationId } : response;
+    } catch {
+      return { ...response, historySaveError: true };
     }
   }
 }

@@ -40,13 +40,15 @@ Crear mediante migraciones cuando su feature se especifique:
 - creador/responsable de ficha;
 - límites oficiales de ciudades, versiones `LINESTRING` de rutas registradas y metadatos de
   paquetes offline (migración `20260917_offline_routes_and_city_packages.sql`);
-- itinerarios, jornadas y paradas;
-- preferencias e historial controlado;
 - consentimientos y dispositivos push;
 - eventos, alertas y fuentes meteorológicas;
 - audioguías, traducciones y variantes multimedia;
-- fuentes/citas de respuestas de IA;
 - lotes y errores de importación.
+
+La migración `20260924_tourism_agent_saved_content.sql` crea planes del usuario con
+jornadas y paradas y añade consentimiento explícito, identificador público y fuentes
+para el historial del agente. Las conversaciones anteriores quedan fuera del historial
+voluntario. La API debe desplegarse después de aplicar esta migración.
 
 ## Migraciones
 

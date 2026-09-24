@@ -6,6 +6,7 @@ import {
   agentStarterPrompts,
   buildAgentHistory,
   getRetryableAgentTurn,
+  shouldShareAgentLocation,
   showsAgentStarterPrompts,
 } from "./agent-conversation";
 import { AGENT_MESSAGE_MAX_LENGTH } from "./agent";
@@ -111,6 +112,23 @@ describe("agent starter prompts", () => {
     expect(showsAgentStarterPrompts([agentIntroMessage])).toBe(true);
     expect(showsAgentStarterPrompts([agentIntroMessage, user(1, "Hola")])).toBe(
       false,
+    );
+  });
+});
+
+describe("location minimization in agent requests", () => {
+  it("does not share GPS for general catalog or itinerary questions", () => {
+    expect(
+      shouldShareAgentLocation("¿Qué lugares turísticos puedo visitar?"),
+    ).toBe(false);
+    expect(shouldShareAgentLocation("¿Dónde puedo comer?")).toBe(false);
+    expect(shouldShareAgentLocation("Arma un plan para mi día")).toBe(false);
+  });
+
+  it("shares GPS for explicitly nearby or current-origin questions", () => {
+    expect(shouldShareAgentLocation("¿Qué hay cerca de mí?")).toBe(true);
+    expect(shouldShareAgentLocation("How can I get there from here?")).toBe(
+      true,
     );
   });
 });

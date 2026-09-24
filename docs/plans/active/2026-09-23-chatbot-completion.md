@@ -1,5 +1,8 @@
 # Cierre funcional del chatbot turístico
 
+> Esta unidad textual forma parte del alcance integral solicitado el 2026-09-24;
+> ver `2026-09-24-tourism-agent-complete.md` para los requisitos restantes.
+
 ## Objetivo
 
 Completar el flujo conversacional móvil y la generación de la API para que una
@@ -50,8 +53,7 @@ reabrir la sheet, sin perder el control de datos publicados ni de la ubicación.
 - [ ] Validación con un proveedor real: este checkout no tiene una clave de IA
       local configurada.
 
-## Siguiente alcance por concretar
+## Continuación
 
-La persistencia de conversaciones, los itinerarios guardados y la entrada por voz/foto
-requieren sus propios contratos, retención/borrado y verificaciones nativas. Se espera la
-prioridad de producto antes de iniciar esas migraciones e integraciones.
+El alcance posterior se desarrolla en `2026-09-24-tourism-agent-complete.md` con
+contratos de historial opt-in, itinerarios persistentes, voz, foto y apoyo editorial.

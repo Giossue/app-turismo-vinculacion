@@ -23,6 +23,7 @@
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.RECEIVE_BOOT_COMPLETED"
       ],
@@ -59,6 +60,19 @@
       "expo-sqlite",
       "./plugins/withAndroidBuildCleanups",
       "expo-secure-store",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Permitir que Turismo Vinculación grabe tu pregunta de voz cuando actives el micrófono del agente."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permitir que Turismo Vinculación seleccione una foto para consultar al agente turístico.",
+          "cameraPermission": "Permitir que Turismo Vinculación tome una foto para consultar al agente turístico."
+        }
+      ],
       "@react-native-community/datetimepicker"
     ],
     "experiments": {

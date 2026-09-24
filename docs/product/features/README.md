@@ -32,3 +32,5 @@ La captura administrativa inicial está especificada en
 `admin-center-capture/` y cubre el núcleo de ficha, borradores, revisión, publicación y
 auditoría, además de multimedia básica (fotos, video y audio). Las demás secciones se
 añadirán como cortes verticales posteriores.
+
+El alcance integral del asistente turístico se especifica en `tourism-agent/`.

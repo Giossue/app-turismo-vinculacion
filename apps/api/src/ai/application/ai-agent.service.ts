@@ -62,6 +62,16 @@ const searchCentersInputSchema = z
   })
   .strict();
 
+const listCentersInputSchema = z
+  .object({
+    locality: z.string().trim().min(2).max(120).optional(),
+    limit: z.number().int().min(1).max(8).default(6),
+  })
+  .strict();
+
+const publishedCentersSource = "Catálogo de centros turísticos publicados";
+const publishedEstablishmentsSource = "Catastro turístico público";
+
 const getCenterInputSchema = z
   .object({
     code: z.string().trim().min(1).max(120),
@@ -73,6 +83,15 @@ const nearbyEstablishmentsInputSchema = z
     activity: z.string().trim().min(2).max(120),
     category: z.string().trim().min(1).max(120).optional(),
     limit: z.number().int().min(1).max(8).default(5),
+  })
+  .strict();
+
+const browseEstablishmentsInputSchema = z
+  .object({
+    kind: z.enum(["food", "lodging", "other"]),
+    text: z.string().trim().min(2).max(120).optional(),
+    locality: z.string().trim().min(2).max(120).optional(),
+    limit: z.number().int().min(1).max(8).default(6),
   })
   .strict();
 
@@ -154,6 +173,17 @@ export class AiAgentService {
         }
       : undefined;
     const forceNearbyTool = hasNearbyIntent(input.message);
+    const needsLocationForNearby = forceNearbyTool && !approximateLocation;
+    const forceGeneralCatalogTool =
+      !forceNearbyTool && hasGeneralDiscoveryIntent(input.message);
+    const forceEstablishmentKind =
+      !forceNearbyTool && !forceGeneralCatalogTool
+        ? getEstablishmentDiscoveryKind(input.message)
+        : null;
+    let generalCatalogRefs: string[] | null = null;
+    let generalCatalogFailed = false;
+    let establishmentBrowseRefs: string[] | null = null;
+    let establishmentBrowseFailed = false;
     let establishmentSequence = 0;
     let poiSequence = 0;
 
@@ -282,7 +312,10 @@ export class AiAgentService {
           "Eres el agente turístico institucional de Turismo Vinculación.",
           "Responde en español salvo que el visitante pida inglés.",
           "Usa las herramientas para consultar únicamente centros publicados, puntos de interés activos, establecimientos activos y transporte registrado.",
+          "Descubrir lugares turísticos en general no requiere GPS. Para preguntas generales como qué lugares turísticos puedo visitar, usa listPublishedCenters y responde con los lugares publicados y sus fuentes; la ciudad o los intereses son filtros opcionales para afinar después.",
+          "Para preguntas generales sobre dónde comer u hospedarse sin intención de cercanía, usa searchPublishedEstablishments. La ubicación y localidad son opcionales; sin ellas ofrece resultados publicados sin afirmar que están cerca. Si el visitante indica una localidad, úsala como filtro.",
           "Cuando el visitante diga cerca, cercano, cerca de mí, lo que haya alrededor o use una intención equivalente, y haya ubicación aproximada, debes usar searchNearbyPublishedPlaces antes de cualquier búsqueda textual. Esa herramienta combina centros, puntos de interés y establecimientos; no intentes buscar la frase cerca de mí como texto.",
+          "Si una consulta cercana no tiene ubicación, usa requestLocationAccess. Esa herramienta solo propone una acción para que el móvil solicite o actualice la ubicación; no otorga permisos ni accede al GPS del teléfono.",
           "Cuando pidan un plan, paseo o recorrido de varias paradas, usa findItineraryCandidates y devuelve un itinerary de 2 a 6 centros publicados en el orden sugerido.",
           "El título y resumen del itinerary son una propuesta; no afirmes horarios, precios, disponibilidad, servicios ni duración sin una herramienta que los verifique.",
           "Para transporte usa getPublishedTransportForCenter o searchNearbyTransportStops cuando la pregunta lo requiera. Si no hay rutas, paradas u horarios publicados, dilo así; no inventes transporte, frecuencias, precios ni tiempos.",
@@ -299,14 +332,35 @@ export class AiAgentService {
         ].join(" "),
         messages,
         prepareStep: ({ stepNumber }) =>
-          forceNearbyTool && stepNumber === 0
+          needsLocationForNearby && stepNumber === 0
+            ? {
+                toolChoice: {
+                  type: "tool" as const,
+                  toolName: "requestLocationAccess" as const,
+                },
+              }
+            : forceNearbyTool && stepNumber === 0
             ? {
                 toolChoice: {
                   type: "tool" as const,
                   toolName: "searchNearbyPublishedPlaces" as const,
                 },
               }
-            : { toolChoice: "auto" as const },
+            : forceGeneralCatalogTool && stepNumber === 0
+              ? {
+                  toolChoice: {
+                    type: "tool" as const,
+                    toolName: "listPublishedCenters" as const,
+                  },
+                }
+              : forceEstablishmentKind && stepNumber === 0
+                ? {
+                    toolChoice: {
+                      type: "tool" as const,
+                      toolName: "searchPublishedEstablishments" as const,
+                    },
+                  }
+                : { toolChoice: "auto" as const },
         output: Output.object({
           schema: agentModelResponseSchema,
           name: "tourism_agent_response",
@@ -318,6 +372,92 @@ export class AiAgentService {
           this.config.get<number>("AI_MAX_OUTPUT_TOKENS") ?? 1_200,
         timeout: this.config.get<number>("AI_REQUEST_TIMEOUT_MS") ?? 30_000,
         tools: {
+          requestLocationAccess: tool({
+            description:
+              "Propone al móvil solicitar permiso o una lectura GPS actual cuando una consulta cercana no tiene ubicación. Nunca solicita permiso desde el servidor.",
+            inputSchema: z.object({}).strict(),
+            execute: async () => ({
+              available: Boolean(approximateLocation),
+              clientAction: approximateLocation ? null : "request_location",
+            }),
+          }),
+          searchPublishedEstablishments: tool({
+            description:
+              "Busca restaurantes/cafeterías (kind food), alojamiento (kind lodging) u otros establecimientos publicados sin requerir GPS. text solo filtra una preferencia específica, no la frase genérica de la pregunta. locality solo si el visitante mencionó una ciudad, cantón o provincia; sin localidad no afirma cercanía.",
+            inputSchema: browseEstablishmentsInputSchema,
+            execute: async ({ kind, text, locality, limit }) => {
+              try {
+                const items = await this.establishments.browse({
+                  kind: forceEstablishmentKind ?? kind,
+                  text: isGenericEstablishmentQuestion(input.message)
+                    ? undefined
+                    : text,
+                  locality: isUserProvidedLocality(locality, input)
+                    ? locality
+                    : undefined,
+                  limit,
+                });
+                const refs = items.map((item) =>
+                  registerEstablishment(
+                    item,
+                    `${publishedEstablishmentsSource}: ${item.nombreComercial} (${item.localityName})`,
+                  ),
+                );
+                establishmentBrowseRefs = refs;
+                return {
+                  total: items.length,
+                  results: items.map((item, index) => ({
+                    ref: refs[index],
+                    name: item.nombreComercial,
+                    activity: item.actividad,
+                    classification: item.clasificacion,
+                    category: item.categoria,
+                    localityName: item.localityName,
+                    address: item.direccion,
+                  })),
+                  source: publishedEstablishmentsSource,
+                  locationBased: false,
+                };
+              } catch {
+                establishmentBrowseFailed = true;
+                return genericToolFailure;
+              }
+            },
+          }),
+          listPublishedCenters: tool({
+            description:
+              "Enumera centros turísticos publicados sin GPS. Puedes filtrar por nombre de provincia, cantón o parroquia si la persona indicó una localidad; no pidas GPS para esta consulta.",
+            inputSchema: listCentersInputSchema,
+            execute: async ({ limit, locality }) => {
+              try {
+                const result = await this.centers.listPublished({
+                  limit,
+                  ...(locality ? { locality } : {}),
+                });
+                generalCatalogRefs = result.items.map((center) =>
+                  registerCenter(
+                    `center:${center.code}`,
+                    center,
+                    `${publishedCentersSource}: ${center.name}`,
+                  ),
+                );
+                return {
+                  total: result.total,
+                  results: result.items.map((center) => ({
+                    ref: `center:${center.code}`,
+                    name: center.name,
+                    description: center.description,
+                    category: center.category,
+                    type: center.type,
+                  })),
+                  source: publishedCentersSource,
+                };
+              } catch {
+                generalCatalogFailed = true;
+                return genericToolFailure;
+              }
+            },
+          }),
           searchPublishedCenters: tool({
             description:
               "Busca atractivos turísticos publicados y aprobados por nombre, descripción o categoría.",
@@ -334,7 +474,7 @@ export class AiAgentService {
                     const ref = registerCenter(
                       `center:${center.code}`,
                       center,
-                      "Catálogo de centros turísticos publicados",
+                      publishedCentersSource,
                     );
                     return {
                       ref,
@@ -347,7 +487,7 @@ export class AiAgentService {
                       hierarchy: center.hierarchy,
                     };
                   }),
-                  source: "Catálogo de centros turísticos publicados",
+                  source: publishedCentersSource,
                 };
               } catch {
                 return genericToolFailure;
@@ -781,7 +921,12 @@ export class AiAgentService {
         },
       });
 
-      if (onText) {
+      if (
+        onText &&
+        !forceGeneralCatalogTool &&
+        !forceEstablishmentKind &&
+        !needsLocationForNearby
+      ) {
         let lastText = "";
         for await (const partial of result.partialOutputStream) {
           if (typeof partial.text !== "string" || partial.text === lastText)
@@ -791,9 +936,58 @@ export class AiAgentService {
         }
       }
 
-      return sanitizeAgentResponse(await result.output, entities, [
+      let modelOutput: Awaited<typeof result.output>;
+      try {
+        modelOutput = await result.output;
+      } catch (error) {
+        if (needsLocationForNearby) return missingNearbyLocationAnswer();
+        const fallback: AgentResponse = {
+          text: "No pude verificar esta respuesta en este momento.",
+          cards: [],
+          actions: [],
+          sources: [],
+        };
+        if (forceGeneralCatalogTool) {
+          return completeGeneralDiscoveryAnswer(
+            fallback,
+            generalCatalogRefs,
+            generalCatalogFailed,
+            entities,
+          );
+        }
+        if (forceEstablishmentKind) {
+          return completeEstablishmentDiscoveryAnswer(
+            fallback,
+            forceEstablishmentKind,
+            establishmentBrowseRefs,
+            establishmentBrowseFailed,
+            entities,
+          );
+        }
+        throw error;
+      }
+      const answer = sanitizeAgentResponse(modelOutput, entities, [
         ...trustedSources.values(),
       ]);
+      if (needsLocationForNearby) return missingNearbyLocationAnswer();
+      if (forceGeneralCatalogTool) {
+        return completeGeneralDiscoveryAnswer(
+          answer,
+          generalCatalogRefs,
+          generalCatalogFailed,
+          entities,
+        );
+      }
+      if (forceEstablishmentKind) {
+        return completeEstablishmentDiscoveryAnswer(
+          answer,
+          forceEstablishmentKind,
+          establishmentBrowseRefs,
+          establishmentBrowseFailed,
+          entities,
+        );
+      }
+      return answer;
     } catch (error) {
       if (error instanceof ServiceUnavailableException) throw error;
       throw new ServiceUnavailableException(
@@ -823,8 +1017,170 @@ export class AiAgentService {
 }
 
 export function hasNearbyIntent(message: string): boolean {
-  return /\b(cerca|cercan[oa]s?|alrededor|pr[oó]xim[oa]s?|aqu[ií] cerca)\b/i.test(
-    message,
+  return /\b(cerca|cercan[oa]s?|alrededor|proxim[oa]s?|aqui cerca|desde aqui|mi ubicacion|near|nearby|around me|from here|my location)\b/.test(normalizeIntent(message));
+}
+
+function missingNearbyLocationAnswer(): AgentResponse {
+  return {
+    text: "Para buscar lugares cerca de ti, necesito una ubicación actual. Toca «Usar mi ubicación» para obtenerla y repetir la consulta.",
+    cards: [],
+    actions: [{ type: "request_location" }],
+    sources: [],
+  };
+}
+
+export function hasGeneralDiscoveryIntent(message: string): boolean {
+  const normalized = normalizeIntent(message);
+  return (
+    /\b(lugares? turisticos?|atractivos? turisticos?|sitios? turisticos?|tourist attractions?|places to visit)\b/.test(
+      normalized,
+    ) && !/\b(near|cerca|plan|itinerario|recorrido)\b/.test(normalized)
+  );
+}
+
+export function getEstablishmentDiscoveryKind(
+  message: string,
+): "food" | "lodging" | null {
+  const normalized = normalizeIntent(message);
+  if (
+    /\b(donde (puedo )?comer|restaurantes?|cafeterias?|comida|where (can i )?eat|restaurants?|food)\b/.test(
+      normalized,
+    )
+  ) {
+    return "food";
+  }
+  if (
+    /\b(donde (puedo )?(hospedarme|dormir|alojarme)|hospedaje|alojamiento|hoteles?|hostales?|where (can i )?stay|lodging|hotels?)\b/.test(
+      normalized,
+    )
+  ) {
+    return "lodging";
+  }
+  return null;
+}
+
+function normalizeIntent(message: string): string {
+  return message
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function isGenericEstablishmentQuestion(message: string): boolean {
+  const normalized = normalizeIntent(message)
+    .replace(/[¿?!.]/g, "")
+    .trim();
+  return /^(donde (puedo )?(comer|hospedarme|dormir|alojarme)|where (can i )?(eat|stay))$/.test(
+    normalized,
+  );
+}
+
+function isUserProvidedLocality(
+  locality: string | undefined,
+  input: AgentChatInput,
+): locality is string {
+  if (!locality) return false;
+  const name = normalizeIntent(locality.trim());
+  if (name.length < 2) return false;
+  return [
+    input.message,
+    ...input.history
+      .filter((item) => item.role === "user")
+      .map((item) => item.content),
+  ]
+    .map(normalizeIntent)
+    .some((message) => message.includes(name));
+}
+
+function completeGeneralDiscoveryAnswer(
+  answer: AgentResponse,
+  refs: string[] | null,
+  failed: boolean,
+  entities: ReadonlyMap<string, TrustedAgentEntity>,
+): AgentResponse {
+  if (failed || refs === null) {
+    return {
+      text: "No pude verificar el catálogo turístico en este momento. Inténtalo de nuevo.",
+      cards: [],
+      actions: [],
+      sources: [],
+    };
+  }
+  if (refs.length === 0) {
+    return {
+      text: "No hay lugares turísticos publicados en el catálogo por ahora.",
+      cards: [],
+      actions: [],
+      sources: [{ type: "center", label: publishedCentersSource }],
+    };
+  }
+  if (answer.cards.length > 0 && !asksForLocationToDiscover(answer.text)) {
+    return answer;
+  }
+  return {
+    text: "Estos son algunos lugares turísticos publicados. Puedes abrir sus fichas para conocerlos; si me dices una ciudad o tus intereses, afino la recomendación.",
+    cards: refs
+      .slice(0, 6)
+      .map((ref) => entities.get(ref)?.card)
+      .filter((card): card is NonNullable<typeof card> => Boolean(card)),
+    actions: [],
+    sources: sourcesForRefs(refs, entities),
+  };
+}
+
+function completeEstablishmentDiscoveryAnswer(
+  answer: AgentResponse,
+  kind: "food" | "lodging",
+  refs: string[] | null,
+  failed: boolean,
+  entities: ReadonlyMap<string, TrustedAgentEntity>,
+): AgentResponse {
+  if (failed || refs === null) {
+    return {
+      text: "No pude verificar el catastro turístico en este momento. Inténtalo de nuevo.",
+      cards: [],
+      actions: [],
+      sources: [],
+    };
+  }
+  const label = kind === "food" ? "lugares para comer" : "alojamientos";
+  if (refs.length === 0) {
+    return {
+      text: `No encontré ${label} publicados con esos filtros. Puedes indicarme otra ciudad o categoría.`,
+      cards: [],
+      actions: [],
+      sources: [
+        { type: "establishment", label: publishedEstablishmentsSource },
+      ],
+    };
+  }
+  if (answer.cards.length > 0 && !asksForLocationToDiscover(answer.text)) {
+    return answer;
+  }
+  return {
+    text: `Estos son ${label} del catastro turístico publicado. Esta lista no está ordenada por cercanía; puedes decirme una ciudad o pedir resultados cerca de ti para afinarla.`,
+    cards: refs
+      .slice(0, 6)
+      .map((ref) => entities.get(ref)?.card)
+      .filter((card): card is NonNullable<typeof card> => Boolean(card)),
+    actions: [],
+    sources: sourcesForRefs(refs, entities),
+  };
+}
+
+function sourcesForRefs(
+  refs: readonly string[],
+  entities: ReadonlyMap<string, TrustedAgentEntity>,
+): AgentSource[] {
+  return refs
+    .slice(0, 6)
+    .map((ref) => entities.get(ref)?.source)
+    .filter((source): source is AgentSource => Boolean(source));
+}
+
+function asksForLocationToDiscover(text: string): boolean {
+  return /\b(necesito.{0,80}ubicaci[oó]n|activ[ae]s? (la )?ubicaci[oó]n|need.{0,40}location|enable location)\b/i.test(
+    text,
   );
 }
 

@@ -22,7 +22,8 @@ La integración expone `POST /api/v1/ai/chat` como JSON estructurado y
 móvil. La respuesta final contiene `text`, `cards`, `itinerary` opcional, `actions` y
 `sources`.
 
-Las herramientas allowlisted de esta unidad son `searchPublishedCenters`,
+Las herramientas allowlisted de esta unidad son `listPublishedCenters`,
+`searchPublishedEstablishments`, `searchPublishedCenters`,
 `findItineraryCandidates`, `getPublishedCenter`, `searchNearbyEstablishments`,
 `searchNearbyPublishedPlaces`, `getPublishedTransportForCenter`,
 `searchNearbyTransportStops` y `calculateRoadRoute`. Las consultas de cercanía usan PostGIS sobre centros publicados,
@@ -36,6 +37,17 @@ detalles escritos por el modelo. `calculateRoadRoute` solo recibe referencias em
 tools y delega el cálculo al proveedor vial existente; devuelve distancia, duración e
 instrucciones acotadas, sin exponer geometría al modelo. Desde la ubicación del visitante marca
 el origen como aproximado y la app recalcula antes de navegar.
+
+Descubrir centros, restaurantes o alojamiento en general no requiere GPS.
+`listPublishedCenters` enumera centros publicados sin coordenadas del visitante;
+`searchPublishedEstablishments` consulta el catastro activo/publicado por tipo y,
+si la persona lo indicó, localidad. La primera tool se fuerza ante preguntas generales
+de atractivos; la segunda ante preguntas generales de comida o hospedaje. Si el modelo
+omite tarjetas, pide ubicación para una consulta general o falla después de consultar
+el catálogo, la API construye una respuesta acotada con los resultados verificados.
+Esas consultas esperan la validación final antes de enviar texto parcial para evitar
+mostrar una solicitud de GPS contradictoria. Las fuentes de las tarjetas de estas
+búsquedas identifican el registro público concreto.
 
 Los POI no tienen código público en el esquema actual: se representan internamente con una
 referencia opaca por solicitud y la respuesta solo contiene nombre, descripción, localidad y
@@ -63,7 +75,8 @@ móvil y no ejecuta navegación desde la API.
 - Buscar por radio y filtros.
 - Consultar rutas, paradas y horarios publicados, sin rellenar ausencias.
 - Calcular rutas viales verificadas entre lugares registrados y validar distancia/duración.
-- Proponer itinerario y validarlo contra horarios/distancias.
+- Proponer itinerarios con paradas publicadas y señalar las partes sin verificación
+  de horario o tiempo de traslado.
 - Recuperar fuentes de una recomendación.
 
 El modelo no recibe acceso SQL, credenciales ni una herramienta genérica para ejecutar
@@ -92,11 +105,35 @@ publicado. La respuesta distingue dato oficial, inferencia y ausencia de informa
 La IA puede redactar, traducir o detectar faltantes, pero nunca aprueba ni publica. El
 usuario revisa el texto generado y queda autor/a de la decisión final.
 
+## Planes e historial
+
+`/ai/itineraries` guarda hasta siete jornadas con una a seis paradas cada una, siempre
+referidas a centros publicados y autorizadas por titular. La propuesta inicial del
+modelo se marca como no verificada en cuanto a horarios y tiempos de traslado.
+`/ai/history` guarda turnos textuales y fuentes solo después del opt-in. La preferencia
+apagada bloquea escrituras; apagarla borra las conversaciones voluntarias. Audio, foto
+y ubicación puntual no se guardan en esas tablas. Los textos con pares de coordenadas
+decimales se redactan antes de persistir. El historial permanece hasta que el titular
+lo borra o desactiva; la API no promete un borrado automático por fecha.
+
 ## Voz e imágenes
 
-Agregar después del chat textual. Audio e imágenes pasan por límites de tamaño, tipo,
-consentimiento, moderación y retención. Las respuestas de voz conservan transcripción y
-fuentes equivalentes al texto.
+`/ai/media/transcribe` acepta M4A/WAV/WebM de hasta 5 MB y usa el modelo
+`gpt-4o-mini-transcribe` con clave exclusiva del servidor. El audio solo se mantiene
+en memoria para la petición y el cliente borra su copia temporal. La transcripción se
+presenta para revisión antes de enviar la pregunta. `/ai/media/photo` acepta
+JPEG/PNG/WebP de hasta 4 MB, pide una descripción visual al modelo configurado y
+compara nombres tentativos contra centros y establecimientos publicados. Nunca afirma
+una coincidencia segura solo por la imagen. No se almacena la fotografía en la API.
+Los límites por ruta acotan llamadas al proveedor; el límite global adicional es por IP.
+La voz de salida lee el mismo texto que ve la persona y las fuentes permanecen visibles.
+
+## Apoyo editorial
+
+`POST /admin/ai/centers/:code/description` exige rol institucional y acceso a la ficha
+propia o permiso administrativo. Solo envía nombre del borrador y descripción ingresada
+al proveedor. Devuelve una sugerencia o revisión; la web la muestra antes de que la
+persona la aplique en el formulario. La IA no guarda, aprueba ni publica fichas.
 
 ## Calidad
 

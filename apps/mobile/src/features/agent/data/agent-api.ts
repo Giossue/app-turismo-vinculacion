@@ -45,6 +45,7 @@ const requestSchema = z
     message: z.string().trim().min(1).max(AGENT_MESSAGE_MAX_LENGTH),
     history: z.array(agentHistoryItemSchema).max(AGENT_HISTORY_MAX_ITEMS),
     location: agentLocationSchema.optional(),
+    conversationId: z.uuid().optional(),
   })
   .strict();
 
@@ -60,7 +61,7 @@ const incompleteMessage = "El agente devolvió una respuesta incompleta.";
  * stops the request and the event stream.
  */
 export type AgentRequestOptions = ApiRequestOptions &
-  Readonly<{ location?: AgentLocation }>;
+  Readonly<{ location?: AgentLocation; conversationId?: string }>;
 
 /**
  * Validated JSON body of a chat request. Throws a `ZodError` when the
@@ -70,11 +71,13 @@ export function buildAgentRequestBody(
   message: string,
   history: readonly AgentHistoryItem[],
   location?: AgentLocation,
+  conversationId?: string,
 ) {
   return requestSchema.parse({
     message,
     history,
     location: location ? approximateLocation(location) : undefined,
+    conversationId,
   });
 }
 
@@ -88,13 +91,21 @@ export async function askTourismAgentStream(
   message: string,
   history: readonly AgentHistoryItem[],
   onText: (text: string) => Promise<void> | void,
-  { apiUrl = getApiUrl(), fetcher, location, signal }: AgentRequestOptions = {},
+  {
+    apiUrl = getApiUrl(),
+    fetcher,
+    location,
+    conversationId,
+    signal,
+  }: AgentRequestOptions = {},
 ): Promise<AgentResponse> {
   const response = await sendRequest(`${apiUrl}/ai/chat/stream`, {
     errorMessage: AGENT_UNAVAILABLE_MESSAGE,
     fetcher,
     init: {
-      body: JSON.stringify(buildAgentRequestBody(message, history, location)),
+      body: JSON.stringify(
+        buildAgentRequestBody(message, history, location, conversationId),
+      ),
       headers: {
         Accept: "text/event-stream",
         "Content-Type": "application/json",

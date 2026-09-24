@@ -9,26 +9,54 @@ const response = {
   sources: [],
   text: "Hola viajero.",
 };
+const user = { id: 7 } as never;
+const history = () => ({ recordTurn: vi.fn().mockResolvedValue(null) });
 
 describe("AiAgentController", () => {
   it("returns the validated structured response", async () => {
     const agent = {
       generate: vi.fn().mockResolvedValue(response),
     };
-    const controller = new AiAgentController(agent as never);
+    const saved = history();
+    const controller = new AiAgentController(agent as never, saved as never);
 
     await expect(
-      controller.chat({ message: "Hola", history: [] }),
+      controller.chat({ message: "Hola", history: [] }, user),
     ).resolves.toEqual(response);
     expect(agent.generate).toHaveBeenCalledWith({
       message: "Hola",
       history: [],
     });
+    expect(saved.recordTurn).toHaveBeenCalledWith(
+      7,
+      undefined,
+      "Hola",
+      response,
+    );
   });
 
   it("rejects malformed chat input", async () => {
-    const controller = new AiAgentController({ generate: vi.fn() } as never);
-    await expect(controller.chat({ message: "" })).rejects.toThrow();
+    const controller = new AiAgentController(
+      { generate: vi.fn() } as never,
+      history() as never,
+    );
+    await expect(controller.chat({ message: "" }, user)).rejects.toThrow();
+  });
+
+  it("returns the saved conversation ID only after a successful opt-in write", async () => {
+    const agent = { generate: vi.fn().mockResolvedValue(response) };
+    const saved = {
+      recordTurn: vi
+        .fn()
+        .mockResolvedValue("53de238d-55a7-4a39-a993-429e161314e6"),
+    };
+    const controller = new AiAgentController(agent as never, saved as never);
+    await expect(
+      controller.chat({ message: "Hola", history: [] }, user),
+    ).resolves.toEqual({
+      ...response,
+      conversationId: "53de238d-55a7-4a39-a993-429e161314e6",
+    });
   });
 
   it("streams partial text and the final structured response", async () => {
@@ -60,10 +88,14 @@ describe("AiAgentController", () => {
       hijack: vi.fn(),
       raw,
     };
-    const controller = new AiAgentController(agent as never);
+    const controller = new AiAgentController(
+      agent as never,
+      history() as never,
+    );
 
     await controller.chatStream(
       { message: "Hola", history: [] },
+      user,
       reply as never,
     );
 
@@ -111,11 +143,18 @@ describe("AiAgentController", () => {
       write: vi.fn(),
       end: vi.fn(),
     };
-    const controller = new AiAgentController(agent as never);
-    const stream = controller.chatStream({ message: "Hola", history: [] }, {
-      hijack: vi.fn(),
-      raw,
-    } as never);
+    const controller = new AiAgentController(
+      agent as never,
+      history() as never,
+    );
+    const stream = controller.chatStream(
+      { message: "Hola", history: [] },
+      user,
+      {
+        hijack: vi.fn(),
+        raw,
+      } as never,
+    );
     raw.destroyed = true;
     events.emit("close");
     expect(signal?.aborted).toBe(true);
@@ -127,9 +166,12 @@ describe("AiAgentController", () => {
   });
 
   it("rejects unknown request properties", async () => {
-    const controller = new AiAgentController({ generate: vi.fn() } as never);
+    const controller = new AiAgentController(
+      { generate: vi.fn() } as never,
+      history() as never,
+    );
     await expect(
-      controller.chat({ message: "Hola", unexpected: true }),
+      controller.chat({ message: "Hola", unexpected: true }, user),
     ).rejects.toThrow();
   });
 });

@@ -44,6 +44,7 @@ function poiRepository(): PublicPoiRepository {
 
 function establishmentSearch(): PublicEstablishmentSearch {
   return {
+    browse: async () => [],
     nearby: async () => ({
       items: [],
       fallbackApplied: false,
@@ -129,6 +130,7 @@ describe("AiAgentService", () => {
   it("recognizes nearby intent without turning the phrase into a text search", () => {
     expect(hasNearbyIntent("Lo que haya cerca de mí")).toBe(true);
     expect(hasNearbyIntent("qué puedo visitar alrededor")).toBe(true);
+    expect(hasNearbyIntent("What is nearby?")).toBe(true);
     expect(hasNearbyIntent("cuéntame la historia de Guaranda")).toBe(false);
   });
 

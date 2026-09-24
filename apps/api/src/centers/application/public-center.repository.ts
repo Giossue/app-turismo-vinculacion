@@ -18,6 +18,7 @@ export type NearbyPublishedCentersQuery = Readonly<{
 
 export type ListPublishedCentersQuery = Readonly<{
   text?: string;
+  locality?: string;
   bounds?: BoundingBox;
   categoryCode?: string;
   typeCode?: string;

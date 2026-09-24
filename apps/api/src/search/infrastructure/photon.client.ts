@@ -135,7 +135,8 @@ export function selectPreferredPlaces(
   if (exactMatches.length <= 1) return places;
 
   const preferredExactMatch = [...exactMatches].sort(
-    (left, right) => placeTypePriority(left.type) - placeTypePriority(right.type),
+    (left, right) =>
+      placeTypePriority(left.type) - placeTypePriority(right.type),
   )[0];
   if (!preferredExactMatch) return places;
 

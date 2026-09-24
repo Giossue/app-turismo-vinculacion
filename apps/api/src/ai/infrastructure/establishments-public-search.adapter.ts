@@ -3,6 +3,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { EstablishmentsService } from "../../establishments/establishments.service";
 import {
   type PublicEstablishmentSearch,
+  type PublicEstablishmentBrowseQuery,
   type PublicEstablishmentSearchQuery,
   type PublicEstablishmentSearchResult,
 } from "../application/public-establishment-search";
@@ -13,6 +14,10 @@ export class EstablishmentsPublicSearchAdapter implements PublicEstablishmentSea
     @Inject(EstablishmentsService)
     private readonly establishments: EstablishmentsService,
   ) {}
+
+  browse(query: PublicEstablishmentBrowseQuery) {
+    return this.establishments.browsePublic(query);
+  }
 
   nearby(
     query: PublicEstablishmentSearchQuery,

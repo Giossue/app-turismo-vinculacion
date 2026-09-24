@@ -24,8 +24,8 @@ lo amerita. Evitar capas ceremoniales para componentes triviales.
 La navegación turística está organizada alrededor del mapa: `Explorar` muestra MapLibre y
 una ficha rápida nativa; el `Agente` se abre como un botón flotante sobre el mapa y una
 sheet nativa de conversación; `Cómo llegar` representa la ruta activa sin solicitar GPS
-en la vista previa. El planificador de itinerarios queda fuera de la app móvil hasta que
-exista un modelo persistente y un contrato público.
+en la vista previa. La sheet del agente permite guardar, recuperar y editar itinerarios
+con jornadas y paradas de centros publicados.
 El agente turístico consulta la API autenticada y valida una respuesta estructurada con
 texto, tarjetas, acciones propuestas y fuentes. Las tarjetas de centros publicados abren su
 ficha; las tarjetas de catastro muestran únicamente campos públicos. Una acción de ruta se
@@ -37,7 +37,18 @@ API. La conversación y el borrador permanecen en memoria mientras Explorar est�
 cerrar la sheet cancela la respuesta en curso y al reabrirla se pueden continuar los
 intercambios completados. El chat permite detener, reintentar el último turno fallido y
 comenzar una conversación nueva; el cambio de cuenta borra el estado en memoria. No se
-persiste el chat ni la ubicación en el dispositivo.
+persiste el chat ni la ubicación en el dispositivo. El historial del servidor está
+apagado por defecto; el usuario puede activarlo, abrir y borrar conversaciones o
+desactivarlo para borrarlas todas. Los planes guardados se administran por separado.
+
+`expo-audio` graba hasta 30 segundos tras el permiso del sistema;
+la transcripción vuelve al borrador editable. `expo-image-picker` permite cámara o
+galería directamente desde sus botones, y `expo-file-system` comprueba el tamaño y borra
+los archivos temporales cuando corresponde. La voz de salida usa `expo-speech` sobre
+el texto visible; el usuario puede detenerla. Los tres paquetes Expo nuevos están
+alineados con SDK 57 y tienen licencia MIT. Su superficie adicional son permisos de
+micrófono/cámara, archivos temporales y el envío explícito de audio/fotos a la API;
+la build nativa debe regenerarse para incorporar sus plugins y permisos.
 
 La preferencia de apariencia se administra desde `Menú > Configuración`, con tres opciones
 (`Sistema`, `Claro` y `Oscuro`) presentadas como un grupo de radio donde toda la fila es el

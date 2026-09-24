@@ -9,5 +9,6 @@ import { AdminController } from "./admin.controller";
   imports: [AuthModule, FilesModule],
   controllers: [AdminController],
   providers: [AdminCentersService],
+  exports: [AdminCentersService],
 })
 export class AdminModule {}

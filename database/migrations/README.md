@@ -34,6 +34,13 @@ estado de revisión del catastro. Los nuevos registros de agentes quedan en borr
 son públicos hasta la aprobación administrativa; los catastros históricos se conservan
 como `PUBLICADO`.
 
+La migración `20260924_tourism_agent_saved_content.sql` crea itinerarios del usuario
+con jornadas y paradas referidas a centros, y añade la preferencia opt-in del historial
+del agente, un ID público para cada conversación y fuentes por mensaje. No habilita
+ni copia conversaciones previas. Aplicarla antes de desplegar las nuevas rutas
+`/ai/itineraries` y `/ai/history`; desactivar el historial elimina las conversaciones
+voluntarias del titular, mientras que eliminar un plan no altera el catálogo público.
+
 La migración `20260918_admin_center_drafts.sql` agrega snapshots JSONB versionados para
 separar borradores administrativos del contenido público. Debe ejecutarse después del
 baseline y de la migración de roles.

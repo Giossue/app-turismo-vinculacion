@@ -77,6 +77,17 @@ export function getRetryableAgentTurn(
   return { question: question.text, previous: messages.slice(0, -2) };
 }
 
+/** Share the current position only when this question explicitly needs it. */
+export function shouldShareAgentLocation(message: string): boolean {
+  const normalized = message
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  return /\b(cerca|cercanos?|cercanas?|alrededor|proximos?|proximas?|aqui cerca|desde aqui|mi ubicacion|near|nearby|around me|my location|from here)\b/.test(
+    normalized,
+  );
+}
+
 function toHistoryContent(text: string): string {
   return text.trim().slice(0, AGENT_MESSAGE_MAX_LENGTH);
 }

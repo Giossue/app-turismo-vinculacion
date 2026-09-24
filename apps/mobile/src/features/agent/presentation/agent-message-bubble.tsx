@@ -1,7 +1,10 @@
+import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import * as Speech from "expo-speech";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
+import { TourismActionButton } from "@/core/ui/tourism-controls";
 import {
   turismoIconSizes,
   turismoMetrics,
@@ -18,15 +21,52 @@ import { AgentResultCard, getAgentCardKey } from "./agent-result-card";
 export function AgentMessageBubble({
   message,
   onOpenCenter,
+  onSaveItinerary,
+  savedItinerary,
+  savingItinerary,
   ...routeHandlers
 }: Readonly<
   AgentRouteHandlers & {
     message: AgentMessage;
     onOpenCenter: (code: string) => void;
+    onSaveItinerary: () => void;
+    savedItinerary: boolean;
+    savingItinerary: boolean;
   }
 >) {
   const colors = useTurismoPalette();
   const fromUser = message.role === "user";
+  const [speaking, setSpeaking] = useState(false);
+  const speakingRef = useRef(false);
+
+  useEffect(
+    () => () => {
+      if (speakingRef.current) void Speech.stop().catch(() => undefined);
+    },
+    [],
+  );
+
+  const markStopped = () => {
+    speakingRef.current = false;
+    setSpeaking(false);
+  };
+
+  const toggleSpeech = async () => {
+    if (speaking) {
+      await Speech.stop().catch(() => undefined);
+      markStopped();
+      return;
+    }
+    await Speech.stop().catch(() => undefined);
+    speakingRef.current = true;
+    setSpeaking(true);
+    Speech.speak(message.text.slice(0, 3_000), {
+      language: "es-EC",
+      onDone: markStopped,
+      onStopped: markStopped,
+      onError: markStopped,
+    });
+  };
 
   return (
     <View style={fromUser ? styles.userRow : styles.assistantRow}>
@@ -56,10 +96,20 @@ export function AgentMessageBubble({
         <Text style={[styles.text, { color: colors.text }]}>
           {message.text}
         </Text>
+        {!fromUser && !message.kind ? (
+          <TourismActionButton
+            compact
+            label={speaking ? "Detener voz" : "Escuchar respuesta"}
+            onPress={() => void toggleSpeech()}
+          />
+        ) : null}
         {message.itinerary ? (
           <AgentItineraryCard
             itinerary={message.itinerary}
             onOpenCenter={onOpenCenter}
+            onSave={onSaveItinerary}
+            saved={savedItinerary}
+            saving={savingItinerary}
           />
         ) : null}
         {message.cards?.map((card) => (
