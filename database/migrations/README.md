@@ -193,3 +193,8 @@ migración de esquema. Carga de forma idempotente los 56 indicadores A-I derivad
 `criterios_valoracion` estén presentes. La API deja la jerarquía provisional y no calcula
 puntajes mientras este catálogo no esté completo, por lo que el seed no se aplica
 automáticamente a la base desplegada.
+
+La migración `20260924_establishment_pins_by_taxonomy.sql` corrige los pines del catastro:
+`20260922_osmic_establishment_pins.sql` no es idempotente y, al repetirse, dejó todas las
+clasificaciones en `shop-supermarket`. La nueva deriva el icono de la actividad y la
+clasificación, así que puede ejecutarse más de una vez.
