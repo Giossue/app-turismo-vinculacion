@@ -99,17 +99,29 @@ export class AiAgentController {
     }
 
     response.hijack();
-    response.raw.writeHead(200, {
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-      "Content-Type": "text/event-stream; charset=utf-8",
-      "X-Accel-Buffering": "no",
-    });
+    const abortController = new AbortController();
+    const abortOnClose = () => {
+      if (!response.raw.writableEnded) abortController.abort();
+    };
+    response.raw.once("close", abortOnClose);
 
     try {
-      const result = await this.agent.generate(parsed.data, async (text) => {
-        writeSseEvent(response.raw, { type: "text-delta", text });
+      if (response.raw.destroyed) return;
+      response.raw.writeHead(200, {
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "X-Accel-Buffering": "no",
       });
+      const result = await this.agent.generate(
+        parsed.data,
+        async (text) => {
+          if (abortController.signal.aborted) return;
+          writeSseEvent(response.raw, { type: "text-delta", text });
+        },
+        abortController.signal,
+      );
+      if (abortController.signal.aborted) return;
       const finalResponse = agentResponseSchema.parse(result);
       writeSseEvent(response.raw, {
         type: "complete",
@@ -117,14 +129,21 @@ export class AiAgentController {
       });
       writeSseEvent(response.raw, "[DONE]");
     } catch {
-      if (!response.raw.destroyed && !response.raw.writableEnded) {
+      if (
+        !abortController.signal.aborted &&
+        !response.raw.destroyed &&
+        !response.raw.writableEnded
+      ) {
         writeSseEvent(response.raw, {
           type: "error",
           message: "El agente no está disponible en este momento.",
         });
       }
     } finally {
-      if (!response.raw.writableEnded) response.raw.end();
+      response.raw.off("close", abortOnClose);
+      if (!response.raw.destroyed && !response.raw.writableEnded) {
+        response.raw.end();
+      }
     }
   }
 }

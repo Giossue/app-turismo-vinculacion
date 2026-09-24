@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ApiError } from "@/core/api/http";
 import { useUserLocation } from "@/core/location/use-user-location";
@@ -13,6 +13,7 @@ import {
   agentFallbackErrorMessage,
   agentIntroMessage,
   buildAgentHistory,
+  getRetryableAgentTurn,
 } from "../domain/agent-conversation";
 
 /**
@@ -26,42 +27,101 @@ export function useAgentConversation() {
   const [messages, setMessages] = useState<readonly AgentMessage[]>([
     agentIntroMessage,
   ]);
+  const [draft, setDraft] = useState("");
+  const messagesRef = useRef<readonly AgentMessage[]>([agentIntroMessage]);
   const [sending, setSending] = useState(false);
   const [awaitingText, setAwaitingText] = useState(false);
   const [pendingRouteAction, setPendingRouteAction] =
     useState<StartRouteAction | null>(null);
   const nextIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
+  const answerIdRef = useRef<string | null>(null);
+  const sendingRef = useRef(false);
+  const userIdRef = useRef(auth.user?.id);
 
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  const updateMessages = (
+    update: (current: readonly AgentMessage[]) => readonly AgentMessage[],
+  ) => {
+    const next = update(messagesRef.current);
+    messagesRef.current = next;
+    setMessages(next);
+  };
+
+  const cancel = useCallback(() => {
+    const controller = abortRef.current;
+    if (!controller) return;
+    controller.abort();
+    abortRef.current = null;
+    sendingRef.current = false;
+    setSending(false);
+    setAwaitingText(false);
+    const answerId = answerIdRef.current;
+    answerIdRef.current = null;
+    if (answerId) {
+      const next = upsertMessage(messagesRef.current, {
+        id: answerId,
+        kind: "error",
+        role: "assistant",
+        text: "Respuesta detenida.",
+      });
+      messagesRef.current = next;
+      setMessages(next);
+    }
+  }, []);
+
+  const newConversation = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    answerIdRef.current = null;
+    sendingRef.current = false;
+    messagesRef.current = [agentIntroMessage];
+    setMessages(messagesRef.current);
+    setSending(false);
+    setAwaitingText(false);
+    setPendingRouteAction(null);
+    setDraft("");
+  }, []);
+
+  useEffect(() => {
+    if (userIdRef.current === auth.user?.id) return;
+    userIdRef.current = auth.user?.id;
+    newConversation();
+  }, [auth.user?.id, newConversation]);
 
   const createId = (prefix: string) => {
     nextIdRef.current += 1;
     return `${prefix}-${nextIdRef.current}`;
   };
 
-  const send = async (text: string) => {
+  const send = async (
+    text: string,
+    baseMessages: readonly AgentMessage[] = messagesRef.current,
+  ) => {
     const message = text.trim();
-    if (!message || sending) return;
+    if (!message || sendingRef.current) return;
+    sendingRef.current = true;
     const controller = new AbortController();
     abortRef.current = controller;
-    const history = buildAgentHistory(messages);
+    const history = buildAgentHistory(baseMessages);
     const question: AgentMessage = {
       id: createId("user"),
       role: "user",
       text: message,
     };
     const answerId = createId("assistant");
+    answerIdRef.current = answerId;
 
     setPendingRouteAction(null);
     setSending(true);
     setAwaitingText(true);
-    setMessages((current) => [...current, question]);
+    updateMessages(() => [...baseMessages, question]);
 
     const showText = (partial: string) => {
       if (!partial || controller.signal.aborted) return;
       setAwaitingText(false);
-      setMessages((current) =>
+      updateMessages((current) =>
         upsertMessage(current, {
           id: answerId,
           kind: "partial",
@@ -84,36 +144,49 @@ export function useAgentConversation() {
         signal: controller.signal,
       });
       if (controller.signal.aborted) return;
-      setMessages((current) =>
+      updateMessages((current) =>
         upsertMessage(current, toCompleteMessage(answerId, answer)),
       );
     } catch (error) {
       if (controller.signal.aborted) return;
       // Only API errors carry a message meant for the tourist.
       const failure: AgentMessage = {
-        id: createId("error"),
+        id: answerId,
         kind: "error",
         role: "assistant",
         text:
           error instanceof ApiError ? error.message : agentFallbackErrorMessage,
       };
-      setMessages((current) => [...current, failure]);
+      updateMessages((current) => upsertMessage(current, failure));
     } finally {
-      if (abortRef.current === controller) abortRef.current = null;
-      if (!controller.signal.aborted) {
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+        answerIdRef.current = null;
+        sendingRef.current = false;
         setSending(false);
         setAwaitingText(false);
       }
     }
   };
 
+  const retry = () => {
+    if (sendingRef.current) return;
+    const turn = getRetryableAgentTurn(messagesRef.current);
+    if (turn) void send(turn.question, turn.previous);
+  };
+
   return {
     /** True until the first words of the answer arrive. */
     awaitingText: sending && awaitingText,
+    cancel,
+    draft,
     messages,
+    newConversation,
     pendingRouteAction,
+    retry,
     send,
     sending,
+    setDraft,
     setPendingRouteAction,
   };
 }

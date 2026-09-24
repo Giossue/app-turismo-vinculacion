@@ -143,6 +143,7 @@ export class AiAgentService {
   async generate(
     input: AgentChatInput,
     onText?: (text: string) => Promise<void> | void,
+    abortSignal?: AbortSignal,
   ): Promise<AgentResponse> {
     const entities = new Map<string, TrustedAgentEntity>();
     const trustedSources = new Map<string, AgentSource>();
@@ -275,6 +276,7 @@ export class AiAgentService {
 
     try {
       const result = streamText({
+        abortSignal,
         model: this.model(),
         system: [
           "Eres el agente turístico institucional de Turismo Vinculación.",

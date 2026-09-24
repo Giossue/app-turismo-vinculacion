@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import type { AgentMessage } from "./agent";
-import { agentIntroMessage, buildAgentHistory } from "./agent-conversation";
+import {
+  agentIntroMessage,
+  agentStarterPrompts,
+  buildAgentHistory,
+  getRetryableAgentTurn,
+  showsAgentStarterPrompts,
+} from "./agent-conversation";
+import { AGENT_MESSAGE_MAX_LENGTH } from "./agent";
 
 function user(id: number, text: string): AgentMessage {
   return { id: `user-${id}`, role: "user", text };
@@ -63,5 +70,47 @@ describe("agent history", () => {
     expect(history).toHaveLength(12);
     expect(history[0]).toEqual({ role: "user", content: "Pregunta 2" });
     expect(history.at(-1)?.content).toHaveLength(2_000);
+  });
+});
+
+describe("retrying an agent turn", () => {
+  it("reuses the failed question and keeps only completed earlier turns", () => {
+    const previous = [
+      agentIntroMessage,
+      user(1, "¿Qué visitar?"),
+      assistant(2, "El mirador."),
+    ];
+    expect(
+      getRetryableAgentTurn([
+        ...previous,
+        user(3, "¿Cómo llego?"),
+        assistant(4, "Respuesta detenida.", "error"),
+      ]),
+    ).toEqual({ question: "¿Cómo llego?", previous });
+  });
+
+  it("does not retry a completed or partial response", () => {
+    expect(
+      getRetryableAgentTurn([user(1, "Hola"), assistant(2, "Hola")]),
+    ).toBeNull();
+    expect(
+      getRetryableAgentTurn([user(1, "Hola"), assistant(2, "Ho", "partial")]),
+    ).toBeNull();
+  });
+});
+
+describe("agent starter prompts", () => {
+  it("are valid questions for the agent", () => {
+    for (const prompt of agentStarterPrompts) {
+      expect(prompt.text.trim()).toBe(prompt.text);
+      expect(prompt.text.length).toBeLessThanOrEqual(AGENT_MESSAGE_MAX_LENGTH);
+    }
+  });
+
+  it("show only until the first question is sent", () => {
+    expect(showsAgentStarterPrompts([agentIntroMessage])).toBe(true);
+    expect(showsAgentStarterPrompts([agentIntroMessage, user(1, "Hola")])).toBe(
+      false,
+    );
   });
 });

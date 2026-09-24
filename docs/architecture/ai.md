@@ -50,6 +50,9 @@ duración.
 El endpoint SSE solo transmite el campo de texto parcial acumulado (`text-delta`) y, al final,
 la respuesta completa ya sanitizada (`complete`); nunca transmite tarjetas, coordenadas o
 acciones parciales del modelo.
+Si el cliente cierra la conexión SSE, el servidor aborta la generación del proveedor y no
+emite más eventos. Detener una respuesta desde el móvil conserva la pregunta para un
+reintento sin incluir la respuesta parcial en el historial enviado al modelo.
 Las acciones son intenciones: `start_route` siempre exige confirmación explícita en el
 móvil y no ejecuta navegación desde la API.
 

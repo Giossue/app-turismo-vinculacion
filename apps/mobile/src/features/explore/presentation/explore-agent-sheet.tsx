@@ -1,17 +1,15 @@
 import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import { useEffect, useRef } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismBottomSheetModal } from "@/core/ui/tourism-bottom-sheet";
+import { TourismIconAction } from "@/core/ui/tourism-controls";
 import { TourismSheetHandle } from "@/core/ui/tourism-sheet-handle";
-import {
-  turismoMetrics,
-  turismoSpacing,
-  turismoTypography,
-} from "@/core/ui/tokens";
+import { turismoMetrics, turismoSpacing } from "@/core/ui/tokens";
 import type { AgentRouteDestination } from "@/features/agent/domain/agent";
+import type { useAgentConversation } from "@/features/agent/application/use-agent-conversation";
 import { AgentChatContent } from "@/features/agent/presentation/agent-chat-content";
 import type { RouteMode } from "@/features/routing/domain/routing";
 
@@ -23,11 +21,13 @@ const sheetEdges: readonly Edge[] = ["top", "bottom"];
  * screen state stays the single source of truth.
  */
 export function ExploreAgentSheet({
+  conversation,
   onClose,
   onOpenCenter,
   onStartRoute,
   open,
 }: Readonly<{
+  conversation: ReturnType<typeof useAgentConversation>;
   onClose: () => void;
   onOpenCenter: (code: string) => void;
   onStartRoute: (destination: AgentRouteDestination, mode: RouteMode) => void;
@@ -60,17 +60,19 @@ export function ExploreAgentSheet({
           <TourismSheetHandle
             closeLabel="Cerrar agente turístico"
             onClose={onClose}
+            showIndicator={false}
           />
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
-            <Text
-              accessibilityRole="header"
-              style={[styles.title, { color: colors.text }]}
-            >
-              Agente turístico
-            </Text>
+            <TourismIconAction
+              accessibilityLabel="Nueva conversación"
+              icon="plus"
+              onPress={conversation.newConversation}
+              variant="ghost"
+            />
           </View>
           <View style={styles.content}>
             <AgentChatContent
+              conversation={conversation}
               onOpenCenter={onOpenCenter}
               onStartRoute={onStartRoute}
             />
@@ -88,11 +90,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderBottomWidth: turismoMetrics.borderWidth,
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     minHeight: turismoMetrics.controlLg,
     paddingHorizontal: turismoSpacing.md,
   },
-  title: { ...turismoTypography.heading },
   content: {
     flex: 1,
     minHeight: 0,
