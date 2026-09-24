@@ -19,14 +19,23 @@ export function TourismSheetHandle({
   closeLabel = "Cerrar",
   indicatorAccessibilityLabel,
   indicatorExpanded,
+  insetClose = false,
   onClose,
   onIndicatorPress,
+  showIndicator = true,
 }: Readonly<{
   closeLabel?: string;
   indicatorAccessibilityLabel?: string;
   indicatorExpanded?: boolean;
+  /**
+   * Baja y mete la X, lejos de la esquina redondeada, sin mover la barra
+   * (mismo margen que la X del menú).
+   */
+  insetClose?: boolean;
   onClose: () => void;
   onIndicatorPress?: () => void;
+  /** Sin barra de arrastre, para paneles fijos que solo se cierran con la X. */
+  showIndicator?: boolean;
 }>) {
   const colors = useTurismoPalette();
   const indicator = (
@@ -35,7 +44,7 @@ export function TourismSheetHandle({
 
   return (
     <View style={styles.handle}>
-      {onIndicatorPress ? (
+      {!showIndicator ? null : onIndicatorPress ? (
         <Pressable
           accessibilityLabel={indicatorAccessibilityLabel}
           accessibilityRole="button"
@@ -59,7 +68,7 @@ export function TourismSheetHandle({
         accessibilityLabel={closeLabel}
         icon="close"
         onPress={onClose}
-        style={styles.close}
+        style={[styles.close, insetClose && styles.closeInset]}
         variant="ghost"
       />
     </View>
@@ -85,4 +94,8 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: turismoOpacity.pressed },
   close: { position: "absolute", right: turismoSpacing.sm },
+  closeInset: {
+    right: turismoSpacing.sm + turismoSpacing.xs,
+    top: turismoSpacing.sm,
+  },
 });

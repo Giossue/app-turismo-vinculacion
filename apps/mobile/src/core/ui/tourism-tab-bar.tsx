@@ -5,7 +5,6 @@ import {
   useEffect,
   useRef,
   useState,
-  useSyncExternalStore,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -17,14 +16,15 @@ import {
   TourismGlassFill,
   TourismGlassTargetProvider,
   turismoGlassBorderWidth,
+  useTourismGlassBorderColor,
 } from "./tourism-glass";
 import { TourismPressable } from "./tourism-pressable";
 import { TurismoIcon, type TurismoIconName } from "./turismo-icons";
 import {
-  turismoFixedColors,
   turismoIconSizes,
   turismoMetrics,
   turismoRadii,
+  turismoShadows,
   turismoSpacing,
   turismoTypography,
 } from "./tokens";
@@ -50,36 +50,6 @@ const TourismTabBarInsetContext = createContext(0);
 
 export function useTourismTabBarInset(): number {
   return useContext(TourismTabBarInsetContext);
-}
-
-// Visibilidad de la barra fuera del árbol de React: solo la barra se suscribe,
-// así ocultarla al abrir una sheet no vuelve a renderizar el navegador, el
-// mapa ni los controles mientras la sheet se anima.
-let tabBarHidden = false;
-const tabBarListeners = new Set<() => void>();
-
-function setTabBarHidden(hidden: boolean) {
-  if (tabBarHidden === hidden) return;
-  tabBarHidden = hidden;
-  for (const listener of tabBarListeners) listener();
-}
-
-function subscribeTabBarHidden(listener: () => void) {
-  tabBarListeners.add(listener);
-  return () => {
-    tabBarListeners.delete(listener);
-  };
-}
-
-/**
- * Oculta la barra mientras `hidden` sea verdadero, por ejemplo con una ficha
- * abierta sobre el mapa: la ficha ocupa la parte inferior sin quedar debajo.
- */
-export function useHideTourismTabBar(hidden: boolean): void {
-  useEffect(() => {
-    setTabBarHidden(hidden);
-    return () => setTabBarHidden(false);
-  }, [hidden]);
 }
 
 type GlassTarget = RefObject<View | null>;
@@ -126,15 +96,18 @@ export function useTourismTabGlassTarget(): GlassTarget {
  */
 export function TourismTabBar({
   items,
-}: Readonly<{ items: readonly TourismTabBarItem[] }>) {
+  emphasizeMapGlass = false,
+}: Readonly<{
+  items: readonly TourismTabBarItem[];
+  emphasizeMapGlass?: boolean;
+}>) {
   const colors = useTurismoPalette();
+  const glassBorderColor = useTourismGlassBorderColor(
+    colors.border,
+    emphasizeMapGlass,
+  );
   const insets = useSafeAreaInsets();
   const { target } = useContext(TourismTabGlassContext);
-  const hidden = useSyncExternalStore(
-    subscribeTabBarHidden,
-    () => tabBarHidden,
-  );
-  if (hidden) return null;
 
   return (
     <View
@@ -143,9 +116,12 @@ export function TourismTabBar({
     >
       <View
         accessibilityRole="tablist"
-        style={[styles.bar, { borderColor: colors.border }]}
+        style={[styles.bar, { borderColor: glassBorderColor }]}
       >
-        <TourismGlassTargetProvider target={target}>
+        <TourismGlassTargetProvider
+          emphasizeMapGlass={emphasizeMapGlass}
+          target={target}
+        >
           <TourismGlassFill />
         </TourismGlassTargetProvider>
         {items.map((item) => {
@@ -198,10 +174,7 @@ const styles = StyleSheet.create({
     maxWidth: turismoMetrics.contentMaxWidth,
     overflow: "hidden",
     paddingHorizontal: turismoSpacing.xs,
-    shadowColor: turismoFixedColors.shadow,
-    shadowOffset: { height: 4, width: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
+    ...turismoShadows.floating,
     width: "100%",
   },
   item: {

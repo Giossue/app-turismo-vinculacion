@@ -24,6 +24,7 @@ import { TourismSheetHandle } from "@/core/ui/tourism-sheet-handle";
 import { TourismStateView } from "@/core/ui/tourism-state";
 import {
   turismoMetrics,
+  turismoPanelSpring,
   turismoRadii,
   turismoSpacing,
   turismoTypography,
@@ -39,12 +40,7 @@ import {
   RouteSteps,
 } from "./route-preview-sections";
 
-const panelSpring = {
-  damping: 30,
-  mass: 0.8,
-  overshootClamping: true,
-  stiffness: 280,
-} as const;
+const panelSpring = turismoPanelSpring;
 /** Share of the drag travel after which releasing expands the panel. */
 const panelExpandThreshold = 0.34;
 /** Upward fling speed (dp/s) that expands the panel regardless of travel. */

@@ -15,6 +15,7 @@ import {
 } from "react-native";
 
 import { useTurismoPalette, useTurismoTheme } from "./theme-context";
+import { turismoHairline } from "./tourism-hairline";
 
 type GlassTarget = RefObject<View | null>;
 
@@ -23,7 +24,7 @@ type GlassTarget = RefObject<View | null>;
  * mismo canto fino en la barra, el buscador, los botones, las sheets y los
  * paneles.
  */
-export const turismoGlassBorderWidth = StyleSheet.hairlineWidth;
+export const turismoGlassBorderWidth = turismoHairline;
 
 /** Opacidad (hex) de la superficie cuando Android no puede desenfocar. */
 const solidFallbackAlpha = "F2";
@@ -35,18 +36,39 @@ const glassIntensity = 60;
  * Vista que desenfocan las superficies de vidrio en Android (en iOS el
  * desenfoque es nativo y no la necesita). `null` fuera de un `TourismGlassScope`.
  */
-const TourismGlassTargetContext = createContext<GlassTarget | null>(null);
+const TourismGlassTargetContext = createContext({
+  target: null as GlassTarget | null,
+  emphasizeMapGlass: false,
+});
 
 /** Superficies de vidrio de este subárbol desenfocarán `target`. */
 export function TourismGlassTargetProvider({
   children,
+  emphasizeMapGlass = false,
   target,
-}: Readonly<{ children: ReactNode; target: GlassTarget | null }>) {
+}: Readonly<{
+  children: ReactNode;
+  emphasizeMapGlass?: boolean;
+  target: GlassTarget | null;
+}>) {
   return (
-    <TourismGlassTargetContext.Provider value={target}>
+    <TourismGlassTargetContext.Provider value={{ target, emphasizeMapGlass }}>
       {children}
     </TourismGlassTargetContext.Provider>
   );
+}
+
+/** Borde más tenue para el vidrio de Explorar sobre el mapa claro. */
+export function useTourismGlassBorderColor(
+  defaultColor: string,
+  emphasizeMapGlassOverride?: boolean,
+): string {
+  const { scheme } = useTurismoTheme();
+  const colors = useTurismoPalette();
+  const { emphasizeMapGlass } = useContext(TourismGlassTargetContext);
+  return scheme === "light" && (emphasizeMapGlassOverride ?? emphasizeMapGlass)
+    ? colors.glassMapBorder
+    : defaultColor;
 }
 
 /**
@@ -59,11 +81,13 @@ export function TourismGlassTargetProvider({
 export function TourismGlassScope({
   backdrop,
   children,
+  emphasizeMapGlass = false,
   style,
   targetRef,
 }: Readonly<{
   backdrop: ReactNode;
   children?: ReactNode;
+  emphasizeMapGlass?: boolean;
   style?: StyleProp<ViewStyle>;
   targetRef?: GlassTarget;
 }>) {
@@ -74,7 +98,10 @@ export function TourismGlassScope({
       <BlurTargetView ref={ref} style={StyleSheet.absoluteFill}>
         {backdrop}
       </BlurTargetView>
-      <TourismGlassTargetProvider target={ref}>
+      <TourismGlassTargetProvider
+        emphasizeMapGlass={emphasizeMapGlass}
+        target={ref}
+      >
         {children}
       </TourismGlassTargetProvider>
     </View>
@@ -104,7 +131,8 @@ export function TourismGlassFill({
 }: Readonly<{ material?: GlassMaterial }>) {
   const { scheme } = useTurismoTheme();
   const colors = useTurismoPalette();
-  const target = useContext(TourismGlassTargetContext);
+  const { target, emphasizeMapGlass } = useContext(TourismGlassTargetContext);
+  const mapControl = emphasizeMapGlass && material === "thin";
   if (Platform.OS === "android" && (!target || Platform.Version < 31)) {
     // Sin algo que desenfocar (un `Modal`, como el menú lateral, abre otra
     // ventana) o en Android 11 o inferior, el modo sin desenfoque de
@@ -115,19 +143,37 @@ export function TourismGlassFill({
         pointerEvents="none"
         style={[
           StyleSheet.absoluteFill,
-          { backgroundColor: `${colors.surface}${solidFallbackAlpha}` },
+          {
+            backgroundColor:
+              mapControl && scheme === "dark"
+                ? `${colors.surfaceStrong}D9`
+                : `${colors.surface}${solidFallbackAlpha}`,
+          },
         ]}
       />
     );
   }
-  return (
+  const blur = (
     <BlurView
       blurMethod="dimezisBlurViewSdk31Plus"
+      blurReductionFactor={mapControl ? 2 : 4}
       blurTarget={target ?? undefined}
       intensity={glassIntensity}
       pointerEvents="none"
       style={StyleSheet.absoluteFill}
       tint={materialTints[material][scheme]}
     />
+  );
+  if (!mapControl) return blur;
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {blur}
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: colors.glassMapWash },
+        ]}
+      />
+    </View>
   );
 }

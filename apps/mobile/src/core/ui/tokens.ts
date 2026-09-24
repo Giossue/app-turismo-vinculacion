@@ -32,10 +32,10 @@ export const turismoMetrics = {
   controlMd: 48,
   controlLg: 52,
   avatarSm: 32,
+  avatarLg: 52,
   iconButtonLg: 56,
   contentMaxWidth: 720,
   sheetMaxWidth: 560,
-  drawerMaxWidth: 360,
   borderWidth: 1,
   borderWidthStrong: 2,
   headerMinHeight: 64,
@@ -67,6 +67,34 @@ export const turismoTypography = {
   stat: { fontSize: 36, lineHeight: 40, fontWeight: "700" as const },
 } as const;
 
+/** Trazo de los íconos lineales: normal y fino (listas de menú). */
+export const turismoIconStrokes = {
+  regular: 2,
+  light: 1.75,
+} as const;
+
+/** Proporciones de imágenes: portada de ficha y miniaturas de galería. */
+export const turismoAspectRatios = {
+  hero: 1.35,
+  photo: 1.15,
+} as const;
+
+/** Estilo de las capas nativas del mapa (MapLibre) y del panel de ruta. */
+export const turismoMapLayerStyle = {
+  establishmentDotOpacity: 0.82,
+  routeLineOpacity: 0.92,
+  routeLineWidth: 5,
+  navigationArrowScale: 0.15,
+} as const;
+
+/** Resorte del panel de ruta al expandirse o contraerse. */
+export const turismoPanelSpring = {
+  damping: 30,
+  mass: 0.8,
+  overshootClamping: true,
+  stiffness: 280,
+} as const;
+
 export const turismoIconSizes = {
   xs: 14,
   sm: 18,
@@ -80,6 +108,7 @@ export const turismoOpacity = {
   pressed: 0.72,
   disabled: 0.38,
   heroImage: 0.92,
+  loadingOverlay: 0.86,
 } as const;
 
 /**
@@ -93,6 +122,25 @@ export const turismoFixedColors = {
   shadow: "#000000",
   // Darkens hero photography so the header stays legible on any image.
   heroShade: "rgba(0, 0, 0, 0.24)",
+} as const;
+
+/**
+ * Sombras compartidas: `floating` para controles sobre el mapa (barra de
+ * pestañas) y `sheet` para paneles que suben desde abajo (menú).
+ */
+export const turismoShadows = {
+  floating: {
+    shadowColor: turismoFixedColors.shadow,
+    shadowOffset: { height: 4, width: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+  },
+  sheet: {
+    shadowColor: turismoFixedColors.shadow,
+    shadowOffset: { height: -4, width: 0 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+  },
 } as const;
 
 /**
@@ -117,26 +165,33 @@ export const turismoAccountEntryLayout = {
 
 export const turismoColors = {
   light: {
-    background: "#f5f8f7",
+    // Neutros puros, como el tema oscuro: el verde queda para la marca
+    // (íconos, botones y estados seleccionados), no para fondos ni bordes.
+    background: "#f5f5f5",
     surface: "#ffffff",
-    surfaceMuted: "#e8f0ee",
-    surfaceStrong: "#d8e5e2",
-    text: "#17201c",
-    textMuted: "#52605a",
-    textFaint: "#6b7771",
-    border: "rgba(20, 83, 45, 0.16)",
+    surfaceMuted: "#efefef",
+    surfaceStrong: "#e2e2e2",
+    text: "#171717",
+    textMuted: "#525252",
+    textFaint: "#737373",
+    border: "rgba(0, 0, 0, 0.1)",
     primary: "#166534",
     primaryStrong: "#14532d",
     primarySoft: "#dcfce7",
     accent: "#4b5563",
     warm: "#b45309",
     danger: "#b91c1c",
-    mapSearchIcon: "#52605a",
+    mapSearchIcon: "#525252",
     scrim: "rgba(0, 0, 0, 0.42)",
-    ripple: "rgba(23, 32, 28, 0.12)",
+    ripple: "rgba(0, 0, 0, 0.1)",
+    // Vidrio de Explorar sobre el mapa: borde tenue y velo que aclara.
+    glassMapBorder: "rgba(0, 0, 0, 0.07)",
+    glassMapWash: "rgba(255, 255, 255, 0.18)",
     onPrimary: "#ffffff",
     map: {
       background: "#E2ECE6",
+      // Fondo del estilo base mientras cargan las teselas.
+      basemapCanvas: "#f5f7f8",
       border: "#D4E2D8",
       attribution: "#176B4D",
       location: "#1155ff",
@@ -160,16 +215,21 @@ export const turismoColors = {
     border: "rgba(245, 245, 245, 0.12)",
     primary: "#22c55e",
     primaryStrong: "#4ade80",
-    primarySoft: "#15803d",
+    // Fondo sutil de lo seleccionado: el texto e ícono verdes deben
+    // contrastar encima (verde sobre verde fuerte no se leía).
+    primarySoft: "#12291c",
     accent: "#b8b8b8",
     warm: "#ffa726",
     danger: "#f44336",
     mapSearchIcon: "#ffffff",
     scrim: "rgba(0, 0, 0, 0.58)",
     ripple: "rgba(245, 245, 245, 0.12)",
+    glassMapBorder: "rgba(245, 245, 245, 0.12)",
+    glassMapWash: "rgba(225, 225, 225, 0.12)",
     onPrimary: "#06130a",
     map: {
       background: "#10251A",
+      basemapCanvas: "#10251A",
       border: "#345844",
       attribution: "#55C58D",
       location: "#0e55ff",

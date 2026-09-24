@@ -1,7 +1,12 @@
 import { Tabs, usePathname, useRouter } from "expo-router";
 import { useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
+import {
+  TourismBottomSheetHost,
+  TourismSheetTopInsetProvider,
+} from "@/core/ui/tourism-bottom-sheet";
 import {
   TourismTabBar,
   TourismTabBarInsetProvider,
@@ -10,6 +15,7 @@ import {
   TourismMenuProvider,
   useTourismMenu,
   type TourismMenuItem,
+  type TourismMenuProfile,
 } from "@/core/ui/tourism-navigation";
 import { useAuth } from "@/features/auth/application/auth-context";
 import {
@@ -20,6 +26,7 @@ import {
 export default function TabsLayout() {
   const router = useRouter();
   const auth = useAuth();
+  const insets = useSafeAreaInsets();
 
   // While the session is still being restored the screen itself waits (its
   // `AuthGate`), so only a known anonymous visitor goes to the login first.
@@ -27,8 +34,22 @@ export default function TabsLayout() {
     router.push(auth.status === "anonymous" ? buildLoginHref(path) : path);
   };
 
+  // Con sesión la cabecera solo informa; sin sesión lleva al login.
+  const profile: TourismMenuProfile = auth.user
+    ? {
+        accessibilityLabel: `${auth.user.name}, ${auth.user.email}`,
+        initials: buildInitials(auth.user.name),
+        subtitle: auth.user.email,
+        title: auth.user.name,
+      }
+    : {
+        accessibilityLabel: "Iniciar sesión",
+        onPress: () => router.push(buildLoginHref("/")),
+        subtitle: "Inicia sesión o crea tu cuenta",
+        title: "Invitado",
+      };
+
   const menuItems: readonly TourismMenuItem[] = [
-    { icon: "user", label: "Cuenta", onPress: () => openProtected("/account") },
     {
       icon: "download",
       label: "Mapas sin conexión",
@@ -38,17 +59,44 @@ export default function TabsLayout() {
       icon: "settings",
       label: "Configuración",
       onPress: () => router.push("/settings"),
-      startsGroup: true,
     },
+    ...(auth.status === "authenticated"
+      ? [
+          {
+            icon: "logOut",
+            label: "Cerrar sesión",
+            // Nunca falla; una pantalla protegida abierta redirige al login.
+            onPress: () => void auth.logout(),
+            startsGroup: true,
+          } as const,
+        ]
+      : []),
   ];
 
   return (
-    <TourismMenuProvider items={menuItems}>
+    <TourismMenuProvider items={menuItems} profile={profile}>
       <TourismTabBarInsetProvider>
-        <PrimaryTabs />
+        {/* El host va después de las pestañas: sus sheets se dibujan encima
+            de la barra, que sigue visible debajo. Expandidas ocupan toda la
+            pantalla salvo la barra de estado. */}
+        <TourismSheetTopInsetProvider value={insets.top}>
+          <TourismBottomSheetHost>
+            <PrimaryTabs />
+          </TourismBottomSheetHost>
+        </TourismSheetTopInsetProvider>
       </TourismTabBarInsetProvider>
     </TourismMenuProvider>
   );
+}
+
+/** Hasta dos iniciales del nombre, para el avatar del menú. */
+function buildInitials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word.charAt(0).toUpperCase())
+    .join("");
 }
 
 function PrimaryTabs() {
@@ -89,7 +137,7 @@ function PrimaryTabs() {
 
 /**
  * Explorar y Guardados son pestañas (se cambian con `replace`, sin crear
- * historial); Menú no es una pantalla: abre el menú lateral.
+ * historial); Menú no es una pantalla: abre la hoja del menú.
  */
 function PrimaryTabBar() {
   const router = useRouter();
@@ -99,6 +147,7 @@ function PrimaryTabBar() {
 
   return (
     <TourismTabBar
+      emphasizeMapGlass={pathname === "/"}
       items={[
         {
           icon: "map",

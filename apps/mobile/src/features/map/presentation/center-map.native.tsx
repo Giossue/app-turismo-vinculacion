@@ -44,6 +44,7 @@ import { MapLoadingOverlay } from "./map-loading-overlay";
 import { useBasemapStyle } from "./use-basemap-style";
 import { useMapLifecycle } from "./use-map-lifecycle";
 import { UserLocationLayers } from "./user-location-layers";
+import { turismoMapLayerStyle } from "@/core/ui/tokens";
 
 type CenterFeatureCollection = GeoJSON.FeatureCollection<
   GeoJSON.Point,
@@ -246,9 +247,7 @@ export function CenterMap({
         const center =
           typeof code === "string" ? centersByCode.get(code) : undefined;
         if (center) return [{ kind: "center", center }];
-        const establishment = parseEstablishmentTileFeature(
-          feature.properties,
-        );
+        const establishment = parseEstablishmentTileFeature(feature.properties);
         return establishment ? [{ kind: "establishment", establishment }] : [];
       });
       const [anchor] = pressed;
@@ -278,13 +277,7 @@ export function CenterMap({
       );
       focusSelections(selections, getMapFeatureCoordinate(anchor));
     },
-    [
-      centersByCode,
-      centers,
-      focusSelections,
-      isActive,
-      onLocationFocusChange,
-    ],
+    [centersByCode, centers, focusSelections, isActive, onLocationFocusChange],
   );
 
   useEffect(() => {
@@ -452,7 +445,7 @@ export function CenterMap({
             maxzoom={pinMinZoom}
             paint={{
               "circle-color": establishmentPinColorExpression,
-              "circle-opacity": 0.82,
+              "circle-opacity": turismoMapLayerStyle.establishmentDotOpacity,
               "circle-radius": establishmentDotRadius,
               "circle-stroke-color": colors.surface,
               "circle-stroke-width": 1,

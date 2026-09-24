@@ -1,6 +1,7 @@
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { useTurismoMapPalette } from "@/core/ui/theme-context";
+import { turismoOpacity } from "@/core/ui/tokens";
 
 /** Translucent cover shown while MapLibre loads its style. */
 export function MapLoadingOverlay({ visible }: Readonly<{ visible: boolean }>) {
@@ -22,7 +23,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: "center",
     left: 0,
-    opacity: 0.86,
+    opacity: turismoOpacity.loadingOverlay,
     position: "absolute",
     right: 0,
     top: 0,

@@ -1,21 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useIsFocused, useRouter } from "expo-router";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { useTourismMenu } from "@/core/ui/tourism-navigation";
-import {
-  TourismBottomSheetHost,
-  TourismSheetTopInsetProvider,
-} from "@/core/ui/tourism-bottom-sheet";
 import { TourismGlassScope } from "@/core/ui/tourism-glass";
 import {
-  useHideTourismTabBar,
   useTourismTabBarInset,
   useTourismTabGlassTarget,
 } from "@/core/ui/tourism-tab-bar";
 import { TourismStateView } from "@/core/ui/tourism-state";
+import { useAgentConversation } from "@/features/agent/application/use-agent-conversation";
 import type { AgentRouteDestination } from "@/features/agent/domain/agent";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { buildLoginHref } from "@/features/auth/application/login-href";
@@ -64,6 +59,8 @@ export function ExploreMapScreen() {
   const [resetNorthKey, setResetNorthKey] = useState(0);
   const location = useExploreLocationFocus();
   const overlay = useExploreOverlay();
+  const conversation = useAgentConversation();
+  const cancelAgentResponse = conversation.cancel;
   const search = useExploreSearch({
     hasLocation: location.userLocation !== null,
     onRequestLocation: location.requestLocation,
@@ -75,6 +72,14 @@ export function ExploreMapScreen() {
     userLocation: location.userLocation,
   });
   const current = overlay.overlay;
+  useEffect(() => {
+    if (current.kind !== "agent") cancelAgentResponse();
+  }, [current.kind, cancelAgentResponse]);
+  useEffect(() => {
+    if (auth.status === "anonymous" && current.kind === "agent") {
+      overlay.closeAgent();
+    }
+  }, [auth.status, current.kind, overlay]);
   // Prefer the fresh map copy; a center found by search outside the loaded
   // pins keeps the copy it was selected with.
   const selectedCenter =
@@ -82,19 +87,9 @@ export function ExploreMapScreen() {
       ? (data.centers.find((center) => center.code === current.center.code) ??
         current.center)
       : null;
-  // Con una ficha abierta, la barra de pestañas se oculta para que la ficha
-  // quede encima y use toda la parte inferior.
-  const sheetOpen =
-    !search.focused &&
-    (current.kind === "choices" ||
-      current.kind === "moreFilters" ||
-      current.kind === "establishment" ||
-      selectedCenter !== null ||
-      (current.kind === "none" && Boolean(search.submittedQuery)));
-  useHideTourismTabBar(sheetOpen);
-  const insets = useSafeAreaInsets();
-  // Expandida, la sheet ocupa toda la pantalla salvo la barra de estado.
-  const sheetTopInset = insets.top;
+  // Las sheets se dibujan en el host del layout de pestañas (encima de la
+  // barra); en otra pestaña no se muestran, pero su estado se conserva.
+  const focused = useIsFocused();
 
   /** Closing a center returns to the submitted results, if any. */
   const closeCenter = () => {
@@ -212,6 +207,7 @@ export function ExploreMapScreen() {
           />
         </View>
       }
+      emphasizeMapGlass
       style={[styles.screen, { backgroundColor: colors.map.background }]}
       targetRef={glassTarget}
     >
@@ -230,98 +226,97 @@ export function ExploreMapScreen() {
           }
         />
       ) : (
-        <TourismSheetTopInsetProvider value={sheetTopInset}>
-          <TourismBottomSheetHost>
-            <ExploreTopBar
-              field={searchField}
-              landscape={landscape}
-              mapFilter={data.mapFilter}
-              onMapFilterChange={data.changeMapFilter}
-              onModeChange={search.changeMode}
-              onMoreFilters={overlay.openMoreFilters}
-              refreshing={data.isRefreshingMap}
-              searchActive={search.active}
+        <>
+          <ExploreTopBar
+            field={searchField}
+            landscape={landscape}
+            mapFilter={data.mapFilter}
+            onMapFilterChange={data.changeMapFilter}
+            onModeChange={search.changeMode}
+            onMoreFilters={overlay.openMoreFilters}
+            refreshing={data.isRefreshingMap}
+            searchActive={search.active}
+          />
+          <ExploreMapActions
+            agentOpen={current.kind === "agent"}
+            bearingStore={bearingStore}
+            landscape={landscape}
+            locateDisabled={location.status === "requesting"}
+            locateLabel={location.locateLabel}
+            locateSlashed={location.status === "disabled"}
+            onLocate={location.locate}
+            onOpenAgent={openAgent}
+            onResetNorth={() => setResetNorthKey((key) => key + 1)}
+            showLocate={location.showLocateAction}
+          />
+          {focused && current.kind === "none" && search.submittedQuery ? (
+            <ExploreResultsSheet
+              centerResults={{
+                categories: data.categories,
+                centers: data.centers,
+                error: data.searchError,
+                isFetching: data.isFetchingSearch,
+                onCategoryChange: data.changeCategory,
+                onRetry: data.retrySearch,
+                onSelectCenter: (center) =>
+                  overlay.focusFeature({ kind: "center", center }),
+                onSelectPlace: selectSearchPlace,
+                onToggleSortByDistance: search.toggleSortByDistance,
+                places: data.publicSearch.data?.items ?? [],
+                selectedCategory: data.filters.categoryCode,
+                sortByDistance: search.sortByDistance,
+                userLocation: location.userLocation,
+              }}
+              establishmentResults={{
+                data: data.nearbyEstablishments.data,
+                error: data.nearbyEstablishments.error,
+                hasLocation: location.userLocation !== null,
+                isFetching: data.nearbyEstablishments.isFetching,
+                onRequestLocation: location.locate,
+                onRetry: () => void data.nearbyEstablishments.refetch(),
+              }}
+              mode={search.mode}
+              onClose={search.clear}
+              query={search.submittedQuery}
             />
-            <ExploreMapActions
-              agentOpen={current.kind === "agent"}
-              bearingStore={bearingStore}
-              landscape={landscape}
-              locateDisabled={location.status === "requesting"}
-              locateLabel={location.locateLabel}
-              locateSlashed={location.status === "disabled"}
-              onLocate={location.locate}
-              onOpenAgent={openAgent}
-              onResetNorth={() => setResetNorthKey((key) => key + 1)}
-              showLocate={location.showLocateAction}
+          ) : null}
+          {focused && current.kind === "moreFilters" ? (
+            <ExploreMoreFiltersSheet
+              filter={data.mapFilter}
+              onClose={overlay.close}
+              onSelect={(filter) => {
+                overlay.close();
+                data.changeMapFilter(filter);
+              }}
             />
-            {current.kind === "none" && search.submittedQuery ? (
-              <ExploreResultsSheet
-                centerResults={{
-                  categories: data.categories,
-                  centers: data.centers,
-                  error: data.searchError,
-                  isFetching: data.isFetchingSearch,
-                  onCategoryChange: data.changeCategory,
-                  onRetry: data.retrySearch,
-                  onSelectCenter: (center) =>
-                    overlay.focusFeature({ kind: "center", center }),
-                  onSelectPlace: selectSearchPlace,
-                  onToggleSortByDistance: search.toggleSortByDistance,
-                  places: data.publicSearch.data?.items ?? [],
-                  selectedCategory: data.filters.categoryCode,
-                  sortByDistance: search.sortByDistance,
-                  userLocation: location.userLocation,
-                }}
-                establishmentResults={{
-                  data: data.nearbyEstablishments.data,
-                  error: data.nearbyEstablishments.error,
-                  hasLocation: location.userLocation !== null,
-                  isFetching: data.nearbyEstablishments.isFetching,
-                  onRequestLocation: location.locate,
-                  onRetry: () => void data.nearbyEstablishments.refetch(),
-                }}
-                mode={search.mode}
-                onClose={search.clear}
-                query={search.submittedQuery}
-              />
-            ) : null}
-            {current.kind === "moreFilters" ? (
-              <ExploreMoreFiltersSheet
-                filter={data.mapFilter}
-                onClose={overlay.close}
-                onSelect={(filter) => {
-                  overlay.close();
-                  data.changeMapFilter(filter);
-                }}
-              />
-            ) : null}
-            {current.kind === "choices" ? (
-              <MapFeatureSelectionSheet
-                onClose={overlay.close}
-                onSelect={overlay.focusFeature}
-                selections={current.selections}
-              />
-            ) : null}
-            {selectedCenter ? (
-              <ExploreCenterSheet
-                center={selectedCenter}
-                key={selectedCenter.code}
-                onClose={closeCenter}
-                onOpenRoute={() => openRoute(selectedCenter)}
-                onRequireAuth={openAuth}
-              />
-            ) : null}
-            {current.kind === "establishment" ? (
-              <EstablishmentDetailSheet
-                establishment={current.establishment}
-                onClose={overlay.close}
-                onOpenRoute={() => openRoute(current.establishment)}
-              />
-            ) : null}
-          </TourismBottomSheetHost>
-        </TourismSheetTopInsetProvider>
+          ) : null}
+          {focused && current.kind === "choices" ? (
+            <MapFeatureSelectionSheet
+              onClose={overlay.close}
+              onSelect={overlay.focusFeature}
+              selections={current.selections}
+            />
+          ) : null}
+          {focused && selectedCenter ? (
+            <ExploreCenterSheet
+              center={selectedCenter}
+              key={selectedCenter.code}
+              onClose={closeCenter}
+              onOpenRoute={() => openRoute(selectedCenter)}
+              onRequireAuth={openAuth}
+            />
+          ) : null}
+          {focused && current.kind === "establishment" ? (
+            <EstablishmentDetailSheet
+              establishment={current.establishment}
+              onClose={overlay.close}
+              onOpenRoute={() => openRoute(current.establishment)}
+            />
+          ) : null}
+        </>
       )}
       <ExploreAgentSheet
+        conversation={conversation}
         onClose={overlay.closeAgent}
         onOpenCenter={openAgentCenter}
         onStartRoute={openAgentRoute}

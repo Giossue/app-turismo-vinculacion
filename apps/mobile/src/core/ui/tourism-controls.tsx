@@ -26,7 +26,11 @@ import {
   turismoTypography,
 } from "./tokens";
 import { useTurismoPalette } from "./theme-context";
-import { TourismGlassFill, turismoGlassBorderWidth } from "./tourism-glass";
+import {
+  TourismGlassFill,
+  turismoGlassBorderWidth,
+  useTourismGlassBorderColor,
+} from "./tourism-glass";
 import { TourismPressable } from "./tourism-pressable";
 
 // The clear icon keeps its compact look; hitSlop extends it to a 44dp target.
@@ -58,6 +62,7 @@ export function TourismSearchField({
   value: string;
 }>) {
   const colors = useTurismoPalette();
+  const glassBorderColor = useTourismGlassBorderColor(colors.border);
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -83,7 +88,7 @@ export function TourismSearchField({
         styles.searchbar,
         {
           backgroundColor: glass ? "transparent" : colors.surface,
-          borderColor: colors.border,
+          borderColor: glass ? glassBorderColor : colors.border,
         },
         glass && styles.glassBorder,
       ]}
@@ -158,8 +163,14 @@ export function TourismIconAction({
   variant?: "surface" | "glass" | "ghost";
 }>) {
   const colors = useTurismoPalette();
+  const glassBorderColor = useTourismGlassBorderColor(colors.border);
   const idleBackground = variant === "surface" ? colors.surface : "transparent";
-  const idleBorder = variant === "ghost" ? "transparent" : colors.border;
+  const idleBorder =
+    variant === "ghost"
+      ? "transparent"
+      : variant === "glass"
+        ? glassBorderColor
+        : colors.border;
   return (
     <TourismPressable
       accessibilityLabel={accessibilityLabel}
@@ -224,6 +235,7 @@ export function TourismCompassAction({
   style?: StyleProp<ViewStyle>;
 }>) {
   const colors = useTurismoPalette();
+  const glassBorderColor = useTourismGlassBorderColor(colors.border);
 
   return (
     <TourismPressable
@@ -235,7 +247,7 @@ export function TourismCompassAction({
         styles.compassAction,
         {
           backgroundColor: glass ? "transparent" : colors.surface,
-          borderColor: colors.border,
+          borderColor: glass ? glassBorderColor : colors.border,
         },
         glass && styles.glassBorder,
         style,
@@ -285,6 +297,7 @@ export function TourismChoiceChip({
   selected: boolean;
 }>) {
   const colors = useTurismoPalette();
+  const glassBorderColor = useTourismGlassBorderColor(colors.border);
   const frosted = glass && !selected;
   const contentColor = selected ? colors.onPrimary : colors.textMuted;
   const chip = (
@@ -318,7 +331,11 @@ export function TourismChoiceChip({
             : frosted
               ? "transparent"
               : colors.surface,
-          borderColor: selected ? colors.primary : colors.border,
+          borderColor: selected
+            ? colors.primary
+            : frosted
+              ? glassBorderColor
+              : colors.border,
         },
         glass && styles.glassBorder,
       ]}

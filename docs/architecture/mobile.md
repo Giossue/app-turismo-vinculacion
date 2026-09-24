@@ -33,7 +33,11 @@ presenta como propuesta y requiere confirmación explícita antes de navegar a `
 app puede enviar una ubicación puntual redondeada para consultas cercanas, sin historial ni
 seguimiento en segundo plano. Como contexto solo se reenvían los intercambios completados
 (ni el saludo, ni los errores, ni respuestas cortadas), con los límites del contrato de la
-API; cerrar el chat cancela la respuesta en curso.
+API. La conversación y el borrador permanecen en memoria mientras Explorar esté montado:
+cerrar la sheet cancela la respuesta en curso y al reabrirla se pueden continuar los
+intercambios completados. El chat permite detener, reintentar el último turno fallido y
+comenzar una conversación nueva; el cambio de cuenta borra el estado en memoria. No se
+persiste el chat ni la ubicación en el dispositivo.
 
 La preferencia de apariencia se administra desde `Menú > Configuración`, con tres opciones
 (`Sistema`, `Claro` y `Oscuro`) presentadas como un grupo de radio donde toda la fila es el
@@ -52,6 +56,17 @@ Native `0.86.3` y React `19.2.3`. Las dependencias Expo se instalan con
 de configuración nativa y permisos requieren regenerar/reconstruir el binario; no se
 consideran aplicados por Fast Refresh.
 
+Para desarrollar en un Android físico conectado por USB, instalar una vez la variante
+`development` con `corepack pnpm --filter @turismo/mobile run dev:android`. Esta variante
+usa el paquete `ec.edu.ueb.turismovinculacion.software.dev` y aparece como
+`Turismo Vinculación Dev`, de modo que convive con la app publicada. En sesiones posteriores,
+arrancar Metro con `corepack pnpm --filter @turismo/mobile run dev:metro` y abrir
+`Turismo Vinculación Dev` en el teléfono. Si se usa USB, `adb reverse tcp:8081 tcp:8081`
+permite llegar al servidor local. Los cambios de JavaScript se sirven desde Metro; los
+cambios nativos exigen reconstruir la variante. Si se alterna una compilación nativa de
+producción y desarrollo en el mismo checkout, regenerar el proyecto nativo para que el
+identificador coincida con la variante seleccionada.
+
 React Native Paper es el único kit externo de componentes del móvil. Los componentes
 `Tourism*` exponen la identidad del producto y los tokens Turismo son su fuente visual;
 `StyleSheet` se usa para layout nativo. NativeWind/Tailwind no forman parte de este cliente;
@@ -61,7 +76,7 @@ Las pantallas secundarias usan `TourismScreenFrame` como shell compartido. Este 
 centraliza safe areas, encabezado, ancho máximo de contenido y márgenes horizontales. Las
 pantallas principales viven en un `Tabs` de Expo Router con una barra inferior propia
 (`TourismTabBar`): `Explorar` (mapa), `Guardados` (`src/app/(tabs)/saved.tsx`) y `Menú`,
-que no es una pantalla sino la acción que abre el menú lateral. Las pestañas se cambian con
+que no es una pantalla sino la acción que abre la hoja de menú. Las pestañas se cambian con
 `replace`; sin sesión, `Guardados` pasa por el login y vuelve a la pestaña. El mapa ocupa
 todo el espacio sobre la barra y sus acciones efímeras no crean entradas de navegación. `Cómo llegar` (`src/app/route.tsx`) es
 la otra excepción de mapa a pantalla completa: MapLibre ocupa toda la pantalla y el panel de
@@ -73,9 +88,12 @@ una sheet nativa de altura completa sobre el mapa; no se cierra por gesto y mues
 en el encabezado. El compositor usa el manejo nativo de teclado y permanece sobre el área
 visible cuando aparece el teclado del sistema.
 
-El menú lateral se abre desde la pestaña `Menú` de la barra inferior. Un
-`TourismMenuProvider` posee un único drawer para el shell principal. Las pantallas
-secundarias (ficha, ruta, cuenta, mapas sin conexión y configuración) no muestran la barra:
+La hoja de menú se abre desde la pestaña `Menú` de la barra inferior. Un
+`TourismMenuProvider` posee una única hoja para el shell principal: sube desde abajo con
+superficie sólida, `TourismSheetHandle`, una cabecera de perfil (`TourismMenuProfile`: avatar
+con iniciales, nombre y correo, que solo informa, o «Invitado» sin sesión, que lleva al login) y las entradas;
+«Cerrar sesión» cierra el grupo final solo con sesión iniciada. Las pantallas
+secundarias (ficha, ruta, mapas sin conexión y configuración) no muestran la barra:
 su encabezado ofrece `Volver`.
 
 Las decisiones de layout siguen las primitivas oficiales de React Native: dimensiones en
@@ -125,8 +143,8 @@ Antes de crear una utilidad o un componente nuevo, reutilizar estos módulos del
   `radio` con estado `checked`, en fila o en columna), `TourismDateField` (calendario nativo
   con límites; en iOS un modal con cierre de 44dp) y `TourismSnackbar` (aviso breve de Paper
   en un portal). `TourismActionButton` admite `loading`, `size="lg"`, `trailingIcon`,
-  `accessibilityLabel` y `mode="ghost"` para enlaces; el menú lateral recibe sus entradas como
-  `items` (`TourismMenuItem`).
+  `accessibilityLabel` y `mode="ghost"` para enlaces; la hoja de menú recibe sus entradas como
+  `items` (`TourismMenuItem`) y su cabecera como `profile` (`TourismMenuProfile`).
 - Cuenta (`features/auth`): `loginFormSchema`/`registrationFormSchema` (zod, con los límites
   de los DTO de la API y el recorte de espacios en un único lugar) y `useAuthForm`; las
   pantallas protegidas usan `AuthGate` (o `useRequireAuth`), que muestra la carga mientras
@@ -161,8 +179,9 @@ Antes de crear una utilidad o un componente nuevo, reutilizar estos módulos del
 - Nunca guardar claves maestras de proveedores.
 
 La app presenta una entrada única de identidad con `Iniciar sesión`, `Crear cuenta` y
-`Explorar como invitado`. El menú principal ofrece `Cuenta`: abre la cuenta del turista
-autenticado o lleva a la entrada de autenticación cuando no hay sesión. Mapa, fichas
+`Explorar como invitado`. No hay pantalla de cuenta: la cabecera de la hoja de menú muestra
+nombre y correo del turista autenticado (con «Cerrar sesión» al final) o, sin sesión, lleva a
+la entrada de autenticación. Mapa, fichas
 públicas y la vista previa de rutas funcionan como invitado; iniciar navegación, descargar
 mapas sin conexión, guardar, abrir Guardados, el agente y futuras opiniones/itinerarios
 llevan a la autenticación. El access token vive en memoria y el
@@ -208,10 +227,9 @@ pestañas se desplazan de lado el ancho completo, sin fundido (`animation: "shif
 `sceneStyleInterpolator` que solo traslada). Para evitar el flash blanco
 que `react-native-screens` puede mostrar entre navegadores anidados, el Stack pinta el fondo
 del tema en `contentStyle` y las pestañas en `sceneStyle`. No se añaden capas de animación
-propias al shell de pantalla; el menú lateral usa la velocidad por defecto de su librería. Los overlays que necesiten movimiento usan
-Reanimated con tokens compartidos de movimiento y respetan `ReduceMotion.System`; los drawers aprovechan
-`ReanimatedDrawerLayout` de Gesture
-Handler para mantener panel, scrim y gesto en un único progreso nativo. React Native Paper
+propias al shell de pantalla. Los overlays que necesiten movimiento usan
+Reanimated con tokens compartidos de movimiento y respetan `ReduceMotion.System`; la hoja de menú mantiene panel, scrim y
+gesto de arrastre (Gesture Handler) sobre valores compartidos de Reanimated. React Native Paper
 conserva las interacciones y animaciones propias de sus controles. La animación no añade
 entradas al historial ni sustituye el estado visible declarado por la pantalla.
 
@@ -230,6 +248,8 @@ En Explorar las fichas comparten una única sheet siempre montada y cerrada
 el host la abre con `snapToIndex`, porque montar una `BottomSheet` nueva en cada apertura
 obliga a calcular su layout antes de animarla (`animateOnMount`). Abren y cierran con una
 animación de 250 ms (`useBottomSheetTimingConfigs`).
+Su fondo usa la superficie sólida del tema con opacidad completa tanto a media altura como
+al expandirse; el mapa y los controles no se transparentan a través de la ficha.
 
 Las bottom sheets interactivas del mapa usan `@gorhom/bottom-sheet` 5 sobre Gesture Handler
 y Reanimated. Se eligió porque su gesto de contenido empieza desde el primer contacto y
@@ -247,11 +267,12 @@ handler que cierra primero sus overlays y después retira exactamente una pantal
 raíz, el evento sale de la aplicación. El mapa es la única pestaña visible del shell
 principal; el agente es estado efímero de una sheet y no una pestaña. Las fichas y rutas se
 abren con `push` porque sí representan una pantalla que puede cerrarse. Las pantallas
-secundarias sin overlays (cuenta, guardados, configuración) no registran back handler: el
+secundarias sin overlays (guardados, configuración) no registran back handler: el
 stack retira una pantalla. En la entrada de cuenta, Atrás cierra primero el formulario
-abierto. El drawer vive en un `Modal` visible mientras el menú está abierto; cualquier
-cierre (entrada, Atrás, scrim o gesto) anima el drawer y solo en `onDrawerClose` oculta el
-modal y ejecuta la acción elegida.
+abierto. La hoja de menú vive en un `Modal` visible mientras el menú está abierto; la
+hoja es fija (sin arrastre; el scrim no la cierra, y su asa no lleva barra) y cualquier
+cierre (X, entrada, perfil sin sesión o Atrás) anima la hoja y solo al
+terminar oculta el modal y ejecuta la acción elegida.
 
 ## Caché y funcionamiento sin conexión
 

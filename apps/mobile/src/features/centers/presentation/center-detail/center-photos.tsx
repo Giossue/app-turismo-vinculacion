@@ -5,6 +5,7 @@ import { resolveMediaUrl } from "@/core/api/media-url";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismStateView } from "@/core/ui/tourism-state";
 import {
+  turismoAspectRatios,
   turismoRadii,
   turismoSpacing,
   turismoTypography,
@@ -68,6 +69,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     width: "48%",
   },
-  image: { aspectRatio: 1.15, width: "100%" },
+  image: { aspectRatio: turismoAspectRatios.photo, width: "100%" },
   caption: { ...turismoTypography.caption, padding: turismoSpacing.xs },
 });

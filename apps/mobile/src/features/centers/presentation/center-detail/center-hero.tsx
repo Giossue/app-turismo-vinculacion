@@ -13,6 +13,7 @@ import { resolveMediaUrl } from "@/core/api/media-url";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
+  turismoAspectRatios,
   turismoIconSizes,
   turismoSpacing,
   turismoTypography,
@@ -106,7 +107,7 @@ export function CenterHero({
 const styles = StyleSheet.create({
   hero: {
     alignSelf: "stretch",
-    aspectRatio: 1.35,
+    aspectRatio: turismoAspectRatios.hero,
     overflow: "hidden",
   },
   image: { height: "100%", width: "100%" },

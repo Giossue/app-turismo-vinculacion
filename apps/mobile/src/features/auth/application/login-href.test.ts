@@ -32,6 +32,6 @@ describe("login href", () => {
     expect(returnsThroughHistory("/route")).toBe(true);
     expect(returnsThroughHistory("/centers/ABC")).toBe(false);
     expect(returnsThroughHistory("/")).toBe(false);
-    expect(returnsThroughHistory("/account")).toBe(false);
+    expect(returnsThroughHistory("/saved")).toBe(false);
   });
 });

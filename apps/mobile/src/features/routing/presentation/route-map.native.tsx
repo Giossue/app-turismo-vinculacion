@@ -28,6 +28,7 @@ import {
 } from "../domain/navigation-heading";
 import type { CalculatedRoute } from "../domain/routing";
 import type { RouteMapProps } from "./route-map.types";
+import { turismoMapLayerStyle } from "@/core/ui/tokens";
 
 type EndpointProperties = Readonly<{
   heading?: number;
@@ -260,8 +261,8 @@ export function RouteMap({
             layout={{ "line-cap": "round", "line-join": "round" }}
             paint={{
               "line-color": colors.location,
-              "line-opacity": 0.92,
-              "line-width": 5,
+              "line-opacity": turismoMapLayerStyle.routeLineOpacity,
+              "line-width": turismoMapLayerStyle.routeLineWidth,
             }}
             type="line"
           />
@@ -290,7 +291,7 @@ export function RouteMap({
               // El rumbo de la flecha usa el mismo marco que la cámara:
               // al orientar el mapa hacia delante, la punta queda arriba.
               "icon-rotation-alignment": "map",
-              "icon-size": 0.15,
+              "icon-size": turismoMapLayerStyle.navigationArrowScale,
             }}
             type="symbol"
           />

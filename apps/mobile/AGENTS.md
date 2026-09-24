@@ -26,11 +26,13 @@ Las pantallas secundarias deben montarse dentro de `TourismScreenFrame` para com
 area, encabezado, ancho máximo y márgenes. `Explorar` y `Cómo llegar` (`route.tsx`) son las
 excepciones de mapa a pantalla completa y reutilizan los mismos tokens. Las pantallas
 principales (`Explorar` y `Guardados`) comparten la barra inferior `TourismTabBar`, cuya
-acción `Menú` abre el menú lateral de `TourismMenuProvider`.
+acción `Menú` abre la hoja de menú de `TourismMenuProvider` (cabecera de perfil, entradas y
+«Cerrar sesión» al final).
 
-Las superficies que flotan sobre otro contenido (sobre todo sobre el mapa: buscador, chips,
-botones del mapa, sheets, barra inferior, paneles de ruta y menú lateral) usan vidrio con
-`TourismGlassFill` de `src/core/ui/tourism-glass.tsx` (material del sistema de `expo-blur`).
+Los controles que flotan sobre el mapa (buscador, chips, botones y barra inferior) y los
+paneles de ruta usan vidrio con `TourismGlassFill` de
+`src/core/ui/tourism-glass.tsx` (material del sistema de `expo-blur`). Las sheets de
+Explorar y la hoja de menú usan una superficie sólida y opaca en todas sus alturas.
 El fondo que se desenfoca va en `TourismGlassScope` y lo flotante como hermano, nunca dentro
 (Android lo exige). Las pantallas de fondo liso (listas, formularios) mantienen superficies
 sólidas: ahí el vidrio no aporta.

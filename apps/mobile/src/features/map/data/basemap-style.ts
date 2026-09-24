@@ -80,10 +80,7 @@ export function getFallbackMapStyle(
       {
         id: "background",
         paint: {
-          "background-color":
-            scheme === "dark"
-              ? getTurismoMapColors(scheme).background
-              : "#f5f7f8",
+          "background-color": getTurismoMapColors(scheme).basemapCanvas,
         },
         type: "background",
       },
@@ -192,7 +189,7 @@ function quietMapLayers(value: unknown, scheme: TurismoColorScheme): unknown {
             ? {
                 "fill-color": fillColor,
                 "fill-opacity": fillOpacity,
-                "fill-outline-color": "rgba(0, 0, 0, 0)",
+                "fill-outline-color": "transparent",
               }
             : {
                 "fill-extrusion-color": fillColor,

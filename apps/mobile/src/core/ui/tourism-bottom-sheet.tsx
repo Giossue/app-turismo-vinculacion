@@ -22,15 +22,10 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import Animated, {
-  interpolate,
-  useAnimatedStyle,
-} from "react-native-reanimated";
-
 import { useTurismoPalette } from "./theme-context";
-import { TourismGlassFill, turismoGlassBorderWidth } from "./tourism-glass";
 import { TourismSheetHandle } from "./tourism-sheet-handle";
 import { turismoRadii, turismoSpacing } from "./tokens";
+import { turismoHairline } from "./tourism-hairline";
 
 /**
  * Borde superior que no deben cruzar las sheets al expandirse (por ejemplo,
@@ -50,32 +45,20 @@ export function TourismSheetTopInsetProvider({
 }
 
 /**
- * Fondo de las sheets del mapa: vidrio abierta a media altura y superficie
- * sólida al expandirse a pantalla completa, para que el buscador y los chips
- * no se transparenten por detrás (patrón `animatedIndex` de gorhom).
+ * Fondo opaco de las sheets del mapa en cualquier altura, para que el mapa y
+ * los controles no se transparenten detrás de la ficha.
  */
-function GlassSheetBackground({
-  animatedIndex,
-  style,
-}: BottomSheetBackgroundProps) {
+function SolidSheetBackground({ style }: BottomSheetBackgroundProps) {
   const colors = useTurismoPalette();
-  const solidStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(animatedIndex.value, [0, 1], [0, 1], "clamp"),
-  }));
   return (
     <View
       pointerEvents="none"
-      style={[style, styles.glassBackground, { borderColor: colors.border }]}
-    >
-      <TourismGlassFill material="regular" />
-      <Animated.View
-        style={[
-          StyleSheet.absoluteFill,
-          { backgroundColor: colors.surface },
-          solidStyle,
-        ]}
-      />
-    </View>
+      style={[
+        style,
+        styles.sheetBackground,
+        { backgroundColor: colors.surface, borderColor: colors.border },
+      ]}
+    />
   );
 }
 
@@ -85,7 +68,7 @@ const TourismSheetCloseContext = createContext<() => void>(() => undefined);
 /** Asa estándar (barra + cerrar) conectada a la sheet visible. */
 function SheetHandle() {
   const close = useContext(TourismSheetCloseContext);
-  return <TourismSheetHandle onClose={close} />;
+  return <TourismSheetHandle insetClose onClose={close} />;
 }
 
 /** Fracción de pantalla que ocupa una sheet del mapa al abrirse. */
@@ -169,7 +152,7 @@ export function TourismBottomSheetHost({
         <BottomSheet
           {...tourismFlexibleSheetBehavior}
           animationConfigs={animationConfigs}
-          backgroundComponent={GlassSheetBackground}
+          backgroundComponent={SolidSheetBackground}
           handleComponent={SheetHandle}
           index={-1}
           onChange={(index) => {
@@ -198,9 +181,6 @@ export function TourismBottomSheet({
   onClose,
 }: Readonly<{ children: ReactNode; onClose: () => void }>) {
   const host = useContext(TourismSheetHostContext);
-  // Sin `bottomInset`: la pantalla oculta la barra de pestañas mientras hay
-  // una sheet abierta (`useHideTourismTabBar`); reservar su espacio y quitarlo
-  // al ocultarla haría que la sheet se animara dos veces.
   const topInset = useContext(TourismSheetTopInsetContext);
   const animationConfigs = useBottomSheetTimingConfigs({
     duration: sheetAnimationDurationMs,
@@ -220,7 +200,7 @@ export function TourismBottomSheet({
       <BottomSheet
         {...tourismFlexibleSheetBehavior}
         animationConfigs={animationConfigs}
-        backgroundComponent={GlassSheetBackground}
+        backgroundComponent={SolidSheetBackground}
         handleComponent={SheetHandle}
         topInset={topInset}
         index={0}
@@ -293,10 +273,10 @@ export function TourismSheetScrollView({
 }
 
 const styles = StyleSheet.create({
-  glassBackground: {
+  sheetBackground: {
     borderTopLeftRadius: turismoRadii.lg,
     borderTopRightRadius: turismoRadii.lg,
-    borderWidth: turismoGlassBorderWidth,
+    borderWidth: turismoHairline,
     overflow: "hidden",
   },
   scroll: { flex: 1 },

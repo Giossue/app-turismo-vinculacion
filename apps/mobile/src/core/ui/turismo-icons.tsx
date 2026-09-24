@@ -28,6 +28,7 @@ import {
   Hotel,
   Landmark,
   LocateFixed,
+  LogOut,
   Mars,
   Map,
   MapPin,
@@ -62,7 +63,7 @@ import {
   X,
 } from "lucide-react-native";
 
-import { turismoIconSizes } from "./tokens";
+import { turismoIconSizes, turismoIconStrokes } from "./tokens";
 
 const turismoIconMap = {
   arrowLeft: ArrowLeft,
@@ -92,6 +93,7 @@ const turismoIconMap = {
   foot: Footprints,
   history: History,
   locate: LocateFixed,
+  logOut: LogOut,
   genderMale: Mars,
   genderFemale: Venus,
   hotel: Hotel,
@@ -134,7 +136,7 @@ export function TurismoIcon({
   name,
   size = turismoIconSizes.md,
   color = "currentColor",
-  strokeWidth = 2,
+  strokeWidth = turismoIconStrokes.regular,
   ...props
 }: Readonly<{ name: TurismoIconName } & Omit<LucideProps, "ref">>) {
   const Icon = turismoIconMap[name];
