@@ -7,7 +7,6 @@ import { useUserLocation } from "@/core/location/use-user-location";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { askTourismAgentStream } from "../data/agent-api";
 import type { SavedAgentConversationDetail } from "../data/agent-history-api";
-import { analyzeAgentPhoto } from "../data/agent-media-api";
 import type {
   AgentMessage,
   AgentResponse,
@@ -312,62 +311,6 @@ export function useAgentConversation() {
     if (turn) void send(turn.question, turn.previous);
   };
 
-  const sendPhoto = async (upload: {
-    uri: string;
-    mimeType: string;
-    name: string;
-  }) => {
-    if (sendingRef.current) return;
-    sendingRef.current = true;
-    const controller = new AbortController();
-    abortRef.current = controller;
-    const question: AgentMessage = {
-      id: createId("user"),
-      role: "user",
-      text: "Foto enviada para consultar un lugar",
-    };
-    const answerId = createId("assistant");
-    answerIdRef.current = answerId;
-    setSending(true);
-    setAwaitingText(true);
-    setPendingRouteAction(null);
-    updateMessages((current) => [...current, question]);
-    try {
-      const result = await analyzeAgentPhoto(
-        upload,
-        auth.request,
-        controller.signal,
-      );
-      if (!controller.signal.aborted) {
-        updateMessages((current) =>
-          upsertMessage(current, toCompleteMessage(answerId, result)),
-        );
-      }
-    } catch (failure) {
-      if (!controller.signal.aborted) {
-        updateMessages((current) =>
-          upsertMessage(current, {
-            id: answerId,
-            role: "assistant",
-            kind: "error",
-            text:
-              failure instanceof ApiError
-                ? failure.message
-                : agentFallbackErrorMessage,
-          }),
-        );
-      }
-    } finally {
-      if (abortRef.current === controller) {
-        abortRef.current = null;
-        answerIdRef.current = null;
-        sendingRef.current = false;
-        setSending(false);
-        setAwaitingText(false);
-      }
-    }
-  };
-
   return {
     /** True until the first words of the answer arrive. */
     awaitingText: sending && awaitingText,
@@ -382,7 +325,6 @@ export function useAgentConversation() {
     retry,
     requestLocationForMessage,
     requestingLocation,
-    sendPhoto,
     send,
     sending,
     setDraft,

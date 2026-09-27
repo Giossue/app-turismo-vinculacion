@@ -46,15 +46,15 @@ apagado por defecto; el usuario puede activarlo, abrir y borrar conversaciones o
 desactivarlo para borrarlas todas. Los planes guardados se administran por separado.
 
 `expo-audio` graba hasta 30 segundos tras el permiso del sistema;
-la transcripción vuelve al borrador editable. El compositor muestra un solo botón «+»:
-su menú abre Voz, Cámara o Galería. Durante una grabación, el mismo menú permite
-detener y transcribir o cancelar. `expo-image-picker` abre cámara o galería desde
-esas opciones, y `expo-file-system` comprueba el tamaño y borra
-los archivos temporales cuando corresponde. La voz de salida usa `expo-speech` sobre
-el texto visible; el usuario puede detenerla. Los tres paquetes Expo nuevos están
-alineados con SDK 57 y tienen licencia MIT. Su superficie adicional son permisos de
-micrófono/cámara, archivos temporales y el envío explícito de audio/fotos a la API;
-la build nativa debe regenerarse para incorporar sus plugins y permisos. La lectura
+la transcripción vuelve al borrador editable. El compositor muestra un botón «+»
+que abre Voz; durante una grabación permite detener y transcribir o cancelar.
+El agente no abre cámara o galería ni envía imágenes. `expo-file-system` comprueba
+el tamaño del audio y borra los archivos temporales cuando corresponde. La voz de
+salida usa `expo-speech` sobre el texto visible; el usuario puede detenerla. Estas
+dependencias están alineadas con SDK 57 y tienen licencia MIT. Su superficie
+adicional es el permiso de micrófono, archivos temporales y el envío explícito de
+audio a la API. La build nativa debe regenerarse para retirar el plugin y los
+permisos de cámara/galería que antes usaba el agente. La lectura
 de voz de cada respuesta se controla con un icono discreto en la esquina de su
 mensaje y mantiene un objetivo táctil de 44 dp.
 

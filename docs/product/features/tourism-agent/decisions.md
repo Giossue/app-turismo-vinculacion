@@ -8,3 +8,4 @@
 | 2026-09-24 | El modelo propone; la API y la persona autorizan cualquier guardado, ruta o edición.                                           | Mantener una frontera verificable para las mutaciones.          |
 | 2026-09-24 | El historial voluntario se conserva hasta que el titular lo borra o desactiva; no hay borrado automático por fecha.            | La interfaz debe explicar claramente el control y la duración.  |
 | 2026-09-24 | La voz usa OpenAI para transcribir; la foto usa el proveedor configurado para describir y luego coteja con catálogo publicado. | El modelo no puede crear por sí solo una coincidencia pública.  |
+| 2026-09-27 | Retirar el envío de fotos y el acceso a cámara/galería del agente; cerrar también la ruta de análisis visual.                  | El agente turístico acepta consultas por texto y voz.           |

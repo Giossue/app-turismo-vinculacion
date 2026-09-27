@@ -13,11 +13,9 @@ import type { FastifyRequest } from "fastify";
 import { Roles } from "../../auth/auth.decorators";
 import { AuthGuard } from "../../auth/auth.guard";
 import { RolesGuard } from "../../auth/roles.guard";
-import { agentResponseSchema } from "../application/ai-agent.contracts";
 import {
   AgentMediaService,
   agentAudioMaxBytes,
-  agentImageMaxBytes,
 } from "../application/agent-media.service";
 
 @ApiTags("ai-agent")
@@ -36,17 +34,6 @@ export class AgentMediaController {
     const file = await readFile(request, agentAudioMaxBytes);
     return {
       data: await this.media.transcribeAudio(file.buffer, file.mimeType),
-    };
-  }
-
-  @Post("photo")
-  @RouteConfig({ rateLimit: { max: 5, timeWindow: "1 minute" } })
-  async photo(@Req() request: FastifyRequest) {
-    const file = await readFile(request, agentImageMaxBytes);
-    return {
-      data: agentResponseSchema.parse(
-        await this.media.analyzePhoto(file.buffer, file.mimeType),
-      ),
     };
   }
 }

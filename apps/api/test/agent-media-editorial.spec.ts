@@ -20,61 +20,11 @@ const config = new ConfigService({
 });
 
 describe("agent media", () => {
-  it("rejects files with a mismatched MIME type or signature before calling a provider", async () => {
-    const service = new AgentMediaService(config, {} as never, {} as never);
-    await expect(
-      service.analyzePhoto(Buffer.from("hello"), "image/jpeg"),
-    ).rejects.toThrow("La foto debe ser JPEG");
+  it("rejects audio with a mismatched MIME type or signature", async () => {
+    const service = new AgentMediaService(config);
     await expect(
       service.transcribeAudio(Buffer.from("hello"), "audio/mp4"),
     ).rejects.toThrow("El audio debe ser M4A");
-    expect(generated).not.toHaveBeenCalled();
-  });
-
-  it("returns tentative published matches and their source for a recognized photo", async () => {
-    generated.mockResolvedValueOnce({
-      output: {
-        description: "Una torre de piedra",
-        placeName: "Torre Guaranda",
-      },
-    });
-    const centers = {
-      listPublished: vi.fn().mockResolvedValue({
-        items: [
-          {
-            code: "020101MC010202001",
-            name: "Torre Guaranda",
-            description: "Mirador publicado",
-            type: "Cultural",
-            category: "Cultural",
-            latitude: -1.59,
-            longitude: -79,
-          },
-        ],
-      }),
-    };
-    const establishments = { browse: vi.fn().mockResolvedValue([]) };
-    const service = new AgentMediaService(
-      config,
-      centers as never,
-      establishments as never,
-    );
-    const result = await service.analyzePhoto(
-      Buffer.from([0xff, 0xd8, 0xff, 0x01]),
-      "image/jpeg",
-    );
-    expect(result.cards).toHaveLength(1);
-    expect(result.sources).toEqual([
-      {
-        type: "center",
-        label: "Catálogo de centros turísticos: Torre Guaranda",
-      },
-    ]);
-    expect(result.text).toContain("posibles registros");
-    expect(centers.listPublished).toHaveBeenCalledWith({
-      text: "Torre Guaranda",
-      limit: 3,
-    });
   });
 
   it("submits audio to the documented transcription model and returns editable text", async () => {
@@ -84,7 +34,7 @@ describe("agent media", () => {
     });
     vi.stubGlobal("fetch", fetcher);
     try {
-      const service = new AgentMediaService(config, {} as never, {} as never);
+      const service = new AgentMediaService(config);
       const result = await service.transcribeAudio(
         Buffer.from("0000ftypisom"),
         "audio/mp4",
@@ -95,27 +45,6 @@ describe("agent media", () => {
     } finally {
       vi.unstubAllGlobals();
     }
-  });
-
-  it("states when a photo has no catalog match", async () => {
-    generated.mockResolvedValueOnce({
-      output: { description: "Una cascada", placeName: null },
-    });
-    const centers = { listPublished: vi.fn() };
-    const establishments = { browse: vi.fn() };
-    const service = new AgentMediaService(
-      config,
-      centers as never,
-      establishments as never,
-    );
-    const result = await service.analyzePhoto(
-      Buffer.from([0xff, 0xd8, 0xff, 0x01]),
-      "image/jpeg",
-    );
-    expect(result.cards).toEqual([]);
-    expect(result.sources).toEqual([]);
-    expect(result.text).toContain("No pude identificar con seguridad");
-    expect(centers.listPublished).not.toHaveBeenCalled();
   });
 });
 

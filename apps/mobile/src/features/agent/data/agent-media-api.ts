@@ -3,7 +3,6 @@ import { z } from "zod";
 import { getApiUrl } from "@/core/api/api-url";
 import { requestJson } from "@/core/api/http";
 import type { AuthorizedFetcher } from "@/features/auth/data/auth-api";
-import { agentResponseSchema } from "../domain/agent";
 
 type Upload = Readonly<{ uri: string; mimeType: string; name: string }>;
 
@@ -33,22 +32,4 @@ export async function transcribeAgentAudio(
     },
   );
   return payload.data.text;
-}
-
-export async function analyzeAgentPhoto(
-  upload: Upload,
-  request: AuthorizedFetcher,
-  signal?: AbortSignal,
-) {
-  const payload = await requestJson(
-    `${getApiUrl()}/ai/media/photo`,
-    z.object({ data: agentResponseSchema }),
-    {
-      fetcher: request,
-      errorMessage: "No se pudo analizar la foto.",
-      invalidMessage: "El análisis de la foto no tiene el formato esperado.",
-      init: { method: "POST", body: fileForm(upload), signal },
-    },
-  );
-  return payload.data;
 }

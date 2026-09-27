@@ -123,20 +123,18 @@ usuario revisa el texto generado y queda autor/a de la decisión final.
 referidas a centros publicados y autorizadas por titular. La propuesta inicial del
 modelo se marca como no verificada en cuanto a horarios y tiempos de traslado.
 `/ai/history` guarda turnos textuales y fuentes solo después del opt-in. La preferencia
-apagada bloquea escrituras; apagarla borra las conversaciones voluntarias. Audio, foto
+apagada bloquea escrituras; apagarla borra las conversaciones voluntarias. Audio
 y ubicación puntual no se guardan en esas tablas. Los textos con pares de coordenadas
 decimales se redactan antes de persistir. El historial permanece hasta que el titular
 lo borra o desactiva; la API no promete un borrado automático por fecha.
 
-## Voz e imágenes
+## Voz
 
 `/ai/media/transcribe` acepta M4A/WAV/WebM de hasta 5 MB y usa el modelo
 `gpt-4o-mini-transcribe` con clave exclusiva del servidor. El audio solo se mantiene
 en memoria para la petición y el cliente borra su copia temporal. La transcripción se
-presenta para revisión antes de enviar la pregunta. `/ai/media/photo` acepta
-JPEG/PNG/WebP de hasta 4 MB, pide una descripción visual al modelo configurado y
-compara nombres tentativos contra centros y establecimientos publicados. Nunca afirma
-una coincidencia segura solo por la imagen. No se almacena la fotografía en la API.
+presenta para revisión antes de enviar la pregunta. El agente no acepta imágenes:
+no existe una ruta de análisis de fotos en la API.
 Los límites por ruta acotan llamadas al proveedor; el límite global adicional es por IP.
 La voz de salida lee el mismo texto que ve la persona y las fuentes permanecen visibles.
 

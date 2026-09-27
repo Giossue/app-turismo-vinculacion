@@ -22,12 +22,11 @@ revisión sobre sus propios borradores, sin delegar la publicación.
 ## Persistencia y multimedia
 
 - Guardar historial es opt-in y reversible. La persona puede ver y borrar sus
-  conversaciones; la ubicación puntual, audio e imágenes no se persisten en el historial.
+  conversaciones; la ubicación puntual y el audio no se persisten en el historial.
 - El turista puede hablar, revisar la transcripción antes de enviar y escuchar la
   respuesta. Puede detener grabación y reproducción; un permiso denegado deja texto.
-- Puede elegir una foto o tomarla para preguntar por un lugar. El archivo se limita por
-  tamaño/tipo, se procesa sin retención por defecto y una identificación incierta se
-  comunica como tal. Nunca se inventa una coincidencia del catálogo.
+- El chat del agente acepta texto y voz; no ofrece cámara, galería ni envío de
+  imágenes. Las fotografías de las fichas publicadas siguen visibles en la app.
 
 ## Seguridad y degradación
 

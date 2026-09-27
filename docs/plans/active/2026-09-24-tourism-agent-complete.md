@@ -34,8 +34,8 @@ definidas para este producto; no se reduce al chat textual ya implementado.
    fotos o audio por defecto. Control visible de consentimiento y retención.
 5. Voz de entrada con transcripción revisable y salida hablada con el mismo texto y
    fuentes; permisos, cancelación, límites, errores y liberación de recursos.
-6. Foto/cámara para consultar lugares, con tamaño/tipo válidos, consentimiento,
-   análisis ligado al catálogo publicado y ausencia explícita si no hay coincidencia.
+6. El chat no permite enviar imágenes ni usar cámara/galería para consultar al
+   agente; la API rechaza la ruta de fotos retirada.
 7. Asistencia de redacción/validación para `AGENTE_TURISTICO` sobre registros propios;
    la persona revisa y decide, y la IA jamás publica o aprueba.
 8. Límites por usuario/proveedor, degradación de red, seguridad contra instrucciones
@@ -52,8 +52,8 @@ definidas para este producto; no se reduce al chat textual ya implementado.
       concretas de los resultados.
 - [x] Persistir itinerarios e historial opt-in con migración, API, controles de borrado
       y UI móvil.
-- [x] Añadir voz y foto con los módulos Expo compatibles, backend acotado y pruebas
-      de permisos/errores.
+- [x] Añadir voz con los módulos Expo compatibles, backend acotado y pruebas
+      de permisos/errores. El envío de fotos se retiró el 2026-09-27.
 - [x] Añadir asistencia editorial autorizada para guías.
 - [ ] Ejecutar evaluaciones, pruebas E2E y auditoría de requisitos punto por punto.
 
@@ -105,7 +105,7 @@ definidas para este producto; no se reduce al chat textual ya implementado.
 - Desplegar la migración antes de la API, comprobar las variables de proveedor y
   reconstruir el servicio con Dokploy según el procedimiento del repositorio.
 - Repetir ADB con la API actualizada para respuestas fundamentadas, historial,
-  planes y multimedia de extremo a extremo.
+  planes y voz de extremo a extremo.
 - Completar evaluación de casos difíciles y verificación de respuestas de extremo a
   extremo con la API nueva. El build Android, controles y permisos ya se probaron.
 
@@ -115,3 +115,9 @@ El modelo solo puede leer datos publicados mediante herramientas permitidas y pr
 acciones. No escribe catálogos, inicia navegación, aprueba contenido ni usa credenciales
 o datos privados del turista. Las mutaciones de itinerarios e historial las realiza la
 persona mediante acciones explícitas de la API, con autorización por titular.
+
+## Cambio de alcance del 2026-09-27
+
+La solicitud actual elimina cámara, galería y fotos del agente. Las menciones de
+pruebas de cámara y galería en «Progreso comprobado» describen verificaciones
+históricas de una función que ya no forma parte del producto.

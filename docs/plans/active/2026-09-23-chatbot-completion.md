@@ -56,4 +56,5 @@ reabrir la sheet, sin perder el control de datos publicados ni de la ubicación.
 ## Continuación
 
 El alcance posterior se desarrolla en `2026-09-24-tourism-agent-complete.md` con
-contratos de historial opt-in, itinerarios persistentes, voz, foto y apoyo editorial.
+contratos de historial opt-in, itinerarios persistentes, voz y apoyo editorial. El
+envío de fotos se retiró por decisión de producto del 2026-09-27.

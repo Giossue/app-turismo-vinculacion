@@ -46,7 +46,6 @@ import {
 import { AgentMessageBubble } from "./agent-message-bubble";
 import { AgentThinkingIndicator } from "./agent-thinking-indicator";
 import { useAgentVoiceInput } from "./agent-voice-input";
-import { useAgentPhotoInput } from "./agent-photo-input";
 
 /** Conversation and composer of the agent sheet. */
 export function AgentChatContent({
@@ -68,28 +67,18 @@ export function AgentChatContent({
     error: boolean;
   } | null>(null);
   const [voiceBusy, setVoiceBusy] = useState(false);
-  const [photoBusy, setPhotoBusy] = useState(false);
   const [mediaMenuOpen, setMediaMenuOpen] = useState(false);
   const onMediaStatus = (value: string | null, error = false) =>
     setMediaStatus(value ? { text: value, error } : null);
   const voice = useAgentVoiceInput({
-    disabled:
-      conversation.sending || conversation.requestingLocation || photoBusy,
+    disabled: conversation.sending || conversation.requestingLocation,
     onStatus: onMediaStatus,
     onTranscript: conversation.setDraft,
     onWorkingChange: setVoiceBusy,
   });
-  const photo = useAgentPhotoInput({
-    disabled:
-      conversation.sending || conversation.requestingLocation || voiceBusy,
-    onPhoto: conversation.sendPhoto,
-    onStatus: onMediaStatus,
-    onWorkingChange: setPhotoBusy,
-  });
   const mediaMenuDisabled =
     conversation.sending ||
     conversation.requestingLocation ||
-    photoBusy ||
     voice.processing ||
     (voiceBusy && !voice.recording);
   const mediaMenuVisible = mediaMenuOpen && !mediaMenuDisabled;
@@ -98,8 +87,7 @@ export function AgentChatContent({
     Boolean(conversation.draft.trim()) &&
     !conversation.sending &&
     !conversation.requestingLocation &&
-    !voiceBusy &&
-    !photoBusy;
+    !voiceBusy;
   const canRetry = Boolean(getRetryableAgentTurn(conversation.messages));
   useEffect(() => {
     if (!mediaMenuVisible) return;
@@ -211,9 +199,7 @@ export function AgentChatContent({
           anchor={
             <TourismIconAction
               accessibilityLabel={
-                voice.recording
-                  ? "Opciones de grabación"
-                  : "Opciones de voz y fotos"
+                voice.recording ? "Opciones de grabación" : "Opciones de voz"
               }
               disabled={mediaMenuDisabled}
               icon="plus"
@@ -228,7 +214,7 @@ export function AgentChatContent({
             { backgroundColor: colors.surface, borderColor: colors.border },
           ]}
           onDismiss={() => setMediaMenuOpen(false)}
-          overlayAccessibilityLabel="Cerrar opciones de voz y fotos"
+          overlayAccessibilityLabel="Cerrar opciones de voz"
           style={styles.mediaMenuPosition}
           visible={mediaMenuVisible}
         >
@@ -269,38 +255,6 @@ export function AgentChatContent({
               title="Cancelar grabación"
             />
           ) : null}
-          <Menu.Item
-            accessibilityLabel="Tomar foto para consultar al agente"
-            disabled={voiceBusy}
-            leadingIcon={({ color }) => (
-              <TurismoIcon
-                color={color}
-                name="camera"
-                size={turismoIconSizes.md}
-              />
-            )}
-            onPress={() => {
-              setMediaMenuOpen(false);
-              void photo.takePhoto();
-            }}
-            title="Cámara"
-          />
-          <Menu.Item
-            accessibilityLabel="Elegir imagen de la galería para consultar al agente"
-            disabled={voiceBusy}
-            leadingIcon={({ color }) => (
-              <TurismoIcon
-                color={color}
-                name="image"
-                size={turismoIconSizes.md}
-              />
-            )}
-            onPress={() => {
-              setMediaMenuOpen(false);
-              void photo.chooseImage();
-            }}
-            title="Galería"
-          />
         </Menu>
         {/* TextInput normal: la sheet no se desplaza con el teclado, el
             espacio lo reserva `keyboardStyle`. */}

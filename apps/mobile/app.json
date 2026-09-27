@@ -66,13 +66,6 @@
           "microphonePermission": "Permitir que Turismo Vinculación grabe tu pregunta de voz cuando actives el micrófono del agente."
         }
       ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Permitir que Turismo Vinculación seleccione una foto para consultar al agente turístico.",
-          "cameraPermission": "Permitir que Turismo Vinculación tome una foto para consultar al agente turístico."
-        }
-      ],
       "@react-native-community/datetimepicker"
     ],
     "experiments": {

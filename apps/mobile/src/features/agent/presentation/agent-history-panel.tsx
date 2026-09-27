@@ -142,8 +142,8 @@ export function AgentHistoryPanel({
         El historial está apagado por defecto. Si lo activas, se guardarán las
         preguntas y respuestas de esta cuenta hasta que las borres o lo
         desactives. Puedes borrar conversaciones una por una o desactivarlo para
-        eliminarlas todas. El audio, las fotos y la ubicación enviada por el
-        mapa no se guardan; las coordenadas detectadas en el texto se ocultan.
+        eliminarlas todas. El audio y la ubicación enviada por el mapa no se
+        guardan; las coordenadas detectadas en el texto se ocultan.
       </Text>
       <TourismActionButton
         disabled={busy}
