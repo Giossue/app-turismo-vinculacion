@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   Param,
   Patch,
   Post,
@@ -32,7 +33,10 @@ import { EstablishmentsService } from "./establishments.service";
 @Controller("admin/establishments")
 @UseGuards(AuthGuard, RolesGuard)
 export class AdminEstablishmentsController {
-  constructor(private readonly establishments: EstablishmentsService) {}
+  constructor(
+    @Inject(EstablishmentsService)
+    private readonly establishments: EstablishmentsService,
+  ) {}
 
   @Get()
   @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
@@ -146,7 +150,10 @@ export class AdminEstablishmentsController {
 @ApiTags("establishments")
 @Controller("establishments")
 export class PublicEstablishmentsController {
-  constructor(private readonly establishments: EstablishmentsService) {}
+  constructor(
+    @Inject(EstablishmentsService)
+    private readonly establishments: EstablishmentsService,
+  ) {}
 
   // Un paneo pide varias teselas a la vez: el límite global (300/min) se
   // agotaría enseguida, y el móvil las guarda en caché según Cache-Control.

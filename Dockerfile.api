@@ -20,7 +20,9 @@ RUN pnpm install --frozen-lockfile --filter @turismo/api...
 COPY apps/api apps/api
 
 RUN pnpm --filter @turismo/api build
-RUN pnpm --filter @turismo/api --prod deploy /out
+# The full lockfile was verified by install above; deploy only prunes it.
+# Avoid verifying the derived lockfile against the registry a second time.
+RUN pnpm --filter @turismo/api --prod deploy --prefer-offline --trust-lockfile /out
 RUN cp -R apps/api/dist /out/dist
 
 FROM node:24-bookworm-slim AS runtime
@@ -34,7 +36,7 @@ WORKDIR /app
 COPY --from=build /out ./
 
 RUN mkdir -p /app/.data/media \
-  && chown -R node:node /app
+  && chown node:node /app/.data /app/.data/media
 
 USER node
 

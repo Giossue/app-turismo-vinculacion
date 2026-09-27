@@ -43,6 +43,13 @@ distribución de producción de `@turismo/api` y escuchar en `0.0.0.0:3000`. No 
 `deploy --legacy`: el workspace contiene parches exclusivos del móvil y la implementación
 antigua puede rechazarlos como no utilizados aunque la API no los dependa. En Dokploy, el
 servicio debe usar ese Dockerfile y conservar el contexto raíz del monorepo.
+La instalación inicial verifica el lockfile completo y llena el almacén de pnpm. La
+fase `deploy` prefiere ese almacén y confía en el lockfile derivado para evitar
+repetir la verificación de dependencias de producción contra el registro npm; si
+falta algún paquete en caché, puede descargarlo.
+El usuario `node` solo necesita escritura en `/app/.data/media`; evitar un `chown`
+recursivo de `/app` porque vuelve a procesar todas las dependencias de producción
+en una capa adicional durante cada construcción.
 
 ## Backups
 
