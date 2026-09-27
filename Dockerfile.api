@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:24-bookworm-slim AS build
+FROM node:24-bookworm-slim AS dependencies
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=${PNPM_HOME}:${PATH}
@@ -17,13 +17,15 @@ COPY apps/web/package.json apps/web/package.json
 
 RUN pnpm install --frozen-lockfile --filter @turismo/api...
 
-COPY apps/api apps/api
-
-RUN pnpm --filter @turismo/api build
 # The full lockfile was verified by install above; deploy only prunes it.
 # Avoid verifying the derived lockfile against the registry a second time.
 RUN pnpm --filter @turismo/api --prod deploy --prefer-offline --trust-lockfile /out
-RUN cp -R apps/api/dist /out/dist
+
+FROM dependencies AS build
+
+COPY apps/api apps/api
+
+RUN pnpm --filter @turismo/api build
 
 FROM node:24-bookworm-slim AS runtime
 
@@ -33,7 +35,8 @@ ENV API_PORT=3000
 
 WORKDIR /app
 
-COPY --from=build /out ./
+COPY --from=dependencies /out ./
+COPY --from=build /app/apps/api/dist ./dist
 
 RUN mkdir -p /app/.data/media \
   && chown node:node /app/.data /app/.data/media

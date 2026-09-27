@@ -46,7 +46,9 @@ servicio debe usar ese Dockerfile y conservar el contexto raíz del monorepo.
 La instalación inicial verifica el lockfile completo y llena el almacén de pnpm. La
 fase `deploy` prefiere ese almacén y confía en el lockfile derivado para evitar
 repetir la verificación de dependencias de producción contra el registro npm; si
-falta algún paquete en caché, puede descargarlo.
+falta algún paquete en caché, puede descargarlo. Instalación y `deploy` quedan
+en una etapa independiente del código de la API: Docker conserva esas capas al
+cambiar solo fuentes y vuelve a copiar únicamente `dist` a la imagen final.
 El usuario `node` solo necesita escritura en `/app/.data/media`; evitar un `chown`
 recursivo de `/app` porque vuelve a procesar todas las dependencias de producción
 en una capa adicional durante cada construcción.
