@@ -38,17 +38,13 @@ Variables validadas al inicio. Proporcionar `.env.example`, nunca `.env` real. S
 credenciales por entorno y rotar rutas/tiles privados, IA, correo, JWT y almacenamiento.
 
 La API se construye desde el contexto raíz con `Dockerfile.api`, que usa la versión pnpm
-`12.5.1` fijada por el workspace y `pnpm deploy` moderno para instalar únicamente la
-distribución de producción de `@turismo/api` y escuchar en `0.0.0.0:3000`. No usar
-`deploy --legacy`: el workspace contiene parches exclusivos del móvil y la implementación
-antigua puede rechazarlos como no utilizados aunque la API no los dependa. En Dokploy, el
-servicio debe usar ese Dockerfile y conservar el contexto raíz del monorepo.
-La instalación inicial verifica el lockfile completo y llena el almacén de pnpm. La
-fase `deploy` prefiere ese almacén y confía en el lockfile derivado para evitar
-repetir la verificación de dependencias de producción contra el registro npm; si
-falta algún paquete en caché, puede descargarlo. Instalación y `deploy` quedan
-en una etapa independiente del código de la API: Docker conserva esas capas al
-cambiar solo fuentes y vuelve a copiar únicamente `dist` a la imagen final.
+`12.5.1` fijada por el workspace. Una etapa instala solo las dependencias de producción
+de `@turismo/api`; otra instala las dependencias de compilación y genera `dist`. La imagen
+final hereda directamente la primera etapa y copia únicamente `dist` de la segunda.
+Esto evita que `pnpm deploy` vuelva a copiar cientos de paquetes desde una capa previa,
+operación que resultó lenta en Dokploy incluso con las descargas y la verificación del
+lockfile ya terminadas. En Dokploy, el servicio debe usar ese Dockerfile y conservar el
+contexto raíz del monorepo. La API escucha en `0.0.0.0:3000`.
 El usuario `node` solo necesita escritura en `/app/.data/media`; evitar un `chown`
 recursivo de `/app` porque vuelve a procesar todas las dependencias de producción
 en una capa adicional durante cada construcción.

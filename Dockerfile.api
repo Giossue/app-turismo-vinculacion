@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:24-bookworm-slim AS dependencies
+FROM node:24-bookworm-slim AS base
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=${PNPM_HOME}:${PATH}
@@ -15,28 +15,25 @@ COPY apps/api/package.json apps/api/package.json
 COPY apps/mobile/package.json apps/mobile/package.json
 COPY apps/web/package.json apps/web/package.json
 
+FROM base AS production-dependencies
+
+RUN pnpm install --frozen-lockfile --filter @turismo/api... --prod
+
+FROM base AS build
+
 RUN pnpm install --frozen-lockfile --filter @turismo/api...
-
-# The full lockfile was verified by install above; deploy only prunes it.
-# Avoid verifying the derived lockfile against the registry a second time.
-RUN pnpm --filter @turismo/api --prod deploy --prefer-offline --trust-lockfile /out
-
-FROM dependencies AS build
 
 COPY apps/api apps/api
 
 RUN pnpm --filter @turismo/api build
 
-FROM node:24-bookworm-slim AS runtime
+FROM production-dependencies AS runtime
 
 ENV NODE_ENV=production
 ENV API_HOST=0.0.0.0
 ENV API_PORT=3000
 
-WORKDIR /app
-
-COPY --from=dependencies /out ./
-COPY --from=build /app/apps/api/dist ./dist
+COPY --from=build /app/apps/api/dist /app/apps/api/dist
 
 RUN mkdir -p /app/.data/media \
   && chown node:node /app/.data /app/.data/media
@@ -45,4 +42,4 @@ USER node
 
 EXPOSE 3000
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "apps/api/dist/main.js"]

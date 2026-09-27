@@ -31,3 +31,7 @@ tras agregar temporalmente un archivo al código de la API, reutilizó la etapa
 `dependencies` completa, incluido `pnpm deploy`, y la copia de dependencias de la
 imagen final. La imagen contiene `dist/main.js`, ejecuta como `node` y puede
 escribir en `/app/.data/media`. Completado el 2026-09-27.
+
+Seguimiento: cuando cambió el lockfile, Dokploy invalidó esa capa y `pnpm deploy`
+volvió a copiar los paquetes con lentitud. La solución posterior en
+`2026-09-27-avoid-slow-api-deploy.md` elimina ese paso.
