@@ -96,6 +96,17 @@ function service(config: Record<string, unknown>) {
 }
 
 describe("AiAgentService", () => {
+  it("offers a location action for nearby requests even when the model provider is offline", async () => {
+    await expect(
+      service({ AI_PROVIDER: "openai", AI_MODEL: "gpt-5-mini" }).generate({
+        message: "¿Qué hay cerca de mí?",
+        history: [],
+      }),
+    ).resolves.toMatchObject({
+      actions: [{ type: "request_location" }],
+    });
+  });
+
   it("fails closed when the selected provider has no key", async () => {
     await expect(
       service({ AI_PROVIDER: "openai", AI_MODEL: "gpt-5-mini" }).generate({
@@ -131,6 +142,8 @@ describe("AiAgentService", () => {
     expect(hasNearbyIntent("Lo que haya cerca de mí")).toBe(true);
     expect(hasNearbyIntent("qué puedo visitar alrededor")).toBe(true);
     expect(hasNearbyIntent("What is nearby?")).toBe(true);
+    expect(hasNearbyIntent("Busca sitios desde aquí")).toBe(true);
+    expect(hasNearbyIntent("Usa mi ubicación")).toBe(true);
     expect(hasNearbyIntent("cuéntame la historia de Guaranda")).toBe(false);
   });
 

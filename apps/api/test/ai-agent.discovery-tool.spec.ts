@@ -240,6 +240,66 @@ describe("general tourism discovery", () => {
   });
 });
 
+describe("nearby discovery location handoff", () => {
+  it("asks the mobile client for location only when a nearby question has no coordinate", async () => {
+    const { agent } = service([center]);
+    const streamedText = vi.fn();
+    vi.mocked(streamText).mockImplementation((input) => {
+      const options = input as unknown as Options;
+      expect(options.prepareStep({ stepNumber: 0 })).toEqual({
+        toolChoice: { type: "tool", toolName: "requestLocationAccess" },
+      });
+      return {
+        output: (async () => {
+          expect(
+            await options.tools.requestLocationAccess.execute?.({}),
+          ).toEqual({
+            available: false,
+            clientAction: "request_location",
+          });
+          return { text: "Ubicación desconocida", cards: [], actions: [] };
+        })(),
+        partialOutputStream: (async function* () {
+          yield { text: "Ubicación desconocida" };
+        })(),
+      } as never;
+    });
+
+    const answer = await agent.generate(
+      { message: "¿Qué hay cerca de mí?", history: [] },
+      streamedText,
+    );
+
+    expect(answer.actions).toEqual([{ type: "request_location" }]);
+    expect(answer.text).toMatch(/ubicación actual/i);
+    expect(streamedText).not.toHaveBeenCalled();
+  });
+
+  it("uses nearby catalog when the current position is supplied", async () => {
+    const { agent } = service([]);
+    vi.mocked(streamText).mockImplementation((input) => {
+      const options = input as unknown as Options;
+      expect(options.prepareStep({ stepNumber: 0 })).toEqual({
+        toolChoice: { type: "tool", toolName: "searchNearbyPublishedPlaces" },
+      });
+      return {
+        output: Promise.resolve({
+          text: "Sin resultados",
+          cards: [],
+          actions: [],
+        }),
+        partialOutputStream: (async function* () {})(),
+      } as never;
+    });
+    const answer = await agent.generate({
+      message: "¿Qué hay cerca de mí?",
+      history: [],
+      location: { latitude: -1.59, longitude: -79 },
+    });
+    expect(answer.actions).toEqual([]);
+  });
+});
+
 describe("establishment discovery without GPS", () => {
   it("classifies food and lodging questions", () => {
     expect(getEstablishmentDiscoveryKind("¿Dónde puedo comer?")).toBe("food");

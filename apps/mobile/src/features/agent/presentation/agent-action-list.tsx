@@ -29,12 +29,16 @@ export function AgentActionList({
   actions,
   onChangePendingRoute,
   onOpenCenter,
+  onRequestLocation,
   onStartRoute,
   pendingRouteAction,
+  requestingLocation,
 }: Readonly<
   AgentRouteHandlers & {
     actions: readonly AgentAction[];
     onOpenCenter: (code: string) => void;
+    onRequestLocation: () => void;
+    requestingLocation: boolean;
   }
 >) {
   return (
@@ -43,14 +47,18 @@ export function AgentActionList({
         <AgentActionItem
           action={action}
           key={
-            action.type === "open_center"
-              ? `open-${action.code}`
-              : `route-${action.destination.name}-${action.mode}`
+            action.type === "request_location"
+              ? "request-location"
+              : action.type === "open_center"
+                ? `open-${action.code}`
+                : `route-${action.destination.name}-${action.mode}`
           }
           onChangePendingRoute={onChangePendingRoute}
           onOpenCenter={onOpenCenter}
+          onRequestLocation={onRequestLocation}
           onStartRoute={onStartRoute}
           pendingRouteAction={pendingRouteAction}
+          requestingLocation={requestingLocation}
         />
       ))}
     </>
@@ -61,12 +69,16 @@ function AgentActionItem({
   action,
   onChangePendingRoute,
   onOpenCenter,
+  onRequestLocation,
   onStartRoute,
   pendingRouteAction,
+  requestingLocation,
 }: Readonly<
   AgentRouteHandlers & {
     action: AgentAction;
     onOpenCenter: (code: string) => void;
+    onRequestLocation: () => void;
+    requestingLocation: boolean;
   }
 >) {
   if (action.type === "open_center") {
@@ -76,6 +88,20 @@ function AgentActionItem({
         compact
         label="Abrir ficha"
         onPress={() => onOpenCenter(action.code)}
+        style={styles.action}
+      />
+    );
+  }
+  if (action.type === "request_location") {
+    return (
+      <TourismActionButton
+        accessibilityLabel="Usar mi ubicación para repetir la consulta cercana"
+        compact
+        disabled={requestingLocation}
+        icon="locate"
+        label="Usar mi ubicación"
+        loading={requestingLocation}
+        onPress={onRequestLocation}
         style={styles.action}
       />
     );

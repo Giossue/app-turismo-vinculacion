@@ -59,6 +59,11 @@ consentimiento y permiso del sistema. Si cambias la configuración nativa de per
 reconstruye la app. Todo control no textual necesita
 `accessibilityLabel`/estado; prueba TalkBack y VoiceOver.
 
+No añadas `Alert.alert` de explicación antes de cámara, galería, micrófono o seguimiento
+de ruta. Pon la explicación al lado de la opción voluntaria y deja que el sistema muestre
+su permiso cuando se use. Rechazar un permiso opcional o tocar «Cancelar» nunca debe
+iniciar la navegación.
+
 Fuentes: [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/), [Expo Location](https://docs.expo.dev/versions/v57.0.0/sdk/location/), [Expo Router](https://docs.expo.dev/router/introduction/), [Style RN 0.86](https://reactnative.dev/docs/0.86/style), [dimensiones](https://reactnative.dev/docs/0.86/height-and-width), [useWindowDimensions](https://reactnative.dev/docs/0.86/usewindowdimensions), [PixelRatio](https://reactnative.dev/docs/0.86/pixelratio), [Text](https://reactnative.dev/docs/0.86/text), [Pressable](https://reactnative.dev/docs/0.86/pressable), [BackHandler](https://reactnative.dev/docs/0.86/backhandler) y [accesibilidad](https://reactnative.dev/docs/0.86/accessibility).
 
 ## UI declarativa y overlays

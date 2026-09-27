@@ -25,7 +25,7 @@ móvil. La respuesta final contiene `text`, `cards`, `itinerary` opcional, `acti
 Las herramientas allowlisted de esta unidad son `listPublishedCenters`,
 `searchPublishedEstablishments`, `searchPublishedCenters`,
 `findItineraryCandidates`, `getPublishedCenter`, `searchNearbyEstablishments`,
-`searchNearbyPublishedPlaces`, `getPublishedTransportForCenter`,
+`searchNearbyPublishedPlaces`, `requestLocationAccess`, `getPublishedTransportForCenter`,
 `searchNearbyTransportStops` y `calculateRoadRoute`. Las consultas de cercanía usan PostGIS sobre centros publicados,
 POI activos y establecimientos activos; `searchNearbyPublishedPlaces` recibe únicamente radio,
 límite y categoría opcional, mientras que las coordenadas se toman del contexto aproximado del
@@ -37,6 +37,14 @@ detalles escritos por el modelo. `calculateRoadRoute` solo recibe referencias em
 tools y delega el cálculo al proveedor vial existente; devuelve distancia, duración e
 instrucciones acotadas, sin exponer geometría al modelo. Desde la ubicación del visitante marca
 el origen como aproximado y la app recalcula antes de navegar.
+
+En una consulta de cercanía sin coordenada, `requestLocationAccess` devuelve una
+intención `request_location` para el cliente móvil. El backend no puede abrir el
+diálogo del sistema ni conocer el estado de permisos del teléfono. El móvil intenta
+una lectura nueva si el permiso ya está concedido; si falta, muestra la acción
+«Usar mi ubicación», que solicita el permiso o la lectura y repite esa pregunta.
+La API no envía texto parcial en este caso y responde de forma estable aunque el
+modelo no produzca una respuesta estructurada.
 
 Descubrir centros, restaurantes o alojamiento en general no requiere GPS.
 `listPublishedCenters` enumera centros publicados sin coordenadas del visitante;
@@ -62,6 +70,10 @@ duración.
 El endpoint SSE solo transmite el campo de texto parcial acumulado (`text-delta`) y, al final,
 la respuesta completa ya sanitizada (`complete`); nunca transmite tarjetas, coordenadas o
 acciones parciales del modelo.
+Texto y tarjetas son partes distintas de la misma respuesta estructurada: el transporte SSE
+no duplica registros. El prompt pide un resumen breve cuando hay tarjetas; el cliente
+elimina del texto visible solo las viñetas que vuelven a nombrar esas tarjetas, sin
+modificar la respuesta original que se usa como contexto e historial.
 Si el cliente cierra la conexión SSE, el servidor aborta la generación del proveedor y no
 emite más eventos. Detener una respuesta desde el móvil conserva la pregunta para un
 reintento sin incluir la respuesta parcial en el historial enviado al modelo.

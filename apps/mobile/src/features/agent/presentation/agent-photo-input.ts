@@ -1,11 +1,9 @@
 import { File, Paths } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
 
-import { TourismIconAction } from "@/core/ui/tourism-controls";
-
-export function AgentPhotoInput({
+/** Camera and gallery actions behind the agent's attachment menu. */
+export function useAgentPhotoInput({
   disabled,
   onPhoto,
   onStatus,
@@ -110,26 +108,9 @@ export function AgentPhotoInput({
     }
   };
 
-  return (
-    <View style={styles.root}>
-      <TourismIconAction
-        accessibilityLabel="Tomar foto para consultar al agente"
-        disabled={disabled || working}
-        icon="camera"
-        onPress={() => void pick(true)}
-        variant="ghost"
-      />
-      <TourismIconAction
-        accessibilityLabel="Elegir foto de la galería para consultar al agente"
-        disabled={disabled || working}
-        icon="image"
-        onPress={() => void pick(false)}
-        variant="ghost"
-      />
-    </View>
-  );
+  return {
+    chooseImage: () => pick(false),
+    takePhoto: () => pick(true),
+    working,
+  };
 }
-
-const styles = StyleSheet.create({
-  root: { alignItems: "center", flexDirection: "row" },
-});

@@ -126,10 +126,6 @@ export function ExploreMapScreen() {
     overlay.close();
     router.push(buildRouteHref(destination));
   };
-  const openAgentCenter = (code: string) => {
-    overlay.closeAgent();
-    router.push({ pathname: "/centers/[code]", params: { code } });
-  };
   const openAgentRoute = (
     destination: AgentRouteDestination,
     mode: RouteMode,
@@ -318,7 +314,7 @@ export function ExploreMapScreen() {
       <ExploreAgentSheet
         conversation={conversation}
         onClose={overlay.closeAgent}
-        onOpenCenter={openAgentCenter}
+        onRequireAuth={openAuth}
         onStartRoute={openAgentRoute}
         open={current.kind === "agent"}
       />

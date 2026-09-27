@@ -92,4 +92,20 @@ describe("AI agent contracts", () => {
       agentChatSchema.safeParse({ message: "¿Qué puedo visitar?" }).success,
     ).toBe(true);
   });
+
+  it("accepts only the location request action shape", () => {
+    const response = {
+      text: "Necesito tu ubicación actual.",
+      cards: [],
+      actions: [{ type: "request_location" }],
+      sources: [],
+    };
+    expect(agentResponseSchema.safeParse(response).success).toBe(true);
+    expect(
+      agentResponseSchema.safeParse({
+        ...response,
+        actions: [{ type: "request_location", latitude: -1.59 }],
+      }).success,
+    ).toBe(false);
+  });
 });

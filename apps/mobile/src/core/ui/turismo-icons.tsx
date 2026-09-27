@@ -62,6 +62,8 @@ import {
   UserRound,
   Users,
   Venus,
+  Volume2,
+  VolumeX,
   WifiOff,
   X,
 } from "lucide-react-native";
@@ -132,6 +134,8 @@ const turismoIconMap = {
   wine: Wine,
   user: UserRound,
   users: Users,
+  volume: Volume2,
+  volumeOff: VolumeX,
   wifiOff: WifiOff,
   close: X,
 } as const satisfies Record<string, LucideIcon>;

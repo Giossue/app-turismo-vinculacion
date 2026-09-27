@@ -92,6 +92,10 @@ corepack pnpm --filter @turismo/mobile test
 - Autorización por rol, acción y registro en el backend; ocultar un botón no constituye seguridad.
 - Solicitar ubicación cuando la función la necesita y explicar su finalidad antes del diálogo
   del sistema.
+- No interponer avisos `Alert.alert` para cámara, galería, micrófono o seguimiento de ruta.
+  Explicar el permiso junto al control que lo activa y solicitarlo solo al tocar ese control.
+  «Cancelar» o «Ahora no» debe detener la acción que la persona intentaba cancelar; nunca
+  iniciar la navegación como efecto de rechazar un permiso opcional.
 - La ubicación en segundo plano requiere una función explícitamente activada por la persona,
   el permiso correspondiente, consentimiento informado y controles de revocación.
 - Usar eliminación lógica para centros y usuarios; preservar auditoría e identificadores históricos.

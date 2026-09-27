@@ -63,7 +63,7 @@ definidas para este producto; no se reduce al chat textual ya implementado.
   sin GPS, con respuesta verificada de respaldo y fuente por registro.
 - La consulta SQL del catastro filtra activo/publicado, localidad activa y resultado
   acotado; no expone RUC, razón social ni identificadores internos.
-- API: 30 suites y 161 pruebas pasan; TypeScript y lint pasan. Móvil: 40 suites y
+- API: 30 suites y más de 160 pruebas pasan; TypeScript y lint pasan. Móvil: 40 suites y
   184 pruebas pasan; TypeScript y lint pasan. La nueva lógica aún no está desplegada
   en el backend que consume el teléfono, así que los criterios ADB de respuesta
   corregida siguen pendientes.
@@ -74,6 +74,31 @@ definidas para este producto; no se reduce al chat textual ya implementado.
   compositor. No se enviaron fotos ni grabaciones privadas al backend anterior.
 - La web institucional muestra la propuesta editorial para revisión y aplicación
   manual. `bun run verify` pasa, incluido el build de producción.
+- Se corrigió la desconexión entre el permiso GPS del mapa y el agente: una
+  consulta cercana lee la ubicación concedida aunque aún no esté en memoria.
+  Sin lectura, el móvil ofrece la acción `request_location` de inmediato;
+  la API también dispone de `requestLocationAccess` para otros clientes. El
+  botón obtiene la ubicación y repite la pregunta. La salida hablada usa un
+  icono pequeño en la esquina del mensaje.
+- El compositor agrupa Voz, Cámara y Galería en un menú anclado al botón «+».
+  ADB verificó que el menú abre sobre el compositor, que la grabación se puede
+  cancelar desde él, que cámara y galería se abren y que Atrás cierra primero
+  el menú sin cerrar la sheet.
+- Las tarjetas de centro, catastro y POI ahora abren una ficha apilada sobre
+  el agente. ADB confirmó que una tarjeta de catastro abre su ficha y que Atrás
+  vuelve a la conversación con las tarjetas intactas. El texto aplica énfasis
+  Markdown y oculta las viñetas que repiten los lugares ya visibles como
+  tarjetas. ADB confirmó la respuesta sin lista duplicada y la apertura/cierre
+  de una tarjeta sin salir del chat.
+- Se detectó por ADB que «Ahora no» en el aviso de seguimiento en segundo
+  plano iniciaba la navegación y mostraba una advertencia verde, aunque la
+  persona esperaba cancelar. El seguimiento persistente pasó a un interruptor
+  voluntario en la vista previa; iniciar la ruta por defecto no muestra ese
+  aviso y usa solo ubicación en primer plano. ADB comprobó que el botón inicia
+  sin diálogo ni aviso verde, y que la X detiene la navegación y devuelve a la
+  vista previa con el interruptor apagado. Atrás o cerrar durante la lectura GPS
+  cancela el inicio pendiente. No se forzó el permiso opcional de segundo plano
+  en el teléfono durante esta comprobación.
 
 ## Pendientes de cierre
 

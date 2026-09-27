@@ -253,6 +253,9 @@ export function UserLocationProvider({
           );
           const accuracy = location.coords.accuracy ?? null;
           if (!isReliableLocationAccuracy(accuracy)) {
+            // El watcher puede haber recibido un punto preciso mientras la
+            // lectura puntual devolvía uno amplio. Conserva el punto válido.
+            if (stateRef.current.coordinate) return stateRef.current.coordinate;
             updateState((current) => ({
               ...current,
               accuracy,
@@ -280,6 +283,7 @@ export function UserLocationProvider({
           // La lectura puntual puede agotar su tiempo mientras el watcher
           // todavía espera una primera señal válida. No lo detengas: puede
           // entregar la coordenada fresca que la lectura puntual no alcanzó.
+          if (stateRef.current.coordinate) return stateRef.current.coordinate;
           updateState((current) => ({
             ...current,
             coordinate: null,

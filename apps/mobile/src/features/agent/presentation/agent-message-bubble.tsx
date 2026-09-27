@@ -4,7 +4,7 @@ import * as Speech from "expo-speech";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
-import { TourismActionButton } from "@/core/ui/tourism-controls";
+import { TourismPressable } from "@/core/ui/tourism-pressable";
 import {
   turismoIconSizes,
   turismoMetrics,
@@ -12,7 +12,12 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
-import type { AgentMessage } from "../domain/agent";
+import type { AgentCard, AgentMessage } from "../domain/agent";
+import {
+  getAgentVisibleText,
+  parseAgentText,
+  plainAgentText,
+} from "../domain/agent-text";
 import { AgentActionList, type AgentRouteHandlers } from "./agent-action-list";
 import { AgentItineraryCard } from "./agent-itinerary-card";
 import { AgentResultCard, getAgentCardKey } from "./agent-result-card";
@@ -20,7 +25,10 @@ import { AgentResultCard, getAgentCardKey } from "./agent-result-card";
 /** A user question or an agent answer with its cards, actions and sources. */
 export function AgentMessageBubble({
   message,
+  onOpenCard,
   onOpenCenter,
+  onRequestLocation,
+  requestingLocation,
   onSaveItinerary,
   savedItinerary,
   savingItinerary,
@@ -28,7 +36,10 @@ export function AgentMessageBubble({
 }: Readonly<
   AgentRouteHandlers & {
     message: AgentMessage;
+    onOpenCard: (card: AgentCard) => void;
     onOpenCenter: (code: string) => void;
+    onRequestLocation: () => void;
+    requestingLocation: boolean;
     onSaveItinerary: () => void;
     savedItinerary: boolean;
     savingItinerary: boolean;
@@ -36,6 +47,9 @@ export function AgentMessageBubble({
 >) {
   const colors = useTurismoPalette();
   const fromUser = message.role === "user";
+  const visibleText = fromUser
+    ? message.text
+    : getAgentVisibleText(message.text, message.cards ?? []);
   const [speaking, setSpeaking] = useState(false);
   const speakingRef = useRef(false);
 
@@ -60,7 +74,7 @@ export function AgentMessageBubble({
     await Speech.stop().catch(() => undefined);
     speakingRef.current = true;
     setSpeaking(true);
-    Speech.speak(message.text.slice(0, 3_000), {
+    Speech.speak(plainAgentText(visibleText).slice(0, 3_000), {
       language: "es-EC",
       onDone: markStopped,
       onStopped: markStopped,
@@ -93,16 +107,50 @@ export function AgentMessageBubble({
               ],
         ]}
       >
-        <Text style={[styles.text, { color: colors.text }]}>
-          {message.text}
-        </Text>
-        {!fromUser && !message.kind ? (
-          <TourismActionButton
-            compact
-            label={speaking ? "Detener voz" : "Escuchar respuesta"}
-            onPress={() => void toggleSpeech()}
-          />
-        ) : null}
+        <View
+          style={[
+            styles.textContainer,
+            !fromUser && !message.kind && styles.textContainerWithSpeech,
+          ]}
+        >
+          <Text
+            style={[
+              styles.text,
+              !fromUser && !message.kind && styles.textWithSpeech,
+              { color: colors.text },
+            ]}
+          >
+            {fromUser
+              ? visibleText
+              : parseAgentText(visibleText).map((part, index) =>
+                  part.strong ? (
+                    <Text key={index} style={styles.strong}>
+                      {part.value}
+                    </Text>
+                  ) : (
+                    part.value
+                  ),
+                )}
+          </Text>
+          {!fromUser && !message.kind ? (
+            <TourismPressable
+              accessibilityLabel={
+                speaking ? "Detener lectura de respuesta" : "Escuchar respuesta"
+              }
+              accessibilityRole="button"
+              accessibilityState={{ selected: speaking }}
+              borderlessRipple
+              onPress={() => void toggleSpeech()}
+              style={styles.speechAction}
+            >
+              <TurismoIcon
+                color={colors.textMuted}
+                name={speaking ? "volumeOff" : "volume"}
+                size={turismoIconSizes.sm}
+              />
+            </TourismPressable>
+          ) : null}
+        </View>
         {message.itinerary ? (
           <AgentItineraryCard
             itinerary={message.itinerary}
@@ -116,13 +164,15 @@ export function AgentMessageBubble({
           <AgentResultCard
             card={card}
             key={getAgentCardKey(card)}
-            onOpenCenter={onOpenCenter}
+            onOpenCard={onOpenCard}
           />
         ))}
         {message.actions?.length ? (
           <AgentActionList
             actions={message.actions}
             onOpenCenter={onOpenCenter}
+            onRequestLocation={onRequestLocation}
+            requestingLocation={requestingLocation}
             {...routeHandlers}
           />
         ) : null}
@@ -157,5 +207,18 @@ const styles = StyleSheet.create({
     borderWidth: turismoMetrics.borderWidth,
   },
   text: { ...turismoTypography.bodySmall },
+  strong: { ...turismoTypography.label },
+  textContainer: { position: "relative" },
+  textContainerWithSpeech: { minHeight: turismoMetrics.touchTarget },
+  textWithSpeech: { paddingRight: turismoMetrics.touchTarget },
+  speechAction: {
+    alignItems: "center",
+    height: turismoMetrics.touchTarget,
+    justifyContent: "center",
+    position: "absolute",
+    right: 0,
+    top: 0,
+    width: turismoMetrics.touchTarget,
+  },
   sources: { ...turismoTypography.caption, marginTop: turismoSpacing.xs },
 });

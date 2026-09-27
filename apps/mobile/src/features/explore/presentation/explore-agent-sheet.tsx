@@ -8,7 +8,10 @@ import { TourismBottomSheetModal } from "@/core/ui/tourism-bottom-sheet";
 import { TourismIconAction } from "@/core/ui/tourism-controls";
 import { TourismSheetHandle } from "@/core/ui/tourism-sheet-handle";
 import { turismoMetrics, turismoSpacing } from "@/core/ui/tokens";
-import type { AgentRouteDestination } from "@/features/agent/domain/agent";
+import type {
+  AgentCard,
+  AgentRouteDestination,
+} from "@/features/agent/domain/agent";
 import type { useAgentConversation } from "@/features/agent/application/use-agent-conversation";
 import { useAgentPlans } from "@/features/agent/application/use-agent-plans";
 import { useAuth } from "@/features/auth/application/auth-context";
@@ -16,13 +19,14 @@ import { AgentChatContent } from "@/features/agent/presentation/agent-chat-conte
 import { AgentSavedPlans } from "@/features/agent/presentation/agent-saved-plans";
 import { AgentHistoryPanel } from "@/features/agent/presentation/agent-history-panel";
 import type { RouteMode } from "@/features/routing/domain/routing";
+import { AgentPlaceSheet, type AgentPlaceSelection } from "./agent-place-sheet";
 
 const sheetEdges: readonly Edge[] = ["top", "bottom"];
 
 type ExploreAgentSheetProps = Readonly<{
   conversation: ReturnType<typeof useAgentConversation>;
   onClose: () => void;
-  onOpenCenter: (code: string) => void;
+  onRequireAuth: () => void;
   onStartRoute: (destination: AgentRouteDestination, mode: RouteMode) => void;
   open: boolean;
 }>;
@@ -40,7 +44,7 @@ export function ExploreAgentSheet(props: ExploreAgentSheetProps) {
 function ExploreAgentSheetInner({
   conversation,
   onClose,
-  onOpenCenter,
+  onRequireAuth,
   onStartRoute,
   open,
 }: ExploreAgentSheetProps) {
@@ -50,6 +54,16 @@ function ExploreAgentSheetInner({
   const plans = useAgentPlans();
   const auth = useAuth();
   const [view, setView] = useState<"chat" | "plans" | "history">("chat");
+  const [selectedPlace, setSelectedPlace] =
+    useState<AgentPlaceSelection | null>(null);
+  const openCenter = (code: string) =>
+    setSelectedPlace({ type: "center-code", code });
+  const openCard = (card: AgentCard) => setSelectedPlace(card);
+  const closePlace = () => setSelectedPlace(null);
+  const closeAgent = () => {
+    closePlace();
+    onClose();
+  };
 
   useEffect(() => {
     if (open === presentedRef.current) return;
@@ -59,83 +73,96 @@ function ExploreAgentSheetInner({
   }, [open]);
 
   return (
-    <TourismBottomSheetModal
-      onDismiss={() => {
-        presentedRef.current = false;
-        setView("chat");
-        onClose();
-      }}
-      ref={sheetRef}
-    >
-      <BottomSheetView style={styles.sheet}>
-        <SafeAreaView
-          edges={sheetEdges}
-          style={[styles.safeArea, { backgroundColor: colors.surface }]}
-        >
-          <TourismSheetHandle
-            closeLabel="Cerrar agente turístico"
-            onClose={onClose}
-            showIndicator={false}
-          />
-          <View style={[styles.header, { borderBottomColor: colors.border }]}>
-            <TourismIconAction
-              accessibilityLabel={
-                view === "plans" ? "Volver al chat" : "Ver mis planes"
-              }
-              icon={view === "plans" ? "arrowLeft" : "calendar"}
-              onPress={() => {
-                if (view !== "plans") void plans.load();
-                setView(view === "plans" ? "chat" : "plans");
-              }}
-              variant="ghost"
+    <>
+      <TourismBottomSheetModal
+        onDismiss={() => {
+          presentedRef.current = false;
+          setSelectedPlace(null);
+          setView("chat");
+          onClose();
+        }}
+        ref={sheetRef}
+      >
+        <BottomSheetView style={styles.sheet}>
+          <SafeAreaView
+            edges={sheetEdges}
+            style={[styles.safeArea, { backgroundColor: colors.surface }]}
+          >
+            <TourismSheetHandle
+              closeLabel="Cerrar agente turístico"
+              onClose={closeAgent}
+              showIndicator={false}
             />
-            <TourismIconAction
-              accessibilityLabel={
-                view === "history" ? "Volver al chat" : "Ver historial"
-              }
-              icon={view === "history" ? "arrowLeft" : "history"}
-              onPress={() => setView(view === "history" ? "chat" : "history")}
-              variant="ghost"
-            />
-            <TourismIconAction
-              accessibilityLabel="Nueva conversación"
-              icon="plus"
-              onPress={() => {
-                conversation.newConversation();
-                setView("chat");
-              }}
-              variant="ghost"
-            />
-          </View>
-          <View style={styles.content}>
-            {view === "plans" ? (
-              <AgentSavedPlans
-                key={auth.user?.id}
-                plans={plans}
-                onOpenCenter={onOpenCenter}
+            <View style={[styles.header, { borderBottomColor: colors.border }]}>
+              <TourismIconAction
+                accessibilityLabel={
+                  view === "plans" ? "Volver al chat" : "Ver mis planes"
+                }
+                icon={view === "plans" ? "arrowLeft" : "calendar"}
+                onPress={() => {
+                  if (view !== "plans") void plans.load();
+                  setView(view === "plans" ? "chat" : "plans");
+                }}
+                variant="ghost"
               />
-            ) : view === "history" ? (
-              <AgentHistoryPanel
-                key={auth.user?.id}
-                onDisable={conversation.newConversation}
-                onDelete={conversation.forgetSavedConversation}
-                onSelect={(saved) => {
-                  conversation.loadSavedConversation(saved);
+              <TourismIconAction
+                accessibilityLabel={
+                  view === "history" ? "Volver al chat" : "Ver historial"
+                }
+                icon={view === "history" ? "arrowLeft" : "history"}
+                onPress={() => setView(view === "history" ? "chat" : "history")}
+                variant="ghost"
+              />
+              <TourismIconAction
+                accessibilityLabel="Nueva conversación"
+                icon="plus"
+                onPress={() => {
+                  conversation.newConversation();
                   setView("chat");
                 }}
+                variant="ghost"
               />
-            ) : (
-              <AgentChatContent
-                conversation={conversation}
-                onOpenCenter={onOpenCenter}
-                onStartRoute={onStartRoute}
-                plans={plans}
-              />
-            )}
-          </View>
-        </SafeAreaView>
-      </BottomSheetView>
-    </TourismBottomSheetModal>
+            </View>
+            <View style={styles.content}>
+              {view === "plans" ? (
+                <AgentSavedPlans
+                  key={auth.user?.id}
+                  plans={plans}
+                  onOpenCenter={openCenter}
+                />
+              ) : view === "history" ? (
+                <AgentHistoryPanel
+                  key={auth.user?.id}
+                  onDisable={conversation.newConversation}
+                  onDelete={conversation.forgetSavedConversation}
+                  onSelect={(saved) => {
+                    conversation.loadSavedConversation(saved);
+                    setView("chat");
+                  }}
+                />
+              ) : (
+                <AgentChatContent
+                  conversation={conversation}
+                  onOpenCard={openCard}
+                  onOpenCenter={openCenter}
+                  onStartRoute={onStartRoute}
+                  plans={plans}
+                />
+              )}
+            </View>
+          </SafeAreaView>
+        </BottomSheetView>
+      </TourismBottomSheetModal>
+      <AgentPlaceSheet
+        onClose={closePlace}
+        onRequireAuth={onRequireAuth}
+        onStartRoute={(destination, mode) => {
+          closePlace();
+          onStartRoute(destination, mode);
+        }}
+        selection={open ? selectedPlace : null}
+      />
+    </>
   );
 }
 

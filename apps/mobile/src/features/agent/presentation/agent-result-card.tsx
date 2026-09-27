@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
 import { formatOptionalDistance } from "@/core/format/distance";
 import { useTurismoPalette } from "@/core/ui/theme-context";
@@ -16,21 +16,18 @@ export function getAgentCardKey(card: AgentCard): string {
     : `${card.type}-${card.name}-${card.latitude ?? "unknown"}`;
 }
 
-/**
- * A place in the agent's answer. Published centers open their card;
- * cadastre and POI results only show their public fields.
- */
+/** A place in the answer; every card opens its details over the agent. */
 export function AgentResultCard({
   card,
-  onOpenCenter,
-}: Readonly<{ card: AgentCard; onOpenCenter: (code: string) => void }>) {
+  onOpenCard,
+}: Readonly<{ card: AgentCard; onOpenCard: (card: AgentCard) => void }>) {
   const colors = useTurismoPalette();
   const details =
     card.type === "center"
       ? []
       : [
           [
-            card.category,
+            card.type === "poi" ? card.category : null,
             card.localityName,
             formatOptionalDistance(card.distanceMeters),
           ]
@@ -54,30 +51,22 @@ export function AgentResultCard({
           {detail}
         </Text>
       ))}
-      {card.type === "center" ? (
-        <Text style={[styles.link, { color: colors.primaryStrong }]}>
-          Abrir ficha →
-        </Text>
-      ) : null}
+      <Text style={[styles.link, { color: colors.primaryStrong }]}>
+        Ver ficha →
+      </Text>
     </>
   );
 
-  if (card.type === "center") {
-    return (
-      <TourismPressable
-        accessibilityLabel={`Abrir ficha de ${card.name}`}
-        accessibilityRole="button"
-        onPress={() => onOpenCenter(card.code)}
-        style={[styles.card, { backgroundColor: colors.primarySoft }]}
-      >
-        {content}
-      </TourismPressable>
-    );
-  }
   return (
-    <View style={[styles.card, { backgroundColor: colors.primarySoft }]}>
+    <TourismPressable
+      accessibilityHint="Abre la ficha sin cerrar el chat"
+      accessibilityLabel={`Ver ficha de ${card.name}`}
+      accessibilityRole="button"
+      onPress={() => onOpenCard(card)}
+      style={[styles.card, { backgroundColor: colors.primarySoft }]}
+    >
       {content}
-    </View>
+    </TourismPressable>
   );
 }
 
@@ -89,7 +78,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     padding: turismoSpacing.md,
   },
-  title: { ...turismoTypography.bodySmall },
+  title: { ...turismoTypography.label },
   caption: { ...turismoTypography.caption },
   link: { ...turismoTypography.caption, marginTop: turismoSpacing.xs },
 });

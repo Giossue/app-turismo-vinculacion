@@ -163,13 +163,7 @@ export async function requestNavigationNotificationPermission(): Promise<boolean
   const permission = PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS;
   if (await PermissionsAndroid.check(permission)) return true;
 
-  const result = await PermissionsAndroid.request(permission, {
-    buttonNegative: "Ahora no",
-    buttonPositive: "Permitir",
-    message:
-      "Mostraremos una notificación mientras sigues una ruta para que sepas que la ubicación continúa activa.",
-    title: "Notificación de navegación",
-  });
+  const result = await PermissionsAndroid.request(permission);
   return result === PermissionsAndroid.RESULTS.GRANTED;
 }
 

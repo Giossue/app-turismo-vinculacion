@@ -27,8 +27,12 @@ sheet nativa de conversación; `Cómo llegar` representa la ruta activa sin soli
 en la vista previa. La sheet del agente permite guardar, recuperar y editar itinerarios
 con jornadas y paradas de centros publicados.
 El agente turístico consulta la API autenticada y valida una respuesta estructurada con
-texto, tarjetas, acciones propuestas y fuentes. Las tarjetas de centros publicados abren su
-ficha; las tarjetas de catastro muestran únicamente campos públicos. Una acción de ruta se
+texto, tarjetas, acciones propuestas y fuentes. Todas las tarjetas abren una ficha en una
+sheet apilada sobre el chat: Atrás o cerrar la ficha devuelve a la misma conversación sin
+navegar. Los centros cargan su ficha pública completa; catastro y POI muestran los campos
+públicos recibidos, y solo ofrecen ruta si hay coordenadas. Si el texto enumera lugares
+que también tienen tarjeta, la lista duplicada se oculta en la vista y en la lectura de
+voz; el historial conserva el texto original. Una acción de ruta se
 presenta como propuesta y requiere confirmación explícita antes de navegar a `/route`. La
 app puede enviar una ubicación puntual redondeada para consultas cercanas, sin historial ni
 seguimiento en segundo plano. Como contexto solo se reenvían los intercambios completados
@@ -42,13 +46,17 @@ apagado por defecto; el usuario puede activarlo, abrir y borrar conversaciones o
 desactivarlo para borrarlas todas. Los planes guardados se administran por separado.
 
 `expo-audio` graba hasta 30 segundos tras el permiso del sistema;
-la transcripción vuelve al borrador editable. `expo-image-picker` permite cámara o
-galería directamente desde sus botones, y `expo-file-system` comprueba el tamaño y borra
+la transcripción vuelve al borrador editable. El compositor muestra un solo botón «+»:
+su menú abre Voz, Cámara o Galería. Durante una grabación, el mismo menú permite
+detener y transcribir o cancelar. `expo-image-picker` abre cámara o galería desde
+esas opciones, y `expo-file-system` comprueba el tamaño y borra
 los archivos temporales cuando corresponde. La voz de salida usa `expo-speech` sobre
 el texto visible; el usuario puede detenerla. Los tres paquetes Expo nuevos están
 alineados con SDK 57 y tienen licencia MIT. Su superficie adicional son permisos de
 micrófono/cámara, archivos temporales y el envío explícito de audio/fotos a la API;
-la build nativa debe regenerarse para incorporar sus plugins y permisos.
+la build nativa debe regenerarse para incorporar sus plugins y permisos. La lectura
+de voz de cada respuesta se controla con un icono discreto en la esquina de su
+mensaje y mantiene un objetivo táctil de 44 dp.
 
 La preferencia de apariencia se administra desde `Menú > Configuración`, con tres opciones
 (`Sistema`, `Claro` y `Oscuro`) presentadas como un grupo de radio donde toda la fila es el
@@ -319,6 +327,10 @@ veces a la vez y la descarga sigue aunque se salga de la pantalla.
   persona toca "mi ubicación", activa "Servicios cercanos" o inicia una ruta. El mapa y el
   resto del catálogo siguen disponibles si la deniega.
 - El control “mi ubicación”, la cercanía y el inicio de ruta reutilizan la misma sesión.
+  Si el agente recibe una pregunta cercana y el permiso ya está concedido, obtiene
+  una lectura GPS aunque Explorar todavía no haya centrado el mapa. Si no consigue
+  una coordenada, muestra la acción «Usar mi ubicación» y al tocarla solicita la
+  lectura o el permiso y repite la consulta. Las preguntas generales no piden GPS.
   La sesión comprueba que el GPS esté activo, obtiene una lectura fresca con precisión de
   100 m o menos y centra la cámara en un nivel de zoom estable. No usa la última posición
   conocida del sistema como si fuera actual. La posición aceptada se representa con un punto
@@ -340,22 +352,24 @@ veces a la vez y la descarga sigue aunque se salga de la pantalla.
   el GPS está apagado o la señal no está disponible; el control comunica el estado sin
   bloquear la exploración.
 - Solicitar segundo plano solo al activar explícitamente una función que lo requiere y
-  explicar el beneficio y ofrecer rechazo. La navegación visible siempre combina el watcher
-  de primer plano con una tarea `expo-location` registrada en `expo-task-manager` solo cuando
-  se concede el segundo plano; si se rechaza, la ruta sigue funcionando mientras la app está
-  visible. El flujo de inicio solo pide consentimiento y permisos; el servicio foreground se
-  registra al activar la navegación, después de guardar la sesión, y Android muestra una
+  explicar el beneficio junto al interruptor de la vista previa, apagado por defecto. El
+  botón «Iniciar navegación» comienza sin diálogo propio y usa el watcher de primer plano.
+  Solo si la persona activa «Seguir al salir de la app» y concede los permisos del sistema
+  se registra una tarea `expo-location` en `expo-task-manager`; rechazar el permiso deja el
+  interruptor apagado y no comienza la ruta. El servicio foreground se registra al activar
+  la navegación con esa opción, después de guardar la sesión, y Android muestra una
   notificación persistente cuando el seguimiento persistente está habilitado. Si la tarea no
   puede iniciarse, el watcher de primer plano continúa y la pantalla avisa que la ruta sigue
   solo con la app abierta. En Android 13 o posterior se solicita también
   `POST_NOTIFICATIONS` para hacer visible esa notificación.
-- Persistir únicamente ruta, destino, modo y última posición para que el servicio activo
+- Al activar el seguimiento en segundo plano, persistir únicamente ruta, destino, modo y última posición para que el servicio activo
   conserve continuidad; la posición persistida no se presenta como actual ni se usa para
   recalcular hasta recibir una lectura foreground o background fresca y con precisión de
   100 m o menos. No conservar trazas precisas por defecto. Ruta, destino y modo se escriben
   al iniciar y al recalcular; la última posición y la última notificación publicada viven en
   un registro pequeño aparte que la tarea reescribe en cada lectura, sin reescribir la ruta.
   Las escrituras nunca rechazan: un fallo se informa como resultado y no bloquea la cola.
+  En navegación solo en primer plano no se crea esa sesión persistente.
 - `useNavigationSession` es el único dueño del ciclo de vida de la navegación; la pantalla de
   ruta solo cambia `navigationActive`. Al cerrar con la `X` o al perder el foco —Expo Router
   emite `blur` cuando otra pantalla cubre la ruta— pasa a `false` y la sesión detiene el

@@ -85,20 +85,19 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   OSRM genérico.
 - La navegación activa requiere una sesión turística autenticada y se inicia explícitamente
   desde una ruta calculada. La vista previa de la ruta permanece disponible como invitado. En primer plano
-  usa `Location.watchPositionAsync` para actualizar el mapa de inmediato y, mientras existe
-  una sesión activa, `expo-location` mantiene una tarea de ubicación en segundo plano con
-  el servicio foreground de Android. La tarea conserva únicamente la última posición en
-  almacenamiento local; al volver a la app se espera una lectura fresca antes de reanudar
-  indicaciones y desvíos. El permiso de segundo plano se solicita únicamente al iniciar esta función,
-  después de explicar su finalidad y ofrecer una opción de rechazo. Si la persona lo
-  rechaza, la navegación continúa mientras la app está visible, pero no registra la tarea
-  persistente ni promete actualizaciones al cambiar de aplicación. En Android 13 o posterior
-  también se solicita `POST_NOTIFICATIONS` cuando el seguimiento persistente está habilitado,
-  para mostrar el servicio en el cajón de notificaciones.
+  usa `Location.watchPositionAsync` para actualizar el mapa de inmediato. «Iniciar navegación»
+  solo sigue la posición mientras la app está abierta y no presenta un diálogo previo.
+  La vista previa ofrece por separado «Seguir al salir de la app», desactivado por defecto y
+  con una explicación visible junto al interruptor. Solo al activarlo se solicitan los
+  permisos del sistema para ubicación en segundo plano y notificaciones; rechazar alguno
+  deja el interruptor apagado y no inicia la ruta. Con la opción activada,
+  `expo-location` mantiene una tarea de ubicación en segundo plano con el servicio
+  foreground de Android. La tarea conserva únicamente la última posición en almacenamiento
+  local; al volver a la app se espera una lectura fresca antes de reanudar indicaciones.
 - Al detenerla con la `X` o cuando otra pantalla cubre la ruta, se eliminan el watcher, la
   tarea del sistema, la sesión persistida, la notificación foreground y la voz, y el estado
   visible se reinicia; antes de iniciarla no hay seguimiento que limpiar. Si la tarea
-  persistente no puede iniciarse, la navegación continúa con la app abierta y lo avisa en
+  persistente no puede iniciarse tras activarla, la navegación continúa con la app abierta y lo avisa en
   pantalla. Al llegar al destino, el modo activo conserva su pantalla y muestra el estado de
   llegada hasta que la persona lo cierre explícitamente. Minimizar la app o cambiar temporalmente
   de aplicación no equivale a cancelar:

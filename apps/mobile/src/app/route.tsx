@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { StyleSheet } from "react-native";
 
 import type { GeoCoordinate } from "@/core/geo/types";
+import { getLocationAvailability } from "@/core/location/location-availability";
 import { useUserLocation } from "@/core/location/use-user-location";
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 import { useTurismoPalette } from "@/core/ui/theme-context";
@@ -12,7 +13,6 @@ import { TourismStateView } from "@/core/ui/tourism-state";
 import { turismoSpacing } from "@/core/ui/tokens";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { buildLoginHref } from "@/features/auth/application/login-href";
-import { prepareNavigationTracking } from "@/features/routing/application/prepare-navigation-tracking";
 import { useCalculatedRoute } from "@/features/routing/application/use-calculated-route";
 import { useNavigationFollow } from "@/features/routing/application/use-navigation-follow";
 import { useNavigationRoute } from "@/features/routing/application/use-navigation-route";
@@ -20,6 +20,10 @@ import { useNavigationSession } from "@/features/routing/application/use-navigat
 import { useRouteScreenParams } from "@/features/routing/application/use-route-screen-params";
 import { getRouteErrorMessage } from "@/features/routing/data/routing-api";
 import type { RouteMode } from "@/features/routing/domain/routing";
+import {
+  requestNavigationBackgroundPermission,
+  requestNavigationNotificationPermission,
+} from "@/features/routing/infrastructure/navigation-background-task";
 import { ActiveNavigationOverlay } from "@/features/routing/presentation/active-navigation-overlay";
 import { RouteMap } from "@/features/routing/presentation/route-map";
 import { RoutePreviewPanel } from "@/features/routing/presentation/route-preview-panel";
@@ -51,11 +55,14 @@ export default function RouteScreen() {
   const [routeRequested, setRouteRequested] = useState(false);
   const [navigationActive, setNavigationActive] = useState(false);
   const [startingNavigation, setStartingNavigation] = useState(false);
-  const [navigationNotice, setNavigationNotice] = useState<string | null>(null);
+  const [backgroundTrackingEnabled, setBackgroundTrackingEnabled] =
+    useState(false);
+  const [backgroundTrackingBusy, setBackgroundTrackingBusy] = useState(false);
   const [previewExpanded, setPreviewExpanded] = useState(true);
   const [mapBottomInset, setMapBottomInset] = useState(0);
   // Guards double taps before the `startingNavigation` render lands.
   const startInFlightRef = useRef(false);
+  const startAttemptRef = useRef(0);
   const {
     message: locationMessage,
     requestLocation,
@@ -76,11 +83,11 @@ export default function RouteScreen() {
 
   const navigationSession = useNavigationSession({
     active: navigationActive,
+    backgroundEnabled: backgroundTrackingEnabled,
     destination,
     isRecalculating: isCalculating,
     mode,
     onReroute: (nextOrigin) => {
-      setNavigationNotice(null);
       setOrigin(nextOrigin);
     },
     route,
@@ -93,8 +100,11 @@ export default function RouteScreen() {
     [navigation],
   );
 
-  // Active navigation is a dedicated mode: only its close control leaves it.
-  useScreenBackHandler(() => navigationActive || startingNavigation);
+  // Back cancels a start still waiting for GPS; active navigation uses its X.
+  useScreenBackHandler(() => {
+    if (startingNavigation) startAttemptRef.current += 1;
+    return navigationActive;
+  });
 
   useEffect(() => {
     if (!destination || origin || routeRequested || navigationActive) return;
@@ -111,6 +121,7 @@ export default function RouteScreen() {
   }, [destination, navigationActive, origin, requestLocation, routeRequested]);
 
   const closeRoute = () => {
+    startAttemptRef.current += 1;
     if (router.canGoBack()) {
       router.back();
     } else {
@@ -133,28 +144,58 @@ export default function RouteScreen() {
     setRouteRequested(true);
   };
 
+  const handleBackgroundTrackingChange = async (enabled: boolean) => {
+    if (!enabled) {
+      setBackgroundTrackingEnabled(false);
+      return;
+    }
+    if (backgroundTrackingBusy || auth.status !== "authenticated") return;
+
+    setBackgroundTrackingBusy(true);
+    try {
+      // The explanation beside the switch precedes any system permission UI.
+      const availability = await getLocationAvailability({
+        requestPermission: true,
+      });
+      if (availability !== "available" || !navigation.isFocused()) return;
+      const permission = await requestNavigationBackgroundPermission();
+      if (!permission.granted || !navigation.isFocused()) return;
+      const notifications = await requestNavigationNotificationPermission();
+      if (!notifications || !navigation.isFocused()) return;
+      setBackgroundTrackingEnabled(true);
+    } catch {
+      setBackgroundTrackingEnabled(false);
+    } finally {
+      setBackgroundTrackingBusy(false);
+    }
+  };
+
   const handleStartNavigation = async () => {
-    if (!destination || !route || isCalculating || navigationActive) return;
+    if (
+      !destination ||
+      !route ||
+      isCalculating ||
+      navigationActive ||
+      backgroundTrackingBusy
+    )
+      return;
     if (startInFlightRef.current) return;
 
     if (auth.status !== "authenticated") {
       if (auth.status === "anonymous") {
-        setNavigationNotice(null);
         router.push(buildLoginHref("/route"));
       }
       return;
     }
 
-    const isCancelled = () => !navigation.isFocused();
+    const attempt = ++startAttemptRef.current;
+    const isCancelled = () =>
+      attempt !== startAttemptRef.current || !navigation.isFocused();
     startInFlightRef.current = true;
     setStartingNavigation(true);
     try {
       const coordinate = await requestLocation({ forceRefresh: true });
       if (!coordinate || isCancelled()) return;
-
-      const preparation = await prepareNavigationTracking(isCancelled);
-      if (preparation.status === "cancelled") return;
-      setNavigationNotice(preparation.notice);
       setNavigationActive(true);
     } finally {
       startInFlightRef.current = false;
@@ -164,8 +205,8 @@ export default function RouteScreen() {
 
   const handleStopNavigation = () => {
     setPreviewExpanded(true);
-    setNavigationNotice(null);
     setNavigationActive(false);
+    setBackgroundTrackingEnabled(false);
   };
 
   if (!destination) {
@@ -207,24 +248,28 @@ export default function RouteScreen() {
       />
       {!navigationActive ? (
         <RoutePreviewPanel
+          backgroundTrackingAvailable={auth.status === "authenticated"}
+          backgroundTrackingBusy={backgroundTrackingBusy}
+          backgroundTrackingEnabled={backgroundTrackingEnabled}
           destinationName={destinationName}
           expanded={previewExpanded}
           isCalculating={isCalculating}
           locationMessage={locationMessage}
           locationRequesting={locationStatus === "requesting"}
           mode={mode}
-          navigationNotice={navigationNotice}
+          navigationNotice={null}
+          onBackgroundTrackingChange={(enabled) =>
+            void handleBackgroundTrackingChange(enabled)
+          }
           onCalculateRoute={() => void handleCalculateRoute()}
-          onClose={() => {
-            if (!startingNavigation) closeRoute();
-          }}
+          onClose={closeRoute}
           onExpandedChange={setPreviewExpanded}
           onHeightChange={setMapBottomInset}
           onModeChange={setMode}
           onStartNavigation={() => void handleStartNavigation()}
           route={route}
           routeError={routeError}
-          startingNavigation={startingNavigation}
+          startingNavigation={startingNavigation || backgroundTrackingBusy}
         />
       ) : route ? (
         <ActiveNavigationOverlay
@@ -232,9 +277,7 @@ export default function RouteScreen() {
           isFollowing={follow.following}
           isRecalculating={isCalculating}
           message={navigationSession.message}
-          notice={
-            navigationSession.backgroundNotice ?? navigationNotice ?? routeError
-          }
+          notice={navigationSession.backgroundNotice ?? routeError}
           onBottomInsetChange={setMapBottomInset}
           onRecenter={() => follow.setFollowing(true)}
           onStop={handleStopNavigation}

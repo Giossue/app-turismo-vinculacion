@@ -1,12 +1,14 @@
 import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  BackHandler,
   type ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { Menu } from "react-native-paper";
 import Animated, {
   useAnimatedKeyboard,
   useAnimatedStyle,
@@ -14,6 +16,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
+import { TurismoIcon } from "@/core/ui/turismo-icons";
 import { TourismOptionRow } from "@/core/ui/tourism-option-row";
 import {
   TourismActionButton,
@@ -22,6 +25,7 @@ import {
 } from "@/core/ui/tourism-controls";
 import {
   turismoMetrics,
+  turismoIconSizes,
   turismoRadii,
   turismoSpacing,
   turismoTypography,
@@ -31,6 +35,7 @@ import type { useAgentConversation } from "../application/use-agent-conversation
 import type { useAgentPlans } from "../application/use-agent-plans";
 import {
   AGENT_MESSAGE_MAX_LENGTH,
+  type AgentCard,
   type AgentRouteDestination,
 } from "../domain/agent";
 import {
@@ -40,18 +45,20 @@ import {
 } from "../domain/agent-conversation";
 import { AgentMessageBubble } from "./agent-message-bubble";
 import { AgentThinkingIndicator } from "./agent-thinking-indicator";
-import { AgentVoiceInput } from "./agent-voice-input";
-import { AgentPhotoInput } from "./agent-photo-input";
+import { useAgentVoiceInput } from "./agent-voice-input";
+import { useAgentPhotoInput } from "./agent-photo-input";
 
 /** Conversation and composer of the agent sheet. */
 export function AgentChatContent({
   conversation,
   plans,
+  onOpenCard,
   onOpenCenter,
   onStartRoute,
 }: Readonly<{
   conversation: ReturnType<typeof useAgentConversation>;
   plans: ReturnType<typeof useAgentPlans>;
+  onOpenCard: (card: AgentCard) => void;
   onOpenCenter: (code: string) => void;
   onStartRoute: (destination: AgentRouteDestination, mode: RouteMode) => void;
 }>) {
@@ -62,15 +69,46 @@ export function AgentChatContent({
   } | null>(null);
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [mediaMenuOpen, setMediaMenuOpen] = useState(false);
   const onMediaStatus = (value: string | null, error = false) =>
     setMediaStatus(value ? { text: value, error } : null);
+  const voice = useAgentVoiceInput({
+    disabled:
+      conversation.sending || conversation.requestingLocation || photoBusy,
+    onStatus: onMediaStatus,
+    onTranscript: conversation.setDraft,
+    onWorkingChange: setVoiceBusy,
+  });
+  const photo = useAgentPhotoInput({
+    disabled:
+      conversation.sending || conversation.requestingLocation || voiceBusy,
+    onPhoto: conversation.sendPhoto,
+    onStatus: onMediaStatus,
+    onWorkingChange: setPhotoBusy,
+  });
+  const mediaMenuDisabled =
+    conversation.sending ||
+    conversation.requestingLocation ||
+    photoBusy ||
+    voice.processing ||
+    (voiceBusy && !voice.recording);
+  const mediaMenuVisible = mediaMenuOpen && !mediaMenuDisabled;
   const messagesScrollRef = useRef<ScrollView>(null);
   const canSend =
     Boolean(conversation.draft.trim()) &&
     !conversation.sending &&
+    !conversation.requestingLocation &&
     !voiceBusy &&
     !photoBusy;
   const canRetry = Boolean(getRetryableAgentTurn(conversation.messages));
+  useEffect(() => {
+    if (!mediaMenuVisible) return;
+    const back = BackHandler.addEventListener("hardwareBackPress", () => {
+      setMediaMenuOpen(false);
+      return true;
+    });
+    return () => back.remove();
+  }, [mediaMenuVisible]);
   // Con edge-to-edge Android ya no redimensiona la ventana: el chat reserva
   // abajo el alto del teclado (menos el área segura que ya pinta la sheet),
   // fotograma a fotograma, y el compositor sube con él.
@@ -82,6 +120,7 @@ export function AgentChatContent({
 
   const sendDraft = () => {
     if (!canSend) return;
+    setMediaMenuOpen(false);
     setMediaStatus(null);
     conversation.setDraft("");
     void conversation.send(conversation.draft);
@@ -105,13 +144,18 @@ export function AgentChatContent({
               key={message.id}
               message={message}
               onChangePendingRoute={conversation.setPendingRouteAction}
+              onOpenCard={onOpenCard}
               onOpenCenter={onOpenCenter}
+              onRequestLocation={() =>
+                void conversation.requestLocationForMessage(message.id)
+              }
               onSaveItinerary={() => {
                 if (message.itinerary)
                   void plans.saveFromMessage(message.id, message.itinerary);
               }}
               onStartRoute={onStartRoute}
               pendingRouteAction={conversation.pendingRouteAction}
+              requestingLocation={conversation.requestingLocation}
               savedItinerary={plans.savedMessageIds.has(message.id)}
               savingItinerary={plans.busy}
             />
@@ -144,6 +188,11 @@ export function AgentChatContent({
               {plans.error}
             </Text>
           ) : null}
+          {conversation.locationFeedback ? (
+            <Text style={[styles.error, { color: colors.danger }]}>
+              {conversation.locationFeedback}
+            </Text>
+          ) : null}
         </View>
       </BottomSheetScrollView>
 
@@ -158,26 +207,110 @@ export function AgentChatContent({
         </Text>
       ) : null}
       <TourismSurface style={styles.composer}>
-        <AgentVoiceInput
-          disabled={conversation.sending || photoBusy}
-          onStatus={onMediaStatus}
-          onTranscript={conversation.setDraft}
-          onWorkingChange={setVoiceBusy}
-        />
-        <AgentPhotoInput
-          disabled={conversation.sending || voiceBusy}
-          onPhoto={conversation.sendPhoto}
-          onStatus={onMediaStatus}
-          onWorkingChange={setPhotoBusy}
-        />
+        <Menu
+          anchor={
+            <TourismIconAction
+              accessibilityLabel={
+                voice.recording
+                  ? "Opciones de grabación"
+                  : "Opciones de voz y fotos"
+              }
+              disabled={mediaMenuDisabled}
+              icon="plus"
+              onPress={() => setMediaMenuOpen((current) => !current)}
+              selected={mediaMenuVisible || voice.recording}
+              variant="ghost"
+            />
+          }
+          anchorPosition="top"
+          contentStyle={[
+            styles.mediaMenu,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+          onDismiss={() => setMediaMenuOpen(false)}
+          overlayAccessibilityLabel="Cerrar opciones de voz y fotos"
+          style={styles.mediaMenuPosition}
+          visible={mediaMenuVisible}
+        >
+          <Menu.Item
+            accessibilityLabel={
+              voice.recording
+                ? "Detener y transcribir grabación"
+                : "Grabar pregunta por voz"
+            }
+            leadingIcon={({ color }) => (
+              <TurismoIcon
+                color={color}
+                name="microphone"
+                size={turismoIconSizes.md}
+              />
+            )}
+            onPress={() => {
+              setMediaMenuOpen(false);
+              if (voice.recording) void voice.finish();
+              else void voice.begin();
+            }}
+            title={voice.recording ? "Detener y transcribir" : "Voz"}
+          />
+          {voice.recording ? (
+            <Menu.Item
+              accessibilityLabel="Cancelar grabación"
+              leadingIcon={({ color }) => (
+                <TurismoIcon
+                  color={color}
+                  name="close"
+                  size={turismoIconSizes.md}
+                />
+              )}
+              onPress={() => {
+                setMediaMenuOpen(false);
+                void voice.cancel();
+              }}
+              title="Cancelar grabación"
+            />
+          ) : null}
+          <Menu.Item
+            accessibilityLabel="Tomar foto para consultar al agente"
+            disabled={voiceBusy}
+            leadingIcon={({ color }) => (
+              <TurismoIcon
+                color={color}
+                name="camera"
+                size={turismoIconSizes.md}
+              />
+            )}
+            onPress={() => {
+              setMediaMenuOpen(false);
+              void photo.takePhoto();
+            }}
+            title="Cámara"
+          />
+          <Menu.Item
+            accessibilityLabel="Elegir imagen de la galería para consultar al agente"
+            disabled={voiceBusy}
+            leadingIcon={({ color }) => (
+              <TurismoIcon
+                color={color}
+                name="image"
+                size={turismoIconSizes.md}
+              />
+            )}
+            onPress={() => {
+              setMediaMenuOpen(false);
+              void photo.chooseImage();
+            }}
+            title="Galería"
+          />
+        </Menu>
         {/* TextInput normal: la sheet no se desplaza con el teclado, el
             espacio lo reserva `keyboardStyle`. */}
         <TextInput
           accessibilityLabel="Escribe una consulta al agente"
-          editable={!conversation.sending}
+          editable={!conversation.sending && !conversation.requestingLocation}
           maxLength={AGENT_MESSAGE_MAX_LENGTH}
           multiline
           onChangeText={conversation.setDraft}
+          onFocus={() => setMediaMenuOpen(false)}
           placeholder={conversation.sending ? "Consultando…" : "Pregunta algo…"}
           placeholderTextColor={colors.textFaint}
           style={[styles.composerInput, { color: colors.text }]}
@@ -230,6 +363,14 @@ const styles = StyleSheet.create({
     gap: turismoSpacing.xs,
     marginBottom: turismoSpacing.sm,
     padding: turismoSpacing.xs,
+  },
+  mediaMenu: {
+    borderRadius: turismoRadii.md,
+    borderWidth: turismoMetrics.borderWidth,
+    minWidth: 204,
+  },
+  mediaMenuPosition: {
+    marginTop: -(turismoMetrics.controlMd + turismoSpacing.sm),
   },
   composerInput: {
     ...turismoTypography.body,

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ApiError } from "@/core/api/http";
+import type { GeoCoordinate } from "@/core/geo/types";
+import { getLocationAvailability } from "@/core/location/location-availability";
 import { useUserLocation } from "@/core/location/use-user-location";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { askTourismAgentStream } from "../data/agent-api";
@@ -26,7 +28,7 @@ import {
  */
 export function useAgentConversation() {
   const auth = useAuth();
-  const { accuracy, coordinate } = useUserLocation();
+  const { accuracy, coordinate, requestLocation } = useUserLocation();
   const [messages, setMessages] = useState<readonly AgentMessage[]>([
     agentIntroMessage,
   ]);
@@ -34,6 +36,8 @@ export function useAgentConversation() {
   const messagesRef = useRef<readonly AgentMessage[]>([agentIntroMessage]);
   const [sending, setSending] = useState(false);
   const [awaitingText, setAwaitingText] = useState(false);
+  const [requestingLocation, setRequestingLocation] = useState(false);
+  const [locationFeedback, setLocationFeedback] = useState<string | null>(null);
   const [pendingRouteAction, setPendingRouteAction] =
     useState<StartRouteAction | null>(null);
   const nextIdRef = useRef(0);
@@ -42,8 +46,18 @@ export function useAgentConversation() {
   const conversationIdRef = useRef<string | null>(null);
   const sendingRef = useRef(false);
   const userIdRef = useRef(auth.user?.id);
+  const locationRequestRef = useRef(false);
+  const locationRequestIdRef = useRef(0);
+  const mountedRef = useRef(true);
 
-  useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(
+    () => () => {
+      mountedRef.current = false;
+      locationRequestIdRef.current += 1;
+      abortRef.current?.abort();
+    },
+    [],
+  );
 
   const updateMessages = (
     update: (current: readonly AgentMessage[]) => readonly AgentMessage[],
@@ -76,6 +90,10 @@ export function useAgentConversation() {
   }, []);
 
   const newConversation = useCallback(() => {
+    locationRequestIdRef.current += 1;
+    locationRequestRef.current = false;
+    setRequestingLocation(false);
+    setLocationFeedback(null);
     abortRef.current?.abort();
     abortRef.current = null;
     answerIdRef.current = null;
@@ -91,6 +109,10 @@ export function useAgentConversation() {
 
   const loadSavedConversation = useCallback(
     (saved: SavedAgentConversationDetail) => {
+      locationRequestIdRef.current += 1;
+      locationRequestRef.current = false;
+      setRequestingLocation(false);
+      setLocationFeedback(null);
       abortRef.current?.abort();
       abortRef.current = null;
       answerIdRef.current = null;
@@ -132,6 +154,7 @@ export function useAgentConversation() {
   const send = async (
     text: string,
     baseMessages: readonly AgentMessage[] = messagesRef.current,
+    locationOverride?: GeoCoordinate,
   ) => {
     const message = text.trim();
     if (!message || sendingRef.current) return;
@@ -150,6 +173,7 @@ export function useAgentConversation() {
     setPendingRouteAction(null);
     setSending(true);
     setAwaitingText(true);
+    setLocationFeedback(null);
     updateMessages(() => [...baseMessages, question]);
 
     const showText = (partial: string) => {
@@ -166,15 +190,42 @@ export function useAgentConversation() {
     };
 
     try {
+      let currentCoordinate: GeoCoordinate | null | undefined =
+        locationOverride ?? coordinate;
+      const needsCurrentLocation = shouldShareAgentLocation(message);
+      if (needsCurrentLocation && !currentCoordinate) {
+        // Un permiso ya concedido no implica que el mapa haya leído el GPS.
+        // Recuperamos la posición al pedir cercanía, sin volver a solicitar
+        // permiso del sistema hasta que la persona toque la acción del agente.
+        try {
+          if ((await getLocationAvailability()) === "available") {
+            currentCoordinate = (await requestLocation()) ?? undefined;
+          }
+        } catch {
+          // La respuesta local ofrecerá volver a intentar la lectura.
+        }
+      }
+      if (controller.signal.aborted) return;
+      if (needsCurrentLocation && !currentCoordinate) {
+        updateMessages((current) =>
+          upsertMessage(current, {
+            id: answerId,
+            role: "assistant",
+            text: "Para buscar lugares cerca de ti, necesito una ubicación actual. Toca «Usar mi ubicación» para obtenerla y repetir la consulta.",
+            actions: [{ type: "request_location" }],
+          }),
+        );
+        return;
+      }
       const answer = await askTourismAgentStream(message, history, showText, {
         fetcher: auth.request,
         conversationId: conversationIdRef.current ?? undefined,
         location:
-          coordinate && shouldShareAgentLocation(message)
+          currentCoordinate && needsCurrentLocation
             ? {
                 accuracyMeters: accuracy ?? undefined,
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude,
+                latitude: currentCoordinate.latitude,
+                longitude: currentCoordinate.longitude,
               }
             : undefined,
         signal: controller.signal,
@@ -203,6 +254,54 @@ export function useAgentConversation() {
         sendingRef.current = false;
         setSending(false);
         setAwaitingText(false);
+      }
+    }
+  };
+
+  const requestLocationForMessage = async (answerId: string) => {
+    if (sendingRef.current || locationRequestRef.current) return;
+    const answerIndex = messagesRef.current.findIndex(
+      (item) => item.id === answerId,
+    );
+    const answer = messagesRef.current[answerIndex];
+    const question = messagesRef.current[answerIndex - 1];
+    if (
+      answerIndex < 1 ||
+      answer?.role !== "assistant" ||
+      !answer.actions?.some((action) => action.type === "request_location") ||
+      question?.role !== "user"
+    ) {
+      return;
+    }
+    const requestId = ++locationRequestIdRef.current;
+    locationRequestRef.current = true;
+    setRequestingLocation(true);
+    setLocationFeedback(null);
+    try {
+      const position = await requestLocation();
+      if (!mountedRef.current || requestId !== locationRequestIdRef.current)
+        return;
+      if (!position) {
+        setLocationFeedback(
+          "No pude obtener una ubicación precisa. Revisa el permiso y la señal GPS, y vuelve a intentarlo.",
+        );
+        return;
+      }
+      const baseMessages =
+        answerIndex === messagesRef.current.length - 1
+          ? messagesRef.current.slice(0, answerIndex - 1)
+          : messagesRef.current;
+      void send(question.text, baseMessages, position);
+    } catch {
+      if (mountedRef.current && requestId === locationRequestIdRef.current) {
+        setLocationFeedback(
+          "No pude obtener tu ubicación. Vuelve a intentarlo.",
+        );
+      }
+    } finally {
+      if (mountedRef.current && requestId === locationRequestIdRef.current) {
+        locationRequestRef.current = false;
+        setRequestingLocation(false);
       }
     }
   };
@@ -276,10 +375,13 @@ export function useAgentConversation() {
     draft,
     forgetSavedConversation,
     loadSavedConversation,
+    locationFeedback,
     messages,
     newConversation,
     pendingRouteAction,
     retry,
+    requestLocationForMessage,
+    requestingLocation,
     sendPhoto,
     send,
     sending,

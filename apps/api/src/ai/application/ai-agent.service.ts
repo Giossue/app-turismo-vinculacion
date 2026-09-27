@@ -322,6 +322,7 @@ export class AiAgentService {
           "Para calcular una ruta vial usa calculateRoadRoute después de obtener referencias confiables. Puede calcular desde la ubicación aproximada o entre dos lugares registrados; no le envíes coordenadas. Las métricas desde la ubicación son aproximadas y el móvil volverá a calcular la ruta antes de navegar.",
           "Si una herramienta no tiene datos o falla, dilo claramente y no rellenes el vacío con conocimiento externo.",
           "Para tarjetas, itineraries y acciones usa solamente las referencias ref devueltas por las herramientas.",
+          "Si incluyes tarjetas de lugares, no repitas la lista de nombres, categorías, direcciones o distancias en text. Usa text para resumir el resultado, explicar criterios y señalar información no verificada; cada lugar se presenta en su tarjeta.",
           "No pongas coordenadas ni códigos inventados en la salida estructurada.",
           "open_center solo sirve para centros publicados.",
           "start_route solo propone una ruta; nunca inicia navegación ni afirma que ya empezó. El móvil pedirá confirmación.",
@@ -340,27 +341,27 @@ export class AiAgentService {
                 },
               }
             : forceNearbyTool && stepNumber === 0
-            ? {
-                toolChoice: {
-                  type: "tool" as const,
-                  toolName: "searchNearbyPublishedPlaces" as const,
-                },
-              }
-            : forceGeneralCatalogTool && stepNumber === 0
               ? {
                   toolChoice: {
                     type: "tool" as const,
-                    toolName: "listPublishedCenters" as const,
+                    toolName: "searchNearbyPublishedPlaces" as const,
                   },
                 }
-              : forceEstablishmentKind && stepNumber === 0
+              : forceGeneralCatalogTool && stepNumber === 0
                 ? {
                     toolChoice: {
                       type: "tool" as const,
-                      toolName: "searchPublishedEstablishments" as const,
+                      toolName: "listPublishedCenters" as const,
                     },
                   }
-                : { toolChoice: "auto" as const },
+                : forceEstablishmentKind && stepNumber === 0
+                  ? {
+                      toolChoice: {
+                        type: "tool" as const,
+                        toolName: "searchPublishedEstablishments" as const,
+                      },
+                    }
+                  : { toolChoice: "auto" as const },
         output: Output.object({
           schema: agentModelResponseSchema,
           name: "tourism_agent_response",
@@ -989,6 +990,7 @@ export class AiAgentService {
       }
       return answer;
     } catch (error) {
+      if (needsLocationForNearby) return missingNearbyLocationAnswer();
       if (error instanceof ServiceUnavailableException) throw error;
       throw new ServiceUnavailableException(
         "El agente no está disponible en este momento.",
@@ -1017,7 +1019,9 @@ export class AiAgentService {
 }
 
 export function hasNearbyIntent(message: string): boolean {
-  return /\b(cerca|cercan[oa]s?|alrededor|proxim[oa]s?|aqui cerca|desde aqui|mi ubicacion|near|nearby|around me|from here|my location)\b/.test(normalizeIntent(message));
+  return /\b(cerca|cercan[oa]s?|alrededor|proxim[oa]s?|aqui cerca|desde aqui|mi ubicacion|near|nearby|around me|from here|my location)\b/.test(
+    normalizeIntent(message),
+  );
 }
 
 function missingNearbyLocationAnswer(): AgentResponse {

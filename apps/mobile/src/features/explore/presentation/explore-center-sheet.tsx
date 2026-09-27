@@ -42,12 +42,31 @@ export function ExploreCenterSheet({
   onClose,
   onOpenRoute,
   onRequireAuth,
-}: Readonly<{
+}: ExploreCenterSheetProps) {
+  return (
+    <TourismBottomSheet onClose={onClose}>
+      <ExploreCenterSheetContent
+        center={center}
+        onOpenRoute={onOpenRoute}
+        onRequireAuth={onRequireAuth}
+      />
+    </TourismBottomSheet>
+  );
+}
+
+type ExploreCenterSheetProps = Readonly<{
   center: PublicCenter;
   onClose: () => void;
   onOpenRoute: () => void;
   onRequireAuth: () => void;
-}>) {
+}>;
+
+/** Shared public-center content for the map and the agent's detail sheet. */
+export function ExploreCenterSheetContent({
+  center,
+  onOpenRoute,
+  onRequireAuth,
+}: Omit<ExploreCenterSheetProps, "onClose">) {
   const colors = useTurismoPalette();
   const detailQuery = usePublishedCenter(center.code);
   const opinions = useCenterOpinions(center.code);
@@ -56,7 +75,7 @@ export function ExploreCenterSheet({
   const detail = detailQuery.data;
 
   return (
-    <TourismBottomSheet onClose={onClose}>
+    <>
       <TourismSheetScrollView
         contentStyle={styles.content}
         landscapeMaxWidth={turismoMetrics.sheetMaxWidth}
@@ -138,7 +157,7 @@ export function ExploreCenterSheet({
         )}
       </TourismSheetScrollView>
       <SavedCenterErrorSnackbar mutation={save.mutation} />
-    </TourismBottomSheet>
+    </>
   );
 }
 

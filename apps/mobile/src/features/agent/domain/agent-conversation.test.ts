@@ -127,6 +127,7 @@ describe("location minimization in agent requests", () => {
 
   it("shares GPS for explicitly nearby or current-origin questions", () => {
     expect(shouldShareAgentLocation("¿Qué hay cerca de mí?")).toBe(true);
+    expect(shouldShareAgentLocation("Busca sitios desde aquí")).toBe(true);
     expect(shouldShareAgentLocation("How can I get there from here?")).toBe(
       true,
     );

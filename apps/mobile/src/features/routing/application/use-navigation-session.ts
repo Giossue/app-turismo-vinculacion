@@ -42,6 +42,7 @@ const voiceTriggerDistanceMeters = 180;
 
 type NavigationSessionOptions = Readonly<{
   active: boolean;
+  backgroundEnabled: boolean;
   destination: GeoCoordinate | null;
   isRecalculating: boolean;
   mode: RouteMode;
@@ -53,9 +54,9 @@ type NavigationSessionOptions = Readonly<{
  * Owns an active navigation: foreground watcher, persisted session,
  * persistent background task, voice guidance and the visible state.
  *
- * - `active` false → true: resets the state, saves the session, starts the
- *   foreground watcher and, when background location is allowed, the
- *   persistent task. A task failure keeps navigating with the app open and
+ * - `active` false → true: resets the state and starts the foreground watcher.
+ *   When the person enabled background location, it also saves the session
+ *   and starts the persistent task. A task failure keeps navigating with the app open and
  *   exposes `backgroundNotice`.
  * - `active` true → false: the only place that stops the task, clears the
  *   stored session, silences the voice and resets the state.
@@ -65,6 +66,7 @@ type NavigationSessionOptions = Readonly<{
  */
 export function useNavigationSession({
   active,
+  backgroundEnabled,
   destination,
   isRecalculating,
   mode,
@@ -103,11 +105,11 @@ export function useNavigationSession({
 
   // Persist on start and whenever a recalculated route replaces the old one.
   useEffect(() => {
-    if (!active || !route || !destination) return;
+    if (!active || !backgroundEnabled || !route || !destination) return;
     sessionSavedRef.current = saveNavigationSession(
       buildNavigationSnapshot({ destination, mode, route }),
     );
-  }, [active, destination, mode, route]);
+  }, [active, backgroundEnabled, destination, mode, route]);
 
   useEffect(() => {
     if (!active || !route) return;
@@ -220,7 +222,7 @@ export function useNavigationSession({
     // Never throws: persistent tracking is optional and must not stop the
     // foreground watcher (the person keeps navigating with the app open).
     const startBackgroundTracking = async () => {
-      if (Platform.OS === "web") return;
+      if (!backgroundEnabled || Platform.OS === "web") return;
       try {
         if (!(await hasNavigationBackgroundPermission())) return;
         // The task stops itself when it finds no stored session.
@@ -241,6 +243,13 @@ export function useNavigationSession({
 
     const startTracking = async () => {
       try {
+        if (!backgroundEnabled) {
+          // A foreground-only route must not inherit a service or snapshot
+          // left by a previous background navigation.
+          await clearNavigationSession();
+          await stopNavigationLocationTask();
+          if (disposed) return;
+        }
         const availability = await getLocationAvailability({
           requestPermission: true,
         });
@@ -278,6 +287,7 @@ export function useNavigationSession({
     };
 
     const resumeBackgroundTracking = async () => {
+      if (!backgroundEnabled) return;
       const session = await loadNavigationSession();
       if (disposed) return;
       if (session.status === "found" && !session.snapshot.active) {
@@ -312,7 +322,7 @@ export function useNavigationSession({
       releaseOwnership();
       cancelSpeech(speechRequestRef);
     };
-  }, [active]);
+  }, [active, backgroundEnabled]);
 
   return state;
 }

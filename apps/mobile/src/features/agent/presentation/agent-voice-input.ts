@@ -6,14 +6,14 @@ import {
 } from "expo-audio";
 import { File } from "expo-file-system";
 import { useEffect, useRef, useState } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { Platform } from "react-native";
 
 import { ApiError } from "@/core/api/http";
-import { TourismIconAction } from "@/core/ui/tourism-controls";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { transcribeAgentAudio } from "../data/agent-media-api";
 
-export function AgentVoiceInput({
+/** Recording and transcription behind the agent's attachment menu. */
+export function useAgentVoiceInput({
   disabled,
   onTranscript,
   onStatus,
@@ -54,6 +54,7 @@ export function AgentVoiceInput({
   }, [recorder]);
 
   const begin = async () => {
+    if (disabled || recordingRef.current || processing) return;
     onStatus(null);
     onWorkingChange(true);
     try {
@@ -162,32 +163,13 @@ export function AgentVoiceInput({
     }
   };
 
-  return (
-    <View style={styles.actions}>
-      <TourismIconAction
-        accessibilityLabel={
-          recording
-            ? "Detener y transcribir grabación"
-            : processing
-              ? "Transcribiendo audio"
-              : "Grabar pregunta por voz"
-        }
-        disabled={(!recording && disabled) || processing}
-        icon="microphone"
-        onPress={recording ? () => void finish(true) : () => void begin()}
-        selected={recording}
-        variant="ghost"
-      />
-      {recording ? (
-        <TourismIconAction
-          accessibilityLabel="Cancelar grabación"
-          icon="close"
-          onPress={() => void finish(false)}
-          variant="ghost"
-        />
-      ) : null}
-    </View>
-  );
+  return {
+    begin,
+    cancel: () => finish(false),
+    finish: () => finish(true),
+    processing,
+    recording,
+  };
 }
 
 function erase(uri: string | null) {
@@ -198,7 +180,3 @@ function erase(uri: string | null) {
     /* Cache deletion is best effort. */
   }
 }
-
-const styles = StyleSheet.create({
-  actions: { alignItems: "center", flexDirection: "row" },
-});
