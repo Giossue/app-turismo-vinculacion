@@ -49,6 +49,30 @@ El usuario `node` solo necesita escritura en `/app/.data/media`; evitar un `chow
 recursivo de `/app` porque vuelve a procesar todas las dependencias de producción
 en una capa adicional durante cada construcción.
 
+## Activar mapas sin conexión
+
+La actualización de código no publica ciudades automáticamente. Para activar una ciudad:
+
+1. Desplegar la API con `OFFLINE_MAP_STYLE_URL` apuntando al estilo público del TileServer
+   propio, por ejemplo `https://maps.devs-ueb.tech/styles/basic-preview/style.json`. Los
+   tiles, glifos y sprites deben ser accesibles desde el teléfono; no usar un hostname
+   privado que solo resuelva dentro de Docker. La URL se valida como HTTP/S sin credenciales.
+2. Comprobar `GET /api/v1/offline/map-style`: devuelve el JSON GL v8 directamente, URLs
+   absolutas y `Noto Sans Regular`. La API limita tamaño, tiempo y redirecciones del proveedor.
+3. Revisar los límites oficiales o las coordenadas de la localidad y el contenido público.
+   Publicar los metadatos de `paquetes_offline_ciudad` mediante el procedimiento institucional
+   autorizado, con versión y niveles de zoom. No se debe usar un seeder de demostración
+   ni publicar centros o recorridos incompletos para llenar el paquete.
+4. Verificar `/offline/cities` y el manifiesto de esa ciudad; confirmar cobertura, recuentos
+   y ausencia de datos privados. No considerar una descarga vacía como contenido completo.
+5. Actualizar el móvil, descargar con internet, cerrar/reabrir en modo avión y probar mapa,
+   zoom, temas, fichas, búsqueda, actualización y borrado. Guardar una ruta calculada y
+   comprobar que seguirla no recalcula por red ni activa seguimiento antes de pulsar iniciar.
+
+La publicación de paquetes y contenido y la actualización de la app son operaciones
+separadas de las pruebas de código. La prueba en modo avión sigue siendo necesaria para
+validar el renderer y la base nativa MapLibre en Android/iOS.
+
 ## Backups
 
 - PostgreSQL: respaldos completos + política de retención; PITR cuando la operación lo requiera.

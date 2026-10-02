@@ -86,14 +86,12 @@ describe("fixed offline style proxy", () => {
     );
 
     const other = makeService(
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(null, {
-            status: 302,
-            headers: { location: "http://127.0.0.1/internal" },
-          }),
-        ),
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 302,
+          headers: { location: "http://127.0.0.1/internal" },
+        }),
+      ),
     );
     await expect(other.service.getStyle()).rejects.toThrow(
       ServiceUnavailableException,
@@ -103,16 +101,14 @@ describe("fixed offline style proxy", () => {
 
   it("caps redirects and reports a generic public error", async () => {
     const { fetcher, service } = makeService(
-      vi
-        .fn()
-        .mockImplementation(() =>
-          Promise.resolve(
-            new Response(null, {
-              status: 302,
-              headers: { location: "./style.json" },
-            }),
-          ),
+      vi.fn().mockImplementation(() =>
+        Promise.resolve(
+          new Response(null, {
+            status: 302,
+            headers: { location: "./style.json" },
+          }),
         ),
+      ),
     );
     await expect(service.getStyle()).rejects.toThrow(
       "El mapa para descargar no está disponible en este momento.",
@@ -122,13 +118,11 @@ describe("fixed offline style proxy", () => {
 
   it("caps both declared response size and streamed bytes", async () => {
     const declared = makeService(
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response("{}", {
-            headers: { "content-length": String(2 * 1024 * 1024 + 1) },
-          }),
-        ),
+      vi.fn().mockResolvedValue(
+        new Response("{}", {
+          headers: { "content-length": String(2 * 1024 * 1024 + 1) },
+        }),
+      ),
     );
     await expect(declared.service.getStyle()).rejects.toThrow(
       ServiceUnavailableException,
