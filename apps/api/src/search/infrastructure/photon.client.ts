@@ -46,7 +46,10 @@ export class PhotonClient {
 
   async search(
     query: string,
-    coordinates?: Pick<PublicSearchQueryDto, "latitude" | "longitude" | "west" | "south" | "east" | "north">,
+    coordinates?: Pick<
+      PublicSearchQueryDto,
+      "latitude" | "longitude" | "west" | "south" | "east" | "north"
+    >,
   ): Promise<readonly PhotonPlace[]> {
     const url = new URL("/api", this.getBaseUrl());
     url.searchParams.set("q", query);
@@ -74,7 +77,15 @@ export class PhotonClient {
       url.searchParams.set("lon", String(coordinates.longitude));
     }
     if (coordinates?.west !== undefined) {
-      url.searchParams.set("bbox", [coordinates.west, coordinates.south, coordinates.east, coordinates.north].join(","));
+      url.searchParams.set(
+        "bbox",
+        [
+          coordinates.west,
+          coordinates.south,
+          coordinates.east,
+          coordinates.north,
+        ].join(","),
+      );
     }
 
     const controller = new AbortController();
@@ -106,9 +117,14 @@ export class PhotonClient {
         const [longitude, latitude] = feature.geometry.coordinates;
         // Defensive validation also covers a misconfigured provider that ignores
         // the requested country or viewport. OSM IDs and arbitrary fields stay private.
-        if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180 ||
-            (feature.properties.countrycode && feature.properties.countrycode.toUpperCase() !== "EC") ||
-            !withinBounds(latitude, longitude, coordinates ?? {})) return [];
+        if (
+          Math.abs(latitude) > 90 ||
+          Math.abs(longitude) > 180 ||
+          (feature.properties.countrycode &&
+            feature.properties.countrycode.toUpperCase() !== "EC") ||
+          !withinBounds(latitude, longitude, coordinates ?? {})
+        )
+          return [];
         return [
           {
             title: name,

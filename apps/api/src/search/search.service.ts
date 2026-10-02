@@ -104,7 +104,11 @@ export class SearchService {
           subtitle: row.subtitle,
           latitude: Number(row.latitude),
           longitude: Number(row.longitude),
-          distanceMeters: distanceFromOrigin(Number(row.latitude), Number(row.longitude), query),
+          distanceMeters: distanceFromOrigin(
+            Number(row.latitude),
+            Number(row.longitude),
+            query,
+          ),
           centerCode: row.code,
           category: row.category,
           type: row.type,
@@ -128,7 +132,11 @@ export class SearchService {
           subtitle: row.subtitle,
           latitude: Number(row.latitude),
           longitude: Number(row.longitude),
-          distanceMeters: distanceFromOrigin(Number(row.latitude), Number(row.longitude), query),
+          distanceMeters: distanceFromOrigin(
+            Number(row.latitude),
+            Number(row.longitude),
+            query,
+          ),
           approximate: row.approximate,
           icon: row.icon,
           color: row.color,
@@ -143,7 +151,11 @@ export class SearchService {
           subtitle: place.subtitle,
           latitude: place.latitude,
           longitude: place.longitude,
-          distanceMeters: distanceFromOrigin(place.latitude, place.longitude, query),
+          distanceMeters: distanceFromOrigin(
+            place.latitude,
+            place.longitude,
+            query,
+          ),
           type: place.type,
         },
       })),
@@ -151,18 +163,22 @@ export class SearchService {
 
     // No source owns a fixed block of the list. Exactness wins over proximity;
     // equally relevant matches are compared by their distance to the focus point.
-    candidates.sort((left, right) =>
-      right.relevance - left.relevance ||
-      (left.item.distanceMeters ?? Infinity) - (right.item.distanceMeters ?? Infinity),
+    candidates.sort(
+      (left, right) =>
+        right.relevance - left.relevance ||
+        (left.item.distanceMeters ?? Infinity) -
+          (right.item.distanceMeters ?? Infinity),
     );
     const seen = new Set<string>();
-    const items = candidates.flatMap(({ item }) => {
-      if (!withinBounds(item.latitude, item.longitude, query)) return [];
-      const identity = `${normalizeSearchText(item.title)}:${item.latitude.toFixed(5)}:${item.longitude.toFixed(5)}`;
-      if (seen.has(identity)) return [];
-      seen.add(identity);
-      return [item];
-    }).slice(0, 24);
+    const items = candidates
+      .flatMap(({ item }) => {
+        if (!withinBounds(item.latitude, item.longitude, query)) return [];
+        const identity = `${normalizeSearchText(item.title)}:${item.latitude.toFixed(5)}:${item.longitude.toFixed(5)}`;
+        if (seen.has(identity)) return [];
+        seen.add(identity);
+        return [item];
+      })
+      .slice(0, 24);
 
     return { items, meta: { photonAvailable: geographic.length > 0 } };
   }
@@ -217,7 +233,8 @@ export class SearchService {
     text: string,
     terms: readonly string[],
   ): Promise<EstablishmentSearchRow[]> {
-    const details = "CONCAT_WS(' ', e.actividad, e.categoria, activity_catalog.nombre, classification_catalog.nombre, category_catalog.nombre, e.direccion, l.nombre, co.nombre, p.nombre)";
+    const details =
+      "CONCAT_WS(' ', e.actividad, e.categoria, activity_catalog.nombre, classification_catalog.nombre, category_catalog.nombre, e.direccion, l.nombre, co.nombre, p.nombre)";
     return this.dataSource.query<EstablishmentSearchRow[]>(
       `SELECT e.nombre_comercial AS title,
               CONCAT_WS(' · ',
@@ -301,7 +318,19 @@ function boundsSql(table: string): string {
     AND ${table}.latitud BETWEEN $6::double precision AND $8::double precision))`;
 }
 
-function searchParameters(query: PublicSearchQueryDto, text: string, terms: readonly string[]) {
-  return [text, terms, query.latitude ?? null, query.longitude ?? null,
-    query.west ?? null, query.south ?? null, query.east ?? null, query.north ?? null];
+function searchParameters(
+  query: PublicSearchQueryDto,
+  text: string,
+  terms: readonly string[],
+) {
+  return [
+    text,
+    terms,
+    query.latitude ?? null,
+    query.longitude ?? null,
+    query.west ?? null,
+    query.south ?? null,
+    query.east ?? null,
+    query.north ?? null,
+  ];
 }

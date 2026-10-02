@@ -11,9 +11,36 @@ export class SearchController {
 
   @Get()
   @ApiOkResponse({
-    description: "Lugares propios y referencias geográficas de Ecuador.",
+    description:
+      "Centros publicados, catastro y referencias geográficas de Ecuador, ordenados por relevancia y luego cercanía. distanceMeters es distancia en línea recta al punto opcional.",
   })
   @ApiQuery({ name: "q", required: true, minLength: 2 })
+  @ApiQuery({
+    name: "kind",
+    required: false,
+    enum: ["center", "establishment", "geographic"],
+  })
+  @ApiQuery({
+    name: "latitude",
+    required: false,
+    type: Number,
+    description: "Latitud del punto para priorizar; requiere longitude.",
+  })
+  @ApiQuery({
+    name: "longitude",
+    required: false,
+    type: Number,
+    description: "Longitud del punto para priorizar; requiere latitude.",
+  })
+  @ApiQuery({
+    name: "west",
+    required: false,
+    type: Number,
+    description: "Límite oeste. Los cuatro límites se envían juntos.",
+  })
+  @ApiQuery({ name: "south", required: false, type: Number })
+  @ApiQuery({ name: "east", required: false, type: Number })
+  @ApiQuery({ name: "north", required: false, type: Number })
   async query(@Query() query: PublicSearchQueryDto) {
     return { data: await this.search.search(query) };
   }

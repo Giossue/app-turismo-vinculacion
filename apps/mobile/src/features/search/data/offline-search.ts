@@ -2,7 +2,7 @@ import { getDistanceMeters } from "@/core/geo/distance";
 import type { GeoCoordinate } from "@/core/geo/types";
 import type { OfflineCityManifest } from "@/features/offline/domain/offline-city";
 import { getOfflineBrowserItems } from "@/features/offline/presentation/offline-city-browser";
-import { getSearchRelevance, normalizeSearchText } from "../domain/search-relevance";
+import { deduplicateSearchSuggestions, getSearchRelevance, normalizeSearchText, rankSearchSuggestions } from "../domain/search-relevance";
 import type { PublicSearchResult } from "../domain/search-result";
 import {
   isInsideSearchBounds,
@@ -51,7 +51,7 @@ export function getOfflineSearchSuggestions(
     const inArea = !filters.bounds || (item.kind === "place" ? isInsideSearchBounds(item.coordinate, filters.bounds) : item.route.geometry.coordinates.some(([longitude, latitude]) => longitude !== undefined && latitude !== undefined && isInsideSearchBounds({longitude, latitude}, filters.bounds!)));
     if (!inArea) return [];
     return [{
-      key: kind === "center" ? item.key : kind === "establishment" && itemCoordinate ? placeKey(kind, item.name, itemCoordinate) : `${manifest.city.slug}:${item.key}`,
+      key: kind === "center" || kind === "route" ? item.key : itemCoordinate ? placeKey(kind, item.name, itemCoordinate) : `${manifest.city.slug}:${item.key}`,
       title: item.name,
       subtitle: `${item.subtitle} · ${manifest.city.name}`,
       kind,
@@ -71,4 +71,28 @@ export function getOfflineSearchCoverage(
     if (bounds) return bounds[0] <= filters.bounds[2] && bounds[2] >= filters.bounds[0] && bounds[1] <= filters.bounds[3] && bounds[3] >= filters.bounds[1];
     return getOfflineBrowserItems(manifest).some((item) => item.kind === "place" && isInsideSearchBounds(item.coordinate, filters.bounds!));
   }).map(({city}) => ({slug: city.slug, name: city.name}));
+}
+
+/** Remote errors/paused queries use downloaded coverage, never a global cache. */
+export function buildSearchSuggestions({
+  query,
+  manifests,
+  onlineResults,
+  coordinate,
+  filters = {},
+  onlineUnavailable,
+}: Readonly<{
+  query: string;
+  manifests: readonly OfflineCityManifest[];
+  onlineResults: readonly PublicSearchResult[];
+  coordinate: GeoCoordinate | null;
+  filters?: SearchFilters;
+  onlineUnavailable: boolean;
+}>) {
+  const local = getOfflineSearchSuggestions(manifests, query, coordinate, filters);
+  const online = onlineUnavailable || normalizeSearchText(query).length < 2 ? [] : getPublicSearchSuggestions(onlineResults, coordinate, filters);
+  return {
+    searchItems: rankSearchSuggestions(deduplicateSearchSuggestions([...online, ...local]), query),
+    offlineCoverage: getOfflineSearchCoverage(manifests, filters),
+  };
 }

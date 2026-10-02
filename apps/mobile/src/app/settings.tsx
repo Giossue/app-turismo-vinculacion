@@ -1,34 +1,21 @@
 import { useRouter } from "expo-router";
 import { ScrollView, StyleSheet, Text } from "react-native";
+import { Switch } from "react-native-paper";
 
-import {
-  useTurismoPalette,
-  useTurismoTheme,
-  type ThemePreference,
-} from "@/core/ui/theme-context";
+import { useTurismoPalette, useTurismoTheme } from "@/core/ui/theme-context";
 import { TourismSurface } from "@/core/ui/tourism-controls";
-import {
-  TourismRadioGroup,
-  type TourismRadioOption,
-} from "@/core/ui/tourism-fields";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
-import { turismoSpacing, turismoTypography } from "@/core/ui/tokens";
-
-const appearanceOptions: readonly TourismRadioOption<ThemePreference>[] = [
-  {
-    description: "Sigue la apariencia del dispositivo.",
-    icon: "sunMoon",
-    label: "Sistema",
-    value: "system",
-  },
-  { icon: "sun", label: "Claro", value: "light" },
-  { icon: "moon", label: "Oscuro", value: "dark" },
-];
+import {
+  turismoMetrics,
+  turismoSpacing,
+  turismoTypography,
+} from "@/core/ui/tokens";
 
 export default function SettingsScreen() {
   const router = useRouter();
   const colors = useTurismoPalette();
-  const { preference, setPreference } = useTurismoTheme();
+  const { scheme, setPreference } = useTurismoTheme();
+  const darkThemeEnabled = scheme === "dark";
 
   return (
     <TourismScreenFrame onBack={() => router.back()} title="Configuración">
@@ -36,19 +23,19 @@ export default function SettingsScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text
-          accessibilityRole="header"
-          style={[styles.title, { color: colors.text }]}
-        >
-          Apariencia
-        </Text>
         <TourismSurface style={styles.preferenceCard}>
-          <TourismRadioGroup
-            accessibilityLabel="Apariencia"
-            layout="column"
-            onChange={setPreference}
-            options={appearanceOptions}
-            value={preference}
+          <Text style={[styles.label, { color: colors.text }]}>
+            Usar tema oscuro
+          </Text>
+          <Switch
+            accessibilityLabel="Usar tema oscuro"
+            accessibilityRole="switch"
+            accessibilityState={{ checked: darkThemeEnabled }}
+            onValueChange={(enabled: boolean) =>
+              setPreference(enabled ? "dark" : "light")
+            }
+            style={styles.switch}
+            value={darkThemeEnabled}
           />
         </TourismSurface>
       </ScrollView>
@@ -58,10 +45,18 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    gap: turismoSpacing.md,
     paddingVertical: turismoSpacing.md,
     paddingBottom: turismoSpacing.xxl,
   },
-  title: { ...turismoTypography.title },
-  preferenceCard: { padding: turismoSpacing.sm },
+  label: { ...turismoTypography.body, flex: 1 },
+  preferenceCard: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: turismoSpacing.md,
+    padding: turismoSpacing.md,
+  },
+  switch: {
+    minHeight: turismoMetrics.touchTarget,
+    minWidth: turismoMetrics.touchTarget,
+  },
 });

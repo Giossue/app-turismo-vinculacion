@@ -84,12 +84,14 @@ permisos de cámara/galería que antes usaba el agente. La lectura
 de voz de cada respuesta se controla con un icono discreto en la esquina de su
 mensaje y mantiene un objetivo táctil de 44 dp.
 
-La preferencia de apariencia se administra desde `Menú > Configuración`, con tres opciones
-(`Sistema`, `Claro` y `Oscuro`) presentadas como un grupo de radio donde toda la fila es el
-control. El proveedor de tema mantiene una única fuente de verdad (`system`, `light` o
-`dark`), la persiste en AsyncStorage dentro de `setPreference` (una elección hecha mientras
-se lee el valor guardado prevalece sobre él) y expone el esquema efectivo a los tokens,
-Paper, MapLibre y la barra de estado. `TurismoSchemeScope` fija el esquema de un subárbol
+La preferencia de apariencia se administra desde `Menú > Configuración`, con una sola fila
+«Usar tema oscuro» y un interruptor: activado elige `dark` y desactivado elige `light`.
+El interruptor refleja el esquema efectivo, incluso si una preferencia `system` previa o
+inicial sigue la apariencia del dispositivo hasta la primera elección manual. El proveedor
+de tema mantiene una única fuente de verdad (`system`, `light` o `dark`), la persiste en
+AsyncStorage dentro de `setPreference` (una elección hecha mientras se lee el valor guardado
+prevalece sobre él) y expone el esquema efectivo a los tokens, Paper, MapLibre y la barra
+de estado. `TurismoSchemeScope` fija el esquema de un subárbol
 —la entrada de cuenta siempre es oscura— sin cambiar la preferencia. El cambio no crea una
 ruta adicional ni altera el historial de navegación.
 

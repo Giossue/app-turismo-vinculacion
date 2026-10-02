@@ -44,7 +44,9 @@ class SearchBoundsConstraint implements ValidatorConstraintInterface {
     const values = [west, south, east, north];
     if (values.every((value) => value === undefined)) return true;
     return (
-      values.every((value) => typeof value === "number" && Number.isFinite(value)) &&
+      values.every(
+        (value) => typeof value === "number" && Number.isFinite(value),
+      ) &&
       west! < east! &&
       south! < north!
     );

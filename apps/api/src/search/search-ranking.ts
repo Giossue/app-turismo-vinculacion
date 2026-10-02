@@ -13,14 +13,24 @@ export function normalizeSearchText(value: string): string {
 const queryAliases = [
   ["cafe", "cafes", "cafeteria", "cafeterias"],
   ["comer", "comida", "restaurante", "restaurantes", "alimentos y bebidas"],
-  ["hotel", "hoteles", "hostal", "hostales", "hosteria", "hospedaje", "alojamiento"],
+  [
+    "hotel",
+    "hoteles",
+    "hostal",
+    "hostales",
+    "hosteria",
+    "hospedaje",
+    "alojamiento",
+  ],
   ["cascada", "cascadas"],
   ["museo", "museos"],
 ] as const;
 
 export function searchTerms(query: string): readonly string[] {
   const text = normalizeSearchText(query);
-  const aliases = queryAliases.find((group) => group.some((alias) => alias === text));
+  const aliases = queryAliases.find((group) =>
+    group.some((alias) => alias === text),
+  );
   return [...new Set([text, ...(aliases ?? [])])];
 }
 
@@ -47,7 +57,8 @@ export function distanceFromOrigin(
   longitude: number,
   query: Pick<PublicSearchQueryDto, "latitude" | "longitude">,
 ): number | null {
-  if (query.latitude === undefined || query.longitude === undefined) return null;
+  if (query.latitude === undefined || query.longitude === undefined)
+    return null;
   const radians = Math.PI / 180;
   const latitudeDelta = (latitude - query.latitude) * radians;
   const longitudeDelta = (longitude - query.longitude) * radians;
@@ -56,7 +67,9 @@ export function distanceFromOrigin(
     Math.cos(query.latitude * radians) *
       Math.cos(latitude * radians) *
       Math.sin(longitudeDelta / 2) ** 2;
-  return Math.round(6_371_008.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - Math.min(1, a))));
+  return Math.round(
+    6_371_008.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - Math.min(1, a))),
+  );
 }
 
 export function withinBounds(

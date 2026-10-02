@@ -85,7 +85,7 @@ En curso (22 de septiembre de 2026).
   disco al cerrar sesión; errores de guardado visibles; opiniones paginadas con estrellas
   accesibles; agente dividido (`useAgentConversation`, historial solo de intercambios
   completos, cancelación al cerrar); drawer sin efectos espejo con `items`; tema persistido
-  en `setPreference` con radio `Sistema/Claro/Oscuro`. Pendiente de verificar en dispositivo
+  en `setPreference` con un interruptor «Usar tema oscuro». Pendiente de verificar en dispositivo
   (vuelta tras iniciar sesión, cierre de sesión, drawer, tema, arranque sin conexión,
   TalkBack/VoiceOver).
 - Pendiente: revisión manual en dispositivo.

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, Keyboard, StyleSheet, Text, View } from "react-native";
 
 import { getCoordinateBounds } from "@/core/geo/bounds";
@@ -42,8 +42,9 @@ import { buildRouteHref } from "@/features/routing/presentation/route-href";
 /** Explicit local browser: opening/searching a package never needs the API. */
 export default function OfflineCityScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ slug?: string | string[] }>();
+  const params = useLocalSearchParams<{ slug?: string | string[]; itemKey?: string | string[] }>();
   const slug = firstSearchParam(params.slug) ?? "";
+  const itemKey = firstSearchParam(params.itemKey);
   const access = useRequireAuth("/offline");
   const query = useQuery({
     queryKey: ["offline-city-manifest", slug],
@@ -99,13 +100,14 @@ export default function OfflineCityScreen() {
       </TourismScreenFrame>
     );
   }
-  return <OfflineCityBrowser key={slug} manifest={query.data} onBack={close} />;
+  return <OfflineCityBrowser key={slug} manifest={query.data} onBack={close} initialItemKey={itemKey} />;
 }
 
 function OfflineCityBrowser({
   manifest,
   onBack,
-}: Readonly<{ manifest: OfflineCityManifest; onBack: () => void }>) {
+  initialItemKey,
+}: Readonly<{ manifest: OfflineCityManifest; onBack: () => void; initialItemKey?: string }>) {
   const router = useRouter();
   const colors = useTurismoPalette();
   const { scheme } = useTurismoTheme();
@@ -176,7 +178,7 @@ function OfflineCityBrowser({
     return true;
   });
 
-  const select = (item: OfflineBrowserItem) => {
+  const select = useCallback((item: OfflineBrowserItem) => {
     Keyboard.dismiss();
     setChoices(null);
     setLocalChoices(null);
@@ -205,7 +207,11 @@ function OfflineCityBrowser({
         key: (old?.key ?? 0) + 1,
       }));
     }
-  };
+  }, []);
+  useEffect(() => {
+    const item = items.find((candidate) => candidate.key === initialItemKey);
+    if (item) select(item);
+  }, [initialItemKey, items, select]);
   const selectCenter = (code: string) => {
     const item = places.find((place) => place.center?.code === code);
     if (item) select(item);
