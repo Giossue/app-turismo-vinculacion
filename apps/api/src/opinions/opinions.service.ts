@@ -209,7 +209,11 @@ export class OpinionsService {
 
     try {
       return await this.dataSource.transaction(async (manager) => {
-        const center = await this.findPublishedCenter(manager, normalizedCode);
+        const center = await this.findPublishedCenter(
+          manager,
+          normalizedCode,
+          true,
+        );
         if (!center) {
           throw new NotFoundException(
             "El centro turístico ya no está disponible.",
@@ -271,7 +275,11 @@ export class OpinionsService {
 
     try {
       return await this.dataSource.transaction(async (manager) => {
-        const center = await this.findPublishedCenter(manager, normalizedCode);
+        const center = await this.findPublishedCenter(
+          manager,
+          normalizedCode,
+          true,
+        );
         if (!center) {
           throw new NotFoundException(
             "El centro turístico ya no está disponible.",
@@ -828,6 +836,7 @@ export class OpinionsService {
   private async findPublishedCenter(
     client: SqlClient,
     code: string,
+    lockForMutation = false,
   ): Promise<CenterTarget | null> {
     const rows = await client.query<SqlRow[]>(
       `SELECT c.id, c.codigo_atractivo AS code, c.nombre AS name
@@ -835,8 +844,9 @@ export class OpinionsService {
          JOIN estados_resenia er ON er.id = c.estado_resenia_id
         WHERE c.codigo_atractivo = $1
           AND c.activo
+          AND c.eliminado_at IS NULL
           AND er.codigo = 'PUBLICADO'
-        LIMIT 1`,
+        LIMIT 1${lockForMutation ? " FOR SHARE OF c" : ""}`,
       [code],
     );
     const row = rows[0];

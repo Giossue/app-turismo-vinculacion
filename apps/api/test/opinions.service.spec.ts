@@ -461,6 +461,7 @@ describe("OpinionsService", () => {
       current: null,
       pending: { version: 1, comment: "Nueva opinión" },
     });
+    expect(managerQuery.mock.calls[0]?.[0]).toContain("FOR SHARE OF c");
     expect(managerQuery).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining("AND eliminado_at IS NULL"),
@@ -483,6 +484,7 @@ describe("OpinionsService", () => {
     const service = new OpinionsService({ query } as never);
 
     await expect(service.getOwn("CENTER-1", 9)).resolves.toBeNull();
+    expect(query.mock.calls[0]?.[0]).not.toContain("FOR SHARE");
     expect(query.mock.calls[1]?.[0]).toContain("o.eliminado_at IS NULL");
   });
 
@@ -496,11 +498,29 @@ describe("OpinionsService", () => {
     await expect(service.edit("CENTER-1", 9, { rating: 5 })).rejects.toThrow(
       "No tienes una opinión publicada",
     );
+    expect(managerQuery.mock.calls[0]?.[0]).toContain("FOR SHARE OF c");
     expect(managerQuery.mock.calls[1]?.[0]).toContain(
       "AND eliminado_at IS NULL",
     );
     expect(managerQuery).toHaveBeenCalledTimes(2);
   });
+
+  it.each(["create", "edit"] as const)(
+    "refuses %s when the center was deleted before the transaction obtains its lock",
+    async (operation) => {
+      const managerQuery = vi.fn().mockResolvedValue([]);
+      const service = new OpinionsService(dataSourceFor(managerQuery));
+
+      await expect(
+        service[operation]("CENTER-1", 9, { rating: 5 }),
+      ).rejects.toThrow("El centro turístico ya no está disponible");
+      expect(managerQuery).toHaveBeenCalledOnce();
+      expect(managerQuery.mock.calls[0]?.[0]).toContain("FOR SHARE OF c");
+      expect(managerQuery.mock.calls[0]?.[0]).toContain(
+        "c.eliminado_at IS NULL",
+      );
+    },
+  );
 
   it("refuses stale approval and rejection after an opinion is deleted", async () => {
     for (const action of ["APPROVE", "REJECT"] as const) {
