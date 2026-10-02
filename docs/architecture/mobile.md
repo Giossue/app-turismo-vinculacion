@@ -365,14 +365,16 @@ la anterior. Descarga y borrado se excluyen mutuamente; salir de la pantalla no 
 descarga. Borrar elimina los recursos nativos y el manifiesto de esa ciudad. El tamaño mostrado
 son bytes de recursos cartográficos, no el espacio exacto total del teléfono.
 
-«Cómo llegar» permite guardar explícitamente una ruta calculada, con origen, destino,
-modo, geometría e instrucciones. AsyncStorage separa hasta 20 rutas por cuenta; no se
-registran trayectorias GPS. El listado y la carga usan consultas locales sin TTL público y
-sin persistir las consultas por GPS. Abrir una ruta guardada no solicita permisos ni
-calcula de nuevo; iniciar navegación sigue siendo explícito. Sobre una ruta guardada no
-hay recálculo por red. Una navegación online conserva su trazo y permite reintento manual
-cuando falla un recálculo. Los recorridos institucionales solo se muestran como recorridos
-publicados, sin fabricar navegación giro a giro. Véase `product/features/offline-maps/`.
+La descarga es de mapas de zonas con sus recorridos publicados incluidos. «Cómo llegar»
+no ofrece guardar rutas calculadas y «Mapas sin conexión» no las lista por separado.
+El panel conserva el destino, las pestañas de modo, duración/distancia, indicaciones y
+navegación; no repite el modo como título ni muestra «Ruta más rápida».
+La lectura de rutas antiguas por enlace se conserva por compatibilidad sin crear rutas
+nuevas ni borrar datos existentes. Una navegación online conserva su trazo y permite
+reintento manual cuando falla un recálculo. Los recorridos institucionales se muestran
+desde el mapa descargado sin fabricar navegación giro a giro. Actualmente los paquetes
+son de ciudad; la cobertura por provincia requiere límites y publicación propios.
+Véase `product/features/offline-maps/`.
 
 ## Ubicación
 

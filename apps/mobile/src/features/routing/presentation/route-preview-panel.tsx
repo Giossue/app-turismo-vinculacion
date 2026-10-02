@@ -73,15 +73,11 @@ export type RoutePreviewPanelProps = Readonly<{
   /** Resting height of the panel, to keep map controls above it. */
   onHeightChange?: (height: number) => void;
   onModeChange: (mode: RouteMode) => void;
-  onSaveRoute?: () => void;
   onStartNavigation: () => void;
   route: CalculatedRoute | null;
   routeError: string | null;
   startingNavigation: boolean;
   savedRoute?: boolean;
-  routeSaved?: boolean;
-  saveNotice?: string | null;
-  savingRoute?: boolean;
 }>;
 
 /**
@@ -107,15 +103,11 @@ export function RoutePreviewPanel({
   onExpandedChange,
   onHeightChange,
   onModeChange,
-  onSaveRoute,
   onStartNavigation,
   route,
   routeError,
   startingNavigation,
   savedRoute = false,
-  routeSaved = false,
-  saveNotice,
-  savingRoute = false,
 }: RoutePreviewPanelProps) {
   const colors = useTurismoPalette();
   const insets = useSafeAreaInsets();
@@ -199,9 +191,6 @@ export function RoutePreviewPanel({
   );
   const title = (
     <View style={styles.titleCopy}>
-      <Text style={[styles.title, { color: colors.text }]}>
-        {modeOption.title}
-      </Text>
       <Text style={[styles.eyebrow, { color: colors.textMuted }]}>
         Ruta hacia {destinationName}
       </Text>
@@ -237,11 +226,7 @@ export function RoutePreviewPanel({
           {savedRoute ? null : (
             <RouteModeTabs mode={mode} onChange={onModeChange} />
           )}
-          {loading ? (
-            <RouteLoading />
-          ) : (
-            <RouteOverview route={route} savedRoute={savedRoute} />
-          )}
+          {loading ? <RouteLoading /> : <RouteOverview route={route} />}
           {notice ? <RouteNotice message={notice} /> : null}
           {route && routeError && !savedRoute && !isCalculating ? (
             <TourismActionButton
@@ -250,28 +235,6 @@ export function RoutePreviewPanel({
               mode="outlined"
               onPress={onCalculateRoute}
             />
-          ) : null}
-          {saveNotice ? <RouteNotice message={saveNotice} /> : null}
-          {route && onSaveRoute && !isCalculating ? (
-            <View style={styles.backgroundOption}>
-              <View style={styles.backgroundCopy}>
-                <Text
-                  style={[styles.backgroundHint, { color: colors.textMuted }]}
-                >
-                  Guarda el recorrido, sus indicaciones y su punto de partida
-                  solo en este dispositivo. Podrás borrarlo desde Mapas sin
-                  conexión.
-                </Text>
-              </View>
-              <TourismActionButton
-                disabled={savingRoute || routeSaved || startingNavigation}
-                icon="download"
-                label={routeSaved ? "Ruta guardada" : "Guardar ruta"}
-                loading={savingRoute}
-                mode="outlined"
-                onPress={onSaveRoute}
-              />
-            </View>
           ) : null}
           {route && backgroundTrackingAvailable ? (
             <View style={styles.backgroundOption}>
@@ -388,7 +351,6 @@ const styles = StyleSheet.create({
   },
   titleCopy: { gap: turismoSpacing.xxs, minWidth: 0 },
   eyebrow: { ...turismoTypography.caption },
-  title: { ...turismoTypography.title, flexShrink: 1 },
   scroll: { flex: 1 },
   scrollContent: {
     gap: turismoSpacing.md,

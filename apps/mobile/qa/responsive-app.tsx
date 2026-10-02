@@ -232,7 +232,6 @@ function RouteScene() {
   const [expanded, setExpanded] = useState(false);
   const [mode, setMode] = useState<RouteMode>("car");
   const [notice, setNotice] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const colors = useTurismoPalette();
   return (
     <TourismGlassScope
@@ -270,11 +269,9 @@ function RouteScene() {
         onClose={() => setNotice("QA Ruta cerrada")}
         onExpandedChange={setExpanded}
         onModeChange={setMode}
-        onSaveRoute={() => setSaved(true)}
         onStartNavigation={() => setNotice("QA Navegación de prueba iniciada")}
         route={{ ...calculatedRouteFixture, mode }}
         routeError={null}
-        routeSaved={saved}
         startingNavigation={false}
       />
     </TourismGlassScope>

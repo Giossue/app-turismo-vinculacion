@@ -1,4 +1,4 @@
-# Mapas y rutas sin conexión
+# Mapas sin conexión
 
 ## Usuario y flujo
 
@@ -32,24 +32,26 @@ fecha de descarga; actualizar requiere internet y datos aún publicados.
 - Los bytes informados corresponden a recursos de mapa reportados por MapLibre, no al
   espacio total exacto del dispositivo. No se inventa un tamaño si no se conoce.
 
-## Guardar y seguir rutas calculadas
+## Recorridos incluidos en el mapa
 
-En «Cómo llegar», guardar una ruta es una acción explícita. Se conserva en el dispositivo
-su origen, destino, modo, geometría e instrucciones reales. Cada cuenta tiene hasta 20
-rutas; una ruta nueva sustituye la más antigua al alcanzar el límite. Pueden borrarse.
-Las rutas de cuentas diferentes nunca se muestran juntas.
+La unidad de descarga es el mapa de una zona, actualmente una ciudad. Sus recorridos
+institucionales publicados se incluyen en el mismo paquete; no se guardan o descargan
+rutas calculadas de forma individual desde «Cómo llegar» ni se listan por separado en
+«Mapas sin conexión».
 
-Abrir una ruta guardada no calcula una ruta ni activa GPS o seguimiento en segundo plano.
-La persona pulsa «Iniciar navegación» y se aplican los controles y permisos existentes.
-El seguimiento y las instrucciones usan la geometría y una lectura GPS fresca. Desviarse
-de una ruta guardada no consulta el servidor: la interfaz indica que hay que volver al
-recorrido. El mapa base de las ciudades recorridas se descarga por separado.
+El panel de «Cómo llegar» conserva destino, modos de transporte, duración/distancia,
+indicaciones y navegación. Las pestañas identifican el modo; no se repite como título ni
+se muestra la leyenda «Ruta más rápida».
 
 Los recorridos institucionales del paquete se pueden visualizar y consultar; no se
 transforman en instrucciones giro a giro ni se presentan como una ruta desde la ubicación
 actual. Calcular rutas nuevas o recalcular un desvío requiere internet y el proveedor del
 backend. Una navegación online conserva la última ruta ante errores de recálculo y permite
 reintentar manualmente, evitando solicitudes automáticas repetidas.
+
+La descarga por provincia es una ampliación pendiente: requiere límites oficiales y un
+paquete provincial publicado. Agrupar ciudades descargables no equivale a disponer del
+mapa completo de una provincia.
 
 ## Descargas y errores
 

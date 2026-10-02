@@ -18,10 +18,7 @@ import { useNavigationFollow } from "@/features/routing/application/use-navigati
 import { useNavigationRoute } from "@/features/routing/application/use-navigation-route";
 import { useNavigationSession } from "@/features/routing/application/use-navigation-session";
 import { useRouteScreenParams } from "@/features/routing/application/use-route-screen-params";
-import {
-  useSavedCalculatedRoute,
-  useSaveCalculatedRoute,
-} from "@/features/routing/application/use-saved-routes";
+import { useSavedCalculatedRoute } from "@/features/routing/application/use-saved-routes";
 import { getRouteErrorMessage } from "@/features/routing/data/routing-api";
 import {
   describeSavedRouteError,
@@ -150,7 +147,6 @@ function RouteScreenContent({
   const startInFlightRef = useRef(false);
   const startAttemptRef = useRef(0);
   const retryInFlightRef = useRef(false);
-  const saveRoute = useSaveCalculatedRoute();
   const {
     message: locationMessage,
     requestLocation,
@@ -359,32 +355,6 @@ function RouteScreenContent({
     }
   };
 
-  const handleSaveRoute = async () => {
-    if (
-      savedRoute ||
-      !request ||
-      !route ||
-      isCalculating ||
-      !routeQuery.isSuccess ||
-      saveRoute.isPending
-    )
-      return;
-    if (auth.status !== "authenticated") {
-      if (auth.status === "anonymous") router.push(buildLoginHref("/route"));
-      return;
-    }
-    await saveRoute
-      .mutateAsync({ ...request, destinationName, route })
-      .catch(() => undefined);
-  };
-
-  const savedCurrentRoute =
-    saveRoute.isSuccess && saveRoute.variables?.route === route;
-  const saveNotice = saveRoute.isError
-    ? describeSavedRouteError(saveRoute.error)
-    : savedCurrentRoute
-      ? "Ruta guardada. Puedes abrirla desde Mapas sin conexión. Descarga también la zona para ver sus calles sin internet."
-      : null;
   const navigationNotice = savedRoute ? savedRouteNavigationNotice : routeError;
 
   if (!destination) {
@@ -450,14 +420,10 @@ function RouteScreenContent({
           onExpandedChange={setPreviewExpanded}
           onHeightChange={setMapBottomInset}
           onModeChange={setMode}
-          onSaveRoute={savedRoute ? undefined : () => void handleSaveRoute()}
           onStartNavigation={() => void handleStartNavigation()}
           route={route}
           routeError={routeError}
           savedRoute={savedRoute !== null}
-          routeSaved={savedCurrentRoute}
-          saveNotice={saveNotice}
-          savingRoute={saveRoute.isPending}
           startingNavigation={startingNavigation || backgroundTrackingBusy}
         />
       ) : route ? (

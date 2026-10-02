@@ -49,17 +49,13 @@ export function RouteModeTabs({
 
 export function RouteOverview({
   route,
-  savedRoute = false,
-}: Readonly<{ route: CalculatedRoute | null; savedRoute?: boolean }>) {
+}: Readonly<{ route: CalculatedRoute | null }>) {
   const colors = useTurismoPalette();
   if (!route) return null;
   return (
     <View style={styles.overview}>
       <Text style={[styles.metric, { color: colors.text }]}>
         {`${formatDurationSeconds(route.durationSeconds)} (${formatDistance(route.distanceMeters)})`}
-      </Text>
-      <Text style={[styles.overviewMeta, { color: colors.textMuted }]}>
-        {savedRoute ? "Recorrido guardado" : "Ruta más rápida"}
       </Text>
     </View>
   );
@@ -259,7 +255,6 @@ const styles = StyleSheet.create({
   loading: { alignItems: "center" },
   overview: { gap: turismoSpacing.xxs, paddingVertical: turismoSpacing.xs },
   metric: { ...turismoMetricTypography.md },
-  overviewMeta: { ...turismoTypography.body },
   compactSummary: {
     alignItems: "center",
     flexDirection: "row",

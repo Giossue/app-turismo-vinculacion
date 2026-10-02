@@ -267,11 +267,15 @@ Cada descarga usa un paquete nuevo. Solo después de completarlo y guardar el ma
 se liberan los anteriores. Las descargas guardadas se pueden actualizar y borrar; su
 catálogo local no depende de la caché pública de 24 horas.
 
-Las rutas institucionales se visualizan como recorridos registrados; no se inventan
-instrucciones giro a giro. Las rutas calculadas pueden guardarse explícitamente por
-cuenta en AsyncStorage y abrirse sin consultar el backend. GPS e instrucciones siguen la
-geometría guardada; no se recalcula un desvío sin red. La cobertura del mapa base se
-descarga por separado y puede no abarcar todo el recorrido.
+Las rutas institucionales se incluyen en el paquete del mapa y se visualizan como
+recorridos registrados; no se inventan instrucciones giro a giro. El flujo de descarga
+corresponde a mapas de ciudades y no ofrece guardar rutas calculadas individuales.
+La cobertura del mapa puede no abarcar la parte de un recorrido que sale de la ciudad.
+Calcular una ruta nueva o un desvío continúa usando el proveedor del backend.
+
+Los paquetes provinciales no están implementados: necesitan límites oficiales,
+metadatos de publicación y un manifiesto que incluya la provincia completa. Las tablas
+actuales de límites y paquetes están ligadas a localidades.
 
 Especificación y límites: `docs/product/features/offline-maps/specification.md`.
 

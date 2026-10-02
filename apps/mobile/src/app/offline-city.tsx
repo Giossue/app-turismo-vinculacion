@@ -369,8 +369,9 @@ function OfflineCityBrowser({
                     onPress={() => openRoute(selected)}
                   />
                   <Text style={[styles.caption, { color: colors.textMuted }]}>
-                    Para navegar sin conexión, abre una ruta guardada desde
-                    «Mapas sin conexión».
+                    Este mapa incluye los recorridos publicados de la ciudad.
+                    Para calcular un trayecto desde tu ubicación necesitas
+                    internet.
                   </Text>
                 </>
               ) : (
