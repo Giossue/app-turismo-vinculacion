@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
+import { TourismActionButton } from "@/core/ui/tourism-controls";
 import {
   TourismGlassFill,
   turismoGlassBorderWidth,
@@ -72,10 +73,15 @@ export type RoutePreviewPanelProps = Readonly<{
   /** Resting height of the panel, to keep map controls above it. */
   onHeightChange?: (height: number) => void;
   onModeChange: (mode: RouteMode) => void;
+  onSaveRoute?: () => void;
   onStartNavigation: () => void;
   route: CalculatedRoute | null;
   routeError: string | null;
   startingNavigation: boolean;
+  savedRoute?: boolean;
+  routeSaved?: boolean;
+  saveNotice?: string | null;
+  savingRoute?: boolean;
 }>;
 
 /**
@@ -101,10 +107,15 @@ export function RoutePreviewPanel({
   onExpandedChange,
   onHeightChange,
   onModeChange,
+  onSaveRoute,
   onStartNavigation,
   route,
   routeError,
   startingNavigation,
+  savedRoute = false,
+  routeSaved = false,
+  saveNotice,
+  savingRoute = false,
 }: RoutePreviewPanelProps) {
   const colors = useTurismoPalette();
   const insets = useSafeAreaInsets();
@@ -217,7 +228,9 @@ export function RoutePreviewPanel({
           showsVerticalScrollIndicator={false}
           style={styles.scroll}
         >
-          <RouteModeTabs mode={mode} onChange={onModeChange} />
+          {savedRoute ? null : (
+            <RouteModeTabs mode={mode} onChange={onModeChange} />
+          )}
           {isCalculating ? (
             <TourismStateView
               layout="inline"
@@ -225,9 +238,31 @@ export function RoutePreviewPanel({
               variant="loading"
             />
           ) : (
-            <RouteOverview route={route} />
+            <RouteOverview route={route} savedRoute={savedRoute} />
           )}
           {notice ? <RouteNotice message={notice} /> : null}
+          {saveNotice ? <RouteNotice message={saveNotice} /> : null}
+          {route && onSaveRoute && !isCalculating ? (
+            <View style={styles.backgroundOption}>
+              <View style={styles.backgroundCopy}>
+                <Text
+                  style={[styles.backgroundHint, { color: colors.textMuted }]}
+                >
+                  Guarda el recorrido, sus indicaciones y su punto de partida
+                  solo en este dispositivo. Podrás borrarlo desde Mapas sin
+                  conexión.
+                </Text>
+              </View>
+              <TourismActionButton
+                disabled={savingRoute || routeSaved || startingNavigation}
+                icon="download"
+                label={routeSaved ? "Ruta guardada" : "Guardar ruta"}
+                loading={savingRoute}
+                mode="outlined"
+                onPress={onSaveRoute}
+              />
+            </View>
+          ) : null}
           {route && backgroundTrackingAvailable ? (
             <View style={styles.backgroundOption}>
               <View style={styles.backgroundCopy}>
@@ -294,6 +329,11 @@ export function RoutePreviewPanel({
             </Text>
           )}
           {primaryAction()}
+          {savedRoute && navigationNotice ? (
+            <Text style={[styles.compactMessage, { color: colors.textMuted }]}>
+              {navigationNotice}
+            </Text>
+          ) : null}
         </View>
       </View>
     );

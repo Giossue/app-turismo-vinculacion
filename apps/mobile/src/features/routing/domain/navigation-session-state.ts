@@ -9,6 +9,8 @@ export const navigationMessages = {
   backgroundUnavailable:
     "La navegación seguirá solo mientras la app esté abierta: no pudimos activar el seguimiento al cambiar de aplicación.",
   offRoute: "Te alejaste de la ruta; buscando un nuevo trayecto.",
+  offRouteWithoutReroute:
+    "Te alejaste del trazado. Vuelve a la ruta para continuar; no se recalcula automáticamente.",
   permissionMissing: "Necesitamos permiso de ubicación para navegar.",
   refining: "Ajustando tu ubicación con el GPS…",
   resuming: "Actualizando tu ubicación…",
@@ -53,6 +55,7 @@ export type NavigationSessionAction =
       guidance: NavigationGuidance | null;
       /** The fix left the route and a new one was requested. */
       offRoute: boolean;
+      reroutingEnabled?: boolean;
       remaining: RouteRemainingMetrics | null;
     }>
   /** The app came back to the foreground: the last point may be stale. */
@@ -84,10 +87,16 @@ export function navigationSessionReducer(
         message: arrived
           ? navigationMessages.arrived
           : action.offRoute
-            ? navigationMessages.offRoute
+            ? action.reroutingEnabled === false
+              ? navigationMessages.offRouteWithoutReroute
+              : navigationMessages.offRoute
             : null,
         nextInstruction:
-          arrived || !action.guidance ? state.nextInstruction : action.guidance,
+          action.offRoute && action.reroutingEnabled === false
+            ? null
+            : arrived || !action.guidance
+              ? state.nextInstruction
+              : action.guidance,
         remainingDistanceMeters: action.remaining?.distanceMeters ?? null,
         remainingDurationSeconds: action.remaining?.durationSeconds ?? null,
       };

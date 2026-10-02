@@ -14,12 +14,14 @@ export type RouteSearchParams = Readonly<{
   destinationLongitude?: SearchParamValue;
   destinationName?: SearchParamValue;
   mode?: SearchParamValue;
+  savedRouteKey?: SearchParamValue;
 }>;
 
 export type ParsedRouteSearchParams = Readonly<{
   destination: GeoCoordinate | null;
   destinationName: string;
   mode: RouteMode;
+  savedRouteKey: string | null;
 }>;
 
 /** Opens the route preview towards `destination`, optionally in a mode. */
@@ -38,6 +40,11 @@ export function buildRouteHref(
   };
 }
 
+/** Opens the local preview; loading it never requests a new route or GPS. */
+export function buildSavedRouteHref(savedRouteKey: string): Href {
+  return { pathname: "/route", params: { savedRouteKey } };
+}
+
 /** Reads the params written by `buildRouteHref`, with safe defaults. */
 export function parseRouteSearchParams(
   params: RouteSearchParams,
@@ -49,6 +56,7 @@ export function parseRouteSearchParams(
     ),
     destinationName: firstSearchParam(params.destinationName) ?? "Destino",
     mode: parseRouteMode(params.mode) ?? "car",
+    savedRouteKey: firstSearchParam(params.savedRouteKey) || null,
   };
 }
 

@@ -19,6 +19,7 @@ const genericDownloadMessage =
   "No pudimos descargar la ciudad. Revisa tu conexión e inténtalo de nuevo.";
 
 const inFlight = new Map<string, Promise<void>>();
+const removals = new Map<string, Promise<void>>();
 const listeners = new Set<() => void>();
 let snapshot: OfflineDownloadsSnapshot = new Map();
 
@@ -31,6 +32,9 @@ export function runOfflineDownload(
   slug: string,
   task: OfflineDownloadTask,
 ): Promise<void> {
+  if (removals.has(slug)) {
+    return Promise.reject(new OfflineDownloadError("Espera a que termine de borrarse esta ciudad."));
+  }
   const current = inFlight.get(slug);
   if (current) return current;
 
@@ -43,6 +47,21 @@ export function runOfflineDownload(
   );
   inFlight.set(slug, download);
   return download;
+}
+
+/** Removal and replacement never compete for the same city's resources. */
+export function runOfflineRemoval(
+  slug: string,
+  task: () => Promise<void>,
+): Promise<void> {
+  const current = removals.get(slug);
+  if (current) return current;
+  if (inFlight.has(slug)) {
+    return Promise.reject(new OfflineDownloadError("Espera a que termine la descarga de esta ciudad."));
+  }
+  const removal = Promise.resolve().then(task).finally(() => removals.delete(slug));
+  removals.set(slug, removal);
+  return removal;
 }
 
 /** For `useSyncExternalStore`: downloads survive leaving the screen. */

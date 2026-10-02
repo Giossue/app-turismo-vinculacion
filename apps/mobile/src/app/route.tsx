@@ -18,7 +18,19 @@ import { useNavigationFollow } from "@/features/routing/application/use-navigati
 import { useNavigationRoute } from "@/features/routing/application/use-navigation-route";
 import { useNavigationSession } from "@/features/routing/application/use-navigation-session";
 import { useRouteScreenParams } from "@/features/routing/application/use-route-screen-params";
+import {
+  useSavedCalculatedRoute,
+  useSaveCalculatedRoute,
+} from "@/features/routing/application/use-saved-routes";
 import { getRouteErrorMessage } from "@/features/routing/data/routing-api";
+import {
+  describeSavedRouteError,
+  type SavedCalculatedRoute,
+} from "@/features/routing/data/saved-routes-storage";
+import {
+  getRemoteRouteRequest,
+  savedRouteNavigationNotice,
+} from "@/features/routing/domain/route-source";
 import type { RouteMode } from "@/features/routing/domain/routing";
 import {
   requestNavigationBackgroundPermission,
@@ -27,6 +39,73 @@ import {
 import { ActiveNavigationOverlay } from "@/features/routing/presentation/active-navigation-overlay";
 import { RouteMap } from "@/features/routing/presentation/route-map";
 import { RoutePreviewPanel } from "@/features/routing/presentation/route-preview-panel";
+import type { ParsedRouteSearchParams } from "@/features/routing/presentation/route-href";
+
+/** Load a chosen saved route before mounting anything that can request GPS. */
+export default function RouteScreen() {
+  const params = useRouteScreenParams();
+  const auth = useAuth();
+  const router = useRouter();
+  const savedQuery = useSavedCalculatedRoute(params.savedRouteKey);
+  const close = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace("/");
+  };
+
+  if (!params.savedRouteKey) {
+    return <RouteScreenContent params={params} savedRoute={null} />;
+  }
+  if (auth.status === "anonymous") {
+    return (
+      <TourismScreenFrame onBack={close} title="Ruta guardada">
+        <TourismStateView
+          actionIcon="user"
+          actionLabel="Iniciar sesión"
+          icon="navigation"
+          message="Inicia sesión con la cuenta que guardó esta ruta en el dispositivo."
+          onAction={() => router.push(buildLoginHref("/route"))}
+          variant="empty"
+        />
+      </TourismScreenFrame>
+    );
+  }
+  if (auth.status === "loading" || savedQuery.isPending) {
+    return (
+      <TourismScreenFrame onBack={close} title="Ruta guardada">
+        <TourismStateView
+          message="Abriendo el recorrido guardado en este dispositivo…"
+          variant="loading"
+        />
+      </TourismScreenFrame>
+    );
+  }
+  if (!savedQuery.data) {
+    return (
+      <TourismScreenFrame onBack={close} title="Ruta guardada">
+        <TourismStateView
+          icon="navigation"
+          message={
+            savedQuery.error
+              ? describeSavedRouteError(savedQuery.error)
+              : "La ruta pudo haberse eliminado o estar guardada en otra cuenta."
+          }
+          onAction={
+            savedQuery.error ? () => void savedQuery.refetch() : undefined
+          }
+          title="No pudimos abrir esta ruta"
+          variant="error"
+        />
+      </TourismScreenFrame>
+    );
+  }
+  return (
+    <RouteScreenContent
+      key={savedQuery.data.key}
+      params={params}
+      savedRoute={savedQuery.data}
+    />
+  );
+}
 
 /**
  * «Cómo llegar»: full-screen MapLibre with an inline preview panel and, once
@@ -40,18 +119,24 @@ import { RoutePreviewPanel } from "@/features/routing/presentation/route-preview
  * unmount emits no `blur` and changes nothing, so a navigation survives
  * Android destroying the activity while the app is hidden.
  */
-export default function RouteScreen() {
+function RouteScreenContent({
+  params,
+  savedRoute,
+}: Readonly<{
+  params: ParsedRouteSearchParams;
+  savedRoute: SavedCalculatedRoute | null;
+}>) {
   const colors = useTurismoPalette();
   const auth = useAuth();
   const router = useRouter();
   const navigation = useNavigation();
-  const {
-    destination,
-    destinationName,
-    mode: initialMode,
-  } = useRouteScreenParams();
+  const destination = savedRoute?.destination ?? params.destination;
+  const destinationName = savedRoute?.destinationName ?? params.destinationName;
+  const initialMode = savedRoute?.mode ?? params.mode;
   const [mode, setMode] = useState<RouteMode>(initialMode);
-  const [origin, setOrigin] = useState<GeoCoordinate | null>(null);
+  const [origin, setOrigin] = useState<GeoCoordinate | null>(
+    savedRoute?.origin ?? null,
+  );
   const [routeRequested, setRouteRequested] = useState(false);
   const [navigationActive, setNavigationActive] = useState(false);
   const [startingNavigation, setStartingNavigation] = useState(false);
@@ -63,6 +148,7 @@ export default function RouteScreen() {
   // Guards double taps before the `startingNavigation` render lands.
   const startInFlightRef = useRef(false);
   const startAttemptRef = useRef(0);
+  const saveRoute = useSaveCalculatedRoute();
   const {
     message: locationMessage,
     requestLocation,
@@ -70,13 +156,19 @@ export default function RouteScreen() {
   } = useUserLocation();
   const follow = useNavigationFollow(navigationActive);
 
-  const request =
-    routeRequested && origin && destination
-      ? { destination, mode, origin }
-      : null;
+  const request = getRemoteRouteRequest({
+    destination,
+    mode,
+    origin,
+    requested: routeRequested,
+    saved: savedRoute !== null,
+  });
   const routeQuery = useCalculatedRoute(request);
   const isCalculating = request !== null && routeQuery.isFetching;
-  const route = useNavigationRoute(routeQuery.data ?? null, navigationActive);
+  const route = useNavigationRoute(
+    savedRoute?.route ?? routeQuery.data ?? null,
+    navigationActive,
+  );
   const routeError = routeQuery.error
     ? getRouteErrorMessage(routeQuery.error)
     : null;
@@ -91,6 +183,9 @@ export default function RouteScreen() {
       setOrigin(nextOrigin);
     },
     route,
+    // One failed remote attempt keeps the current route without repeatedly
+    // contacting an unavailable service as GPS positions change.
+    reroutingEnabled: savedRoute === null && !routeQuery.isError,
   });
 
   // `blur` fires when another screen covers this one, never on a bare
@@ -107,7 +202,14 @@ export default function RouteScreen() {
   });
 
   useEffect(() => {
-    if (!destination || origin || routeRequested || navigationActive) return;
+    if (
+      savedRoute ||
+      !destination ||
+      origin ||
+      routeRequested ||
+      navigationActive
+    )
+      return;
 
     let cancelled = false;
     void requestLocation({ forceRefresh: true }).then((coordinate) => {
@@ -118,7 +220,14 @@ export default function RouteScreen() {
     return () => {
       cancelled = true;
     };
-  }, [destination, navigationActive, origin, requestLocation, routeRequested]);
+  }, [
+    destination,
+    navigationActive,
+    origin,
+    requestLocation,
+    routeRequested,
+    savedRoute,
+  ]);
 
   const closeRoute = () => {
     startAttemptRef.current += 1;
@@ -130,7 +239,7 @@ export default function RouteScreen() {
   };
 
   const handleCalculateRoute = async () => {
-    if (!destination || isCalculating || navigationActive) return;
+    if (savedRoute || !destination || isCalculating || navigationActive) return;
 
     if (origin) {
       setRouteRequested(true);
@@ -209,6 +318,34 @@ export default function RouteScreen() {
     setBackgroundTrackingEnabled(false);
   };
 
+  const handleSaveRoute = async () => {
+    if (
+      savedRoute ||
+      !request ||
+      !route ||
+      isCalculating ||
+      !routeQuery.isSuccess ||
+      saveRoute.isPending
+    )
+      return;
+    if (auth.status !== "authenticated") {
+      if (auth.status === "anonymous") router.push(buildLoginHref("/route"));
+      return;
+    }
+    await saveRoute
+      .mutateAsync({ ...request, destinationName, route })
+      .catch(() => undefined);
+  };
+
+  const savedCurrentRoute =
+    saveRoute.isSuccess && saveRoute.variables?.route === route;
+  const saveNotice = saveRoute.isError
+    ? describeSavedRouteError(saveRoute.error)
+    : savedCurrentRoute
+      ? "Ruta guardada. Puedes abrirla desde Mapas sin conexión. Descarga también la zona para ver sus calles sin internet."
+      : null;
+  const navigationNotice = savedRoute ? savedRouteNavigationNotice : routeError;
+
   if (!destination) {
     return (
       <TourismScreenFrame onBack={closeRoute} title="Cómo llegar">
@@ -257,7 +394,7 @@ export default function RouteScreen() {
           locationMessage={locationMessage}
           locationRequesting={locationStatus === "requesting"}
           mode={mode}
-          navigationNotice={null}
+          navigationNotice={navigationNotice}
           onBackgroundTrackingChange={(enabled) =>
             void handleBackgroundTrackingChange(enabled)
           }
@@ -266,9 +403,14 @@ export default function RouteScreen() {
           onExpandedChange={setPreviewExpanded}
           onHeightChange={setMapBottomInset}
           onModeChange={setMode}
+          onSaveRoute={savedRoute ? undefined : () => void handleSaveRoute()}
           onStartNavigation={() => void handleStartNavigation()}
           route={route}
           routeError={routeError}
+          savedRoute={savedRoute !== null}
+          routeSaved={savedCurrentRoute}
+          saveNotice={saveNotice}
+          savingRoute={saveRoute.isPending}
           startingNavigation={startingNavigation || backgroundTrackingBusy}
         />
       ) : route ? (
@@ -277,7 +419,7 @@ export default function RouteScreen() {
           isFollowing={follow.following}
           isRecalculating={isCalculating}
           message={navigationSession.message}
-          notice={navigationSession.backgroundNotice ?? routeError}
+          notice={navigationSession.backgroundNotice ?? navigationNotice}
           onBottomInsetChange={setMapBottomInset}
           onRecenter={() => follow.setFollowing(true)}
           onStop={handleStopNavigation}

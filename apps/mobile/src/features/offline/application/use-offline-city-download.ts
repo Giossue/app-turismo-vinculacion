@@ -28,10 +28,12 @@ export function useOfflineCityDownload() {
         downloadOfflineCity(city, onProgress),
       ),
     // Mutation-level callback: it also runs if the screen was closed.
-    onSuccess: () =>
+    onSuccess: () => Promise.all([
       queryClient.invalidateQueries({
         queryKey: queryKeys.offlineStoredCities,
       }),
+      queryClient.invalidateQueries({ queryKey: ["offline-city-manifest"] }),
+    ]),
   });
 
   return {

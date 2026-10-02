@@ -6,6 +6,7 @@ import {
   getOfflineDownloadsSnapshot,
   OfflineDownloadError,
   runOfflineDownload,
+  runOfflineRemoval,
   subscribeOfflineDownloads,
   type OfflineDownloadTask,
 } from "./offline-download-store";
@@ -90,5 +91,27 @@ describe("offline download store", () => {
     ).toBe(
       "No pudimos descargar la ciudad. Revisa tu conexión e inténtalo de nuevo.",
     );
+  });
+
+  it("prevents deletion while that city's download is in progress", async () => {
+    const pending = deferredTask();
+    const download = runOfflineDownload("guaranda",pending.task);
+    const remove = vi.fn(async()=>undefined);
+    await expect(runOfflineRemoval("guaranda",remove)).rejects.toThrow("descarga");
+    expect(remove).not.toHaveBeenCalled();
+    pending.resolve();await download;
+    await runOfflineRemoval("guaranda",remove);
+    expect(remove).toHaveBeenCalledOnce();
+  });
+
+  it("joins repeated deletion and prevents replacement until deletion finishes",async()=>{
+    let finish!:()=>void;
+    const remove=vi.fn(()=>new Promise<void>((resolve)=>{finish=resolve;}));
+    const removal=runOfflineRemoval("guaranda",remove);
+    expect(runOfflineRemoval("guaranda",remove)).toBe(removal);
+    await expect(runOfflineDownload("guaranda",async()=>undefined)).rejects.toThrow("borrarse");
+    await Promise.resolve();finish();await removal;
+    expect(remove).toHaveBeenCalledOnce();
+    await expect(runOfflineDownload("guaranda",async()=>undefined)).resolves.toBeUndefined();
   });
 });

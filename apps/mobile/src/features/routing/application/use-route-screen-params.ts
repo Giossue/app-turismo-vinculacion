@@ -11,14 +11,20 @@ import {
  * when the link lacks valid coordinates.
  */
 export function useRouteScreenParams(): ParsedRouteSearchParams {
-  const { destinationLatitude, destinationLongitude, destinationName, mode } =
-    useLocalSearchParams<RouteSearchParams>();
-  // React Compiler memoizes the result on these four values, so the
+  const {
+    destinationLatitude,
+    destinationLongitude,
+    destinationName,
+    mode,
+    savedRouteKey,
+  } = useLocalSearchParams<RouteSearchParams>();
+  // React Compiler memoizes the result on these values, so the
   // destination keeps its identity across renders.
   return parseRouteSearchParams({
     destinationLatitude,
     destinationLongitude,
     destinationName,
     mode,
+    savedRouteKey,
   });
 }

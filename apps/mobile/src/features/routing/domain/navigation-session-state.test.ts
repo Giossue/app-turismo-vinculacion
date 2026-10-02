@@ -75,6 +75,18 @@ describe("navigation session state", () => {
     expect(arrived.message).toBe(navigationMessages.arrived);
   });
 
+  it("warns about leaving a saved trace without claiming to recalculate", () => {
+    const offRoute = reduce([
+      fix(),
+      fix({ offRoute: true, guidance: null, reroutingEnabled: false }),
+    ]);
+    expect(offRoute.message).toBe(navigationMessages.offRouteWithoutReroute);
+    expect(offRoute.nextInstruction).toBeNull();
+    const returned = reduce([fix({ reroutingEnabled: false })], offRoute);
+    expect(returned.message).toBeNull();
+    expect(returned.nextInstruction).toEqual(guidance);
+  });
+
   it("marks a background arrival", () => {
     expect(reduce([fix(), { type: "arrived" }])).toMatchObject({
       arrived: true,

@@ -47,7 +47,8 @@ export function RouteModeTabs({
 
 export function RouteOverview({
   route,
-}: Readonly<{ route: CalculatedRoute | null }>) {
+  savedRoute = false,
+}: Readonly<{ route: CalculatedRoute | null; savedRoute?: boolean }>) {
   const colors = useTurismoPalette();
   return (
     <View style={styles.overview}>
@@ -57,7 +58,11 @@ export function RouteOverview({
           : "Prepara tu ruta"}
       </Text>
       <Text style={[styles.overviewMeta, { color: colors.textMuted }]}>
-        {route ? "Ruta más rápida" : "Calcula un trayecto desde tu ubicación"}
+        {route
+          ? savedRoute
+            ? "Recorrido guardado"
+            : "Ruta más rápida"
+          : "Calcula un trayecto desde tu ubicación"}
       </Text>
     </View>
   );

@@ -48,6 +48,8 @@ type NavigationSessionOptions = Readonly<{
   mode: RouteMode;
   onReroute: (origin: GeoCoordinate) => void;
   route: CalculatedRoute | null;
+  /** Saved routes and a failed remote recalculation keep the current trace. */
+  reroutingEnabled?: boolean;
 }>;
 
 /**
@@ -72,6 +74,7 @@ export function useNavigationSession({
   mode,
   onReroute,
   route,
+  reroutingEnabled = true,
 }: NavigationSessionOptions): NavigationSessionState {
   const { setForegroundTrackingSuspended } = useUserLocation();
   const [state, dispatch] = useReducer(
@@ -116,8 +119,10 @@ export function useNavigationSession({
     const nextRouteKey = getRouteKey(route);
     if (spokenRouteKeyRef.current === nextRouteKey) return;
     spokenRouteKeyRef.current = nextRouteKey;
-    replaceSpeech(speechRequestRef, getSpeechInstructions(route, 0));
-    announcedStepRef.current = 0;
+    // A saved route may be opened halfway along the trace. Wait for a fresh
+    // GPS fix before announcing the maneuver for the actual position.
+    cancelSpeech(speechRequestRef);
+    announcedStepRef.current = -1;
   }, [active, route]);
 
   const processFix = useEffectEvent((location: PersistedNavigationLocation) => {
@@ -152,7 +157,12 @@ export function useNavigationSession({
       return;
     }
 
-    const guidance = getNavigationGuidance(route, coordinate);
+    const outsideTrace =
+      getDistanceToRouteMeters(route, coordinate) > offRouteThresholdMeters;
+    const guidance =
+      outsideTrace && !reroutingEnabled
+        ? null
+        : getNavigationGuidance(route, coordinate);
     if (
       guidance &&
       guidance.stepIndex > announcedStepRef.current &&
@@ -167,20 +177,22 @@ export function useNavigationSession({
     }
 
     const now = Date.now();
-    const offRoute =
-      getDistanceToRouteMeters(route, coordinate) > offRouteThresholdMeters &&
+    const requestReroute =
+      outsideTrace &&
+      reroutingEnabled &&
       !isRecalculating &&
       now - lastRerouteAtRef.current >= rerouteCooldownMs;
-    if (offRoute) lastRerouteAtRef.current = now;
+    if (requestReroute) lastRerouteAtRef.current = now;
     dispatch({
       arrived: false,
       coordinate,
       guidance,
-      offRoute,
-      remaining,
+      offRoute: reroutingEnabled ? requestReroute : outsideTrace,
+      remaining: outsideTrace && !reroutingEnabled ? null : remaining,
+      reroutingEnabled,
       type: "fix",
     });
-    if (offRoute) onReroute(coordinate);
+    if (requestReroute) onReroute(coordinate);
   });
 
   useEffect(() => {

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { StyleSpecification } from "@maplibre/maplibre-react-native";
 
 import { getApiUrl } from "@/core/api/api-url";
 import { acceptJsonHeaders, requestJson, type Fetcher } from "@/core/api/http";
@@ -70,8 +71,8 @@ const offlineCityManifestSchema = z.object({
     resourceSizeBytes: z.number().nonnegative().nullable(),
     bounds: boundsSchema,
     mapStyles: z.object({
-      light: z.custom(isValidBasemapStyle),
-      dark: z.custom(isValidBasemapStyle),
+      light: z.custom<StyleSpecification>(isValidBasemapStyle),
+      dark: z.custom<StyleSpecification>(isValidBasemapStyle),
     }),
   }).optional(),
   routes: z.array(

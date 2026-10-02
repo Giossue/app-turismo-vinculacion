@@ -138,6 +138,11 @@ function deliverSelections(
 export function CenterMap({
   attributionInset,
   centers,
+  initialBounds,
+  localPlaces,
+  localRoute,
+  mapStyleOverride,
+  onLocalPlacePress,
   establishmentLayer,
   focusLocationKey,
   focusCoordinate = null,
@@ -155,6 +160,7 @@ export function CenterMap({
   const mapRef = useRef<MapRef>(null);
   const pendingLocationFocusRef = useRef<PendingLocationFocus | null>(null);
   const focusedLocationKeyRef = useRef<number | undefined>(undefined);
+  const fittedInitialBoundsRef = useRef(false);
   const selectionCallbacksRef = useRef<SelectionCallbacks>({
     onCenterPress,
     onEstablishmentPress,
@@ -169,7 +175,8 @@ export function CenterMap({
   });
   const { scheme } = useTurismoTheme();
   const colors = useTurismoMapPalette();
-  const mapStyle = useBasemapStyle(scheme);
+  const onlineStyle = useBasemapStyle(scheme, mapStyleOverride === undefined);
+  const mapStyle = mapStyleOverride ?? onlineStyle;
   const {
     isActive,
     markFailed,
@@ -205,6 +212,40 @@ export function CenterMap({
       })),
     }),
     [centers],
+  );
+  const localFeatures = useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(
+    () => ({
+      type: "FeatureCollection",
+      features: (localPlaces ?? []).map((place) => ({
+        type: "Feature",
+        id: place.key,
+        properties: { offlineKey: place.key, icon: place.icon },
+        geometry: {
+          type: "Point",
+          coordinates: [place.longitude, place.latitude],
+        },
+      })),
+    }),
+    [localPlaces],
+  );
+  const localRouteFeature = useMemo<GeoJSON.FeatureCollection<GeoJSON.LineString>>(
+    () => ({
+      type: "FeatureCollection",
+      features: localRoute
+        ? [{ type: "Feature", geometry: localRoute, properties: {} }]
+        : [],
+    }),
+    [localRoute],
+  );
+  const startingView = useMemo<CameraState>(
+    () => initialBounds
+      ? {
+          center: [(initialBounds[0] + initialBounds[2]) / 2,
+            (initialBounds[1] + initialBounds[3]) / 2],
+          zoom: 12,
+        }
+      : initialViewState,
+    [initialBounds],
   );
   // La ficha se abre enseguida, mientras la cámara se mueve: no se espera a
   // que MapLibre termine el enfoque. El pin queda centrado en la parte visible
@@ -242,6 +283,22 @@ export function CenterMap({
       const features = Array.isArray(event?.nativeEvent?.features)
         ? event.nativeEvent.features
         : [];
+      const localKey = features.find(
+        (feature) => typeof feature.properties?.offlineKey === "string",
+      )?.properties?.offlineKey;
+      if (typeof localKey === "string") {
+        const place = localPlaces?.find((item) => item.key === localKey);
+        if (place) {
+          cameraRef.current?.easeTo({
+            center: [place.longitude, place.latitude],
+            duration: focusCameraDurationMs,
+            padding: noPadding,
+            zoom: focusZoom,
+          });
+          onLocalPlacePress?.(localKey);
+        }
+        return;
+      }
       const pressed = features.flatMap<MapFeatureSelection>((feature) => {
         const code = feature.properties?.code;
         const center =
@@ -277,8 +334,18 @@ export function CenterMap({
       );
       focusSelections(selections, getMapFeatureCoordinate(anchor));
     },
-    [centersByCode, centers, focusSelections, isActive, onLocationFocusChange],
+    [centersByCode, centers, focusSelections, isActive, localPlaces,
+      onLocalPlacePress, onLocationFocusChange],
   );
+
+  useEffect(() => {
+    if (!nativeReady || !initialBounds || fittedInitialBoundsRef.current) return;
+    fittedInitialBoundsRef.current = true;
+    cameraRef.current?.fitBounds(initialBounds, {
+      padding: { top: 16, bottom: 16, left: 16, right: 16 },
+      duration: focusCameraDurationMs,
+    });
+  }, [initialBounds, nativeReady]);
 
   useEffect(() => {
     if (!focusSelection || !nativeReady) return;
@@ -384,11 +451,21 @@ export function CenterMap({
         touchRotate
       >
         <Camera
-          initialViewState={initialViewState}
+          initialViewState={startingView}
           maxZoom={maxZoom}
           ref={cameraRef}
         />
         <Images images={mapImages} />
+        {localRoute ? (
+          <GeoJSONSource data={localRouteFeature} id="tourism-offline-route-source">
+            <Layer
+              id="tourism-offline-route-line"
+              type="line"
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{ "line-color": colors.primary, "line-width": 5 }}
+            />
+          </GeoJSONSource>
+        ) : null}
         <GeoJSONSource
           data={centerFeatures}
           hitbox={featureHitbox}
@@ -418,7 +495,31 @@ export function CenterMap({
             type="symbol"
           />
         </GeoJSONSource>
-        <VectorSource
+        {localPlaces !== undefined ? (
+          <GeoJSONSource
+            data={localFeatures}
+            cluster
+            clusterMaxZoom={pinMinZoom - 1}
+            hitbox={featureHitbox}
+            id="tourism-offline-places-source"
+            onPress={handleFeaturePress}
+          >
+            <Layer
+              id="tourism-offline-place-dots"
+              type="circle"
+              maxzoom={pinMinZoom}
+              paint={{ "circle-color": colors.primary, "circle-radius": 5,
+                "circle-stroke-color": colors.surface, "circle-stroke-width": 1 }}
+            />
+            <Layer
+              id="tourism-offline-place-pins"
+              type="symbol"
+              minzoom={pinMinZoom}
+              layout={{ ...pinLayout, "icon-image": establishmentPinImageExpression,
+                "icon-size": pinIconSize }}
+            />
+          </GeoJSONSource>
+        ) : <VectorSource
           hitbox={featureHitbox}
           id="tourism-establishments-source"
           maxzoom={establishmentTileMaxZoom}
@@ -453,7 +554,7 @@ export function CenterMap({
             source-layer={establishmentTileLayer}
             type="circle"
           />
-        </VectorSource>
+        </VectorSource>}
         <UserLocationLayers
           coordinate={userLocation}
           dotRadius={7}

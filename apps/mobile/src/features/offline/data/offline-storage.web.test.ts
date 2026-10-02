@@ -1,12 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { listStoredOfflineManifests } from "./offline-storage.web";
+import {
+  getStoredOfflineManifest,
+  listStoredOfflineCities,
+  listStoredOfflineManifests,
+  removeOfflineManifest,
+  saveOfflineManifest,
+} from "./offline-storage.web";
 
 const values = new Map<string, string>();
 
 vi.mock("@react-native-async-storage/async-storage", () => ({
   default: {
     getAllKeys: vi.fn(async () => [...values.keys()]),
+    getItem: vi.fn(async (key: string) => values.get(key) ?? null),
+    removeItem: vi.fn(async (key: string) => { values.delete(key); }),
     multiGet: vi.fn(async (keys: string[]) =>
       keys.map((key) => [key, values.get(key) ?? null]),
     ),
@@ -35,6 +43,8 @@ const manifest = {
   },
   boundary: null,
   centers: [],
+  establishments: [],
+  pois: [],
   routes: [],
 };
 
@@ -55,5 +65,17 @@ describe("web offline storage", () => {
     );
 
     await expect(listStoredOfflineManifests()).resolves.toEqual([manifest]);
+    await expect(listStoredOfflineCities()).resolves.toEqual(["guaranda"]);
+  });
+
+  it("keeps cities independently of query cache TTL and removes only the selected city", async () => {
+    await saveOfflineManifest(manifest);
+    await saveOfflineManifest({ ...manifest, city: { ...manifest.city, slug: "riobamba" } });
+    await expect(getStoredOfflineManifest("guaranda")).resolves.toEqual(manifest);
+    values.set("other-app-setting", "retain");
+    await removeOfflineManifest("guaranda");
+    await expect(getStoredOfflineManifest("guaranda")).resolves.toBeNull();
+    await expect(listStoredOfflineCities()).resolves.toEqual(["riobamba"]);
+    expect(values.get("other-app-setting")).toBe("retain");
   });
 });

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { isRouteMode } from "../domain/routing";
 import {
   buildRouteHref,
+  buildSavedRouteHref,
   parseRouteDestination,
   parseRouteMode,
   parseRouteSearchParams,
@@ -39,6 +40,7 @@ describe("route href", () => {
       destination: { latitude: -1.5934, longitude: -79.0008 },
       destinationName: "Plaza",
       mode: "bicycle",
+      savedRouteKey: null,
     });
   });
 
@@ -47,12 +49,28 @@ describe("route href", () => {
       destination: null,
       destinationName: "Destino",
       mode: "car",
+      savedRouteKey: null,
     });
     expect(parseRouteDestination("91", "-79")).toBeNull();
     expect(parseRouteDestination("-1.59", "abc")).toBeNull();
     expect(parseRouteDestination(["-1.59", "0"], ["-79", "0"])).toEqual({
       latitude: -1.59,
       longitude: -79,
+    });
+  });
+
+  it("opens a saved route by key without supplying a new GPS origin or destination", () => {
+    const href = buildSavedRouteHref("route-test");
+    expect(href).toEqual({
+      pathname: "/route",
+      params: { savedRouteKey: "route-test" },
+    });
+    const params = (href as { params: Record<string, string> }).params;
+    expect(parseRouteSearchParams(params)).toEqual({
+      destination: null,
+      destinationName: "Destino",
+      mode: "car",
+      savedRouteKey: "route-test",
     });
   });
 

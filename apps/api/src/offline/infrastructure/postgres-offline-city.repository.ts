@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import type { DataSource } from "typeorm";
+import { createHash } from "node:crypto";
 
 import type {
   OfflineCity,
@@ -8,10 +9,14 @@ import type {
   OfflineGeoJson,
   OfflineGeoJsonLineString,
   OfflineManifestCenter,
+  OfflineManifestEstablishment,
+  OfflineManifestPoi,
   OfflineManifestRoute,
 } from "../domain/offline-city";
+import { getOfflineCityBounds } from "../domain/offline-city-bounds";
 import type { OfflineCityRepository } from "../application/offline-city.repository";
 import { estimateRouteDurationMinutes } from "../../transport/domain/estimated-route-duration";
+import { buildOfflineEstablishmentQuery } from "./offline-establishment-query";
 
 type CityRow = {
   id: string;
@@ -29,6 +34,7 @@ type CityRow = {
 
 type CenterRow = OfflineManifestCenter;
 type RouteRow = {
+  id: string;
   name: string;
   origin: string;
   destination: string;
@@ -37,6 +43,9 @@ type RouteRow = {
   transport_code: string | null;
   geometry: OfflineGeoJsonLineString;
   directions: unknown;
+};
+type PoiRow = Omit<OfflineManifestPoi, "key" | "category" | "icon"> & {
+  id: string;
 };
 
 @Injectable()
@@ -53,18 +62,28 @@ export class PostgresOfflineCityRepository implements OfflineCityRepository {
     const cityRow = rows.find((row) => citySlug(row) === slug);
     if (!cityRow || cityRow.package_version === null) return null;
 
-    const [boundaryRows, centers, routes] = await Promise.all([
-      this.dataSource.query<readonly { boundary: OfflineGeoJson | null }[]>(
-        `SELECT ST_AsGeoJSON(limite.geometria)::jsonb AS boundary
+    const boundaryRows = await this.dataSource.query<
+      readonly { boundary: OfflineGeoJson | null }[]
+    >(
+      `SELECT ST_AsGeoJSON(limite.geometria)::jsonb AS boundary
          FROM localidad_limites_oficiales limite
          WHERE limite.localidad_id = $1 AND limite.vigente
          ORDER BY limite.version DESC LIMIT 1`,
-        [cityRow.id],
-      ),
+      [cityRow.id],
+    );
+    const city = mapCity(cityRow);
+    const boundary = boundaryRows[0]?.boundary ?? null;
+    const bounds = getOfflineCityBounds(boundary, city);
+    const establishmentsQuery = buildOfflineEstablishmentQuery(
+      boundary,
+      bounds,
+    );
+
+    const [centers, routes, establishments, pois] = await Promise.all([
       this.dataSource.query<CenterRow[]>(
         `SELECT c.codigo_atractivo AS code, c.nombre AS name,
-          c.descripcion AS description, c.latitud AS latitude,
-          c.longitud AS longitude, ca.nombre AS category,
+          c.descripcion AS description, c.latitud::double precision AS latitude,
+          c.longitud::double precision AS longitude, ca.nombre AS category,
           ta.nombre AS type, sa.nombre AS subtype, rj.nombre AS hierarchy,
           ca.codigo AS "categoryCode", ta.codigo AS "typeCode",
           sa.codigo AS "subtypeCode", p.codigo_dpa AS "provinceCode",
@@ -80,13 +99,14 @@ export class PostgresOfflineCityRepository implements OfflineCityRepository {
          JOIN provincias p ON p.id = ct.provincia_id
          LEFT JOIN rangos_jerarquia rj ON rj.id = c.jerarquia_id
          JOIN estados_resenia er ON er.id = c.estado_resenia_id
-         WHERE c.activo AND er.codigo = 'PUBLICADO'
+         WHERE c.activo AND z.activo AND er.codigo = 'PUBLICADO'
            AND z.localidad_id = $1
          ORDER BY c.nombre, c.codigo_atractivo`,
         [cityRow.id],
       ),
       this.dataSource.query<RouteRow[]>(
-        `SELECT DISTINCT ON (rt.id) rt.nombre AS name, rt.origen AS origin,
+        `SELECT DISTINCT ON (rt.id) rt.id::text AS id,
+          rt.nombre AS name, rt.origen AS origin,
           rt.destino AS destination,
           EXTRACT(EPOCH FROM rt.duracion_estimada) / 60 AS duration_minutes,
           ST_Length(version.geometria) AS distance_meters,
@@ -102,15 +122,43 @@ export class PostgresOfflineCityRepository implements OfflineCityRepository {
          JOIN centros_turisticos c ON c.id = crt.centro_turistico_id
          JOIN zonas_turisticas z ON z.id = c.zona_turistica_id
          JOIN estados_resenia er ON er.id = c.estado_resenia_id
-         WHERE rt.activo AND c.activo AND er.codigo = 'PUBLICADO'
+         WHERE rt.activo AND c.activo AND z.activo AND er.codigo = 'PUBLICADO'
            AND z.localidad_id = $1
          ORDER BY rt.id, version.version DESC`,
         [cityRow.id],
       ),
+      this.dataSource.query<OfflineManifestEstablishment[]>(
+        establishmentsQuery.sql,
+        establishmentsQuery.params,
+      ),
+      this.dataSource.query<PoiRow[]>(
+        `WITH area AS (
+          SELECT COALESCE(
+            ST_GeomFromGeoJSON($2::jsonb),
+            ST_MakeEnvelope($3, $4, $5, $6, 4326)
+          )::geography AS geometry
+        )
+        SELECT pi.id::text AS id, pi.nombre AS name,
+               pi.descripcion AS description,
+               ST_Y(pi.ubicacion::geometry) AS latitude,
+               ST_X(pi.ubicacion::geometry) AS longitude
+          FROM puntos_interes pi
+          JOIN zonas_turisticas z ON z.id = pi.zona_turistica_id
+          JOIN localidades l ON l.id = z.localidad_id
+          JOIN cantones co ON co.id = l.canton_id
+          JOIN provincias p ON p.id = co.provincia_id
+          CROSS JOIN area
+         WHERE pi.activo = TRUE AND z.activo = TRUE
+           AND l.activo AND co.activo AND p.activo
+           AND z.localidad_id = $1
+           AND ST_Covers(area.geometry, pi.ubicacion)
+         ORDER BY pi.nombre, pi.id`,
+        [cityRow.id, boundary, ...bounds],
+      ),
     ]);
 
     return {
-      city: mapCity(cityRow),
+      city,
       package: {
         version: cityRow.package_version,
         checksumSha256: cityRow.package_checksum,
@@ -118,8 +166,11 @@ export class PostgresOfflineCityRepository implements OfflineCityRepository {
         zoomMax: cityRow.package_zoom_max ?? 17,
         publishedAt: cityRow.package_published_at?.toISOString() ?? null,
       },
-      boundary: boundaryRows[0]?.boundary ?? null,
+      boundary,
+      bounds,
       centers,
+      establishments: establishments.map(mapEstablishment),
+      pois: pois.map(mapPoi),
       routes: routes.map(mapRoute),
     };
   }
@@ -178,15 +229,58 @@ function mapRoute(row: RouteRow): OfflineManifestRoute {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, ""),
+    publicKey: publicKey("route", row.id),
     name: row.name,
     origin: row.origin,
     destination: row.destination,
     durationMinutes,
     durationEstimated:
       row.duration_minutes === null && durationMinutes !== null,
+    distanceMeters:
+      row.distance_meters === null ? null : Number(row.distance_meters),
+    transportCode: row.transport_code,
     geometry: row.geometry,
     directions: Array.isArray(row.directions) ? row.directions : [],
   };
+}
+
+function mapPoi(row: PoiRow): OfflineManifestPoi {
+  return {
+    key: publicKey("poi", row.id),
+    name: row.name,
+    description: row.description,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    category: null,
+    icon: "tourism-information",
+  };
+}
+
+function mapEstablishment(
+  row: OfflineManifestEstablishment,
+): OfflineManifestEstablishment {
+  return {
+    name: row.name,
+    activity: row.activity,
+    classification: row.classification,
+    category: row.category,
+    categoryLabel: row.categoryLabel,
+    address: row.address,
+    phone: row.phone,
+    localityName: row.localityName,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    approximate: row.approximate,
+    icon: row.icon,
+    group: row.group,
+  };
+}
+
+function publicKey(kind: "route" | "poi", id: string): string {
+  return `${kind}-${createHash("sha256")
+    .update(`offline:${kind}:${id}`)
+    .digest("hex")
+    .slice(0, 24)}`;
 }
 
 function citySlug(row: Pick<CityRow, "province" | "canton" | "name">): string {

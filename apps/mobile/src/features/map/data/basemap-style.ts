@@ -173,7 +173,7 @@ export function normalizeSelfHostedStyle(
   const normalizedSources = Object.fromEntries(
     Object.entries(sources).map(([sourceId, source]) => {
       if (!isRecord(source)) return [sourceId, source];
-      const normalizedSource = { ...source };
+      const normalizedSource: Record<string, unknown> = { ...source };
       const sourceUrl =
         typeof normalizedSource.url === "string"
           ? resolveResourceUrl(normalizedSource.url, styleUrl)
