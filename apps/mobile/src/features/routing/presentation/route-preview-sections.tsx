@@ -16,6 +16,7 @@ import {
   TourismSurface,
 } from "@/core/ui/tourism-controls";
 import { TourismTabs } from "@/core/ui/tourism-tabs";
+import { TourismStateView } from "@/core/ui/tourism-state";
 import { TurismoIcon, type TurismoIconName } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
@@ -51,20 +52,28 @@ export function RouteOverview({
   savedRoute = false,
 }: Readonly<{ route: CalculatedRoute | null; savedRoute?: boolean }>) {
   const colors = useTurismoPalette();
+  if (!route) return null;
   return (
     <View style={styles.overview}>
       <Text style={[styles.metric, { color: colors.text }]}>
-        {route
-          ? `${formatDurationSeconds(route.durationSeconds)} (${formatDistance(route.distanceMeters)})`
-          : "Prepara tu ruta"}
+        {`${formatDurationSeconds(route.durationSeconds)} (${formatDistance(route.distanceMeters)})`}
       </Text>
       <Text style={[styles.overviewMeta, { color: colors.textMuted }]}>
-        {route
-          ? savedRoute
-            ? "Recorrido guardado"
-            : "Ruta más rápida"
-          : "Calcula un trayecto desde tu ubicación"}
+        {savedRoute ? "Recorrido guardado" : "Ruta más rápida"}
       </Text>
+    </View>
+  );
+}
+
+/** One green spinner; its label is announced without visible loading copy. */
+export function RouteLoading() {
+  return (
+    <View style={styles.loading}>
+      <TourismStateView
+        layout="inline"
+        title="Cargando ruta"
+        variant="loading"
+      />
     </View>
   );
 }
@@ -247,6 +256,7 @@ export function RoutePrimaryAction({
 }
 
 const styles = StyleSheet.create({
+  loading: { alignItems: "center" },
   overview: { gap: turismoSpacing.xxs, paddingVertical: turismoSpacing.xs },
   metric: { ...turismoMetricTypography.md },
   overviewMeta: { ...turismoTypography.body },

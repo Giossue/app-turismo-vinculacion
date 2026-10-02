@@ -23,7 +23,6 @@ import {
   turismoGlassBorderWidth,
 } from "@/core/ui/tourism-glass";
 import { TourismSheetHandle } from "@/core/ui/tourism-sheet-handle";
-import { TourismStateView } from "@/core/ui/tourism-state";
 import {
   turismoMetrics,
   turismoPanelSpring,
@@ -35,6 +34,7 @@ import type { CalculatedRoute, RouteMode } from "../domain/routing";
 import { getRouteModeOption } from "./route-mode-options";
 import {
   RouteCompactSummary,
+  RouteLoading,
   RouteModeTabs,
   RouteNotice,
   RouteOverview,
@@ -138,6 +138,11 @@ export function RoutePreviewPanel({
   const dragStartHeight = useSharedValue(restingHeight);
   const modeOption = getRouteModeOption(mode);
   const bottomPadding = Math.max(insets.bottom, turismoSpacing.sm);
+  const loading =
+    isCalculating ||
+    (!route &&
+      (locationRequesting ||
+        (!routeError && !locationMessage && !navigationNotice)));
 
   // Expanding, collapsing, rotating or measuring new content all animate the
   // mounted panel to its new resting height.
@@ -203,7 +208,7 @@ export function RoutePreviewPanel({
     </View>
   );
   const primaryAction = (actionStyle?: typeof styles.fullWidthAction) =>
-    isCalculating ? null : (
+    loading ? null : (
       <RoutePrimaryAction
         hasRoute={route !== null}
         locationRequesting={locationRequesting}
@@ -218,7 +223,8 @@ export function RoutePreviewPanel({
   let content: ReactNode;
   if (expanded) {
     const notice =
-      navigationNotice ?? routeError ?? (route ? null : locationMessage);
+      navigationNotice ??
+      (loading ? null : (routeError ?? (route ? null : locationMessage)));
     content = (
       <>
         {handle}
@@ -231,12 +237,8 @@ export function RoutePreviewPanel({
           {savedRoute ? null : (
             <RouteModeTabs mode={mode} onChange={onModeChange} />
           )}
-          {isCalculating ? (
-            <TourismStateView
-              layout="inline"
-              message="Buscando una ruta sin tráfico en tiempo real…"
-              variant="loading"
-            />
+          {loading ? (
+            <RouteLoading />
           ) : (
             <RouteOverview route={route} savedRoute={savedRoute} />
           )}
@@ -295,7 +297,7 @@ export function RoutePreviewPanel({
           ) : null}
           {route && !isCalculating ? <RouteSteps route={route} /> : null}
         </ScrollView>
-        {isCalculating ? null : (
+        {loading ? null : (
           <View
             style={[
               styles.footer,
@@ -331,19 +333,15 @@ export function RoutePreviewPanel({
           style={styles.scroll}
         >
           {title}
-          {isCalculating ? (
-            <TourismStateView
-              layout="inline"
-              message="Calculando ruta…"
-              variant="loading"
-            />
+          {loading ? (
+            <RouteLoading />
           ) : route ? (
             <RouteCompactSummary modeLabel={modeOption.label} route={route} />
-          ) : (
+          ) : routeError || locationMessage ? (
             <Text style={[styles.compactMessage, { color: colors.textMuted }]}>
-              {routeError ?? locationMessage ?? "Prepara tu ruta"}
+              {routeError ?? locationMessage}
             </Text>
-          )}
+          ) : null}
           {primaryAction()}
           {savedRoute && navigationNotice ? (
             <Text style={[styles.compactMessage, { color: colors.textMuted }]}>

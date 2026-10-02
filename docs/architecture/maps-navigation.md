@@ -38,6 +38,10 @@
   los minutos de las tarjetas del agente siempre proceden del proveedor vial. Mostrar
   esas estimaciones no inicia navegación: «Cómo llegar» recalcula la ruta con una
   ubicación fresca y la navegación requiere su confirmación habitual.
+- La vista previa de «Cómo llegar» muestra únicamente el indicador verde mientras
+  obtiene la ubicación o calcula la ruta, tanto en el panel compacto como expandido.
+  No muestra textos de preparación o búsqueda de GPS durante esa espera. Los permisos
+  denegados, GPS apagado y errores reales conservan su aviso y la acción de reintento.
 
 ### Geocodificación y búsqueda
 

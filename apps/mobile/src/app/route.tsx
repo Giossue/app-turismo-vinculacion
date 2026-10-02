@@ -432,7 +432,13 @@ function RouteScreenContent({
           destinationName={destinationName}
           expanded={previewExpanded}
           isCalculating={isCalculating}
-          locationMessage={locationMessage}
+          locationMessage={
+            locationStatus === "denied" ||
+            locationStatus === "disabled" ||
+            locationStatus === "error"
+              ? locationMessage
+              : null
+          }
           locationRequesting={locationStatus === "requesting"}
           mode={mode}
           navigationNotice={navigationNotice}
