@@ -20,6 +20,7 @@ type LoadedStyle = Readonly<{
  */
 export function useBasemapStyle(
   scheme: TurismoColorScheme,
+  enabled = true,
 ): StyleSpecification {
   const [loaded, setLoaded] = useState<LoadedStyle | null>(() => {
     const cached = getCachedSelfHostedMapStyle(scheme);
@@ -27,6 +28,7 @@ export function useBasemapStyle(
   });
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     loadSelfHostedMapStyle(scheme)
       .then((style) => {
@@ -39,7 +41,7 @@ export function useBasemapStyle(
     return () => {
       cancelled = true;
     };
-  }, [scheme]);
+  }, [scheme, enabled]);
 
   return loaded?.scheme === scheme ? loaded.style : getFallbackMapStyle(scheme);
 }

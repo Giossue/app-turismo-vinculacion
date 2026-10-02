@@ -1,14 +1,33 @@
-import type { GeoCoordinate } from "@/core/geo/types";
+import type { StyleSpecification } from "@maplibre/maplibre-react-native";
+import type { GeoBoundingBox, GeoCoordinate } from "@/core/geo/types";
 import type { PublicCenter } from "@/features/centers/domain/public-center";
 import type { PublicMapEstablishment } from "@/features/establishments/domain/establishment";
 import type { EstablishmentMapGroup } from "@/features/establishments/domain/establishment-groups";
 import type { MapFeatureSelection } from "../domain/map-feature-selection";
+
+/** Public pins read from a downloaded city, never a remote viewport request. */
+export type LocalMapPlace = Readonly<{
+  key: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  icon: string;
+}>;
 
 /** Props shared by the native MapLibre map and its web placeholder. */
 export type CenterMapProps = Readonly<{
   /** Offset of the "i" attribution control from the bottom-left corner. */
   attributionInset?: Readonly<{ bottom?: number; left?: number }>;
   centers: readonly PublicCenter[];
+  /** Overrides the online style with the style saved alongside the map pack. */
+  mapStyleOverride?: StyleSpecification;
+  /** Fits the downloaded area once when the map becomes ready. */
+  initialBounds?: GeoBoundingBox;
+  /** Presence switches the registry source from remote MVT to local GeoJSON. */
+  localPlaces?: readonly LocalMapPlace[];
+  onLocalPlacePress?: (key: string) => void;
+  /** Published transport geometry chosen in the local city browser. */
+  localRoute?: GeoJSON.LineString | null;
   /** Registry pins (vector tiles): hidden, all, or only one map group. */
   establishmentLayer: Readonly<{
     visible: boolean;

@@ -45,11 +45,24 @@ export async function saveOfflineManifest(
 }
 
 export async function listStoredOfflineCities(): Promise<readonly string[]> {
+  const manifests = await listStoredOfflineManifests();
+  return manifests.map((manifest) => manifest.city.slug);
+}
+
+export async function getStoredOfflineManifest(
+  slug: string,
+): Promise<OfflineCityManifest | null> {
   const database = await getDatabase();
-  const rows = await database.getAllAsync<{ city_slug: string }>(
-    "SELECT city_slug FROM offline_city_manifests ORDER BY city_slug",
+  const row = await database.getFirstAsync<{ payload_json: string }>(
+    "SELECT payload_json FROM offline_city_manifests WHERE city_slug = ?",
+    slug,
   );
-  return rows.map((row) => row.city_slug);
+  return row ? parseStoredOfflineManifest(row.payload_json) : null;
+}
+
+export async function removeOfflineManifest(slug: string): Promise<void> {
+  const database = await getDatabase();
+  await database.runAsync("DELETE FROM offline_city_manifests WHERE city_slug = ?", slug);
 }
 
 export async function listStoredOfflineManifests(): Promise<

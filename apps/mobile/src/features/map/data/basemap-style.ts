@@ -8,6 +8,7 @@ const pendingStyles = new Map<
   TurismoColorScheme,
   Promise<StyleSpecification>
 >();
+const styleUrls = new Map<TurismoColorScheme, string>();
 
 /** URL of the self-hosted TileServer GL style, if this build configures one. */
 export function getSelfHostedStyleUrl(): string | undefined {
@@ -18,6 +19,7 @@ export function getSelfHostedStyleUrl(): string | undefined {
 export function getCachedSelfHostedMapStyle(
   scheme: TurismoColorScheme,
 ): StyleSpecification | null {
+  if (styleUrls.get(scheme) !== getSelfHostedStyleUrl()) return null;
   return styleCache.get(scheme) ?? null;
 }
 
@@ -28,7 +30,7 @@ export function getCachedSelfHostedMapStyle(
 export function loadSelfHostedMapStyle(
   scheme: TurismoColorScheme,
 ): Promise<StyleSpecification> {
-  const cached = styleCache.get(scheme);
+  const cached = getCachedSelfHostedMapStyle(scheme);
   if (cached) return Promise.resolve(cached);
 
   const pending = pendingStyles.get(scheme);
@@ -41,23 +43,86 @@ export function loadSelfHostedMapStyle(
     );
   }
 
-  const request = fetch(styleUrl)
-    .then(async (response) => {
-      if (!response.ok) {
-        throw new Error(
-          `Self-hosted basemap responded with ${response.status}`,
-        );
-      }
-      return normalizeSelfHostedStyle(await response.json(), scheme, styleUrl);
-    })
+  const request = loadPersistentOrRemoteStyle(scheme, styleUrl)
     .then((style) => {
-      styleCache.set(scheme, style);
+      cacheStyle(scheme, style, styleUrl);
       return style;
     })
     .finally(() => pendingStyles.delete(scheme));
 
   pendingStyles.set(scheme, request);
   return request;
+}
+
+async function loadPersistentOrRemoteStyle(
+  scheme: TurismoColorScheme,
+  styleUrl: string,
+): Promise<StyleSpecification> {
+  const { readStoredBasemapStyle, saveStoredBasemapStyles } = await import(
+    "./basemap-style-storage"
+  );
+  // No TTL: the resources in a downloaded pack must remain usable on restart.
+  const stored = await readStoredBasemapStyle(scheme, styleUrl).catch(() => null);
+  if (stored) return stored;
+  const styles = await fetchSelfHostedMapStyles(styleUrl);
+  await saveStoredBasemapStyles(styles, styleUrl).catch(() => undefined);
+  cacheStyle("light", styles.light, styleUrl);
+  cacheStyle("dark", styles.dark, styleUrl);
+  return styles[scheme];
+}
+
+/** Fresh, normalized styles sharing the exact same resources for a new pack. */
+export async function loadOfflineMapStyles(): Promise<
+  Readonly<Record<TurismoColorScheme, StyleSpecification>>
+> {
+  const styleUrl = getSelfHostedStyleUrl();
+  if (!styleUrl) throw new Error("No self-hosted basemap is configured");
+  const styles = await fetchSelfHostedMapStyles(styleUrl);
+  const { saveStoredBasemapStyles } = await import("./basemap-style-storage");
+  await saveStoredBasemapStyles(styles, styleUrl);
+  cacheStyle("light", styles.light, styleUrl);
+  cacheStyle("dark", styles.dark, styleUrl);
+  return styles;
+}
+
+async function fetchSelfHostedMapStyles(styleUrl: string) {
+  const response = await fetch(styleUrl);
+  if (!response.ok) {
+    throw new Error(`Self-hosted basemap responded with ${response.status}`);
+  }
+  const value: unknown = await response.json();
+  return {
+    light: normalizeSelfHostedStyle(value, "light", styleUrl),
+    dark: normalizeSelfHostedStyle(value, "dark", styleUrl),
+  };
+}
+
+function cacheStyle(
+  scheme: TurismoColorScheme,
+  style: StyleSpecification,
+  styleUrl: string,
+) {
+  styleCache.set(scheme, style);
+  styleUrls.set(scheme, styleUrl);
+}
+
+/** Reject corrupt styles before handing local JSON to the native renderer. */
+export function isValidBasemapStyle(value: unknown): value is StyleSpecification {
+  return (
+    isRecord(value) &&
+    value.version === 8 &&
+    isRecord(value.sources) &&
+    Object.values(value.sources).every(
+      (source) => isRecord(source) && typeof source.type === "string",
+    ) &&
+    Array.isArray(value.layers) &&
+    value.layers.every(
+      (layer) =>
+        isRecord(layer) &&
+        typeof layer.id === "string" &&
+        typeof layer.type === "string",
+    )
+  );
 }
 
 const fallbackStyles = new Map<TurismoColorScheme, StyleSpecification>();
@@ -95,7 +160,7 @@ export function normalizeSelfHostedStyle(
   scheme: TurismoColorScheme,
   styleUrl: string,
 ): StyleSpecification {
-  if (!isRecord(value)) {
+  if (!isValidBasemapStyle(value)) {
     throw new Error("The self-hosted basemap returned an invalid style");
   }
 
@@ -111,8 +176,17 @@ export function normalizeSelfHostedStyle(
       const normalizedSource = { ...source };
       const sourceUrl =
         typeof normalizedSource.url === "string"
-          ? new URL(normalizedSource.url, styleUrl).toString()
+          ? resolveResourceUrl(normalizedSource.url, styleUrl)
           : undefined;
+      if (sourceUrl) normalizedSource.url = sourceUrl;
+      if (Array.isArray(normalizedSource.tiles)) {
+        normalizedSource.tiles = normalizedSource.tiles.map((tile) =>
+          typeof tile === "string" ? resolveResourceUrl(tile, styleUrl) : tile,
+        );
+      }
+      if (typeof normalizedSource.data === "string") {
+        normalizedSource.data = resolveResourceUrl(normalizedSource.data, styleUrl);
+      }
       if (sourceUrl === tileJsonUrl) {
         // Conservar el TileJSON permite que MapLibre resuelva el template de
         // tiles y sus metadatos exactamente como los publica TileServer GL.
@@ -132,9 +206,23 @@ export function normalizeSelfHostedStyle(
 
   return {
     ...value,
+    ...(typeof value.glyphs === "string"
+      ? { glyphs: resolveResourceUrl(value.glyphs, styleUrl) }
+      : {}),
+    ...(typeof value.sprite === "string"
+      ? { sprite: resolveResourceUrl(value.sprite, styleUrl) }
+      : {}),
     layers: quietMapLayers(value.layers, scheme),
     sources: normalizedSources,
   } as unknown as StyleSpecification;
+}
+
+function resolveResourceUrl(value: string, styleUrl: string): string {
+  // URL serialisation escapes the placeholders MapLibre needs to substitute.
+  return new URL(value, styleUrl)
+    .toString()
+    .replace(/%7B/gi, "{")
+    .replace(/%7D/gi, "}");
 }
 
 function quietMapLayers(value: unknown, scheme: TurismoColorScheme): unknown {
