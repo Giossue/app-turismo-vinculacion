@@ -126,3 +126,23 @@ export function formatOfflineMapSize(
   if (bytes == null || !Number.isFinite(bytes) || bytes < 0) return null;
   return `${(bytes / (1024 * 1024)).toLocaleString("es", { maximumFractionDigits: 1 })} MB de mapa`;
 }
+
+/** Display only text supplied by the published route; never infer maneuvers. */
+export function getOfflineRouteInstructions(
+  directions: readonly unknown[],
+): readonly string[] {
+  return directions.flatMap((direction) => {
+    const instruction =
+      typeof direction === "string"
+        ? direction
+        : direction !== null &&
+            typeof direction === "object" &&
+            !Array.isArray(direction) &&
+            "instruction" in direction
+          ? direction.instruction
+          : null;
+    return typeof instruction === "string" && instruction.trim()
+      ? [instruction.trim()]
+      : [];
+  });
+}

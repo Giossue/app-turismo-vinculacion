@@ -4,6 +4,7 @@ import {
   filterOfflineBrowserItems,
   formatOfflineMapSize,
   getOfflineBrowserItems,
+  getOfflineRouteInstructions,
   mergeOfflineCities,
 } from "./offline-city-browser";
 
@@ -136,5 +137,22 @@ describe("downloaded city browser", () => {
     expect(formatOfflineMapSize(Number.NaN)).toBeNull();
     expect(formatOfflineMapSize(-1)).toBeNull();
     expect(formatOfflineMapSize(1024 * 1024)).toBe("1 MB de mapa");
+  });
+  it("shows published text from strings and instruction objects without fabricating missing directions", () => {
+    expect(
+      getOfflineRouteInstructions([
+        "  Camina hacia la plaza  ",
+        { instruction: " Continúa hacia el terminal " },
+        " ",
+        { instruction: "" },
+        { instruction: 42 },
+        { text: "Campo sin contrato" },
+        { maneuver: { type: "turn", modifier: "right" } },
+        ["No es una indicación de texto"],
+        null,
+        17,
+      ]),
+    ).toEqual(["Camina hacia la plaza", "Continúa hacia el terminal"]);
+    expect(getOfflineRouteInstructions([])).toEqual([]);
   });
 });

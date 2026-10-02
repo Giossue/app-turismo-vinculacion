@@ -33,6 +33,7 @@ import type { OfflineCityManifest } from "@/features/offline/domain/offline-city
 import {
   filterOfflineBrowserItems,
   getOfflineBrowserItems,
+  getOfflineRouteInstructions,
   type OfflineBrowserItem,
   type OfflinePlaceItem,
 } from "@/features/offline/presentation/offline-city-browser";
@@ -111,6 +112,10 @@ function OfflineCityBrowser({
   const location = useUserLocation();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<OfflineBrowserItem | null>(null);
+  const routeInstructions =
+    selected?.kind === "route"
+      ? getOfflineRouteInstructions(selected.route.directions)
+      : [];
   const [choices, setChoices] = useState<readonly MapFeatureSelection[] | null>(
     null,
   );
@@ -371,9 +376,8 @@ function OfflineCityBrowser({
               ) : (
                 <>
                   <Text style={[styles.body, { color: colors.text }]}>
-                    Recorrido de transporte publicado. Puedes verlo en el mapa y
-                    consultar estas indicaciones. No es una ruta calculada desde
-                    tu ubicación.
+                    Recorrido de transporte publicado. Puedes verlo en el mapa.
+                    No es una ruta calculada desde tu ubicación.
                   </Text>
                   {selected.route.durationMinutes !== null ? (
                     <Text style={[styles.body, { color: colors.text }]}>
@@ -384,19 +388,20 @@ function OfflineCityBrowser({
                       : {Math.round(selected.route.durationMinutes)} minutos.
                     </Text>
                   ) : null}
-                  {selected.route.directions
-                    .filter(
-                      (direction): direction is string =>
-                        typeof direction === "string",
-                    )
-                    .map((direction, index) => (
+                  {routeInstructions.length ? (
+                    routeInstructions.map((direction, index) => (
                       <Text
                         key={index}
                         style={[styles.body, { color: colors.text }]}
                       >
                         {direction}
                       </Text>
-                    ))}
+                    ))
+                  ) : (
+                    <Text style={[styles.body, { color: colors.textMuted }]}>
+                      Este recorrido no incluye indicaciones publicadas.
+                    </Text>
+                  )}
                   <Text style={[styles.caption, { color: colors.textMuted }]}>
                     El mapa de calles está disponible dentro de la zona
                     descargada. El recorrido puede continuar fuera de esa zona.

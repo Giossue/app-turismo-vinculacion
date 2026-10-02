@@ -37,6 +37,8 @@ No incorporar un motor nativo nuevo de cálculo de rutas ni modificar producció
 
 - Móvil: tipos, lint, formato, exportación web y 238 pruebas en 49 archivos correctos.
 - API: tipos, lint, formato, build y 191 pruebas en 37 archivos correctos.
+- El último ajuste de indicaciones publicadas conserva tanto texto directo como objetos
+  con `instruction`; sus cinco pruebas dirigidas, tipos y lint del móvil son correctos.
 - Se cubren snapshots públicos, límites de cobertura, actualización y borrado con fallos,
   persistencia por cuenta y apertura de rutas sin cálculo ni activación automática de GPS.
 - El estilo público normalizado y sus recursos se comprobaron por HTTP: estilo con 47
