@@ -119,6 +119,15 @@ React Native Paper es el único kit externo de componentes del móvil. Los compo
 `StyleSheet` se usa para layout nativo. NativeWind/Tailwind no forman parte de este cliente;
 la web se desarrollará en un repositorio separado.
 
+Los controles flotantes del mapa y los paneles de ruta usan `TourismGlassFill` para
+fondos y bordes adaptados al tema: los controles conservan transparencia y los paneles
+con texto usan una superficie opaca. Los nombres `TourismGlass*` se conservan
+por compatibilidad visual, pero el relleno es una `View`, sin `BlurView`, `BlurTargetView`
+ni capturas del fondo. `TourismGlassScope` monta su fondo en una `View` y comparte el
+contexto visual `emphasizeMapGlass`; no necesita referencias a vistas objetivo. Se retiró
+la dependencia `expo-blur`. Las sheets de Explorar y la hoja de menú conservan su
+superficie sólida y opaca; listas y formularios también usan fondos sólidos.
+
 Las pantallas secundarias usan `TourismScreenFrame` como shell compartido. Este componente
 centraliza safe areas, encabezado, ancho máximo de contenido y márgenes horizontales. Las
 pantallas principales viven en un `Tabs` de Expo Router con una barra inferior propia

@@ -30,12 +30,14 @@ acción `Menú` abre la hoja de menú de `TourismMenuProvider` (cabecera de perf
 «Cerrar sesión» al final).
 
 Los controles que flotan sobre el mapa (buscador, chips, botones y barra inferior) y los
-paneles de ruta usan vidrio con `TourismGlassFill` de
-`src/core/ui/tourism-glass.tsx` (material del sistema de `expo-blur`). Las sheets de
-Explorar y la hoja de menú usan una superficie sólida y opaca en todas sus alturas.
-El fondo que se desenfoca va en `TourismGlassScope` y lo flotante como hermano, nunca dentro
-(Android lo exige). Las pantallas de fondo liso (listas, formularios) mantienen superficies
-sólidas: ahí el vidrio no aporta.
+paneles de ruta usan fondos y bordes del tema con `TourismGlassFill` de
+`src/core/ui/tourism-glass.tsx`. Los nombres `TourismGlass*` conservan la estética de vidrio,
+pero se implementan con `View` y colores del tema, sin desenfoque ni capturas del fondo.
+Los controles conservan transparencia; los paneles con texto usan fondo opaco.
+`TourismGlassScope` monta el fondo en una `View` y comparte el contexto visual
+`emphasizeMapGlass`; no utiliza referencias a vistas objetivo. Las sheets de Explorar y
+la hoja de menú usan una superficie sólida y opaca en todas sus alturas. Las pantallas
+de fondo liso (listas, formularios) mantienen superficies sólidas.
 
 Toda sheet o panel inferior (fichas del mapa, panel de ruta, agente) usa
 `TourismSheetHandle` (`src/core/ui/tourism-sheet-handle.tsx`): barra de arrastre centrada y

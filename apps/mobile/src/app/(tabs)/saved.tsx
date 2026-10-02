@@ -5,10 +5,7 @@ import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismPressable } from "@/core/ui/tourism-pressable";
 import { TourismStateView } from "@/core/ui/tourism-state";
 import { TourismGlassScope } from "@/core/ui/tourism-glass";
-import {
-  useTourismTabBarInset,
-  useTourismTabGlassTarget,
-} from "@/core/ui/tourism-tab-bar";
+import { useTourismTabBarInset } from "@/core/ui/tourism-tab-bar";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
@@ -27,7 +24,6 @@ import type { SavedCenter } from "@/features/favorites/domain/saved-center";
 import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/saved-center-error-snackbar";
 
 export default function SavedScreen() {
-  const glassTarget = useTourismTabGlassTarget();
   return (
     <TourismGlassScope
       backdrop={
@@ -36,7 +32,6 @@ export default function SavedScreen() {
         </AuthGate>
       }
       style={styles.screen}
-      targetRef={glassTarget}
     />
   );
 }

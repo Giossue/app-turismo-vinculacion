@@ -187,7 +187,6 @@ export const turismoColors = {
     ripple: "rgba(0, 0, 0, 0.1)",
     // Vidrio de Explorar sobre el mapa: borde tenue y velo que aclara.
     glassMapBorder: "rgba(0, 0, 0, 0.07)",
-    glassMapWash: "rgba(255, 255, 255, 0.18)",
     onPrimary: "#ffffff",
     map: {
       background: "#E2ECE6",
@@ -226,7 +225,6 @@ export const turismoColors = {
     scrim: "rgba(0, 0, 0, 0.58)",
     ripple: "rgba(245, 245, 245, 0.12)",
     glassMapBorder: "rgba(245, 245, 245, 0.12)",
-    glassMapWash: "rgba(225, 225, 225, 0.12)",
     onPrimary: "#06130a",
     map: {
       background: "#10251A",

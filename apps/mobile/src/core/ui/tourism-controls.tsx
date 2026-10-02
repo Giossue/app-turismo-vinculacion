@@ -138,7 +138,7 @@ export function TourismSearchField({
 
 /**
  * Round icon button. `surface` draws the bordered map-control chip; `glass`
- * is the same chip in frosted glass, for controls floating over the map;
+ * uses a translucent theme fill, for controls floating over the map;
  * `ghost` keeps only the icon, for headers and toolbars that already have a
  * surface.
  */

@@ -1,13 +1,10 @@
-import { useIsFocused } from "expo-router";
 import {
   createContext,
   useContext,
   useEffect,
   useLayoutEffect,
-  useRef,
   useState,
   type ReactNode,
-  type RefObject,
 } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,7 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTurismoPalette } from "./theme-context";
 import {
   TourismGlassFill,
-  TourismGlassTargetProvider,
+  TourismGlassProvider,
   turismoGlassBorderWidth,
   useTourismGlassBorderColor,
 } from "./tourism-glass";
@@ -70,14 +67,6 @@ export function useTourismTabBarHidden(hidden: boolean): void {
   }, [hidden, setHidden]);
 }
 
-type GlassTarget = RefObject<View | null>;
-
-/** Vista de la pestaña visible, que desenfoca la barra en Android. */
-const TourismTabGlassContext = createContext<{
-  target: GlassTarget | null;
-  setTarget: (target: GlassTarget) => void;
-}>({ target: null, setTarget: () => undefined });
-
 export function TourismTabBarInsetProvider({
   children,
 }: Readonly<{ children: ReactNode }>) {
@@ -87,34 +76,17 @@ export function TourismTabBarInsetProvider({
   const inset = hidden
     ? 0
     : insets.bottom + barGap * 2 + (barHeight ?? estimatedBarHeight);
-  const [target, setTarget] = useState<GlassTarget | null>(null);
   return (
     <TourismTabBarHiddenSetterContext.Provider value={setHidden}>
       <TourismTabBarHiddenContext.Provider value={hidden}>
         <TourismTabBarInsetContext.Provider value={inset}>
           <TourismTabBarHeightContext.Provider value={setBarHeight}>
-            <TourismTabGlassContext.Provider value={{ target, setTarget }}>
-              {children}
-            </TourismTabGlassContext.Provider>
+            {children}
           </TourismTabBarHeightContext.Provider>
         </TourismTabBarInsetContext.Provider>
       </TourismTabBarHiddenContext.Provider>
     </TourismTabBarHiddenSetterContext.Provider>
   );
-}
-
-/**
- * Ref para el `targetRef` del `TourismGlassScope` raíz de una pestaña: mientras
- * la pestaña está visible, la barra flotante desenfoca ese fondo.
- */
-export function useTourismTabGlassTarget(): GlassTarget {
-  const ref = useRef<View>(null);
-  const focused = useIsFocused();
-  const { setTarget } = useContext(TourismTabGlassContext);
-  useEffect(() => {
-    if (focused) setTarget(ref);
-  }, [focused, setTarget]);
-  return ref;
 }
 
 /**
@@ -135,7 +107,6 @@ export function TourismTabBar({
     emphasizeMapGlass,
   );
   const insets = useSafeAreaInsets();
-  const { target } = useContext(TourismTabGlassContext);
   const setBarHeight = useContext(TourismTabBarHeightContext);
   const hidden = useContext(TourismTabBarHiddenContext);
   useEffect(
@@ -159,12 +130,9 @@ export function TourismTabBar({
         }
         style={[styles.bar, { borderColor: glassBorderColor }]}
       >
-        <TourismGlassTargetProvider
-          emphasizeMapGlass={emphasizeMapGlass}
-          target={target}
-        >
+        <TourismGlassProvider emphasizeMapGlass={emphasizeMapGlass}>
           <TourismGlassFill />
-        </TourismGlassTargetProvider>
+        </TourismGlassProvider>
         {items.map((item) => {
           const color = item.selected ? colors.primary : colors.textMuted;
           return (

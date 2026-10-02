@@ -8,7 +8,6 @@ import { TourismGlassScope } from "@/core/ui/tourism-glass";
 import {
   useTourismTabBarInset,
   useTourismTabBarHidden,
-  useTourismTabGlassTarget,
 } from "@/core/ui/tourism-tab-bar";
 import { useAgentConversation } from "@/features/agent/application/use-agent-conversation";
 import type { AgentRouteDestination } from "@/features/agent/domain/agent";
@@ -53,7 +52,6 @@ export function ExploreMapScreen() {
   const auth = useAuth();
   const menu = useTourismMenu();
   const tabBarInset = useTourismTabBarInset();
-  const glassTarget = useTourismTabGlassTarget();
   const { height, width } = useWindowDimensions();
   const landscape = width > height;
   const [bearingStore] = useState(createMapBearingStore);
@@ -223,7 +221,6 @@ export function ExploreMapScreen() {
       }
       emphasizeMapGlass
       style={[styles.screen, { backgroundColor: colors.map.background }]}
-      targetRef={glassTarget}
     >
       {search.focused ? (
         <SearchOverlay
