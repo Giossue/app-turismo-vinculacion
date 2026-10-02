@@ -2,6 +2,7 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
+import { TourismIconAction } from "@/core/ui/tourism-controls";
 import { turismoMetrics, turismoSpacing } from "@/core/ui/tokens";
 import {
   SearchModeChips,
@@ -18,24 +19,28 @@ const topEdges: readonly Edge[] = ["top"];
 
 /**
  * Search box over the map. Below it, the map filter chips; while a search is
- * active, the Atractivos / Servicios cercanos chips instead.
+ * active, the unified search source filters instead.
  */
 export function ExploreTopBar({
   field,
   landscape,
   mapFilter,
+  mapError,
   onMapFilterChange,
   onModeChange,
   onMoreFilters,
+  onRetryMap,
   refreshing,
   searchActive,
 }: Readonly<{
   field: SearchModeFieldProps;
   landscape: boolean;
   mapFilter: ExploreMapFilter;
+  mapError: unknown;
   onMapFilterChange: (filter: ExploreMapFilter) => void;
   onModeChange: (mode: SearchMode) => void;
   onMoreFilters: () => void;
+  onRetryMap: () => void;
   refreshing: boolean;
   searchActive: boolean;
 }>) {
@@ -51,6 +56,14 @@ export function ExploreTopBar({
           <View style={styles.field}>
             <SearchModeField {...field} glass />
           </View>
+          {mapError && !refreshing ? (
+            <TourismIconAction
+              accessibilityLabel="No pudimos actualizar los atractivos. Reintentar"
+              icon="refresh"
+              onPress={onRetryMap}
+              variant="glass"
+            />
+          ) : null}
         </View>
         {searchActive ? (
           <SearchModeChips mode={field.mode} onChange={onModeChange} />

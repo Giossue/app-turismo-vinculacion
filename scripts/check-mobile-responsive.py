@@ -292,6 +292,9 @@ def inspect_screen(adb, screen, profile, output):
             check(result, "Search IME leaves list visible", fullscreen is False, fullscreen=fullscreen)
             check(result, "Search field above keyboard", field is not None and top is not None and bounds(field)[3] <= top + 2)
             result_name = "Cafetería de prueba con un nombre extenso"
+            live_row = find(root, result_name, prefix=True)
+            live_bounds = bounds(live_row) if live_row is not None else (0, 0, 0, 0)
+            check(result, "Live option reachable above keyboard while typing", top is not None and live_row is not None and min(live_bounds[3], top) - live_bounds[1] >= 44, bounds=live_bounds, keyboardTop=top)
             root = reach(adb, root, result_name, profile, prefix=True, min_height=44)
             root = capture(adb, folder, "live-result")
             check_control(result, root, result_name, profile, prefix=True, min_height=44)

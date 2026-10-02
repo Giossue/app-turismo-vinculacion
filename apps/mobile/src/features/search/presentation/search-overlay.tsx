@@ -1,4 +1,12 @@
-import { KeyboardAvoidingView, Platform, StyleSheet, View } from "react-native";
+import { useEffect, useState } from "react";
+import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
@@ -58,6 +66,24 @@ export function SearchOverlay({
   searchError: unknown;
 }>) {
   const colors = useTurismoPalette();
+  const { width, height, fontScale } = useWindowDimensions();
+  const [keyboardVisible, setKeyboardVisible] = useState(() =>
+    Keyboard.isVisible(),
+  );
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", () =>
+      setKeyboardVisible(true),
+    );
+    const hide = Keyboard.addListener("keyboardDidHide", () =>
+      setKeyboardVisible(false),
+    );
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  const compact =
+    keyboardVisible && (width > height || fontScale >= 1.5 || height < 600);
   return (
     <SafeAreaView
       accessibilityViewIsModal
@@ -80,29 +106,40 @@ export function SearchOverlay({
           <View style={styles.field}>
             <SearchModeField {...field} autoFocus />
           </View>
+          {compact ? (
+            <TourismIconAction
+              accessibilityLabel="Filtros de búsqueda"
+              icon="sliders"
+              onPress={Keyboard.dismiss}
+              variant="ghost"
+            />
+          ) : null}
         </View>
         <SearchSuggestionsPanel
+          compact={compact}
           controls={
-            <View style={styles.filters}>
-              <SearchModeChips
-                glass={false}
-                mode={field.mode}
-                onChange={onModeChange}
-              />
-              <View style={styles.scope}>
-                <TourismChoiceChip
-                  label="Todo Ecuador"
-                  onPress={() => onScopeChange("country")}
-                  selected={scope === "country"}
+            !compact ? (
+              <View style={styles.filters}>
+                <SearchModeChips
+                  glass={false}
+                  mode={field.mode}
+                  onChange={onModeChange}
                 />
-                <TourismChoiceChip
-                  disabled={!areaAvailable}
-                  label="En esta zona"
-                  onPress={() => onScopeChange("area")}
-                  selected={scope === "area"}
-                />
+                <View style={styles.scope}>
+                  <TourismChoiceChip
+                    label="Todo Ecuador"
+                    onPress={() => onScopeChange("country")}
+                    selected={scope === "country"}
+                  />
+                  <TourismChoiceChip
+                    disabled={!areaAvailable}
+                    label="En esta zona"
+                    onPress={() => onScopeChange("area")}
+                    selected={scope === "area"}
+                  />
+                </View>
               </View>
-            </View>
+            ) : null
           }
           history={history}
           isSearching={isSearching}

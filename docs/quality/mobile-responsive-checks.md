@@ -58,12 +58,19 @@ en los componentes del producto. Después de cambiar su configuración, reinicia
 - Mensajes y tarjetas del agente, tiempos de llegada y compositor con teclado.
 - Panel de ruta compacto y expandido con destino largo.
 - Campos compartidos de formulario, scroll y acción final.
+- Búsqueda en vivo: lista bajo el campo, teclado, envío que conserva resultados y selección.
 - Tamaños estrechos y amplios, horizontal y fuente ampliada.
 
 La matriz predeterminada tiene nueve perfiles: 320×568, 360×640, 390×844 y 412×915
 con fuente 1.0; 640×360 y 844×390 horizontales con fuente 1.0; 360×640 con fuente
 1.5; 320×568 y 640×360 con fuente 2.0. Cada perfil reinicia las escenas; no prueba
 la conservación del estado al girar una conversación o ruta ya abierta.
+
+En la búsqueda, un teclado con poco espacio (horizontal, fuente ampliada o altura
+menor a 600 dp) deja una lista compacta de nombres e iconos. «Filtros de búsqueda»
+oculta el teclado y vuelve a mostrar tipos, alcance y detalles dentro de la misma
+interfaz. No abre una hoja inferior. El lector de pantalla conserva tipo, localidad
+y disponibilidad del mapa descargado incluso en la presentación compacta.
 
 El informe registra dimensiones y `fontScale` reportados por React Native. Una
 comprobación pasa cuando los controles esperados están presentes y se pueden
@@ -98,6 +105,22 @@ lint y las 255 pruebas existentes del paquete móvil (51 archivos).
 
 Este resultado corresponde a los componentes y fixtures descritos arriba; no es
 una aprobación de responsividad de todas las pantallas de la aplicación.
+
+### Búsqueda en vivo
+
+La escena `search` se verificó con el estado y la presentación reales del producto:
+360×640 con fuente 1.0, 640×360 con fuente 1.5 y 320×568 con fuente 2.0. Pasaron
+opciones alcanzables sobre el teclado, envío que conserva la lista y selección con
+un toque. La revisión visual detectó que los filtros tapaban las opciones en poco
+espacio; la lista compacta corrigió ese caso y pasó al repetirlo. Se revisaron las
+capturas finales, y el runner restauró tamaño, fuente y rotación del emulador.
+
+Evidencia local: `/tmp/turismo-search-qa/report.md` (vertical),
+`/tmp/turismo-search-qa-compact/report.md` (horizontal corregido; conserva también
+el intento previo de pantalla pequeña) y
+`/tmp/turismo-search-qa-small-final/report.md` (pantalla pequeña corregida).
+La escena no valida llamadas reales de API, selección en MapLibre ni iOS; los
+contratos, publicación, ranking, bounds y cancelación tienen pruebas separadas.
 
 ## Límites
 

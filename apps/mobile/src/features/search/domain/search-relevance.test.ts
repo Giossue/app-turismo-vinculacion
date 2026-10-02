@@ -25,7 +25,7 @@ const suggestion = (
 describe("search relevance", () => {
   it("ignores accents, case and punctuation", () => {
     expect(normalizeSearchText("  CAFÉ · Bolívar ")).toBe("cafe bolivar");
-    expect(getSearchRelevance("Cafeteria", "Cafetería", "")).toBe(500);
+    expect(getSearchRelevance("Cafeteria", "Cafetería", "")).toBe(600);
   });
   it("accepts category synonyms and plurals", () => {
     expect(
@@ -37,6 +37,10 @@ describe("search relevance", () => {
     expect(
       getSearchRelevance("cascadas", "Chorro Blanco", "Cascada"),
     ).toBeGreaterThan(0);
+    expect(getSearchRelevance("hoteles", "Los Pinos", "Hostería")).toBe(200);
+    expect(
+      getSearchRelevance("comer", "Los Pinos", "Alimentos y bebidas"),
+    ).toBe(200);
   });
   it("accepts one character typo/transposition but keeps short words strict", () => {
     expect(getSearchRelevance("cafetertia", "Cafetería", "")).toBeGreaterThan(
@@ -68,5 +72,7 @@ describe("search relevance", () => {
     expect(isValidSearchBounds([-78, -1.62, -79, -1.58])).toBe(false);
     expect(isValidSearchBounds([-79, NaN, -78, -1])).toBe(false);
     expect(isValidSearchBounds([-181, -1, -78, 1])).toBe(false);
+    expect(isValidSearchBounds([-79, -1, -79, 1])).toBe(false);
+    expect(isValidSearchBounds([-79, -1, -78, -1])).toBe(false);
   });
 });

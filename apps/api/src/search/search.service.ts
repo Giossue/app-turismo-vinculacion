@@ -166,17 +166,17 @@ export class SearchService {
     candidates.sort(
       (left, right) =>
         right.relevance - left.relevance ||
-        (left.item.distanceMeters ?? Infinity) -
-          (right.item.distanceMeters ?? Infinity),
+        (left.item.distanceMeters ?? Number.MAX_SAFE_INTEGER) -
+          (right.item.distanceMeters ?? Number.MAX_SAFE_INTEGER),
     );
     const seen = new Set<string>();
     const items = candidates
-      .flatMap(({ item }) => {
+      .flatMap(({ item, relevance }) => {
         if (!withinBounds(item.latitude, item.longitude, query)) return [];
         const identity = `${normalizeSearchText(item.title)}:${item.latitude.toFixed(5)}:${item.longitude.toFixed(5)}`;
         if (seen.has(identity)) return [];
         seen.add(identity);
-        return [item];
+        return [{ ...item, relevance }];
       })
       .slice(0, 24);
 
@@ -218,6 +218,7 @@ export class SearchService {
          JOIN provincias p ON p.id = ct.provincia_id
          LEFT JOIN rangos_jerarquia rj ON rj.id = c.jerarquia_id
         WHERE c.activo AND er.codigo = 'PUBLICADO'
+          AND c.codigo_atractivo IS NOT NULL
           AND c.latitud IS NOT NULL AND c.longitud IS NOT NULL
           AND ${boundsSql("c")}
           AND ${matchingSql("c.nombre", "CONCAT_WS(' ', c.descripcion, ca.nombre, ta.nombre, sa.nombre, pa.nombre, ct.nombre, p.nombre)")}
@@ -282,6 +283,9 @@ export function normalizedSearchSql(value: string): string {
 }
 
 function matchingSql(title: string, details: string): string {
+  // Taxonomy and description matches require scanning joined public rows. The
+  // disposable EXPLAIN fixture records this limit; no extra index is claimed to
+  // accelerate the complete OR expression without measured evidence.
   return `(${normalizedSearchSql(title)} LIKE '%' || $1 || '%'
     OR (length($1) >= 4 AND $1 <% ${normalizedSearchSql(title)})
     OR EXISTS (SELECT 1 FROM unnest($2::text[]) term

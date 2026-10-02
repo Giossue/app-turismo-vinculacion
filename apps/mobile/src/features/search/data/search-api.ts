@@ -21,6 +21,7 @@ const resultSchema = z.object({
   latitude: z.number().finite(),
   longitude: z.number().finite(),
   distanceMeters: z.number().finite().nonnegative().nullable().optional(),
+  relevance: z.number().finite().nonnegative().optional(),
   centerCode: z.string().min(1).optional(),
   category: z.string().nullable().optional(),
   type: z.string().nullable().optional(),

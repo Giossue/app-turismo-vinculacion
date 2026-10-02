@@ -126,6 +126,8 @@ export function useExploreQueries({
     isFetchingCenters: centersQuery.isFetching,
     isFetchingSearch: isSearching,
     isRefreshingMap: centersQuery.isFetching,
+    mapError: centersQuery.error,
+    retryMap: () => void centersQuery.refetch(),
     searchError: hasQuery && currentQuery ? publicSearch.error : null,
     changeCategory: (categoryCode: string | undefined) => {
       setFilters((current) => ({

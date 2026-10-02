@@ -7,6 +7,8 @@ export type SearchSuggestionItem = Readonly<{
   subtitle: string;
   kind: "center" | "establishment" | "geographic" | "poi" | "route";
   distanceMeters: number | null;
+  /** Shared text ranking tier, never displayed in the interface. */
+  relevance?: number;
   result?: PublicSearchResult;
   offline?: Readonly<{ slug: string; itemKey: string; cityName: string }>;
 }>;
@@ -35,8 +37,8 @@ export function isValidSearchBounds(
     bounds[2] <= 180 &&
     bounds[1] >= -90 &&
     bounds[3] <= 90 &&
-    bounds[0] <= bounds[2] &&
-    bounds[1] <= bounds[3],
+    bounds[0] < bounds[2] &&
+    bounds[1] < bounds[3],
   );
 }
 

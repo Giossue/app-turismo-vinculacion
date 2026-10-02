@@ -19,15 +19,16 @@ Si se genera un binario dedicado, su identificador es
 
 ## Escenarios
 
-Los enlaces `turismo-vinculacion://qa?screen=tabs|chat|route|form` seleccionan y reinician
+Los enlaces `turismo-vinculacion://qa?screen=tabs|chat|route|form|search` seleccionan y reinician
 cada escenario, incluso cuando ya está abierto:
 
-| Escenario | Controles para automatización                                                                                                           |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `tabs`    | Información, Opiniones, Fotos; Explorar, Guardados, Menú. La selección emite `QA_TAB:Opiniones`, etc.                                   |
-| `chat`    | Escribe una consulta al agente; Enviar mensaje; QA Reiniciar conversación. La tarjeta incluye los tres modos, Sin ruta y No disponible. |
-| `route`   | Iniciar navegación; Expandir detalles de la ruta; Contraer detalles de la ruta; QA Alternar panel de ruta. Arranca compacto.            |
-| `form`    | QA Nombre, QA Correo, QA Comentario, QA Enviar formulario. Al enviar muestra `QA_FORM:submitted`.                                       |
+| Escenario | Controles para automatización                                                                                                                                            |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `tabs`    | Información, Opiniones, Fotos; Explorar, Guardados, Menú. La selección emite `QA_TAB:Opiniones`, etc.                                                                    |
+| `chat`    | Escribe una consulta al agente; Enviar mensaje; QA Reiniciar conversación. La tarjeta incluye los tres modos, Sin ruta y No disponible.                                  |
+| `route`   | Iniciar navegación; Expandir detalles de la ruta; Contraer detalles de la ruta; QA Alternar panel de ruta. Arranca compacto.                                             |
+| `form`    | QA Nombre, QA Correo, QA Comentario, QA Enviar formulario. Al enviar muestra `QA_FORM:submitted`.                                                                        |
+| `search`  | QA Abrir búsqueda; Buscar atractivos, servicios y lugares; escribir `cafe`; enviar desde el teclado conserva la lista; seleccionar muestra `QA_SEARCH:selected:service`. |
 
 Cada escenario expone el nodo accesible y log
 `QA_METRICS:<screen>:<width>:<height>:<fontScale>` con dimensiones reales de React Native.
@@ -38,6 +39,11 @@ El resolver Metro sustituye **solo** `useAgentVoiceInput` por un fixture, porque
 instancia el grabador y usa Auth/transcripción. El chat, sus burbujas, tarjetas de tiempos,
 compositor, scroll y manejo de teclado son reales. Esta verificación no cubre login,
 permisos, audio, GPS, mapas, respuestas de la API ni iOS por ejecución en Android.
+
+La escena de búsqueda usa el estado y la lista del producto, con resultados ficticios.
+Comprueba opciones visibles sobre el teclado, permanencia después de enviar y selección
+con un toque. El historial guarda únicamente texto en el emulador aislado; no utiliza
+datos del teléfono. No consulta la API ni verifica la navegación del mapa real.
 
 El runner ADB y la preparación del emulador están documentados en
 [mobile-responsive-checks.md](../../../docs/quality/mobile-responsive-checks.md).

@@ -29,6 +29,7 @@ const kinds: Record<
 
 /** Unified live matches; the keyboard does not intercept result selection. */
 export function SearchSuggestionsPanel({
+  compact = false,
   controls,
   history,
   isSearching,
@@ -42,6 +43,7 @@ export function SearchSuggestionsPanel({
   query,
   searchError,
 }: Readonly<{
+  compact?: boolean;
   controls?: ReactNode;
   history: readonly string[];
   isSearching: boolean;
@@ -87,12 +89,14 @@ export function SearchSuggestionsPanel({
       ) : null}
       {hasQuery && items.length ? (
         <View>
-          <Text
-            accessibilityRole="header"
-            style={[styles.title, { color: colors.textMuted }]}
-          >
-            Resultados
-          </Text>
+          {!compact ? (
+            <Text
+              accessibilityRole="header"
+              style={[styles.title, { color: colors.textMuted }]}
+            >
+              Resultados
+            </Text>
+          ) : null}
           {items.map((item) => {
             const kind = kinds[item.kind];
             const meta = [kind.label, item.subtitle]
@@ -114,7 +118,11 @@ export function SearchSuggestionsPanel({
                 accessibilityRole="button"
                 key={item.key}
                 onPress={() => onSuggestionPress(item)}
-                style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+                style={({ pressed }) => [
+                  styles.row,
+                  compact && styles.compactRow,
+                  pressed && styles.pressed,
+                ]}
               >
                 <TurismoIcon
                   color={colors.primaryStrong}
@@ -125,10 +133,12 @@ export function SearchSuggestionsPanel({
                   <Text style={[styles.name, { color: colors.text }]}>
                     {item.title}
                   </Text>
-                  <Text style={[styles.meta, { color: colors.textMuted }]}>
-                    {meta}
-                  </Text>
-                  {localLabel ? (
+                  {!compact ? (
+                    <Text style={[styles.meta, { color: colors.textMuted }]}>
+                      {meta}
+                    </Text>
+                  ) : null}
+                  {localLabel && !compact ? (
                     <Text
                       style={[styles.meta, { color: colors.primaryStrong }]}
                     >
@@ -242,6 +252,7 @@ const styles = StyleSheet.create({
     paddingVertical: turismoSpacing.sm,
   },
   pressed: { opacity: turismoOpacity.pressed },
+  compactRow: { paddingVertical: turismoSpacing.xxs },
   rowCopy: { flex: 1, minWidth: 0 },
   name: { ...turismoTypography.label },
   meta: { ...turismoTypography.caption },

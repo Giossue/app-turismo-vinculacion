@@ -34,7 +34,7 @@ cd "$search_repo"
 printf 'Verificando búsqueda en PostgreSQL/PostGIS temporal.\n'
 while IFS= read -r search_migration; do
   case "$search_migration" in
-    *seed*|*demo*|*20261002_unified_search.sql) continue ;;
+    *seed*|*demo*) continue ;;
   esac
   search_database=turismo_vinculacion_app
   if [[ "$search_migration" == *00000000000000_initial.sql ]]; then search_database=postgres; fi
@@ -45,4 +45,4 @@ psql -X -v ON_ERROR_STOP=1 -d turismo_vinculacion_app \
   -f database/seeds/001_guaranda_desarrollo.sql >>"$search_log" 2>&1
 PUBLIC_SEARCH_TEST_PGHOST="$search_temp" \
   corepack pnpm --filter @turismo/api exec vitest run test/search.integration.spec.ts
-printf 'Búsqueda verificada antes y después de los índices, con publicación, ranking y área real.\n'
+printf 'Búsqueda verificada sobre el esquema existente, con publicación, relevancia y área real.\n'

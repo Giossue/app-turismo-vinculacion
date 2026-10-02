@@ -248,9 +248,11 @@ export function ExploreMapScreen() {
             field={searchField}
             landscape={landscape}
             mapFilter={data.mapFilter}
+            mapError={data.mapError}
             onMapFilterChange={data.changeMapFilter}
             onModeChange={search.changeMode}
             onMoreFilters={overlay.openMoreFilters}
+            onRetryMap={data.retryMap}
             refreshing={data.isRefreshingMap}
             searchActive={search.active}
           />

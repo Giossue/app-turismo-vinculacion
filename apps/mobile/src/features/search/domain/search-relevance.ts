@@ -2,8 +2,16 @@ import type { SearchSuggestionItem } from "./search-suggestion";
 
 const synonymGroups = [
   ["cafe", "cafes", "cafeteria", "cafeterias"],
-  ["hotel", "hoteles", "hostal", "hostales", "hospedaje", "alojamiento"],
-  ["restaurante", "restaurantes", "comida", "comer"],
+  [
+    "hotel",
+    "hoteles",
+    "hostal",
+    "hostales",
+    "hosteria",
+    "hospedaje",
+    "alojamiento",
+  ],
+  ["restaurante", "restaurantes", "comida", "comer", "alimentos y bebidas"],
   ["cascada", "cascadas"],
   ["museo", "museos"],
   ["parque", "parques"],
@@ -67,12 +75,17 @@ export function getSearchRelevance(
   if (normalized.length < 2) return 0;
   const name = normalizeSearchText(title);
   const details = normalizeSearchText(`${subtitle} ${extra}`);
-  if (name === normalized) return 500;
-  if (name.startsWith(normalized)) return 400;
-  if (name.includes(normalized)) return 300;
+  if (name === normalized) return 600;
+  if (name.startsWith(normalized)) return 500;
+  if (name.includes(normalized)) return 400;
+  const queryAliases = alternatives(normalized);
+  if (queryAliases.some((term) => name.includes(term))) return 300;
+  if (queryAliases.some((term) => details.includes(term))) return 200;
   const titleWords = name.split(" ");
   const detailWords = details.split(" ");
-  let score = 0;
+  let allTermsInTitle = true;
+  let needsFuzzyMatch = false;
+  let fuzzyTitleMatch = false;
   for (const term of normalized.split(" ")) {
     const terms = alternatives(term);
     const titleMatch = terms.some((candidate) =>
@@ -84,9 +97,14 @@ export function getSearchRelevance(
     const closeTitle = titleWords.some((word) => isCloseWord(term, word));
     const closeDetails = detailWords.some((word) => isCloseWord(term, word));
     if (!titleMatch && !detailsMatch && !closeTitle && !closeDetails) return 0;
-    score += titleMatch ? 200 : detailsMatch ? 100 : closeTitle ? 70 : 40;
+    if (!titleMatch) allTermsInTitle = false;
+    if (!titleMatch && !detailsMatch) {
+      needsFuzzyMatch = true;
+      if (closeTitle) fuzzyTitleMatch = true;
+    }
   }
-  return score / normalized.split(" ").length;
+  if (needsFuzzyMatch) return fuzzyTitleMatch ? 125 : 100;
+  return allTermsInTitle ? 300 : 200;
 }
 
 export function rankSearchSuggestions(
@@ -97,7 +115,8 @@ export function rankSearchSuggestions(
     .map((item, index) => ({
       item,
       index,
-      relevance: getSearchRelevance(query, item.title, item.subtitle),
+      relevance:
+        item.relevance ?? getSearchRelevance(query, item.title, item.subtitle),
     }))
     .sort(
       (a, b) =>

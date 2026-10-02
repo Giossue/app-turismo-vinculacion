@@ -1,5 +1,5 @@
 import { getDistanceMeters } from "@/core/geo/distance";
-import type { GeoCoordinate } from "@/core/geo/types";
+import type { GeoBoundingBox, GeoCoordinate } from "@/core/geo/types";
 import type { OfflineCityManifest } from "@/features/offline/domain/offline-city";
 import { getOfflineBrowserItems } from "@/features/offline/presentation/offline-city-browser";
 import {
@@ -24,10 +24,53 @@ function placeKey(
   return `${kind}:${normalizeSearchText(name)}:${coordinate.latitude.toFixed(5)}:${coordinate.longitude.toFixed(5)}`;
 }
 
+/** Clip each published segment against the visible rectangle, including edges. */
+function routeIntersectsBounds(
+  coordinates: readonly GeoJSON.Position[],
+  bounds: GeoBoundingBox,
+): boolean {
+  for (let index = 1; index < coordinates.length; index += 1) {
+    const first = coordinates[index - 1]!;
+    const second = coordinates[index]!;
+    let enter = 0;
+    let exit = 1;
+    let intersects = true;
+    for (const axis of [0, 1] as const) {
+      const start = first[axis];
+      const finish = second[axis];
+      if (
+        start === undefined ||
+        finish === undefined ||
+        !Number.isFinite(start) ||
+        !Number.isFinite(finish)
+      ) {
+        intersects = false;
+        break;
+      }
+      const minimum = bounds[axis];
+      const maximum = bounds[axis + 2]!;
+      const delta = finish - start;
+      if (delta === 0) {
+        if (start < minimum || start > maximum) intersects = false;
+      } else {
+        const firstEdge = (minimum - start) / delta;
+        const secondEdge = (maximum - start) / delta;
+        enter = Math.max(enter, Math.min(firstEdge, secondEdge));
+        exit = Math.min(exit, Math.max(firstEdge, secondEdge));
+        if (enter > exit) intersects = false;
+      }
+      if (!intersects) break;
+    }
+    if (intersects) return true;
+  }
+  return false;
+}
+
 export function getPublicSearchSuggestions(
   results: readonly PublicSearchResult[],
   coordinate: GeoCoordinate | null,
   filters: SearchFilters = {},
+  query = "",
 ): readonly SearchSuggestionItem[] {
   return results
     .filter(
@@ -43,6 +86,9 @@ export function getPublicSearchSuggestions(
       title: result.title,
       subtitle: result.subtitle,
       kind: result.kind,
+      relevance:
+        result.relevance ??
+        getSearchRelevance(query, result.title, result.subtitle),
       distanceMeters: coordinate
         ? (result.distanceMeters ?? getDistanceMeters(coordinate, result))
         : null,
@@ -78,8 +124,13 @@ export function getOfflineSearchSuggestions(
         item.kind === "place"
           ? `${item.description ?? ""} ${item.address ?? ""}`
           : "";
-      if (!getSearchRelevance(query, item.name, item.subtitle, extra))
-        return [];
+      const relevance = getSearchRelevance(
+        query,
+        item.name,
+        item.subtitle,
+        extra,
+      );
+      if (!relevance) return [];
       const itemCoordinate =
         item.kind === "place"
           ? item.coordinate
@@ -93,11 +144,9 @@ export function getOfflineSearchSuggestions(
         !filters.bounds ||
         (item.kind === "place"
           ? isInsideSearchBounds(item.coordinate, filters.bounds)
-          : item.route.geometry.coordinates.some(
-              ([longitude, latitude]) =>
-                longitude !== undefined &&
-                latitude !== undefined &&
-                isInsideSearchBounds({ longitude, latitude }, filters.bounds!),
+          : routeIntersectsBounds(
+              item.route.geometry.coordinates,
+              filters.bounds,
             ));
       if (!inArea) return [];
       return [
@@ -111,6 +160,7 @@ export function getOfflineSearchSuggestions(
           title: item.name,
           subtitle: `${item.subtitle} · ${manifest.city.name}`,
           kind,
+          relevance,
           distanceMeters:
             coordinate && itemCoordinate
               ? getDistanceMeters(coordinate, itemCoordinate)
@@ -175,7 +225,7 @@ export function buildSearchSuggestions({
   const online =
     onlineUnavailable || normalizeSearchText(query).length < 2
       ? []
-      : getPublicSearchSuggestions(onlineResults, coordinate, filters);
+      : getPublicSearchSuggestions(onlineResults, coordinate, filters, query);
   return {
     searchItems: rankSearchSuggestions(
       deduplicateSearchSuggestions([...online, ...local]),

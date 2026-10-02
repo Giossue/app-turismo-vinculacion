@@ -67,7 +67,7 @@ describe("SearchService", () => {
     expect(result.items[0]).not.toHaveProperty("id");
     expect(result.items[0]).not.toHaveProperty("ruc");
     expect(result.items[1]).not.toHaveProperty("osm_id");
-    expect(result.items[0]).not.toHaveProperty("relevance");
+    expect(result.items[0].relevance).toBe(600);
   });
 
   it("sorts equally relevant candidates across sources by distance", async () => {
@@ -81,6 +81,25 @@ describe("SearchService", () => {
         await search.search({ q: "cafe", latitude: -1.6, longitude: -79 })
       ).items.map((item) => item.kind),
     ).toEqual(["establishment", "geographic", "center"]);
+  });
+
+  it("preserves relevance from description or taxonomy above a fuzzy title", async () => {
+    const descriptionMatch = {
+      ...center,
+      title: "Mirador del río",
+      relevance: 200,
+    };
+    const fuzzyTitle = { ...establishment, title: "Caffa", relevance: 140 };
+    const { search } = service([descriptionMatch], [fuzzyTitle]);
+    const result = await search.search({
+      q: "cafe",
+      latitude: -1.601,
+      longitude: -79,
+    });
+    expect(result.items.map((item) => [item.title, item.relevance])).toEqual([
+      ["Mirador del río", 200],
+      ["Caffa", 140],
+    ]);
   });
 
   it.each(["center", "establishment", "geographic"] as const)(

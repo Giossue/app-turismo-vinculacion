@@ -69,19 +69,17 @@ describe("PhotonClient", () => {
       properties: { name: "Lugar", countrycode, osm_id: 10 },
       geometry: { coordinates: [longitude, latitude] },
     });
-    const fetcher = vi
-      .fn()
-      .mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          features: [
-            feature(-79, -1.6),
-            feature(-78, -1.6),
-            feature(-79, -1.6, "PE"),
-            feature(181, -1.6),
-          ],
-        }),
-      });
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        features: [
+          feature(-79, -1.6),
+          feature(-78, -1.6),
+          feature(-79, -1.6, "PE"),
+          feature(181, -1.6),
+        ],
+      }),
+    });
     const client = new PhotonClient(
       new ConfigService({
         GEOCODING_PHOTON_URL: "http://photon-ecuador:2322",

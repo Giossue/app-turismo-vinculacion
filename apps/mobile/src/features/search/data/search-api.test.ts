@@ -38,27 +38,26 @@ describe("searchPublicPlaces", () => {
   });
 
   it("sends kind and area bounding box without GPS and validates optional distance", async () => {
-    const fetcher = vi
-      .fn()
-      .mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          data: {
-            items: [
-              {
-                kind: "establishment",
-                source: "internal",
-                title: "Café",
-                subtitle: "Cafetería",
-                latitude: -1.59,
-                longitude: -79,
-                distanceMeters: 0,
-              },
-            ],
-            meta: { photonAvailable: false },
-          },
-        }),
-      });
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          items: [
+            {
+              kind: "establishment",
+              source: "internal",
+              title: "Café",
+              subtitle: "Cafetería",
+              latitude: -1.59,
+              longitude: -79,
+              distanceMeters: 0,
+              relevance: 400,
+            },
+          ],
+          meta: { photonAvailable: false },
+        },
+      }),
+    });
     const result = await searchPublicPlaces("  cafe  ", null, {
       apiUrl: "http://api.test/api/v1",
       fetcher,
@@ -75,6 +74,7 @@ describe("searchPublicPlaces", () => {
       north: "-1.58",
     });
     expect(result.items[0]?.distanceMeters).toBe(0);
+    expect(result.items[0]?.relevance).toBe(400);
   });
 
   it("passes cancellation through unchanged", async () => {

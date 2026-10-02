@@ -259,4 +259,112 @@ describe("unified downloaded search", () => {
       }),
     ).toEqual([]);
   });
+  it("includes published segments crossing the area even when both endpoints are outside", () => {
+    const bounds: [number, number, number, number] = [
+      -79.02, -1.62, -78.98, -1.58,
+    ];
+    const cases: readonly Readonly<{
+      coordinates: GeoJSON.Position[];
+      expected: number;
+    }>[] = [
+      {
+        coordinates: [
+          [-79.1, -1.6],
+          [-78.9, -1.6],
+        ],
+        expected: 1,
+      },
+      {
+        coordinates: [
+          [-79, -1.7],
+          [-79, -1.5],
+        ],
+        expected: 1,
+      },
+      {
+        coordinates: [
+          [-79.1, -1.58],
+          [-78.9, -1.58],
+        ],
+        expected: 1,
+      },
+      {
+        coordinates: [
+          [-79.1, -1.57],
+          [-78.9, -1.57],
+        ],
+        expected: 0,
+      },
+      {
+        coordinates: [
+          [-79.03, -1.58],
+          [-79.02, -1.57],
+        ],
+        expected: 0,
+      },
+    ];
+    for (const { coordinates, expected } of cases) {
+      const local = {
+        ...manifest,
+        routes: [
+          {
+            ...manifest.routes[0]!,
+            geometry: { type: "LineString" as const, coordinates },
+          },
+        ],
+      };
+      expect(
+        getOfflineSearchSuggestions([local], "terminal", null, {
+          kind: "geographic",
+          bounds,
+        }).filter((item) => item.kind === "route"),
+      ).toHaveLength(expected);
+    }
+  });
+  it("preserves server relevance and the local score of description matches ahead of fuzzy names", () => {
+    const remote: PublicSearchResult = {
+      ...remoteCenter,
+      kind: "geographic",
+      title: "Parque central",
+      subtitle: "Guaranda",
+      relevance: 300,
+    };
+    const fuzzy: PublicSearchResult = {
+      ...remoteCenter,
+      kind: "geographic",
+      title: "Panoramico",
+      subtitle: "",
+      latitude: -1.59,
+      longitude: -79,
+      relevance: 125,
+    };
+    const state = buildSearchSuggestions({
+      query: "panoramica",
+      manifests: [manifest],
+      onlineResults: [remote, fuzzy],
+      coordinate: { latitude: -1.59, longitude: -79 },
+      onlineUnavailable: false,
+    });
+    expect(
+      state.searchItems.map((item) => [item.title, item.relevance]),
+    ).toEqual([
+      ["Parque central", 300],
+      ["Mirador", 200],
+      ["Panoramico", 125],
+    ]);
+    expect(state.searchItems[1]?.offline?.itemKey).toBe("poi:P1");
+    const fallback = buildSearchSuggestions({
+      query: "panoramica",
+      manifests: [manifest],
+      onlineResults: [{ ...fuzzy, relevance: undefined }],
+      coordinate: null,
+      onlineUnavailable: false,
+    });
+    expect(
+      fallback.searchItems.map((item) => [item.title, item.relevance]),
+    ).toEqual([
+      ["Mirador", 200],
+      ["Panoramico", 125],
+    ]);
+  });
 });
