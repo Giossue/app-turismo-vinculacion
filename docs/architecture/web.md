@@ -8,7 +8,7 @@ cliente abre conexiones directas a PostgreSQL.
 ## Áreas
 
 - Pública: mapa básico, búsqueda, fichas, catastro y enlaces compartibles.
-- Cuenta turística: favoritos e itinerarios con funciones limitadas.
+- Cuenta turística: favoritos con funciones limitadas.
 - Operativa: captura, revisión, catálogos, transporte, moderación y auditoría.
 
 ## Stack

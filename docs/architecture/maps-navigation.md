@@ -62,7 +62,6 @@ externas solo cuando exista un workflow GIS que lo necesite.
 
 - Ruta calculada: resultado temporal del proveedor de rutas para un origen/destino y modo.
 - Ruta registrada: recorrido institucional de una cooperativa con paradas y horarios.
-- Itinerario: secuencia turística de visitas; puede requerir varias rutas calculadas.
 
 ## Ubicación desactivada
 

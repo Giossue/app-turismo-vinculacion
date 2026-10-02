@@ -16,14 +16,13 @@ Crear una carpeta por feature antes de implementarla con `specification.md`,
 9. Transporte, cooperativas, paradas y horarios.
 10. Favoritos, colecciones e historial controlado.
 11. Opiniones y moderación.
-12. Itinerarios.
-13. Asistente IA con fuentes.
-14. Multimedia y audioguías.
-15. Eventos, clima, alertas y notificaciones.
-16. Captura de fichas por administradores.
-17. Revisión y publicación.
-18. Catálogos e importaciones.
-19. Valoración, reportes y auditoría.
+12. Asistente IA con fuentes.
+13. Multimedia y audioguías.
+14. Eventos, clima, alertas y notificaciones.
+15. Captura de fichas por administradores.
+16. Revisión y publicación.
+17. Catálogos e importaciones.
+18. Valoración, reportes y auditoría.
 
 No implementar un módulo solo por aparecer aquí: definir alcance, dependencias y criterios
 de aceptación primero.

@@ -21,4 +21,16 @@ Eliminar la función de planes e itinerarios de la app.
 
 ## Estado
 
-En implementación.
+Implementado y verificado en código.
+
+## Resultados
+
+- API: 30 archivos de pruebas y 162 pruebas correctas.
+- Móvil: 41 archivos de pruebas y 190 pruebas correctas.
+- Formato, lint y TypeScript correctos en ambos paquetes.
+- Compilación de API y exportación web del móvil correctas.
+- Pruebas de regresión cubren la retirada del campo `itinerary`, la consulta rápida
+  y la herramienta de planificación; se conserva cobertura de rutas confirmadas,
+  catálogo, voz e historial voluntario.
+- Sin referencias de ejecución a servicios, pantallas o almacenamiento de planes.
+- No se probó manualmente en Android/iOS ni se realizó un despliegue.
