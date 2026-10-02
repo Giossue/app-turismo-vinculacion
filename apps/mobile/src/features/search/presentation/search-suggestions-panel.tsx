@@ -1,7 +1,9 @@
+import type { ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
-import { TurismoIcon } from "@/core/ui/turismo-icons";
+import { TourismStateView } from "@/core/ui/tourism-state";
+import { TurismoIcon, type TurismoIconName } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
   turismoMetrics,
@@ -9,74 +11,130 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
-import type { PublicCenter } from "@/features/centers/domain/public-center";
+import type {
+  OfflineSearchCoverage,
+  SearchSuggestionItem,
+} from "../domain/search-suggestion";
 
-/** Quick center matches while typing, or the recent searches when empty. */
+const kinds: Record<
+  SearchSuggestionItem["kind"],
+  { icon: TurismoIconName; label: string }
+> = {
+  center: { icon: "landmark", label: "Atractivo" },
+  establishment: { icon: "store", label: "Servicio" },
+  geographic: { icon: "mapPin", label: "Lugar" },
+  poi: { icon: "mapPinned", label: "Punto de interés" },
+  route: { icon: "route", label: "Recorrido" },
+};
+
+/** Unified live matches; the keyboard does not intercept result selection. */
 export function SearchSuggestionsPanel({
+  controls,
   history,
+  isSearching,
+  items,
+  offlineCoverage,
+  onlineUnavailable,
   onClearHistory,
   onRecentPress,
+  onRetry,
   onSuggestionPress,
   query,
-  suggestions,
+  searchError,
 }: Readonly<{
+  controls?: ReactNode;
   history: readonly string[];
+  isSearching: boolean;
+  items: readonly SearchSuggestionItem[];
+  offlineCoverage: readonly OfflineSearchCoverage[];
+  onlineUnavailable: boolean;
   onClearHistory: () => void;
   onRecentPress: (query: string) => void;
-  onSuggestionPress: (center: PublicCenter) => void;
+  onRetry: () => void;
+  onSuggestionPress: (item: SearchSuggestionItem) => void;
   query: string;
-  suggestions: readonly PublicCenter[];
+  searchError: unknown;
 }>) {
   const colors = useTurismoPalette();
-  const hasQuery = query.trim().length > 0;
-  const showHistory = !hasQuery && history.length > 0;
-  const showSuggestions = suggestions.length > 0;
-
+  const hasQuery = query.trim().length >= 2;
+  const showHistory = !query.trim() && history.length > 0;
+  const unavailable = onlineUnavailable || Boolean(searchError);
   return (
     <ScrollView
+      keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
       style={styles.panel}
+      contentContainerStyle={styles.content}
     >
-      {showSuggestions ? (
+      {controls}
+      {hasQuery && unavailable ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          style={[styles.notice, { color: colors.textMuted }]}
+        >
+          {offlineCoverage.length
+            ? `Búsqueda en línea no disponible. Solo puedes buscar en tus mapas descargados: ${offlineCoverage.map((city) => city.name).join(", ")}.`
+            : "Búsqueda en línea no disponible. No tienes mapas descargados para buscar sin conexión."}
+        </Text>
+      ) : null}
+      {hasQuery && isSearching ? (
+        <TourismStateView
+          layout="inline"
+          title="Buscando opciones"
+          variant="loading"
+        />
+      ) : null}
+      {hasQuery && items.length ? (
         <View>
           <Text
             accessibilityRole="header"
             style={[styles.title, { color: colors.textMuted }]}
           >
-            Coincidencias rápidas
+            Resultados
           </Text>
-          {suggestions.map((center) => {
-            const meta = [center.category, center.type]
+          {items.map((item) => {
+            const kind = kinds[item.kind];
+            const meta = [kind.label, item.subtitle]
               .filter(Boolean)
               .join(" · ");
+            const localLabel = item.offline
+              ? `Mapa descargado · ${item.offline.cityName}`
+              : "";
             return (
               <Pressable
-                accessibilityHint="Centra el mapa y abre la ficha turística"
-                accessibilityLabel={`${center.name}, ${meta}`}
+                accessibilityHint={
+                  item.offline
+                    ? "Abre este lugar en el mapa descargado"
+                    : "Muestra este lugar en el mapa"
+                }
+                accessibilityLabel={[item.title, meta, localLabel]
+                  .filter(Boolean)
+                  .join(", ")}
                 accessibilityRole="button"
-                key={center.code}
-                onPress={() => onSuggestionPress(center)}
+                key={item.key}
+                onPress={() => onSuggestionPress(item)}
                 style={({ pressed }) => [styles.row, pressed && styles.pressed]}
               >
                 <TurismoIcon
                   color={colors.primaryStrong}
-                  name="mapPin"
+                  name={kind.icon}
                   size={turismoIconSizes.sm}
                 />
                 <View style={styles.rowCopy}>
-                  <Text
-                    numberOfLines={1}
-                    style={[styles.name, { color: colors.text }]}
-                  >
-                    {center.name}
+                  <Text style={[styles.name, { color: colors.text }]}>
+                    {item.title}
                   </Text>
-                  <Text
-                    numberOfLines={1}
-                    style={[styles.meta, { color: colors.textMuted }]}
-                  >
+                  <Text style={[styles.meta, { color: colors.textMuted }]}>
                     {meta}
                   </Text>
+                  {localLabel ? (
+                    <Text
+                      style={[styles.meta, { color: colors.primaryStrong }]}
+                    >
+                      {localLabel}
+                    </Text>
+                  ) : null}
                 </View>
                 <TurismoIcon
                   color={colors.textFaint}
@@ -88,7 +146,23 @@ export function SearchSuggestionsPanel({
           })}
         </View>
       ) : null}
-
+      {hasQuery && !isSearching && !items.length ? (
+        <TourismStateView
+          layout="inline"
+          message={
+            unavailable
+              ? "Intenta nuevamente cuando tengas conexión."
+              : "Prueba otro nombre, tipo de lugar o amplía la búsqueda a Todo Ecuador."
+          }
+          onAction={unavailable ? onRetry : undefined}
+          title={
+            unavailable
+              ? "No pudimos completar la búsqueda"
+              : "No encontramos coincidencias"
+          }
+          variant={unavailable ? "error" : "empty"}
+        />
+      ) : null}
       {showHistory ? (
         <View>
           <View style={styles.historyHeader}>
@@ -101,7 +175,6 @@ export function SearchSuggestionsPanel({
             <Pressable
               accessibilityLabel="Borrar búsquedas recientes"
               accessibilityRole="button"
-              hitSlop={turismoSpacing.xxs}
               onPress={onClearHistory}
               style={styles.clear}
             >
@@ -124,7 +197,6 @@ export function SearchSuggestionsPanel({
                 size={turismoIconSizes.sm}
               />
               <Text
-                numberOfLines={1}
                 style={[styles.name, styles.rowCopy, { color: colors.text }]}
               >
                 {recentQuery}
@@ -133,10 +205,9 @@ export function SearchSuggestionsPanel({
           ))}
         </View>
       ) : null}
-
-      {hasQuery && !showSuggestions ? (
-        <Text style={[styles.empty, { color: colors.textMuted }]}>
-          Presiona buscar para ver todos los resultados.
+      {!hasQuery ? (
+        <Text style={[styles.notice, { color: colors.textMuted }]}>
+          Escribe al menos dos caracteres para buscar.
         </Text>
       ) : null}
     </ScrollView>
@@ -145,17 +216,17 @@ export function SearchSuggestionsPanel({
 
 const styles = StyleSheet.create({
   panel: { flex: 1 },
+  content: { paddingBottom: turismoSpacing.xl },
   historyHeader: {
     alignItems: "center",
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
-    paddingLeft: turismoSpacing.md,
   },
   title: {
     ...turismoTypography.caption,
     fontWeight: "700",
-    paddingHorizontal: turismoSpacing.md,
-    paddingTop: turismoSpacing.sm,
+    paddingVertical: turismoSpacing.sm,
   },
   clear: {
     justifyContent: "center",
@@ -168,15 +239,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: turismoSpacing.sm,
     minHeight: turismoMetrics.touchTarget,
-    paddingHorizontal: turismoSpacing.md,
+    paddingVertical: turismoSpacing.sm,
   },
   pressed: { opacity: turismoOpacity.pressed },
   rowCopy: { flex: 1, minWidth: 0 },
   name: { ...turismoTypography.label },
   meta: { ...turismoTypography.caption },
-  empty: {
-    ...turismoTypography.caption,
-    paddingHorizontal: turismoSpacing.md,
-    paddingVertical: turismoSpacing.md,
-  },
+  notice: { ...turismoTypography.caption, paddingVertical: turismoSpacing.sm },
 });

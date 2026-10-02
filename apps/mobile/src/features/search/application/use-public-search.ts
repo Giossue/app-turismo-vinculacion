@@ -3,7 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/core/api/query-keys";
 import type { GeoCoordinate } from "@/core/geo/types";
 import { searchPublicPlaces } from "../data/search-api";
-import { isValidSearchBounds, type SearchFilters } from "../domain/search-suggestion";
+import {
+  isValidSearchBounds,
+  type SearchFilters,
+} from "../domain/search-suggestion";
 
 export function usePublicSearch(
   query: string,
@@ -30,8 +33,12 @@ export function getPublicSearchQueryOptions(
       filters.kind ?? null,
       bounds,
     ],
-    queryFn: ({ signal }: Readonly<{signal: AbortSignal}>) =>
-      searchPublicPlaces(normalizedQuery, coordinate, { signal, kind: filters.kind, bounds }),
+    queryFn: ({ signal }: Readonly<{ signal: AbortSignal }>) =>
+      searchPublicPlaces(normalizedQuery, coordinate, {
+        signal,
+        kind: filters.kind,
+        bounds,
+      }),
     enabled: normalizedQuery.length >= 2 && filters.enabled !== false,
     staleTime: 60_000,
     retry: 1,

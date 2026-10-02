@@ -27,8 +27,12 @@ export function SearchModeField({
     <TourismSearchField
       accessibilityLabel={
         mode === "ESTABLISHMENTS"
-          ? "Buscar servicios cercanos"
-          : "Buscar atractivos"
+          ? "Buscar servicios"
+          : mode === "CENTERS"
+            ? "Buscar atractivos"
+            : mode === "GEOGRAPHIC"
+              ? "Buscar lugares y direcciones"
+              : "Buscar atractivos, servicios y lugares"
       }
       autoFocus={autoFocus}
       glass={glass}

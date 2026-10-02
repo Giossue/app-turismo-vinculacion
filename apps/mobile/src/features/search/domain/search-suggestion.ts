@@ -30,13 +30,13 @@ export function isValidSearchBounds(
 ): bounds is GeoBoundingBox {
   return Boolean(
     bounds &&
-      bounds.every(Number.isFinite) &&
-      bounds[0] >= -180 &&
-      bounds[2] <= 180 &&
-      bounds[1] >= -90 &&
-      bounds[3] <= 90 &&
-      bounds[0] <= bounds[2] &&
-      bounds[1] <= bounds[3],
+    bounds.every(Number.isFinite) &&
+    bounds[0] >= -180 &&
+    bounds[2] <= 180 &&
+    bounds[1] >= -90 &&
+    bounds[3] <= 90 &&
+    bounds[0] <= bounds[2] &&
+    bounds[1] <= bounds[3],
   );
 }
 

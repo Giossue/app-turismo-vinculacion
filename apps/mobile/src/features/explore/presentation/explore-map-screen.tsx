@@ -9,15 +9,14 @@ import {
   useTourismTabBarInset,
   useTourismTabGlassTarget,
 } from "@/core/ui/tourism-tab-bar";
-import { TourismStateView } from "@/core/ui/tourism-state";
 import { useAgentConversation } from "@/features/agent/application/use-agent-conversation";
 import type { AgentRouteDestination } from "@/features/agent/domain/agent";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { buildLoginHref } from "@/features/auth/application/login-href";
-import type { PublicCenter } from "@/features/centers/domain/public-center";
 import { EstablishmentDetailSheet } from "@/features/establishments/presentation/establishment-detail-sheet";
 import { defaultEstablishmentPin } from "@/features/establishments/presentation/establishment-pins";
 import { CenterMap } from "@/features/map/presentation/center-map";
+import type { CenterMapViewport } from "@/features/map/presentation/center-map.types";
 import { createMapBearingStore } from "@/features/map/presentation/map-bearing-store";
 import { MapFeatureSelectionSheet } from "@/features/map/presentation/map-feature-selection-sheet";
 import type { RouteMode } from "@/features/routing/domain/routing";
@@ -26,7 +25,10 @@ import {
   type RouteDestination,
 } from "@/features/routing/presentation/route-href";
 import type { PublicSearchResult } from "@/features/search/domain/search-result";
-import { getCenterSuggestions } from "@/features/search/presentation/center-suggestions";
+import type {
+  SearchScope,
+  SearchSuggestionItem,
+} from "@/features/search/domain/search-suggestion";
 import type { SearchModeFieldProps } from "@/features/search/presentation/search-mode-field";
 import { SearchOverlay } from "@/features/search/presentation/search-overlay";
 import { useExploreLocationFocus } from "../application/use-explore-location-focus";
@@ -36,13 +38,11 @@ import {
 } from "../application/use-explore-overlay";
 import { useExploreQueries } from "../application/use-explore-queries";
 import { useExploreSearch } from "../application/use-explore-search";
-import {} from "../domain/explore-overlay";
 import { getSearchPlaceTarget } from "../domain/search-place-target";
 import { ExploreAgentSheet } from "./explore-agent-sheet";
 import { ExploreMoreFiltersSheet } from "./explore-more-filters-sheet";
 import { ExploreCenterSheet } from "./explore-center-sheet";
 import { ExploreMapActions } from "./explore-map-actions";
-import { ExploreResultsSheet } from "./explore-results-sheet";
 import { ExploreTopBar } from "./explore-top-bar";
 
 /** Full-screen map with search, map controls and one overlay at a time. */
@@ -57,6 +57,9 @@ export function ExploreMapScreen() {
   const landscape = width > height;
   const [bearingStore] = useState(createMapBearingStore);
   const [resetNorthKey, setResetNorthKey] = useState(0);
+  const [viewport, setViewport] = useState<CenterMapViewport | null>(null);
+  const [scope, setScope] = useState<SearchScope>("country");
+  const [selectedFromSearch, setSelectedFromSearch] = useState(false);
   const location = useExploreLocationFocus();
   const overlay = useExploreOverlay();
   const conversation = useAgentConversation();
@@ -68,8 +71,10 @@ export function ExploreMapScreen() {
   });
   const data = useExploreQueries({
     mode: search.mode,
-    submittedQuery: search.submittedQuery,
+    query: search.focused ? search.text : "",
+    scope,
     userLocation: location.userLocation,
+    viewport,
   });
   const current = overlay.overlay;
   useEffect(() => {
@@ -91,10 +96,11 @@ export function ExploreMapScreen() {
   // barra); en otra pestaña no se muestran, pero su estado se conserva.
   const focused = useIsFocused();
 
-  /** Closing a center returns to the submitted results, if any. */
-  const closeCenter = () => {
-    if (search.submittedQuery) overlay.close();
-    else search.clear();
+  /** A selected result returns to the same live list when its detail closes. */
+  const closeDetail = () => {
+    overlay.close();
+    if (selectedFromSearch) search.beginFocus();
+    setSelectedFromSearch(false);
   };
 
   useExploreBackHandler(
@@ -107,7 +113,10 @@ export function ExploreMapScreen() {
     {
       clearSearch: search.clear,
       closeMenu: menu.closeMenu,
-      closeOverlay: current.kind === "center" ? closeCenter : overlay.close,
+      closeOverlay:
+        current.kind === "center" || current.kind === "establishment"
+          ? closeDetail
+          : overlay.close,
       closeSearchFocus: search.closeFocus,
     },
   );
@@ -124,6 +133,7 @@ export function ExploreMapScreen() {
   // Overlays close before navigating so no sheet stays over the next screen.
   const openRoute = (destination: RouteDestination) => {
     overlay.close();
+    setSelectedFromSearch(false);
     router.push(buildRouteHref(destination));
   };
   const openAgentRoute = (
@@ -143,25 +153,21 @@ export function ExploreMapScreen() {
     if (target?.kind === "feature") overlay.focusFeature(target.selection);
     else if (target) search.showPlace(target.title, target.coordinate);
   };
-  const selectSuggestion = (center: PublicCenter) => {
-    search.remember(center.name);
+  const selectSuggestion = (item: SearchSuggestionItem) => {
+    search.remember(search.text.trim() || item.title);
     search.closeFocus();
-    overlay.focusFeature({ kind: "center", center });
+    if (item.offline) {
+      overlay.close();
+      setSelectedFromSearch(false);
+      router.push({
+        pathname: "/offline-city",
+        params: { slug: item.offline.slug, itemKey: item.offline.itemKey },
+      });
+    } else if (item.result) {
+      setSelectedFromSearch(true);
+      selectSearchPlace(item.result);
+    }
   };
-
-  if (data.failed) {
-    return (
-      <View style={[styles.screen, { backgroundColor: colors.background }]}>
-        <TourismStateView
-          actionLabel={data.isFetchingCenters ? "Actualizando…" : undefined}
-          actionPending={data.isFetchingCenters}
-          onAction={data.retrySearch}
-          title="No pudimos cargar el mapa turístico."
-          variant="error"
-        />
-      </View>
-    );
-  }
 
   const searchField: SearchModeFieldProps = {
     mode: search.mode,
@@ -194,10 +200,17 @@ export function ExploreMapScreen() {
               current.kind === "focusing" ? current.selection : null
             }
             onBearingChange={bearingStore.setBearing}
-            onCenterPress={overlay.selectCenter}
-            onEstablishmentPress={overlay.selectEstablishment}
+            onCenterPress={(center) => {
+              setSelectedFromSearch(false);
+              overlay.selectCenter(center);
+            }}
+            onEstablishmentPress={(establishment) => {
+              setSelectedFromSearch(false);
+              overlay.selectEstablishment(establishment);
+            }}
             onLocationFocusChange={location.onLocationFocusChange}
             onOverlappingFeaturePress={overlay.showChoices}
+            onViewportChange={setViewport}
             resetNorthKey={resetNorthKey}
             userLocation={location.userLocation}
           />
@@ -209,17 +222,22 @@ export function ExploreMapScreen() {
     >
       {search.focused ? (
         <SearchOverlay
+          areaAvailable={viewport !== null}
           field={searchField}
           history={search.history}
+          isSearching={data.isSearching}
+          items={data.searchItems}
+          offlineCoverage={data.offlineCoverage}
+          onlineUnavailable={data.onlineUnavailable}
           onClearHistory={search.clearHistory}
           onClose={search.closeFocus}
+          onModeChange={search.changeMode}
           onRecentPress={search.repeat}
+          onRetry={data.retrySearch}
+          onScopeChange={setScope}
           onSuggestionPress={selectSuggestion}
-          suggestions={
-            search.mode === "CENTERS"
-              ? getCenterSuggestions(data.centers, search.text)
-              : []
-          }
+          scope={scope}
+          searchError={data.searchError}
         />
       ) : (
         <>
@@ -245,37 +263,6 @@ export function ExploreMapScreen() {
             onResetNorth={() => setResetNorthKey((key) => key + 1)}
             showLocate={location.showLocateAction}
           />
-          {focused && current.kind === "none" && search.submittedQuery ? (
-            <ExploreResultsSheet
-              centerResults={{
-                categories: data.categories,
-                centers: data.centers,
-                error: data.searchError,
-                isFetching: data.isFetchingSearch,
-                onCategoryChange: data.changeCategory,
-                onRetry: data.retrySearch,
-                onSelectCenter: (center) =>
-                  overlay.focusFeature({ kind: "center", center }),
-                onSelectPlace: selectSearchPlace,
-                onToggleSortByDistance: search.toggleSortByDistance,
-                places: data.publicSearch.data?.items ?? [],
-                selectedCategory: data.filters.categoryCode,
-                sortByDistance: search.sortByDistance,
-                userLocation: location.userLocation,
-              }}
-              establishmentResults={{
-                data: data.nearbyEstablishments.data,
-                error: data.nearbyEstablishments.error,
-                hasLocation: location.userLocation !== null,
-                isFetching: data.nearbyEstablishments.isFetching,
-                onRequestLocation: location.locate,
-                onRetry: () => void data.nearbyEstablishments.refetch(),
-              }}
-              mode={search.mode}
-              onClose={search.clear}
-              query={search.submittedQuery}
-            />
-          ) : null}
           {focused && current.kind === "moreFilters" ? (
             <ExploreMoreFiltersSheet
               filter={data.mapFilter}
@@ -297,7 +284,7 @@ export function ExploreMapScreen() {
             <ExploreCenterSheet
               center={selectedCenter}
               key={selectedCenter.code}
-              onClose={closeCenter}
+              onClose={closeDetail}
               onOpenRoute={() => openRoute(selectedCenter)}
               onRequireAuth={openAuth}
             />
@@ -305,7 +292,7 @@ export function ExploreMapScreen() {
           {focused && current.kind === "establishment" ? (
             <EstablishmentDetailSheet
               establishment={current.establishment}
-              onClose={overlay.close}
+              onClose={closeDetail}
               onOpenRoute={() => openRoute(current.establishment)}
             />
           ) : null}

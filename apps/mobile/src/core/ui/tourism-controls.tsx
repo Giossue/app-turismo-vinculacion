@@ -103,6 +103,7 @@ export function TourismSearchField({
         accessibilityLabel={accessibilityLabel}
         autoCapitalize="none"
         autoFocus={autoFocus}
+        disableFullscreenUI
         onBlur={onBlur}
         onChangeText={onChangeText}
         onFocus={onFocus}

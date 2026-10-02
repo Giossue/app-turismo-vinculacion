@@ -1,10 +1,18 @@
-import { StyleSheet, View } from "react-native";
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
-import { TourismIconAction } from "@/core/ui/tourism-controls";
+import {
+  TourismChoiceChip,
+  TourismIconAction,
+} from "@/core/ui/tourism-controls";
 import { turismoMetrics, turismoSpacing } from "@/core/ui/tokens";
-import type { PublicCenter } from "@/features/centers/domain/public-center";
+import type {
+  OfflineSearchCoverage,
+  SearchScope,
+  SearchSuggestionItem,
+} from "../domain/search-suggestion";
+import { SearchModeChips, type SearchMode } from "./search-mode-chips";
 import {
   SearchModeField,
   type SearchModeFieldProps,
@@ -13,26 +21,41 @@ import { SearchSuggestionsPanel } from "./search-suggestions-panel";
 
 const overlayEdges: readonly Edge[] = ["top", "bottom"];
 
-/**
- * Full-screen search over the map. Leaving the text box (keyboard hidden,
- * submit or "Volver al mapa") closes it through `onClose`.
- */
+/** The list stays under the field until an explicit Back or result selection. */
 export function SearchOverlay({
+  areaAvailable,
   field,
   history,
+  isSearching,
+  items,
+  offlineCoverage,
+  onlineUnavailable,
   onClearHistory,
   onClose,
+  onModeChange,
   onRecentPress,
+  onRetry,
+  onScopeChange,
   onSuggestionPress,
-  suggestions,
+  scope,
+  searchError,
 }: Readonly<{
+  areaAvailable: boolean;
   field: SearchModeFieldProps;
   history: readonly string[];
+  isSearching: boolean;
+  items: readonly SearchSuggestionItem[];
+  offlineCoverage: readonly OfflineSearchCoverage[];
+  onlineUnavailable: boolean;
   onClearHistory: () => void;
   onClose: () => void;
+  onModeChange: (mode: SearchMode) => void;
   onRecentPress: (query: string) => void;
-  onSuggestionPress: (center: PublicCenter) => void;
-  suggestions: readonly PublicCenter[];
+  onRetry: () => void;
+  onScopeChange: (scope: SearchScope) => void;
+  onSuggestionPress: (item: SearchSuggestionItem) => void;
+  scope: SearchScope;
+  searchError: unknown;
 }>) {
   const colors = useTurismoPalette();
   return (
@@ -41,34 +64,70 @@ export function SearchOverlay({
       edges={overlayEdges}
       style={[styles.overlay, { backgroundColor: colors.background }]}
     >
-      <View style={styles.header}>
-        <TourismIconAction
-          accessibilityLabel="Volver al mapa"
-          icon="arrowLeft"
-          onPress={onClose}
-          style={styles.back}
-          variant="ghost"
-        />
-        <View style={styles.field}>
-          <SearchModeField {...field} autoFocus onBlur={onClose} />
+      <KeyboardAvoidingView
+        behavior="padding"
+        enabled={Platform.OS === "ios"}
+        style={styles.content}
+      >
+        <View style={styles.header}>
+          <TourismIconAction
+            accessibilityLabel="Volver al mapa"
+            icon="arrowLeft"
+            onPress={onClose}
+            style={styles.back}
+            variant="ghost"
+          />
+          <View style={styles.field}>
+            <SearchModeField {...field} autoFocus />
+          </View>
         </View>
-      </View>
-      <SearchSuggestionsPanel
-        history={history}
-        onClearHistory={onClearHistory}
-        onRecentPress={onRecentPress}
-        onSuggestionPress={onSuggestionPress}
-        query={field.value}
-        suggestions={suggestions}
-      />
+        <SearchSuggestionsPanel
+          controls={
+            <View style={styles.filters}>
+              <SearchModeChips
+                glass={false}
+                mode={field.mode}
+                onChange={onModeChange}
+              />
+              <View style={styles.scope}>
+                <TourismChoiceChip
+                  label="Todo Ecuador"
+                  onPress={() => onScopeChange("country")}
+                  selected={scope === "country"}
+                />
+                <TourismChoiceChip
+                  disabled={!areaAvailable}
+                  label="En esta zona"
+                  onPress={() => onScopeChange("area")}
+                  selected={scope === "area"}
+                />
+              </View>
+            </View>
+          }
+          history={history}
+          isSearching={isSearching}
+          items={items}
+          offlineCoverage={offlineCoverage}
+          onlineUnavailable={onlineUnavailable}
+          onClearHistory={onClearHistory}
+          onRecentPress={onRecentPress}
+          onRetry={onRetry}
+          onSuggestionPress={onSuggestionPress}
+          query={field.value}
+          searchError={searchError}
+        />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFill,
-    paddingHorizontal: turismoSpacing.md,
+  overlay: { ...StyleSheet.absoluteFill, paddingHorizontal: turismoSpacing.md },
+  content: {
+    alignSelf: "center",
+    flex: 1,
+    maxWidth: turismoMetrics.contentMaxWidth,
+    width: "100%",
   },
   header: {
     alignItems: "center",
@@ -79,5 +138,7 @@ const styles = StyleSheet.create({
     height: turismoMetrics.touchTarget,
     width: turismoMetrics.touchTarget,
   },
-  field: { flex: 1 },
+  field: { flex: 1, minWidth: 0 },
+  filters: { gap: turismoSpacing.sm, paddingVertical: turismoSpacing.sm },
+  scope: { flexDirection: "row", flexWrap: "wrap", gap: turismoSpacing.xs },
 });

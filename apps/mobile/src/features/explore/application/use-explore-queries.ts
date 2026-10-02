@@ -18,7 +18,10 @@ import {
   type SearchViewport,
 } from "@/features/search/domain/search-suggestion";
 import type { SearchMode } from "@/features/search/presentation/search-mode-chips";
-import { toggleMapFilter, type ExploreMapFilter } from "../domain/explore-map-filter";
+import {
+  toggleMapFilter,
+  type ExploreMapFilter,
+} from "../domain/explore-map-filter";
 
 /** Live search stays separate from the map catalog; typing never removes pins. */
 export function useExploreQueries({
@@ -47,11 +50,25 @@ export function useExploreQueries({
   const debouncedQuery = useDebouncedSearchText(normalizedQuery);
   const hasQuery = normalizedQuery.length >= 2;
   const currentQuery = normalizedQuery === debouncedQuery;
-  const areaAvailable = scope !== "area" || isValidSearchBounds(viewport?.bounds);
-  const searchFilters = useMemo<SearchFilters>(() => ({
-    kind: mode === "CENTERS" ? "center" : mode === "ESTABLISHMENTS" ? "establishment" : mode === "GEOGRAPHIC" ? "geographic" : undefined,
-    bounds: scope === "area" && isValidSearchBounds(viewport?.bounds) ? viewport.bounds : null,
-  }), [mode, scope, viewport?.bounds]);
+  const areaAvailable =
+    scope !== "area" || isValidSearchBounds(viewport?.bounds);
+  const searchFilters = useMemo<SearchFilters>(
+    () => ({
+      kind:
+        mode === "CENTERS"
+          ? "center"
+          : mode === "ESTABLISHMENTS"
+            ? "establishment"
+            : mode === "GEOGRAPHIC"
+              ? "geographic"
+              : undefined,
+      bounds:
+        scope === "area" && isValidSearchBounds(viewport?.bounds)
+          ? viewport.bounds
+          : null,
+    }),
+    [mode, scope, viewport?.bounds],
+  );
   // Existing foreground location is optional; browsing never requests GPS.
   const coordinate = userLocation ?? viewport?.center ?? null;
   const publicSearch = usePublicSearch(debouncedQuery, coordinate, {
@@ -60,24 +77,40 @@ export function useExploreQueries({
   });
   // Kept for older result components. Unified search uses /search for services.
   const nearbyEstablishments = useNearbyEstablishments(null);
-  const onlineUnavailable = hasQuery && currentQuery && (publicSearch.isError || publicSearch.isPaused);
-  const suggestions = useMemo(() => buildSearchSuggestions({
-    query: areaAvailable ? normalizedQuery : "",
-    manifests: areaAvailable ? stored.manifests : [],
-    onlineResults: currentQuery ? publicSearch.data?.items ?? [] : [],
-    coordinate,
-    filters: searchFilters,
-    onlineUnavailable,
-  }), [areaAvailable, normalizedQuery, stored.manifests, currentQuery, publicSearch.data, coordinate, searchFilters, onlineUnavailable]);
+  const onlineUnavailable =
+    hasQuery && currentQuery && (publicSearch.isError || publicSearch.isPaused);
+  const suggestions = useMemo(
+    () =>
+      buildSearchSuggestions({
+        query: areaAvailable ? normalizedQuery : "",
+        manifests: areaAvailable ? stored.manifests : [],
+        onlineResults: currentQuery ? (publicSearch.data?.items ?? []) : [],
+        coordinate,
+        filters: searchFilters,
+        onlineUnavailable,
+      }),
+    [
+      areaAvailable,
+      normalizedQuery,
+      stored.manifests,
+      currentQuery,
+      publicSearch.data,
+      coordinate,
+      searchFilters,
+      onlineUnavailable,
+    ],
+  );
   const centers = centersQuery.data ?? [];
-  const isSearching = hasQuery && areaAvailable && (!currentQuery || publicSearch.isFetching);
+  const isSearching =
+    hasQuery && areaAvailable && (!currentQuery || publicSearch.isFetching);
 
   return {
     categories: catalog.data?.categories ?? [],
     centers,
     filters,
     mapFilter,
-    changeMapFilter: (next: ExploreMapFilter) => setMapFilter((current) => toggleMapFilter(current, next)),
+    changeMapFilter: (next: ExploreMapFilter) =>
+      setMapFilter((current) => toggleMapFilter(current, next)),
     mapCenters: mapFilter?.kind === "establishments" ? [] : centers,
     establishmentLayer: {
       visible: mapFilter?.kind !== "tourism",
@@ -88,13 +121,19 @@ export function useExploreQueries({
     ...suggestions,
     onlineUnavailable,
     isSearching,
-    failed: hasQuery && onlineUnavailable && suggestions.searchItems.length === 0,
+    failed:
+      hasQuery && onlineUnavailable && suggestions.searchItems.length === 0,
     isFetchingCenters: centersQuery.isFetching,
     isFetchingSearch: isSearching,
     isRefreshingMap: centersQuery.isFetching,
     searchError: hasQuery && currentQuery ? publicSearch.error : null,
     changeCategory: (categoryCode: string | undefined) => {
-      setFilters((current) => ({ ...current, categoryCode, typeCode: undefined, subtypeCode: undefined }));
+      setFilters((current) => ({
+        ...current,
+        categoryCode,
+        typeCode: undefined,
+        subtypeCode: undefined,
+      }));
       if (categoryCode !== undefined) return;
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.publishedCenters }),
@@ -102,7 +141,8 @@ export function useExploreQueries({
       ]);
     },
     retrySearch: () => {
-      if (hasQuery && currentQuery && areaAvailable) void publicSearch.refetch();
+      if (hasQuery && currentQuery && areaAvailable)
+        void publicSearch.refetch();
       if (stored.isError) void stored.refetch();
     },
   };

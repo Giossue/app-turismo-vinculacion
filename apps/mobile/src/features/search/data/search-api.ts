@@ -8,7 +8,10 @@ import {
 } from "@/core/api/http";
 import type { GeoCoordinate } from "@/core/geo/types";
 import type { PublicSearchResultPage } from "../domain/search-result";
-import { isValidSearchBounds, type SearchFilters } from "../domain/search-suggestion";
+import {
+  isValidSearchBounds,
+  type SearchFilters,
+} from "../domain/search-suggestion";
 
 const resultSchema = z.object({
   kind: z.enum(["center", "establishment", "geographic"]),
@@ -48,7 +51,13 @@ const responseSchema = z.object({
 export async function searchPublicPlaces(
   query: string,
   coordinate?: GeoCoordinate | null,
-  { apiUrl = getApiUrl(), fetcher, signal, kind, bounds }: ApiRequestOptions & SearchFilters = {},
+  {
+    apiUrl = getApiUrl(),
+    fetcher,
+    signal,
+    kind,
+    bounds,
+  }: ApiRequestOptions & SearchFilters = {},
 ): Promise<PublicSearchResultPage> {
   const params = new URLSearchParams({ q: query.trim() });
   if (coordinate) {

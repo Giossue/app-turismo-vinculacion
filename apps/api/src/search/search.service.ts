@@ -234,7 +234,7 @@ export class SearchService {
     terms: readonly string[],
   ): Promise<EstablishmentSearchRow[]> {
     const details =
-      "CONCAT_WS(' ', e.actividad, e.categoria, activity_catalog.nombre, classification_catalog.nombre, category_catalog.nombre, e.direccion, l.nombre, co.nombre, p.nombre)";
+      "CONCAT_WS(' ', e.actividad, e.clasificacion, e.categoria, activity_catalog.nombre, classification_catalog.nombre, category_catalog.nombre, e.direccion, l.nombre, co.nombre, p.nombre)";
     return this.dataSource.query<EstablishmentSearchRow[]>(
       `SELECT e.nombre_comercial AS title,
               CONCAT_WS(' · ',

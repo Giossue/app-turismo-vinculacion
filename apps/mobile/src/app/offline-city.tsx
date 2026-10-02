@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { FlatList, Keyboard, StyleSheet, Text, View } from "react-native";
 
 import { getCoordinateBounds } from "@/core/geo/bounds";
@@ -42,7 +42,10 @@ import { buildRouteHref } from "@/features/routing/presentation/route-href";
 /** Explicit local browser: opening/searching a package never needs the API. */
 export default function OfflineCityScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ slug?: string | string[]; itemKey?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    slug?: string | string[];
+    itemKey?: string | string[];
+  }>();
   const slug = firstSearchParam(params.slug) ?? "";
   const itemKey = firstSearchParam(params.itemKey);
   const access = useRequireAuth("/offline");
@@ -100,20 +103,46 @@ export default function OfflineCityScreen() {
       </TourismScreenFrame>
     );
   }
-  return <OfflineCityBrowser key={slug} manifest={query.data} onBack={close} initialItemKey={itemKey} />;
+  return (
+    <OfflineCityBrowser
+      key={`${slug}:${itemKey ?? ""}`}
+      manifest={query.data}
+      onBack={close}
+      initialItemKey={itemKey}
+    />
+  );
 }
 
 function OfflineCityBrowser({
   manifest,
   onBack,
   initialItemKey,
-}: Readonly<{ manifest: OfflineCityManifest; onBack: () => void; initialItemKey?: string }>) {
+}: Readonly<{
+  manifest: OfflineCityManifest;
+  onBack: () => void;
+  initialItemKey?: string;
+}>) {
   const router = useRouter();
   const colors = useTurismoPalette();
   const { scheme } = useTurismoTheme();
   const location = useUserLocation();
+  const items = useMemo(() => getOfflineBrowserItems(manifest), [manifest]);
+  const initialItem = items.find((item) => item.key === initialItemKey) ?? null;
+  const initialRouteBounds = useMemo(
+    () =>
+      initialItem?.kind === "route"
+        ? getCoordinateBounds(
+            initialItem.route.geometry.coordinates.map(
+              ([longitude, latitude]) => [longitude!, latitude!] as const,
+            ),
+          )
+        : null,
+    [initialItem],
+  );
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<OfflineBrowserItem | null>(null);
+  const [selected, setSelected] = useState<OfflineBrowserItem | null>(
+    () => initialItem,
+  );
   const routeInstructions =
     selected?.kind === "route"
       ? getOfflineRouteInstructions(selected.route.directions)
@@ -125,15 +154,28 @@ function OfflineCityBrowser({
     readonly OfflinePlaceItem[] | null
   >(null);
   const [selectedRoute, setSelectedRoute] = useState<GeoJSON.LineString | null>(
-    null,
+    () => (initialItem?.kind === "route" ? initialItem.route.geometry : null),
   );
-  const [focusBounds, setFocusBounds] = useState<GeoBoundingBox | null>(null);
+  const [focusBounds, setFocusBounds] = useState<GeoBoundingBox | null>(
+    () => initialRouteBounds,
+  );
   const [focus, setFocus] = useState<Readonly<{
     coordinate: GeoCoordinate;
     key: number;
-  }> | null>(null);
+  }> | null>(() =>
+    initialItem?.kind === "place"
+      ? { coordinate: initialItem.coordinate, key: 1 }
+      : initialRouteBounds
+        ? {
+            coordinate: {
+              longitude: (initialRouteBounds[0] + initialRouteBounds[2]) / 2,
+              latitude: (initialRouteBounds[1] + initialRouteBounds[3]) / 2,
+            },
+            key: 1,
+          }
+        : null,
+  );
   const [locationFocusKey, setLocationFocusKey] = useState(0);
-  const items = useMemo(() => getOfflineBrowserItems(manifest), [manifest]);
   const results = useMemo(
     () => filterOfflineBrowserItems(items, search),
     [items, search],
@@ -178,7 +220,7 @@ function OfflineCityBrowser({
     return true;
   });
 
-  const select = useCallback((item: OfflineBrowserItem) => {
+  const select = (item: OfflineBrowserItem) => {
     Keyboard.dismiss();
     setChoices(null);
     setLocalChoices(null);
@@ -207,11 +249,7 @@ function OfflineCityBrowser({
         key: (old?.key ?? 0) + 1,
       }));
     }
-  }, []);
-  useEffect(() => {
-    const item = items.find((candidate) => candidate.key === initialItemKey);
-    if (item) select(item);
-  }, [initialItemKey, items, select]);
+  };
   const selectCenter = (code: string) => {
     const item = places.find((place) => place.center?.code === code);
     if (item) select(item);

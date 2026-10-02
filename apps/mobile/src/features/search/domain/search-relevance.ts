@@ -20,7 +20,9 @@ export function normalizeSearchText(text: string): string {
 }
 
 function alternatives(term: string): readonly string[] {
-  return synonymGroups.find((group) => group.some((word) => word === term)) ?? [term];
+  return (
+    synonymGroups.find((group) => group.some((word) => word === term)) ?? [term]
+  );
 }
 
 /** One insertion, deletion, replacement or transposition for words >= 5 chars. */
@@ -36,8 +38,10 @@ function isCloseWord(term: string, word: string): boolean {
     if (different.length === 1) return true;
     const [first, second] = different;
     return (
-      first !== undefined && second === first + 1 &&
-      term[first] === word[second] && term[second] === word[first]
+      first !== undefined &&
+      second === first + 1 &&
+      term[first] === word[second] &&
+      term[second] === word[first]
     );
   }
   const shorter = term.length < word.length ? term : word;
@@ -71,8 +75,12 @@ export function getSearchRelevance(
   let score = 0;
   for (const term of normalized.split(" ")) {
     const terms = alternatives(term);
-    const titleMatch = terms.some((candidate) => titleWords.some((word) => word.startsWith(candidate)));
-    const detailsMatch = terms.some((candidate) => detailWords.some((word) => word.startsWith(candidate)));
+    const titleMatch = terms.some((candidate) =>
+      titleWords.some((word) => word.startsWith(candidate)),
+    );
+    const detailsMatch = terms.some((candidate) =>
+      detailWords.some((word) => word.startsWith(candidate)),
+    );
     const closeTitle = titleWords.some((word) => isCloseWord(term, word));
     const closeDetails = detailWords.some((word) => isCloseWord(term, word));
     if (!titleMatch && !detailsMatch && !closeTitle && !closeDetails) return 0;
@@ -86,11 +94,17 @@ export function rankSearchSuggestions(
   query: string,
 ): readonly SearchSuggestionItem[] {
   return items
-    .map((item, index) => ({ item, index, relevance: getSearchRelevance(query, item.title, item.subtitle) }))
-    .sort((a, b) =>
-      b.relevance - a.relevance ||
-      (a.item.distanceMeters ?? Infinity) - (b.item.distanceMeters ?? Infinity) ||
-      a.index - b.index,
+    .map((item, index) => ({
+      item,
+      index,
+      relevance: getSearchRelevance(query, item.title, item.subtitle),
+    }))
+    .sort(
+      (a, b) =>
+        b.relevance - a.relevance ||
+        (a.item.distanceMeters ?? Infinity) -
+          (b.item.distanceMeters ?? Infinity) ||
+        a.index - b.index,
     )
     .map(({ item }) => item);
 }
