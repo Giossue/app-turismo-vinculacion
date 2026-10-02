@@ -154,8 +154,31 @@ export function shouldShareAgentLocation(message: string): boolean {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
-  return /\b(cerca|cercanos?|cercanas?|alrededor|proximos?|proximas?|aqui cerca|desde aqui|mi ubicacion|near|nearby|around me|my location|from here)\b/.test(
-    normalized,
+  const nearby =
+    /\b(cerca|cercanos?|cercanas?|alrededor|proximos?|proximas?|aqui cerca|desde aqui|mi ubicacion|near|nearby|around me|my location|from here)\b/.test(
+      normalized,
+    );
+  const namedOrigin =
+    /\b(desde|(?:llegar|llego|viajar|viaje|ir|ruta|tiempo|tarda|toma|demora) de) (?!aqui\b|aca\b|mi\b|donde\b).+? (a|al|hasta|hacia) (?!pie\b|bici\b|bicicleta\b|carro\b|auto\b|coche\b)\S/.test(
+      normalized,
+    ) ||
+    /\bentre .+? y \S/.test(normalized) ||
+    /\bfrom (?!here\b|my\b).+? to \S/.test(normalized);
+  const explicitTravelTime =
+    /\b((a|en) cuantos? minutos?|tiempo (de viaje|de llegada|para llegar)|como (llego|llegar)|how many minutes|travel time)\b/.test(
+      normalized,
+    );
+  const timeQuestion =
+    /\b(cuanto (tiempo )?(me |se )?(tardo|tarda|tardaria|demoro|demora|toma|tomaria)|how long)\b/.test(
+      normalized,
+    );
+  const journey =
+    /\b(llegar|llego|ir|viajar|caminando|conduciendo|get (there|to)|reach|walk|drive|cycle|travel)\b/.test(
+      normalized,
+    );
+  return (
+    nearby ||
+    (!namedOrigin && (explicitTravelTime || (timeQuestion && journey)))
   );
 }
 

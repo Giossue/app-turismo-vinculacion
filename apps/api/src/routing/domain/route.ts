@@ -12,6 +12,26 @@ export type RouteRequest = Readonly<{
   destination: RouteCoordinate;
 }>;
 
+export const travelTimeModes = ["car", "foot", "bicycle"] as const;
+export const maxTravelTimeDestinations = 6;
+
+export type TravelTimesRequest = Readonly<{
+  origin: RouteCoordinate;
+  destinations: readonly RouteCoordinate[];
+}>;
+
+export type TravelTimeEstimate =
+  | Readonly<{
+      mode: RouteMode;
+      status: "available";
+      durationSeconds: number;
+      distanceMeters: number;
+    }>
+  | Readonly<{
+      mode: RouteMode;
+      status: "no_route" | "unavailable";
+    }>;
+
 export type RouteGeometry = Readonly<{
   type: "LineString";
   coordinates: [number, number][];

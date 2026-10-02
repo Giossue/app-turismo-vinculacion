@@ -16,6 +16,8 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import type { FastifyReply } from "fastify";
+import type { SchemaObject } from "@nestjs/swagger/dist/interfaces/open-api-spec.interface";
+import { z } from "zod";
 import { RouteConfig } from "@nestjs/platform-fastify";
 
 import { CurrentUser, Roles } from "../../auth/auth.decorators";
@@ -46,16 +48,9 @@ export class AiAgentController {
   @ApiOkResponse({
     description:
       "Respuesta estructurada con texto, tarjetas, acciones propuestas y fuentes.",
-    schema: {
-      type: "object",
-      required: ["text", "cards", "actions", "sources"],
-      properties: {
-        text: { type: "string" },
-        cards: { type: "array", items: { type: "object" } },
-        actions: { type: "array", items: { type: "object" } },
-        sources: { type: "array", items: { type: "object" } },
-      },
-    },
+    schema: z.toJSONSchema(agentResponseSchema, {
+      target: "openapi-3.0",
+    }) as SchemaObject,
   })
   @ApiBadRequestResponse({
     description: "El mensaje o ubicación no es válido.",
@@ -81,7 +76,7 @@ export class AiAgentController {
   @ApiProduces("text/event-stream")
   @ApiOkResponse({
     description:
-      "Eventos SSE con texto parcial acumulado y la respuesta estructurada final.",
+      "Eventos SSE con texto parcial acumulado y la respuesta estructurada final; las tarjetas pueden incluir travelTimes en carro, a pie y bicicleta desde la ubicación aproximada.",
   })
   @ApiBadRequestResponse({
     description: "El mensaje o ubicación no es válido.",

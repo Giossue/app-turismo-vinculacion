@@ -26,7 +26,7 @@ Las herramientas allowlisted de esta unidad son `listPublishedCenters`,
 `searchPublishedEstablishments`, `searchPublishedCenters`,
 `getPublishedCenter`, `searchNearbyEstablishments`,
 `searchNearbyPublishedPlaces`, `requestLocationAccess`, `getPublishedTransportForCenter`,
-`searchNearbyTransportStops` y `calculateRoadRoute`. Las consultas de cercanía usan PostGIS sobre centros publicados,
+`searchNearbyTransportStops`, `getTravelTimes` y `calculateRoadRoute`. Las consultas de cercanía usan PostGIS sobre centros publicados,
 POI activos y establecimientos activos; `searchNearbyPublishedPlaces` recibe únicamente radio,
 límite y categoría opcional, mientras que las coordenadas se toman del contexto aproximado del
 request. La intención cercana detectada en español obliga a ejecutar esa herramienta en el
@@ -38,11 +38,30 @@ tools y delega el cálculo al proveedor vial existente; devuelve distancia, dura
 instrucciones acotadas, sin exponer geometría al modelo. Desde la ubicación del visitante marca
 el origen como aproximado y la app recalcula antes de navegar.
 
-En una consulta de cercanía sin coordenada, `requestLocationAccess` devuelve una
+Cuando la petición incluye ubicación aproximada, las búsquedas, listas y fichas agregan
+`travelTimes` a los resultados verificados antes de entregarlos al modelo. La herramienta
+`getTravelTimes` acepta únicamente referencias opacas de lugares recuperados durante el
+turno y devuelve las estimaciones del mismo servicio. El cálculo usa OSRM Table por los
+tres perfiles viales y comparte lotes para un máximo de seis destinos únicos por turno;
+la caché por coordenadas existe solo dentro de la petición. No envía geometría al modelo,
+no usa Haversine ni convierte distancia directa en minutos, y no cambia el orden de las
+recomendaciones por duración.
+
+Cada tarjeta puede contener `travelTimes`, una lista de exactamente tres entradas con
+modos únicos `car`, `foot` y `bicycle`. Un estado `available` requiere `durationSeconds`
+y `distanceMeters` finitos y no negativos; `no_route` y `unavailable` no contienen métricas.
+Las tarjetas se rehidratan desde ese resultado confiable: el modelo no aporta minutos ni
+sobrescribe las estimaciones. La app indica que proceden de una ubicación aproximada y
+que son estimaciones; el proveedor no incluye tráfico en tiempo real. Consultar tiempos
+no inicia navegación ni registra una trayectoria.
+
+En una consulta de cercanía o tiempo de llegada sin coordenada, `requestLocationAccess` devuelve una
 intención `request_location` para el cliente móvil. El backend no puede abrir el
 diálogo del sistema ni conocer el estado de permisos del teléfono. El móvil intenta
 una lectura nueva si el permiso ya está concedido; si falta, muestra la acción
 «Usar mi ubicación», que solicita el permiso o la lectura y repite esa pregunta.
+Preguntar por minutos o tiempo para llegar activa este flujo aunque no diga «cerca de
+mí»; un destino nombrado sigue resolviéndose por su búsqueda de catálogo.
 La API no envía texto parcial en este caso y responde de forma estable aunque el
 modelo no produzca una respuesta estructurada.
 

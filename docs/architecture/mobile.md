@@ -24,7 +24,7 @@ lo amerita. Evitar capas ceremoniales para componentes triviales.
 La navegación turística está organizada alrededor del mapa: `Explorar` muestra MapLibre y
 una ficha rápida nativa; el `Agente` se abre como un botón flotante sobre el mapa y una
 sheet nativa de conversación; `Cómo llegar` representa la ruta activa sin solicitar GPS
-en la vista previa. La sheet del agente ofrece chat e historial; la función de planes
+en la vista previa. La sheet del agente ofrece el chat actual; la función de planes
 e itinerarios se retiró.
 El agente turístico consulta la API autenticada y valida una respuesta estructurada con
 texto, tarjetas, acciones propuestas y fuentes. Todas las tarjetas abren una ficha en una
@@ -45,6 +45,17 @@ persiste el chat ni la ubicación en el dispositivo. El historial del servidor e
 apagado por defecto y conserva sus controles en la API para cuentas con consentimiento
 previo. El móvil no ofrece botón, panel ni restauración de historial; solo muestra el chat
 actual. Esta retirada visual no elimina registros históricos del servidor.
+
+Las tarjetas del agente validan `travelTimes` cuando aparece: exactamente tres modos
+únicos (`car`, `foot`, `bicycle`), con duración y distancia finitas no negativas solo en
+estado `available`; `no_route` y `unavailable` no admiten métricas. Las respuestas sin ese
+campo siguen siendo compatibles. La lista visual presenta carro, a pie y bici con iconos
+`TurismoIcon`, sin reordenar las tarjetas, y usa el formato compartido
+`formatDurationSeconds` (cero válido equivale a «<1 min»). Los estados restantes se muestran
+como «Sin ruta» o «No disponible», y la leyenda indica «Tiempos estimados desde tu
+ubicación aproximada». La etiqueta accesible del botón de la tarjeta incluye toda la lista
+para evitar controles accesibles anidados. El móvil no calcula minutos ni envía solicitudes
+directas al proveedor vial. Consultar tiempos no inicia navegación.
 
 Cada chat admite veinte mensajes del usuario, incluidos los que tienen respuesta fallida
 o detenida. El contador se deriva de las burbujas del usuario, con una validación antes
@@ -357,7 +368,7 @@ publicados, sin fabricar navegación giro a giro. Véase `product/features/offli
   persona toca "mi ubicación", activa "Servicios cercanos" o inicia una ruta. El mapa y el
   resto del catálogo siguen disponibles si la deniega.
 - El control “mi ubicación”, la cercanía y el inicio de ruta reutilizan la misma sesión.
-  Si el agente recibe una pregunta cercana y el permiso ya está concedido, obtiene
+  Si el agente recibe una pregunta cercana o por tiempo para llegar y el permiso ya está concedido, obtiene
   una lectura GPS aunque Explorar todavía no haya centrado el mapa. Si no consigue
   una coordenada, muestra la acción «Usar mi ubicación» y al tocarla solicita la
   lectura o el permiso y repite la consulta. Las preguntas generales no piden GPS.

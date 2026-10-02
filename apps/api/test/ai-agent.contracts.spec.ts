@@ -4,6 +4,7 @@ import {
   agentResponseSchema,
   agentChatSchema,
   agentModelResponseSchema,
+  agentTravelTimesSchema,
 } from "../src/ai/application/ai-agent.contracts";
 
 describe("AI agent contracts", () => {
@@ -118,6 +119,68 @@ describe("AI agent contracts", () => {
       agentResponseSchema.safeParse({
         ...response,
         actions: [{ type: "request_location", latitude: -1.59 }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires one estimate per mode and distinguishes absent routes from metrics", () => {
+    const estimates = [
+      {
+        mode: "car",
+        status: "available",
+        durationSeconds: 120,
+        distanceMeters: 900,
+      },
+      { mode: "foot", status: "no_route" },
+      { mode: "bicycle", status: "unavailable" },
+    ];
+    expect(agentTravelTimesSchema.safeParse(estimates).success).toBe(true);
+    expect(
+      agentTravelTimesSchema.safeParse([
+        estimates[0],
+        estimates[0],
+        estimates[2],
+      ]).success,
+    ).toBe(false);
+    expect(
+      agentTravelTimesSchema.safeParse(estimates.slice(0, 2)).success,
+    ).toBe(false);
+    expect(
+      agentTravelTimesSchema.safeParse([
+        estimates[0],
+        { ...estimates[1], durationSeconds: 0 },
+        estimates[2],
+      ]).success,
+    ).toBe(false);
+    for (const durationSeconds of [-1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(
+        agentTravelTimesSchema.safeParse([
+          { ...estimates[0], durationSeconds },
+          estimates[1],
+          estimates[2],
+        ]).success,
+      ).toBe(false);
+    }
+  });
+
+  it("does not let the model supply travel-time numbers in cards", () => {
+    expect(
+      agentModelResponseSchema.safeParse({
+        text: "Está a dos minutos.",
+        cards: [
+          {
+            ref: "center:GUA-001",
+            travelTimes: [
+              {
+                mode: "car",
+                status: "available",
+                durationSeconds: 120,
+                distanceMeters: 900,
+              },
+            ],
+          },
+        ],
+        actions: [],
       }).success,
     ).toBe(false);
   });

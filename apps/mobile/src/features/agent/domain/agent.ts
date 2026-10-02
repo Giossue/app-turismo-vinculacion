@@ -23,6 +23,28 @@ export const agentLocationSchema = z
   })
   .strict();
 
+const agentTravelTimeSchema = z.discriminatedUnion("status", [
+  z
+    .object({
+      mode: z.enum(routeModes),
+      status: z.literal("available"),
+      durationSeconds: z.number().finite().min(0),
+      distanceMeters: z.number().finite().min(0),
+    })
+    .strict(),
+  z
+    .object({
+      mode: z.enum(routeModes),
+      status: z.enum(["no_route", "unavailable"]),
+    })
+    .strict(),
+]);
+
+const agentTravelTimesSchema = z
+  .array(agentTravelTimeSchema)
+  .length(3)
+  .refine((estimates) => new Set(estimates.map(({ mode }) => mode)).size === 3);
+
 const agentCenterCardSchema = z
   .object({
     type: z.literal("center"),
@@ -33,6 +55,7 @@ const agentCenterCardSchema = z
     latitude: finiteCoordinate.min(-90).max(90),
     longitude: finiteCoordinate.min(-180).max(180),
     distanceMeters: finiteCoordinate.min(0).nullable(),
+    travelTimes: agentTravelTimesSchema.optional(),
   })
   .strict();
 
@@ -48,6 +71,7 @@ const agentEstablishmentCardSchema = z
     latitude: finiteCoordinate.min(-90).max(90).nullable(),
     longitude: finiteCoordinate.min(-180).max(180).nullable(),
     distanceMeters: finiteCoordinate.min(0).nullable(),
+    travelTimes: agentTravelTimesSchema.optional(),
   })
   .strict();
 
@@ -61,6 +85,7 @@ const agentPoiCardSchema = z
     latitude: finiteCoordinate.min(-90).max(90),
     longitude: finiteCoordinate.min(-180).max(180),
     distanceMeters: finiteCoordinate.min(0),
+    travelTimes: agentTravelTimesSchema.optional(),
   })
   .strict();
 
@@ -125,6 +150,7 @@ export const agentHistoryItemSchema = z
   .strict();
 
 export type AgentLocation = z.infer<typeof agentLocationSchema>;
+export type AgentTravelTime = z.infer<typeof agentTravelTimeSchema>;
 export type AgentCard = z.infer<typeof agentCardSchema>;
 export type AgentAction = z.infer<typeof agentActionSchema>;
 export type AgentRouteDestination = z.infer<typeof agentRouteDestinationSchema>;

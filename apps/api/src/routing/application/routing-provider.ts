@@ -1,4 +1,9 @@
-import type { CalculatedRoute, RouteRequest } from "../domain/route";
+import type {
+  CalculatedRoute,
+  RouteRequest,
+  TravelTimeEstimate,
+  TravelTimesRequest,
+} from "../domain/route";
 
 export const ROUTING_PROVIDER = Symbol("ROUTING_PROVIDER");
 
@@ -7,4 +12,9 @@ export interface RoutingProvider {
     request: RouteRequest,
     signal?: AbortSignal,
   ): Promise<CalculatedRoute>;
+
+  estimateTravelTimes(
+    request: TravelTimesRequest,
+    signal?: AbortSignal,
+  ): Promise<readonly (readonly TravelTimeEstimate[])[]>;
 }

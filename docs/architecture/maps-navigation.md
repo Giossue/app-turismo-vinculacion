@@ -28,6 +28,16 @@
   geometría GeoJSON e indicaciones.
 - En producción, el adaptador usa los servicios privados `osrm-car`, `osrm-bicycle` y
   `osrm-foot` dentro de `dokploy-network`. El móvil nunca conoce sus nombres ni sus puertos.
+- El agente consulta estimaciones de llegada mediante OSRM Table, con un origen
+  aproximado y hasta seis destinos únicos por turno, usando los tres perfiles anteriores.
+  La matriz devuelve duraciones y distancias por caminos, sin geometría ni tráfico en
+  tiempo real. Los destinos sin recorrido se marcan `no_route`; fallos, respuestas
+  inválidas y destinos sin coordenadas se marcan `unavailable`, conservando los modos
+  válidos. Las consultas y su caché de coordenadas viven solo durante la petición.
+- La cercanía de PostGIS o Haversine selecciona candidatos mediante distancia directa;
+  los minutos de las tarjetas del agente siempre proceden del proveedor vial. Mostrar
+  esas estimaciones no inicia navegación: «Cómo llegar» recalcula la ruta con una
+  ubicación fresca y la navegación requiere su confirmación habitual.
 
 ### Geocodificación y búsqueda
 

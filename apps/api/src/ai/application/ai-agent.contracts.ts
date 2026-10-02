@@ -3,6 +3,35 @@ import { z } from "zod";
 const referenceSchema = z.string().trim().min(1).max(96);
 const finiteCoordinate = z.number().finite();
 
+const travelModeSchema = z.enum(["car", "foot", "bicycle"]);
+export const agentTravelTimeSchema = z.discriminatedUnion("status", [
+  z
+    .object({
+      mode: travelModeSchema,
+      status: z.literal("available"),
+      durationSeconds: finiteCoordinate.min(0),
+      distanceMeters: finiteCoordinate.min(0),
+    })
+    .strict(),
+  z
+    .object({
+      mode: travelModeSchema,
+      status: z.enum(["no_route", "unavailable"]),
+    })
+    .strict(),
+]);
+
+export const agentTravelTimesSchema = z
+  .array(agentTravelTimeSchema)
+  .length(3)
+  .refine(
+    (estimates) => new Set(estimates.map((item) => item.mode)).size === 3,
+    "Los tiempos deben incluir carro, caminata y bicicleta una sola vez.",
+  )
+  .describe(
+    "Tiempos estimados por caminos desde la ubicación aproximada del visitante, sin tráfico en tiempo real. Incluye cada modo una sola vez; los modos sin ruta o sin servicio no contienen métricas.",
+  );
+
 export const agentLocationSchema = z
   .object({
     latitude: finiteCoordinate.min(-90).max(90),
@@ -72,6 +101,7 @@ const agentCenterCardSchema = z
     latitude: finiteCoordinate.min(-90).max(90),
     longitude: finiteCoordinate.min(-180).max(180),
     distanceMeters: finiteCoordinate.min(0).nullable(),
+    travelTimes: agentTravelTimesSchema.optional(),
   })
   .strict();
 
@@ -87,6 +117,7 @@ const agentEstablishmentCardSchema = z
     latitude: finiteCoordinate.min(-90).max(90).nullable(),
     longitude: finiteCoordinate.min(-180).max(180).nullable(),
     distanceMeters: finiteCoordinate.min(0).nullable(),
+    travelTimes: agentTravelTimesSchema.optional(),
   })
   .strict();
 
@@ -100,6 +131,7 @@ const agentPoiCardSchema = z
     latitude: finiteCoordinate.min(-90).max(90),
     longitude: finiteCoordinate.min(-180).max(180),
     distanceMeters: finiteCoordinate.min(0),
+    travelTimes: agentTravelTimesSchema.optional(),
   })
   .strict();
 

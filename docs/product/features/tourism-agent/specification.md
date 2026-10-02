@@ -24,6 +24,19 @@ revisión sobre sus propios borradores, sin delegar la publicación.
   la entidad y fuente concreta, o comunica que no encontró un dato verificable.
 - La ubicación aproximada solo se usa si la persona activa ubicación y la consulta
   requiere cercanía o cálculo desde su posición. Se puede buscar por localidad sin GPS.
+- Cuando hay ubicación, las tarjetas de lugares incluyen una lista con iconos y tiempos
+  estimados en carro, a pie y en bici, en ese orden. Los tiempos se calculan por la red
+  vial de cada modo desde la ubicación aproximada del visitante, sin tráfico en tiempo
+  real. La distancia directa sirve para buscar candidatos; no se convierte en minutos
+  ni determina el tiempo mostrado. El orden de los lugares se conserva.
+- Preguntas como «¿A cuántos minutos está?» o «¿Cuánto tiempo tardo en llegar?» necesitan
+  una posición puntual. Si el permiso ya existe, la app intenta una lectura fresca; si
+  falta ubicación, ofrece «Usar mi ubicación» y repite la pregunta al obtenerla. Consultar
+  tiempos no inicia una ruta ni seguimiento.
+- Cada modo muestra su duración o un estado explícito: «Sin ruta» si no hay recorrido,
+  «No disponible» si el proveedor falla, la respuesta no es válida o el destino carece
+  de coordenadas. Un fallo de un modo no oculta las estimaciones válidas de los demás.
+  Una respuesta anterior sin tiempos sigue siendo válida y no genera minutos inventados.
 - Las tarjetas abren fichas públicas. Una ruta es propuesta y siempre pide confirmación.
 - La función de planes e itinerarios está retirada: no hay consulta rápida, tarjetas,
   guardado ni edición. Ante una petición de plan, el agente informa que no está disponible

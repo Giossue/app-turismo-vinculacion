@@ -9,6 +9,7 @@ import { nearbyPublishedPlacesInputSchema } from "../src/ai/application/ai-agent
 import {
   AiAgentService,
   hasNearbyIntent,
+  hasTravelTimeIntent,
 } from "../src/ai/application/ai-agent.service";
 import type { PublicEstablishmentSearch } from "../src/ai/application/public-establishment-search";
 import type { PublicNearbyEstablishmentSearch } from "../src/ai/application/public-nearby-establishment-search";
@@ -145,6 +146,38 @@ describe("AiAgentService", () => {
     expect(hasNearbyIntent("Busca sitios desde aquí")).toBe(true);
     expect(hasNearbyIntent("Usa mi ubicación")).toBe(true);
     expect(hasNearbyIntent("cuéntame la historia de Guaranda")).toBe(false);
+  });
+
+  it("recognizes arrival-time questions without treating named origins as the visitor", () => {
+    expect(hasTravelTimeIntent("¿A cuántos minutos está el museo?")).toBe(true);
+    expect(hasTravelTimeIntent("¿Cuánto me demoro en llegar?")).toBe(true);
+    expect(hasTravelTimeIntent("¿Cómo llego al museo?")).toBe(true);
+    expect(hasTravelTimeIntent("How long does it take to get there?")).toBe(
+      true,
+    );
+    expect(hasTravelTimeIntent("¿Cómo llegar de Guaranda a Riobamba?")).toBe(
+      false,
+    );
+    expect(
+      hasTravelTimeIntent(
+        "¿Cuánto tiempo tarda desde el museo hasta el parque?",
+      ),
+    ).toBe(false);
+    expect(hasTravelTimeIntent("¿Dónde puedo comer?")).toBe(false);
+    expect(
+      hasTravelTimeIntent(
+        "¿Cuánto tiempo tardo en llegar al museo de Guaranda a pie?",
+      ),
+    ).toBe(true);
+    expect(
+      hasTravelTimeIntent("How long does it take from Quito to Guaranda?"),
+    ).toBe(false);
+    expect(hasTravelTimeIntent("How long has the museum been open?")).toBe(
+      false,
+    );
+    expect(
+      hasTravelTimeIntent("¿Cuánto tiempo tarda la visita al museo?"),
+    ).toBe(false);
   });
 
   it("rejects an invalid nearby radius before a tool can query the database", () => {

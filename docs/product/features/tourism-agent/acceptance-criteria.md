@@ -4,6 +4,20 @@
       centros publicados con tarjetas y fuentes, o una ausencia real del catálogo.
 - [ ] «¿Qué hay cerca de mí?» usa una posición puntual aproximada solo si está
       disponible; sin ella ofrece búsqueda por localidad y no inventa distancia.
+- [ ] Con ubicación, las tarjetas muestran iconos y tiempos en el orden carro, a pie,
+      bici, desde la posición aproximada. Los minutos provienen del recorrido vial de
+      cada modo, nunca de la distancia directa ni de una velocidad fija del agente.
+- [ ] «¿A cuántos minutos está?» y «¿Cuánto tiempo tardo en llegar?» intentan obtener
+      una lectura fresca con permiso concedido, o permiten usar ubicación y repetir el
+      mismo turno. Preguntar por un destino nombrado conserva la búsqueda de ese destino.
+- [ ] La duración cero válida muestra «<1 min»; los modos sin recorrido muestran «Sin
+      ruta» y los fallos del proveedor «No disponible». Un modo fallido no borra los
+      tiempos disponibles, ni inicia navegación o modifica el orden de los lugares.
+- [ ] La API admite como máximo seis destinos únicos por turno. El contrato rechaza
+      tiempos negativos/no finitos, métricas en estados sin ruta y modos repetidos o
+      faltantes; el móvil admite respuestas anteriores sin `travelTimes`.
+- [ ] El lector de pantalla anuncia los tiempos o estados de los tres modos al enfocar
+      una tarjeta, junto con la indicación de ubicación aproximada.
 - [ ] Preguntas de comida, hospedaje, transporte, acceso y horarios consultan sus
       registros públicos; datos no publicados o inexistentes se expresan como ausencia.
 - [ ] Una propuesta de ruta no navega sin confirmación y sus métricas vienen del

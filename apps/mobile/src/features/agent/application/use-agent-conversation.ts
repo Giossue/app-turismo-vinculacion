@@ -179,7 +179,7 @@ export function useAgentConversation() {
           upsertMessage(current, {
             id: answerId,
             role: "assistant",
-            text: "Para buscar lugares cerca de ti, necesito una ubicación actual. Toca «Usar mi ubicación» para obtenerla y repetir la consulta.",
+            text: "Para buscar lugares cerca de ti o calcular cuánto tardas en llegar, necesito una ubicación actual. Toca «Usar mi ubicación» para obtenerla y repetir la consulta.",
             actions: [{ type: "request_location" }],
           }),
         );

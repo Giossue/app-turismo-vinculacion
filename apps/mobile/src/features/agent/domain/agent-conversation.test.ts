@@ -242,4 +242,45 @@ describe("location minimization in agent requests", () => {
       true,
     );
   });
+
+  it("shares GPS for arrival times and routes from the visitor", () => {
+    expect(shouldShareAgentLocation("¿A cuántos minutos está el museo?")).toBe(
+      true,
+    );
+    expect(
+      shouldShareAgentLocation("¿Cuánto me demoro en llegar al parque?"),
+    ).toBe(true);
+    expect(shouldShareAgentLocation("¿Cómo llego al museo?")).toBe(true);
+    expect(
+      shouldShareAgentLocation("How long does it take to get to the museum?"),
+    ).toBe(true);
+  });
+
+  it("does not request GPS to compare routes between named places", () => {
+    expect(
+      shouldShareAgentLocation("¿Cómo llegar de Guaranda a Riobamba?"),
+    ).toBe(false);
+    expect(
+      shouldShareAgentLocation(
+        "¿Cuánto tiempo tarda desde el museo hasta el parque?",
+      ),
+    ).toBe(false);
+  });
+
+  it("distinguishes place names and visit durations from travel origins", () => {
+    expect(
+      shouldShareAgentLocation(
+        "¿Cuánto tiempo tardo en llegar al museo de Guaranda a pie?",
+      ),
+    ).toBe(true);
+    expect(
+      shouldShareAgentLocation("How long from Guaranda to Riobamba?"),
+    ).toBe(false);
+    expect(shouldShareAgentLocation("How long has the museum been open?")).toBe(
+      false,
+    );
+    expect(
+      shouldShareAgentLocation("¿Cuánto tiempo tarda la visita al museo?"),
+    ).toBe(false);
+  });
 });

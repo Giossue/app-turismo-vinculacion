@@ -19,6 +19,7 @@ import { z } from "zod";
 import {
   agentChatSchema,
   agentModelResponseSchema,
+  agentTravelTimesSchema,
   type AgentChatInput,
   type AgentResponse,
   type AgentSource,
@@ -54,6 +55,7 @@ import {
   NoRouteFoundError,
   RouteProviderUnavailableError,
 } from "../../routing/domain/routing-errors";
+import type { TravelTimeEstimate } from "../../routing/domain/route";
 
 const searchCentersInputSchema = z
   .object({
@@ -124,6 +126,12 @@ export const calculateRoadRouteInputSchema = z
   })
   .strict();
 
+export const getTravelTimesInputSchema = z
+  .object({
+    refs: z.array(z.string().trim().min(1).max(96)).min(1).max(6),
+  })
+  .strict();
+
 const genericToolFailure = {
   available: false,
   message:
@@ -166,7 +174,9 @@ export class AiAgentService {
         }
       : undefined;
     const forceNearbyTool = hasNearbyIntent(input.message);
-    const needsLocationForNearby = forceNearbyTool && !approximateLocation;
+    const needsCurrentLocation =
+      (forceNearbyTool || hasTravelTimeIntent(input.message)) &&
+      !approximateLocation;
     const forceGeneralCatalogTool =
       !forceNearbyTool && hasGeneralDiscoveryIntent(input.message);
     const forceEstablishmentKind =
@@ -179,6 +189,10 @@ export class AiAgentService {
     let establishmentBrowseFailed = false;
     let establishmentSequence = 0;
     let poiSequence = 0;
+    const travelTimeCache = new Map<
+      string,
+      Promise<readonly TravelTimeEstimate[]>
+    >();
 
     const registerSource = (source: AgentSource) => {
       trustedSources.set(`${source.type}:${source.label}`, source);
@@ -290,6 +304,84 @@ export class AiAgentService {
       return ref;
     };
 
+    // Reserve destinations before awaiting to bound concurrent tool calls and
+    // reuse the same estimates when a destination appears in several searches.
+    const attachTravelTimes = async (refs: readonly string[]) => {
+      if (!approximateLocation || abortSignal?.aborted) return;
+      const selected = [...new Set(refs)]
+        .map((ref) => entities.get(ref))
+        .filter((entity): entity is TrustedAgentEntity => Boolean(entity));
+      selected
+        .filter((entity) => !entity.destination)
+        .forEach((entity) => {
+          entities.set(entity.ref, {
+            ...entity,
+            card: { ...entity.card, travelTimes: unavailableTravelTimes() },
+          });
+        });
+      const destinations = selected.filter((entity) => entity.destination);
+      const pending = new Map<
+        string,
+        NonNullable<TrustedAgentEntity["destination"]>
+      >();
+      for (const entity of destinations) {
+        const destination = entity.destination!;
+        const key = `${destination.latitude},${destination.longitude}`;
+        if (
+          !travelTimeCache.has(key) &&
+          !pending.has(key) &&
+          travelTimeCache.size + pending.size < 6
+        ) {
+          pending.set(key, destination);
+        }
+      }
+      if (pending.size > 0) {
+        const batch = Promise.resolve()
+          .then(() =>
+            this.calculateRoute.estimateTravelTimes(
+              {
+                origin: approximateLocation,
+                destinations: [...pending.values()].map(
+                  ({ latitude, longitude }) => ({ latitude, longitude }),
+                ),
+              },
+              abortSignal,
+            ),
+          )
+          .catch(() => []);
+        [...pending.keys()].forEach((key, index) => {
+          travelTimeCache.set(
+            key,
+            batch.then((rows) => {
+              const parsed = agentTravelTimesSchema.safeParse(rows[index]);
+              return parsed.success ? parsed.data : unavailableTravelTimes();
+            }),
+          );
+        });
+      }
+      await Promise.all(
+        destinations.map(async (entity) => {
+          const destination = entity.destination!;
+          const key = `${destination.latitude},${destination.longitude}`;
+          const travelTimes = await (travelTimeCache.get(key) ??
+            unavailableTravelTimes());
+          if (abortSignal?.aborted) return;
+          const current = entities.get(entity.ref);
+          if (!current) return;
+          entities.set(entity.ref, {
+            ...current,
+            card: { ...current.card, travelTimes: [...travelTimes] },
+          });
+          if (travelTimes.some((estimate) => estimate.status === "available")) {
+            registerSource({
+              type: "routing",
+              label: "Tiempos estimados de llegada por caminos",
+            });
+          }
+        }),
+      );
+    };
+
     const messages: ModelMessage[] = [
       ...input.history.map(
         (item) => ({ role: item.role, content: item.content }) as ModelMessage,
@@ -312,6 +404,7 @@ export class AiAgentService {
           "La función de planes e itinerarios está retirada. Si solicitan un plan de viaje o un recorrido de varias paradas, explica que no está disponible y ofrece buscar lugares o preparar una ruta a un destino; no generes un itinerario ni prometas guardarlo.",
           "Para transporte usa getPublishedTransportForCenter o searchNearbyTransportStops cuando la pregunta lo requiera. Si no hay rutas, paradas u horarios publicados, dilo así; no inventes transporte, frecuencias, precios ni tiempos.",
           "Para calcular una ruta vial usa calculateRoadRoute después de obtener referencias confiables. Puede calcular desde la ubicación aproximada o entre dos lugares registrados; no le envíes coordenadas. Las métricas desde la ubicación son aproximadas y el móvil volverá a calcular la ruta antes de navegar.",
+          "Las búsquedas con ubicación incluyen travelTimes por carro, a pie y bicicleta desde el visitante. Para consultar esos tiempos usa getTravelTimes con las referencias obtenidas; el origen se toma de la solicitud. Solo status available tiene tiempo y distancia por caminos verificados. No conviertas distanceMeters de cercanía en minutos ni inventes velocidades. Los tiempos son estimados sin tráfico en tiempo real; no_route significa sin ruta y unavailable significa que no se pudo verificar ese modo.",
           "Si una herramienta no tiene datos o falla, dilo claramente y no rellenes el vacío con conocimiento externo.",
           "Para tarjetas y acciones usa solamente las referencias ref devueltas por las herramientas.",
           "Si incluyes tarjetas de lugares, no repitas la lista de nombres, categorías, direcciones o distancias en text. Usa text para resumir el resultado, explicar criterios y señalar información no verificada; cada lugar se presenta en su tarjeta.",
@@ -325,7 +418,7 @@ export class AiAgentService {
         ].join(" "),
         messages,
         prepareStep: ({ stepNumber }) =>
-          needsLocationForNearby && stepNumber === 0
+          needsCurrentLocation && stepNumber === 0
             ? {
                 toolChoice: {
                   type: "tool" as const,
@@ -365,6 +458,44 @@ export class AiAgentService {
           this.config.get<number>("AI_MAX_OUTPUT_TOKENS") ?? 1_200,
         timeout: this.config.get<number>("AI_REQUEST_TIMEOUT_MS") ?? 30_000,
         tools: {
+          getTravelTimes: tool({
+            description:
+              "Consulta tiempos estimados y distancias por caminos en carro, a pie y bicicleta desde la ubicación aproximada del visitante hacia hasta seis lugares obtenidos de otras herramientas. Solo acepta referencias confiables, nunca coordenadas ni minutos escritos por el modelo.",
+            inputSchema: getTravelTimesInputSchema,
+            execute: async ({ refs }) => {
+              if (!approximateLocation) {
+                return {
+                  available: false,
+                  clientAction: "request_location" as const,
+                  message:
+                    "Necesito tu ubicación actual para calcular los tiempos de llegada.",
+                };
+              }
+              if (refs.some((ref) => !entities.has(ref))) {
+                return {
+                  available: true,
+                  found: false,
+                  message:
+                    "No encontré destinos confiables para calcular esos tiempos.",
+                };
+              }
+              await attachTravelTimes(refs);
+              return {
+                available: true,
+                approximateOrigin: true,
+                liveTraffic: false,
+                results: [...new Set(refs)].map((ref) => {
+                  const entity = entities.get(ref)!;
+                  return {
+                    ref,
+                    name: entity.card.name,
+                    travelTimes:
+                      entity.card.travelTimes ?? unavailableTravelTimes(),
+                  };
+                }),
+              };
+            },
+          }),
           requestLocationAccess: tool({
             description:
               "Propone al móvil solicitar permiso o una lectura GPS actual cuando una consulta cercana no tiene ubicación. Nunca solicita permiso desde el servidor.",
@@ -397,6 +528,7 @@ export class AiAgentService {
                   ),
                 );
                 establishmentBrowseRefs = refs;
+                await attachTravelTimes(refs);
                 return {
                   total: items.length,
                   results: items.map((item, index) => ({
@@ -407,6 +539,7 @@ export class AiAgentService {
                     category: item.categoria,
                     localityName: item.localityName,
                     address: item.direccion,
+                    travelTimes: entities.get(refs[index])?.card.travelTimes,
                   })),
                   source: publishedEstablishmentsSource,
                   locationBased: false,
@@ -434,6 +567,7 @@ export class AiAgentService {
                     `${publishedCentersSource}: ${center.name}`,
                   ),
                 );
+                await attachTravelTimes(generalCatalogRefs);
                 return {
                   total: result.total,
                   results: result.items.map((center) => ({
@@ -442,6 +576,8 @@ export class AiAgentService {
                     description: center.description,
                     category: center.category,
                     type: center.type,
+                    travelTimes: entities.get(`center:${center.code}`)?.card
+                      .travelTimes,
                   })),
                   source: publishedCentersSource,
                 };
@@ -461,14 +597,18 @@ export class AiAgentService {
                   text,
                   limit,
                 });
+                const refs = result.items.map((center) =>
+                  registerCenter(
+                    `center:${center.code}`,
+                    center,
+                    publishedCentersSource,
+                  ),
+                );
+                await attachTravelTimes(refs);
                 return {
                   total: result.total,
-                  results: result.items.map((center) => {
-                    const ref = registerCenter(
-                      `center:${center.code}`,
-                      center,
-                      publishedCentersSource,
-                    );
+                  results: result.items.map((center, index) => {
+                    const ref = refs[index];
                     return {
                       ref,
                       code: center.code,
@@ -478,6 +618,7 @@ export class AiAgentService {
                       type: center.type,
                       subtype: center.subtype,
                       hierarchy: center.hierarchy,
+                      travelTimes: entities.get(ref)?.card.travelTimes,
                     };
                   }),
                   source: publishedCentersSource,
@@ -582,12 +723,17 @@ export class AiAgentService {
                   )
                   .slice(0, limit);
 
+                await attachTravelTimes(results.map((item) => item.ref));
+
                 return {
                   available: true,
                   radiusMeters,
                   category: category ?? null,
                   total: results.length,
-                  results,
+                  results: results.map((item) => ({
+                    ...item,
+                    travelTimes: entities.get(item.ref)?.card.travelTimes,
+                  })),
                   source: sourceLabel,
                   ...(results.length === 0
                     ? {
@@ -614,6 +760,7 @@ export class AiAgentService {
                   center,
                   `Ficha pública de ${center.name}`,
                 );
+                await attachTravelTimes([ref]);
                 return {
                   found: true,
                   ref,
@@ -630,6 +777,7 @@ export class AiAgentService {
                   activities: center.activities.slice(0, 12),
                   accessibility: center.accessibility.slice(0, 12),
                   facilities: center.facilities.slice(0, 12),
+                  travelTimes: entities.get(ref)?.card.travelTimes,
                 };
               } catch {
                 return genericToolFailure;
@@ -851,13 +999,17 @@ export class AiAgentService {
                 const sourceLabel = result.effectiveLocality
                   ? `Catastro turístico público de ${result.effectiveLocality.name}`
                   : "Catastro turístico público";
+                const refs = result.items.map((item) =>
+                  registerEstablishment(item, sourceLabel),
+                );
+                await attachTravelTimes(refs);
                 return {
                   available: true,
                   fallbackApplied: result.fallbackApplied,
                   requestedLocalityName: result.requestedLocalityName,
                   effectiveLocality: result.effectiveLocality,
-                  results: result.items.map((item) => ({
-                    ref: registerEstablishment(item, sourceLabel),
+                  results: result.items.map((item, index) => ({
+                    ref: refs[index],
                     name: item.nombreComercial,
                     activity: item.actividad,
                     classification: item.clasificacion,
@@ -868,6 +1020,7 @@ export class AiAgentService {
                     longitude: item.longitude,
                     distanceMeters: item.distanceMeters,
                     localityName: item.localityName,
+                    travelTimes: entities.get(refs[index])?.card.travelTimes,
                   })),
                   source: sourceLabel,
                 };
@@ -883,7 +1036,7 @@ export class AiAgentService {
         onText &&
         !forceGeneralCatalogTool &&
         !forceEstablishmentKind &&
-        !needsLocationForNearby
+        !needsCurrentLocation
       ) {
         let lastText = "";
         for await (const partial of result.partialOutputStream) {
@@ -898,7 +1051,7 @@ export class AiAgentService {
       try {
         modelOutput = await result.output;
       } catch (error) {
-        if (needsLocationForNearby) return missingNearbyLocationAnswer();
+        if (needsCurrentLocation) return missingLocationAnswer();
         const fallback: AgentResponse = {
           text: "No pude verificar esta respuesta en este momento.",
           cards: [],
@@ -927,7 +1080,7 @@ export class AiAgentService {
       const answer = sanitizeAgentResponse(modelOutput, entities, [
         ...trustedSources.values(),
       ]);
-      if (needsLocationForNearby) return missingNearbyLocationAnswer();
+      if (needsCurrentLocation) return missingLocationAnswer();
       if (forceGeneralCatalogTool) {
         return completeGeneralDiscoveryAnswer(
           answer,
@@ -947,7 +1100,7 @@ export class AiAgentService {
       }
       return answer;
     } catch (error) {
-      if (needsLocationForNearby) return missingNearbyLocationAnswer();
+      if (needsCurrentLocation) return missingLocationAnswer();
       if (error instanceof ServiceUnavailableException) throw error;
       throw new ServiceUnavailableException(
         "El agente no está disponible en este momento.",
@@ -981,9 +1134,39 @@ export function hasNearbyIntent(message: string): boolean {
   );
 }
 
-function missingNearbyLocationAnswer(): AgentResponse {
+export function hasTravelTimeIntent(message: string): boolean {
+  const normalized = normalizeIntent(message);
+  const namedOrigin =
+    /\b(desde|(?:llegar|llego|viajar|viaje|ir|ruta|tiempo|tarda|toma|demora) de) (?!aqui\b|aca\b|mi\b|donde\b).+? (a|al|hasta|hacia) (?!pie\b|bici\b|bicicleta\b|carro\b|auto\b|coche\b)\S/.test(
+      normalized,
+    ) ||
+    /\bentre .+? y \S/.test(normalized) ||
+    /\bfrom (?!here\b|my\b).+? to \S/.test(normalized);
+  const explicitTravelTime =
+    /\b((a|en) cuantos? minutos?|tiempo (de viaje|de llegada|para llegar)|como (llego|llegar)|how many minutes|travel time)\b/.test(
+      normalized,
+    );
+  const timeQuestion =
+    /\b(cuanto (tiempo )?(me |se )?(tardo|tarda|tardaria|demoro|demora|toma|tomaria)|how long)\b/.test(
+      normalized,
+    );
+  const journey =
+    /\b(llegar|llego|ir|viajar|caminando|conduciendo|get (there|to)|reach|walk|drive|cycle|travel)\b/.test(
+      normalized,
+    );
+  return !namedOrigin && (explicitTravelTime || (timeQuestion && journey));
+}
+
+function unavailableTravelTimes(): TravelTimeEstimate[] {
+  return (["car", "foot", "bicycle"] as const).map((mode) => ({
+    mode,
+    status: "unavailable",
+  }));
+}
+
+function missingLocationAnswer(): AgentResponse {
   return {
-    text: "Para buscar lugares cerca de ti, necesito una ubicación actual. Toca «Usar mi ubicación» para obtenerla y repetir la consulta.",
+    text: "Para buscar lugares cerca de ti o calcular cuánto tardas en llegar, necesito una ubicación actual. Toca «Usar mi ubicación» para obtenerla y repetir la consulta.",
     cards: [],
     actions: [{ type: "request_location" }],
     sources: [],
@@ -1133,10 +1316,28 @@ function sourcesForRefs(
   refs: readonly string[],
   entities: ReadonlyMap<string, TrustedAgentEntity>,
 ): AgentSource[] {
-  return refs
+  const selected = refs
     .slice(0, 6)
-    .map((ref) => entities.get(ref)?.source)
-    .filter((source): source is AgentSource => Boolean(source));
+    .map((ref) => entities.get(ref))
+    .filter((entity): entity is TrustedAgentEntity => Boolean(entity));
+  const sources = selected.map((entity) => entity.source);
+  if (
+    selected.some((entity) =>
+      entity.card.travelTimes?.some(
+        (estimate) => estimate.status === "available",
+      ),
+    )
+  ) {
+    sources.push({
+      type: "routing",
+      label: "Tiempos estimados de llegada por caminos",
+    });
+  }
+  return [
+    ...new Map(
+      sources.map((source) => [`${source.type}:${source.label}`, source]),
+    ).values(),
+  ];
 }
 
 function asksForLocationToDiscover(text: string): boolean {
