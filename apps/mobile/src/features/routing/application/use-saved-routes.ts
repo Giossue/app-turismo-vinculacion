@@ -4,6 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 import { useAuth } from "@/features/auth/application/auth-context";
 import {
@@ -48,7 +49,7 @@ export function useSavedCalculatedRoute(key: string | null) {
 export function useSaveCalculatedRoute() {
   const auth = useAuth();
   const queryClient = useQueryClient();
-  return useMutation({
+  const mutation = useMutation({
     networkMode: "always",
     mutationFn: (input: SavedCalculatedRouteInput) => {
       if (auth.status !== "authenticated" || !auth.user) {
@@ -60,6 +61,11 @@ export function useSaveCalculatedRoute() {
       void queryClient.invalidateQueries({ queryKey: savedRoutesQueryKey });
     },
   });
+  // A route preview may stay mounted while a session changes. Its saved
+  // confirmation and error must belong to the current account only.
+  const reset = mutation.reset;
+  useEffect(() => reset(), [auth.user?.id, reset]);
+  return mutation;
 }
 
 export function useDeleteSavedCalculatedRoute() {

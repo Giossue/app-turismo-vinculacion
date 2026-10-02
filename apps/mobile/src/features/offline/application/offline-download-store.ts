@@ -33,7 +33,9 @@ export function runOfflineDownload(
   task: OfflineDownloadTask,
 ): Promise<void> {
   if (removals.has(slug)) {
-    return Promise.reject(new OfflineDownloadError("Espera a que termine de borrarse esta ciudad."));
+    return Promise.reject(
+      new OfflineDownloadError("Espera a que termine de borrarse esta ciudad."),
+    );
   }
   const current = inFlight.get(slug);
   if (current) return current;
@@ -57,9 +59,15 @@ export function runOfflineRemoval(
   const current = removals.get(slug);
   if (current) return current;
   if (inFlight.has(slug)) {
-    return Promise.reject(new OfflineDownloadError("Espera a que termine la descarga de esta ciudad."));
+    return Promise.reject(
+      new OfflineDownloadError(
+        "Espera a que termine la descarga de esta ciudad.",
+      ),
+    );
   }
-  const removal = Promise.resolve().then(task).finally(() => removals.delete(slug));
+  const removal = Promise.resolve()
+    .then(task)
+    .finally(() => removals.delete(slug));
   removals.set(slug, removal);
   return removal;
 }

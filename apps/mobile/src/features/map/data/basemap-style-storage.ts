@@ -16,7 +16,11 @@ export async function readStoredBasemapStyle(
     const value: unknown = JSON.parse(json);
     if (!value || typeof value !== "object") return null;
     const stored = value as Record<string, unknown>;
-    if (stored.styleUrl !== styleUrl || !stored.styles || typeof stored.styles !== "object") {
+    if (
+      stored.styleUrl !== styleUrl ||
+      !stored.styles ||
+      typeof stored.styles !== "object"
+    ) {
       return null;
     }
     const style = (stored.styles as Record<string, unknown>)[scheme];

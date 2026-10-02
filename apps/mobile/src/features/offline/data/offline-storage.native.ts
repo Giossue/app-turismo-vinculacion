@@ -62,7 +62,10 @@ export async function getStoredOfflineManifest(
 
 export async function removeOfflineManifest(slug: string): Promise<void> {
   const database = await getDatabase();
-  await database.runAsync("DELETE FROM offline_city_manifests WHERE city_slug = ?", slug);
+  await database.runAsync(
+    "DELETE FROM offline_city_manifests WHERE city_slug = ?",
+    slug,
+  );
 }
 
 export async function listStoredOfflineManifests(): Promise<

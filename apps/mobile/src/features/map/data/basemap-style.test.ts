@@ -93,13 +93,51 @@ describe("normalizeSelfHostedStyle", () => {
   });
 
   it("resolves every resource to the same URL used by the offline pack", () => {
-    const style = normalizeSelfHostedStyle({version:8, glyphs:"/fonts/{fontstack}/{range}.pbf", sprite:"./sprite", sources:{openmaptiles:{type:"vector",url:"/data/v3.json"},other:{type:"raster", tiles:["../../tiles/{z}/{x}/{y}.png"]}}, layers:[]}, "light", styleUrl);
-    expect(style).toMatchObject({glyphs:"https://tiles.test/fonts/{fontstack}/{range}.pbf",sprite:"https://tiles.test/styles/basic/sprite",sources:{openmaptiles:{url:"https://tiles.test/data/v3.json",maxzoom:14},other:{tiles:["https://tiles.test/tiles/{z}/{x}/{y}.png"]}}});
+    const style = normalizeSelfHostedStyle(
+      {
+        version: 8,
+        glyphs: "/fonts/{fontstack}/{range}.pbf",
+        sprite: "./sprite",
+        sources: {
+          openmaptiles: { type: "vector", url: "/data/v3.json" },
+          other: { type: "raster", tiles: ["../../tiles/{z}/{x}/{y}.png"] },
+        },
+        layers: [],
+      },
+      "light",
+      styleUrl,
+    );
+    expect(style).toMatchObject({
+      glyphs: "https://tiles.test/fonts/{fontstack}/{range}.pbf",
+      sprite: "https://tiles.test/styles/basic/sprite",
+      sources: {
+        openmaptiles: { url: "https://tiles.test/data/v3.json", maxzoom: 14 },
+        other: { tiles: ["https://tiles.test/tiles/{z}/{x}/{y}.png"] },
+      },
+    });
   });
 
   it("rejects invalid styles before passing them to MapLibre", () => {
-    expect(() => normalizeSelfHostedStyle({version:7,sources:{},layers:[]},"light",styleUrl)).toThrow("invalid style");
-    expect(() => normalizeSelfHostedStyle({version:8,sources:{broken:null},layers:[]},"light",styleUrl)).toThrow("invalid style");
-    expect(() => normalizeSelfHostedStyle({version:8,sources:{},layers:[null]},"light",styleUrl)).toThrow("invalid style");
+    expect(() =>
+      normalizeSelfHostedStyle(
+        { version: 7, sources: {}, layers: [] },
+        "light",
+        styleUrl,
+      ),
+    ).toThrow("invalid style");
+    expect(() =>
+      normalizeSelfHostedStyle(
+        { version: 8, sources: { broken: null }, layers: [] },
+        "light",
+        styleUrl,
+      ),
+    ).toThrow("invalid style");
+    expect(() =>
+      normalizeSelfHostedStyle(
+        { version: 8, sources: {}, layers: [null] },
+        "light",
+        styleUrl,
+      ),
+    ).toThrow("invalid style");
   });
 });

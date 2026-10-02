@@ -32,9 +32,7 @@ export async function removeOfflineManifest(slug: string): Promise<void> {
 
 async function listStoredKeys(): Promise<readonly string[]> {
   const keys = await AsyncStorage.getAllKeys();
-  return keys
-    .filter((key) => key.startsWith(keyPrefix))
-    .sort();
+  return keys.filter((key) => key.startsWith(keyPrefix)).sort();
 }
 
 export async function listStoredOfflineManifests(): Promise<

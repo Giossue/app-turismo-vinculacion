@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { getOfflineCities, getOfflineCityManifest, parseStoredOfflineManifest } from "./offline-api";
+import {
+  getOfflineCities,
+  getOfflineCityManifest,
+  parseStoredOfflineManifest,
+} from "./offline-api";
 
 const city = {
   slug: "bolivar-guaranda-guaranda",
@@ -81,30 +85,105 @@ describe("offline public API", () => {
   });
 
   it("opens older downloaded cities with empty POI and establishment lists", () => {
-    expect(parseStoredOfflineManifest(JSON.stringify({
-      city, package: city.package, boundary: null, centers: [], routes: [],
-    }))).toMatchObject({ establishments: [], pois: [] });
+    expect(
+      parseStoredOfflineManifest(
+        JSON.stringify({
+          city,
+          package: city.package,
+          boundary: null,
+          centers: [],
+          routes: [],
+        }),
+      ),
+    ).toMatchObject({ establishments: [], pois: [] });
   });
 
   it("validates POI coordinates and city bounds before storing", () => {
-    const manifest = { city, package: city.package, boundary: null, centers: [], routes: [],
-      establishments: [{name: "Hotel", category: null, categoryLabel: "Hotel", latitude: -1.59, longitude: -79, approximate: false, icon: "hotel", group: "lodging", activity: "Alojamiento", classification: null, address: "Centro", phone: null, localityName: "Guaranda"}],
-      pois: [{key: "point", name: "Plaza", description: null, category: null, latitude: -1.59, longitude: -79, icon: "map-marker"}],
+    const manifest = {
+      city,
+      package: city.package,
+      boundary: null,
+      centers: [],
+      routes: [],
+      establishments: [
+        {
+          name: "Hotel",
+          category: null,
+          categoryLabel: "Hotel",
+          latitude: -1.59,
+          longitude: -79,
+          approximate: false,
+          icon: "hotel",
+          group: "lodging",
+          activity: "Alojamiento",
+          classification: null,
+          address: "Centro",
+          phone: null,
+          localityName: "Guaranda",
+        },
+      ],
+      pois: [
+        {
+          key: "point",
+          name: "Plaza",
+          description: null,
+          category: null,
+          latitude: -1.59,
+          longitude: -79,
+          icon: "map-marker",
+        },
+      ],
       bounds: [-79.12, -1.71, -78.88, -1.47],
     };
-    expect(parseStoredOfflineManifest(JSON.stringify(manifest))).toEqual(manifest);
-    expect(parseStoredOfflineManifest(JSON.stringify({...manifest, bounds:[-79, -1.5, -79.2, -1.6]}))).toBeNull();
-    expect(parseStoredOfflineManifest(JSON.stringify({...manifest, pois:[{...manifest.pois[0],latitude:100}]}))).toBeNull();
+    expect(parseStoredOfflineManifest(JSON.stringify(manifest))).toEqual(
+      manifest,
+    );
+    expect(
+      parseStoredOfflineManifest(
+        JSON.stringify({ ...manifest, bounds: [-79, -1.5, -79.2, -1.6] }),
+      ),
+    ).toBeNull();
+    expect(
+      parseStoredOfflineManifest(
+        JSON.stringify({
+          ...manifest,
+          pois: [{ ...manifest.pois[0], latitude: 100 }],
+        }),
+      ),
+    ).toBeNull();
   });
 
-  it("rejects corrupt stored styles and unsafe local file names", () => {
-    const style = { version:8, sources:{}, layers:[{id:"bg", type:"background"}] };
-    const manifest = { city, package:city.package, boundary:null, centers:[], routes:[], download:{
-      savedAt:"2026-10-02T10:00:00.000Z", packId:"pack", styleFileName:"pack.json", resourceSizeBytes:null,
-      bounds:[-79.12,-1.71,-78.88,-1.47], mapStyles:{light:style,dark:style},
-    }};
+  it("rejects corrupt stored styles", () => {
+    const style = {
+      version: 8,
+      sources: {},
+      layers: [{ id: "bg", type: "background" }],
+    };
+    const manifest = {
+      city,
+      package: city.package,
+      boundary: null,
+      centers: [],
+      routes: [],
+      download: {
+        savedAt: "2026-10-02T10:00:00.000Z",
+        packId: "pack",
+        resourceSizeBytes: null,
+        bounds: [-79.12, -1.71, -78.88, -1.47],
+        mapStyles: { light: style, dark: style },
+      },
+    };
     expect(parseStoredOfflineManifest(JSON.stringify(manifest))).not.toBeNull();
-    expect(parseStoredOfflineManifest(JSON.stringify({...manifest, download:{...manifest.download,styleFileName:"../other.json"}}))).toBeNull();
-    expect(parseStoredOfflineManifest(JSON.stringify({...manifest, download:{...manifest.download,mapStyles:{light:{version:8},dark:style}}}))).toBeNull();
+    expect(
+      parseStoredOfflineManifest(
+        JSON.stringify({
+          ...manifest,
+          download: {
+            ...manifest.download,
+            mapStyles: { light: { version: 8 }, dark: style },
+          },
+        }),
+      ),
+    ).toBeNull();
   });
 });

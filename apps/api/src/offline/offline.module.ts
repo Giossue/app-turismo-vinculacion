@@ -1,14 +1,23 @@
 import { Module } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
 
 import { GetOfflineCityManifestUseCase } from "./application/get-offline-city-manifest.use-case";
 import { ListOfflineCitiesUseCase } from "./application/list-offline-cities.use-case";
 import { OFFLINE_CITY_REPOSITORY } from "./application/offline-city.repository";
 import { PostgresOfflineCityRepository } from "./infrastructure/postgres-offline-city.repository";
 import { OfflineController } from "./presentation/offline.controller";
+import { OfflineMapStyleController } from "./presentation/offline-map-style.controller";
+import {
+  OFFLINE_MAP_STYLE_FETCHER,
+  OfflineMapStyleService,
+} from "./infrastructure/offline-map-style.service";
 
 @Module({
-  controllers: [OfflineController],
+  imports: [ConfigModule],
+  controllers: [OfflineController, OfflineMapStyleController],
   providers: [
+    { provide: OFFLINE_MAP_STYLE_FETCHER, useValue: fetch },
+    OfflineMapStyleService,
     PostgresOfflineCityRepository,
     {
       provide: OFFLINE_CITY_REPOSITORY,

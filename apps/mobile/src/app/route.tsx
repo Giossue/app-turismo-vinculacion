@@ -140,6 +140,7 @@ function RouteScreenContent({
   const [routeRequested, setRouteRequested] = useState(false);
   const [navigationActive, setNavigationActive] = useState(false);
   const [startingNavigation, setStartingNavigation] = useState(false);
+  const [retryingRoute, setRetryingRoute] = useState(false);
   const [backgroundTrackingEnabled, setBackgroundTrackingEnabled] =
     useState(false);
   const [backgroundTrackingBusy, setBackgroundTrackingBusy] = useState(false);
@@ -148,6 +149,7 @@ function RouteScreenContent({
   // Guards double taps before the `startingNavigation` render lands.
   const startInFlightRef = useRef(false);
   const startAttemptRef = useRef(0);
+  const retryInFlightRef = useRef(false);
   const saveRoute = useSaveCalculatedRoute();
   const {
     message: locationMessage,
@@ -191,7 +193,11 @@ function RouteScreenContent({
   // `blur` fires when another screen covers this one, never on a bare
   // unmount; leaving the screen ends an active navigation.
   useEffect(
-    () => navigation.addListener("blur", () => setNavigationActive(false)),
+    () =>
+      navigation.addListener("blur", () => {
+        startAttemptRef.current += 1;
+        setNavigationActive(false);
+      }),
     [navigation],
   );
 
@@ -313,9 +319,44 @@ function RouteScreenContent({
   };
 
   const handleStopNavigation = () => {
+    startAttemptRef.current += 1;
     setPreviewExpanded(true);
     setNavigationActive(false);
     setBackgroundTrackingEnabled(false);
+  };
+
+  const handleRetryNavigationRoute = async () => {
+    if (
+      savedRoute ||
+      !destination ||
+      !navigationActive ||
+      isCalculating ||
+      retryInFlightRef.current
+    )
+      return;
+    retryInFlightRef.current = true;
+    setRetryingRoute(true);
+    const attempt = ++startAttemptRef.current;
+    try {
+      const coordinate = await requestLocation({ forceRefresh: true });
+      if (
+        !coordinate ||
+        attempt !== startAttemptRef.current ||
+        !navigation.isFocused()
+      )
+        return;
+      if (
+        origin?.latitude === coordinate.latitude &&
+        origin.longitude === coordinate.longitude
+      ) {
+        await routeQuery.refetch();
+      } else {
+        setOrigin(coordinate);
+      }
+    } finally {
+      retryInFlightRef.current = false;
+      setRetryingRoute(false);
+    }
   };
 
   const handleSaveRoute = async () => {
@@ -417,12 +458,17 @@ function RouteScreenContent({
         <ActiveNavigationOverlay
           guidance={navigationSession.nextInstruction}
           isFollowing={follow.following}
-          isRecalculating={isCalculating}
+          isRecalculating={isCalculating || retryingRoute}
           message={navigationSession.message}
           notice={navigationSession.backgroundNotice ?? navigationNotice}
           onBottomInsetChange={setMapBottomInset}
           onRecenter={() => follow.setFollowing(true)}
           onStop={handleStopNavigation}
+          onRetryRoute={
+            !savedRoute && routeQuery.isError
+              ? () => void handleRetryNavigationRoute()
+              : undefined
+          }
           remainingDistanceMeters={navigationSession.remainingDistanceMeters}
           remainingDurationSeconds={navigationSession.remainingDurationSeconds}
           route={route}

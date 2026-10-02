@@ -8,6 +8,13 @@ const optionalSecret = z.preprocess(
   (value) => (value === "" ? undefined : value),
   z.string().trim().min(1).optional(),
 );
+const optionalPublicMapStyleUrl = z.preprocess(
+  (value) => typeof value === "string" && !value.trim() ? undefined : value,
+  z.string().trim().url().refine((value) => {
+    const url = new URL(value);
+    return (url.protocol === "https:" || url.protocol === "http:") && !url.username && !url.password;
+  }, "El estilo offline debe usar HTTP/S sin credenciales en la URL.").optional(),
+);
 
 const environmentSchema = z.object({
   NODE_ENV: z
@@ -20,6 +27,7 @@ const environmentSchema = z.object({
     .url()
     .default("postgresql://postgres@127.0.0.1:5432/turismo_vinculacion_app"),
   WEB_ORIGIN: z.string().url().default("http://localhost:3001"),
+  OFFLINE_MAP_STYLE_URL: optionalPublicMapStyleUrl,
   ADMIN_WEB_ORIGIN: z.string().url().default("http://localhost:3002"),
   AUTH_JWT_ACCESS_SECRET: z
     .string()

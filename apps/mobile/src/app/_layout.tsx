@@ -80,6 +80,7 @@ function AppNavigation() {
         <Stack.Screen name="centers/[code]" />
         <Stack.Screen name="route" />
         <Stack.Screen name="offline" />
+        <Stack.Screen name="offline-city" />
         <Stack.Screen name="settings" />
         <Stack.Screen name="login" />
       </Stack>

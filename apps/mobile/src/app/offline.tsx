@@ -92,7 +92,7 @@ function OfflineCityList() {
 
       <Text style={[styles.heading, { color: colors.text }]}>Rutas guardadas</Text>
       <Text style={[styles.caption, { color: colors.textMuted }]}>
-        Guarda una ruta desde «Cómo llegar» para seguir ese recorrido con GPS sin internet. Los mapas de las ciudades del recorrido se descargan por separado. Sin conexión no se calculan desvíos.
+        Guarda una ruta desde «Cómo llegar» para seguir ese recorrido con GPS sin internet. Los mapas de las ciudades del recorrido se descargan por separado. Sin conexión no se calculan desvíos. Puedes guardar hasta 20 rutas; una nueva reemplaza la más antigua si llegas al límite.
       </Text>
       {savedRoutes.isPending ? (
         <TourismStateView layout="inline" message="Leyendo tus rutas guardadas…" variant="loading" />

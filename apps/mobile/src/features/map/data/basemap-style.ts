@@ -1,5 +1,6 @@
 import type { StyleSpecification } from "@maplibre/maplibre-react-native";
 
+import { getApiUrl } from "@/core/api/api-url";
 import { getTurismoMapColors, type TurismoColorScheme } from "@/core/ui/tokens";
 import { basemapFillRules, basemapPalettes } from "./basemap-palette";
 
@@ -58,11 +59,12 @@ async function loadPersistentOrRemoteStyle(
   scheme: TurismoColorScheme,
   styleUrl: string,
 ): Promise<StyleSpecification> {
-  const { readStoredBasemapStyle, saveStoredBasemapStyles } = await import(
-    "./basemap-style-storage"
-  );
+  const { readStoredBasemapStyle, saveStoredBasemapStyles } =
+    await import("./basemap-style-storage");
   // No TTL: the resources in a downloaded pack must remain usable on restart.
-  const stored = await readStoredBasemapStyle(scheme, styleUrl).catch(() => null);
+  const stored = await readStoredBasemapStyle(scheme, styleUrl).catch(
+    () => null,
+  );
   if (stored) return stored;
   const styles = await fetchSelfHostedMapStyles(styleUrl);
   await saveStoredBasemapStyles(styles, styleUrl).catch(() => undefined);
@@ -75,14 +77,19 @@ async function loadPersistentOrRemoteStyle(
 export async function loadOfflineMapStyles(): Promise<
   Readonly<Record<TurismoColorScheme, StyleSpecification>>
 > {
-  const styleUrl = getSelfHostedStyleUrl();
-  if (!styleUrl) throw new Error("No self-hosted basemap is configured");
+  const styleUrl = getOfflineMapStyleUrl();
   const styles = await fetchSelfHostedMapStyles(styleUrl);
   const { saveStoredBasemapStyles } = await import("./basemap-style-storage");
-  await saveStoredBasemapStyles(styles, styleUrl);
-  cacheStyle("light", styles.light, styleUrl);
-  cacheStyle("dark", styles.dark, styleUrl);
+  const onlineStyleUrl = getSelfHostedStyleUrl() ?? styleUrl;
+  await saveStoredBasemapStyles(styles, onlineStyleUrl);
+  cacheStyle("light", styles.light, onlineStyleUrl);
+  cacheStyle("dark", styles.dark, onlineStyleUrl);
   return styles;
+}
+
+/** MapLibre's offline downloader requires an HTTP style, already using Noto Sans. */
+export function getOfflineMapStyleUrl(): string {
+  return `${getApiUrl()}/offline/map-style`;
 }
 
 async function fetchSelfHostedMapStyles(styleUrl: string) {
@@ -107,7 +114,9 @@ function cacheStyle(
 }
 
 /** Reject corrupt styles before handing local JSON to the native renderer. */
-export function isValidBasemapStyle(value: unknown): value is StyleSpecification {
+export function isValidBasemapStyle(
+  value: unknown,
+): value is StyleSpecification {
   return (
     isRecord(value) &&
     value.version === 8 &&
@@ -185,7 +194,10 @@ export function normalizeSelfHostedStyle(
         );
       }
       if (typeof normalizedSource.data === "string") {
-        normalizedSource.data = resolveResourceUrl(normalizedSource.data, styleUrl);
+        normalizedSource.data = resolveResourceUrl(
+          normalizedSource.data,
+          styleUrl,
+        );
       }
       if (sourceUrl === tileJsonUrl) {
         // Conservar el TileJSON permite que MapLibre resuelva el template de

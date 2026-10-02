@@ -241,6 +241,14 @@ export function RoutePreviewPanel({
             <RouteOverview route={route} savedRoute={savedRoute} />
           )}
           {notice ? <RouteNotice message={notice} /> : null}
+          {route && routeError && !savedRoute && !isCalculating ? (
+            <TourismActionButton
+              icon="refresh"
+              label="Actualizar ruta"
+              mode="outlined"
+              onPress={onCalculateRoute}
+            />
+          ) : null}
           {saveNotice ? <RouteNotice message={saveNotice} /> : null}
           {route && onSaveRoute && !isCalculating ? (
             <View style={styles.backgroundOption}>

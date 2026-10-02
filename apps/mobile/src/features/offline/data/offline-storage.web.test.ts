@@ -14,7 +14,9 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
   default: {
     getAllKeys: vi.fn(async () => [...values.keys()]),
     getItem: vi.fn(async (key: string) => values.get(key) ?? null),
-    removeItem: vi.fn(async (key: string) => { values.delete(key); }),
+    removeItem: vi.fn(async (key: string) => {
+      values.delete(key);
+    }),
     multiGet: vi.fn(async (keys: string[]) =>
       keys.map((key) => [key, values.get(key) ?? null]),
     ),
@@ -70,8 +72,13 @@ describe("web offline storage", () => {
 
   it("keeps cities independently of query cache TTL and removes only the selected city", async () => {
     await saveOfflineManifest(manifest);
-    await saveOfflineManifest({ ...manifest, city: { ...manifest.city, slug: "riobamba" } });
-    await expect(getStoredOfflineManifest("guaranda")).resolves.toEqual(manifest);
+    await saveOfflineManifest({
+      ...manifest,
+      city: { ...manifest.city, slug: "riobamba" },
+    });
+    await expect(getStoredOfflineManifest("guaranda")).resolves.toEqual(
+      manifest,
+    );
     values.set("other-app-setting", "retain");
     await removeOfflineManifest("guaranda");
     await expect(getStoredOfflineManifest("guaranda")).resolves.toBeNull();

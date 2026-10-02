@@ -57,7 +57,6 @@ export type OfflineCityManifest = Readonly<{
   download?: Readonly<{
     savedAt: string;
     packId: string;
-    styleFileName: string;
     resourceSizeBytes: number | null;
     bounds: GeoBoundingBox;
     mapStyles: Readonly<{

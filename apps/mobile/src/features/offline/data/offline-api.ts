@@ -9,19 +9,18 @@ import type { OfflineCity, OfflineCityManifest } from "../domain/offline-city";
 
 const latitudeSchema = z.number().min(-90).max(90);
 const longitudeSchema = z.number().min(-180).max(180);
-const boundsSchema = z.tuple([
-  longitudeSchema,
-  latitudeSchema,
-  longitudeSchema,
-  latitudeSchema,
-]).refine(([west, south, east, north]) => west < east && south < north);
-const publishedPackageSchema = z.object({
-  version: z.number().int().positive(),
-  checksumSha256: z.string().nullable(),
-  zoomMin: z.number().int().min(0).max(22),
-  zoomMax: z.number().int().min(0).max(22),
-  publishedAt: z.string().nullable(),
-}).refine((item) => item.zoomMin <= item.zoomMax);
+const boundsSchema = z
+  .tuple([longitudeSchema, latitudeSchema, longitudeSchema, latitudeSchema])
+  .refine(([west, south, east, north]) => west < east && south < north);
+const publishedPackageSchema = z
+  .object({
+    version: z.number().int().positive(),
+    checksumSha256: z.string().nullable(),
+    zoomMin: z.number().int().min(0).max(22),
+    zoomMax: z.number().int().min(0).max(22),
+    publishedAt: z.string().nullable(),
+  })
+  .refine((item) => item.zoomMin <= item.zoomMax);
 const citySchema = z.object({
   slug: z.string().min(1),
   name: z.string().min(1),
@@ -40,41 +39,50 @@ const offlineCityManifestSchema = z.object({
   boundary: z.record(z.string(), z.unknown()).nullable(),
   bounds: boundsSchema.optional(),
   centers: z.array(publicCenterSchema),
-  establishments: z.array(z.object({
-    name: z.string().min(1),
-    category: z.string().nullable(),
-    categoryLabel: z.string().nullable().default(null),
-    latitude: latitudeSchema,
-    longitude: longitudeSchema,
-    approximate: z.boolean(),
-    icon: z.string(),
-    group: z.string().nullable().default(null),
-    activity: z.string().default(""),
-    classification: z.string().nullable().default(null),
-    address: z.string().nullable().default(null),
-    phone: z.string().nullable().default(null),
-    localityName: z.string().default(""),
-  })).default([]),
-  pois: z.array(z.object({
-    key: z.string().min(1),
-    name: z.string().min(1),
-    description: z.string().nullable(),
-    category: z.string().nullable(),
-    latitude: latitudeSchema,
-    longitude: longitudeSchema,
-    icon: z.string(),
-  })).default([]),
-  download: z.object({
-    savedAt: z.iso.datetime(),
-    packId: z.string().min(1),
-    styleFileName: z.string().regex(/^[a-zA-Z0-9_-]+\.json$/),
-    resourceSizeBytes: z.number().nonnegative().nullable(),
-    bounds: boundsSchema,
-    mapStyles: z.object({
-      light: z.custom<StyleSpecification>(isValidBasemapStyle),
-      dark: z.custom<StyleSpecification>(isValidBasemapStyle),
-    }),
-  }).optional(),
+  establishments: z
+    .array(
+      z.object({
+        name: z.string().min(1),
+        category: z.string().nullable(),
+        categoryLabel: z.string().nullable().default(null),
+        latitude: latitudeSchema,
+        longitude: longitudeSchema,
+        approximate: z.boolean(),
+        icon: z.string(),
+        group: z.string().nullable().default(null),
+        activity: z.string().default(""),
+        classification: z.string().nullable().default(null),
+        address: z.string().nullable().default(null),
+        phone: z.string().nullable().default(null),
+        localityName: z.string().default(""),
+      }),
+    )
+    .default([]),
+  pois: z
+    .array(
+      z.object({
+        key: z.string().min(1),
+        name: z.string().min(1),
+        description: z.string().nullable(),
+        category: z.string().nullable(),
+        latitude: latitudeSchema,
+        longitude: longitudeSchema,
+        icon: z.string(),
+      }),
+    )
+    .default([]),
+  download: z
+    .object({
+      savedAt: z.iso.datetime(),
+      packId: z.string().min(1),
+      resourceSizeBytes: z.number().nonnegative().nullable(),
+      bounds: boundsSchema,
+      mapStyles: z.object({
+        light: z.custom<StyleSpecification>(isValidBasemapStyle),
+        dark: z.custom<StyleSpecification>(isValidBasemapStyle),
+      }),
+    })
+    .optional(),
   routes: z.array(
     z.object({
       key: z.string(),

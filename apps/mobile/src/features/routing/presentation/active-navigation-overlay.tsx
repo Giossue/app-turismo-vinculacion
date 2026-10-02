@@ -9,7 +9,10 @@ import {
   TourismGlassFill,
   turismoGlassBorderWidth,
 } from "@/core/ui/tourism-glass";
-import { TourismIconAction } from "@/core/ui/tourism-controls";
+import {
+  TourismActionButton,
+  TourismIconAction,
+} from "@/core/ui/tourism-controls";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
   turismoIconSizes,
@@ -38,6 +41,7 @@ type ActiveNavigationOverlayProps = Readonly<{
   onBottomInsetChange?: (height: number) => void;
   onRecenter: () => void;
   onStop: () => void;
+  onRetryRoute?: () => void;
   remainingDistanceMeters: number | null;
   remainingDurationSeconds: number | null;
   route: CalculatedRoute;
@@ -56,6 +60,7 @@ export function ActiveNavigationOverlay({
   onBottomInsetChange,
   onRecenter,
   onStop,
+  onRetryRoute,
   remainingDistanceMeters,
   remainingDurationSeconds,
   route,
@@ -130,6 +135,15 @@ export function ActiveNavigationOverlay({
               >
                 {notice}
               </Text>
+            ) : null}
+            {onRetryRoute ? (
+              <TourismActionButton
+                disabled={isRecalculating}
+                icon="refresh"
+                label="Actualizar ruta"
+                mode="outlined"
+                onPress={onRetryRoute}
+              />
             ) : null}
           </View>
         </View>
