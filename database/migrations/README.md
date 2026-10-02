@@ -11,6 +11,23 @@ fecha. No se edita el baseline después de que un entorno compartido lo haya eje
 No ejecutar migraciones con el ORM en modo `synchronize`; PostgreSQL/PostGIS es la
 fuente de verdad del esquema.
 
+La migración `20261002_admin_logical_deletion.sql` añade `eliminado_at` a centros,
+establecimientos, opiniones y los cinco catálogos administrables, y permite la acción
+`ELIMINAR` en sus auditorías. Conserva filas, FKs, versiones, acciones previas e
+identificadores; impide que un centro, establecimiento u opción eliminados se activen.
+Los índices únicos de opiniones vigentes excluyen las eliminadas para permitir un nuevo
+envío del autor. Aplicarla después de todas las anteriores, antes de desplegar la API y
+posteriormente la web. No requiere backfill; usa `lock_timeout=5s` y
+`statement_timeout=30s`, por lo que los bloqueos se resuelven reintentando en una ventana
+operativa. Conservar marcadores y auditoría si se revierte la aplicación; los ajustes
+posteriores se realizan con una nueva migración. No ejecutar un rollback que vuelva a
+activar registros eliminados ni que quite la nueva acción de una auditoría histórica.
+
+`bash scripts/verify-admin-deletion.sh` crea una base PostgreSQL/PostGIS aislada con socket
+local, aplica el esquema desde cero, verifica los servicios con datos de prueba y repite
+esta migración con historial existente. Requiere `initdb`, `pg_ctl`, `psql`, `rg`, PostGIS
+y Corepack; no utiliza `.pgpass`, variables de despliegue ni la base compartida.
+
 La migración `20260917_offline_routes_and_city_packages.sql` añade límites oficiales de
 ciudades, versiones publicables de rutas y metadatos de paquetes offline. Debe ejecutarse
 después del baseline y antes de habilitar descargas en el móvil.

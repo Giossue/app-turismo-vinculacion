@@ -128,3 +128,17 @@ la ficha. Importaciones y procesamiento avanzado quedan para una fase posterior.
 La cola de revisión abre la ficha completa en modo de solo lectura, incluyendo núcleo,
 secciones, valoración, multimedia y observaciones, antes de mostrar la decisión de aprobar
 o rechazar.
+
+## Eliminación administrativa
+
+`DELETE /admin/centers/:code` requiere `ADMINISTRADOR`. Marca `eliminado_at`, desactiva
+la ficha y registra `ELIMINAR` con snapshots anteriores y posteriores en una transacción.
+La ficha, borradores, revisiones, multimedia, relaciones y código se conservan. El centro
+sale del panel y de las consultas públicas; sus mutaciones y reactivación dejan de estar
+disponibles, incluida la carga de multimedia. La auditoría sigue siendo consultable.
+
+`DELETE /admin/catalogs/:catalog/:id` aplica el mismo permiso y conservación a las cinco
+opciones de catálogo administrables. Las opciones eliminadas se excluyen incluso al pedir
+catálogos inactivos. Un tipo de establecimiento con categorías no eliminadas devuelve
+conflicto hasta retirar dichas categorías. La desactivación sigue siendo reversible y
+distinta de la eliminación. La migración es `20261002_admin_logical_deletion.sql`.

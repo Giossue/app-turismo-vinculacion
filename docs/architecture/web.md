@@ -95,6 +95,27 @@ El editor también carga fotografías como multipart hacia `/admin/centers/:code
 API guarda el binario en el proveedor configurado, registra metadatos en PostgreSQL y solo
 expone una imagen cuando la ficha se publica.
 
+## Eliminación administrativa
+
+El administrador dispone de Eliminar en las tablas de Centros turísticos, Catastro,
+Opiniones y Catálogos. El diálogo identifica el registro, explica la conservación del
+historial, evita el envío repetido y mantiene abierto cualquier error recuperable.
+La API valida el rol y registra una eliminación lógica distinta de la desactivación:
+
+```text
+DELETE /api/v1/admin/centers/:code
+DELETE /api/v1/admin/establishments/:id
+DELETE /api/v1/admin/opinions/:reviewCode
+DELETE /api/v1/admin/catalogs/:catalog/:id
+```
+
+Los registros eliminados dejan de aparecer en listados y selectores, no pueden editarse
+ni reactivarse, y conservan sus relaciones y auditoría. Una clasificación de catastro
+con categorías conservadas exige eliminarlas primero. La eliminación de una opinión
+retira todas sus versiones de las consultas públicas y las calificaciones; su historial
+administrativo conserva la fecha y la acción. La migración
+`20261002_admin_logical_deletion.sql` se aplica antes de la API y la web.
+
 ## Web móvil
 
 La web pública debe funcionar en teléfono. El panel administrativo es responsive, pero

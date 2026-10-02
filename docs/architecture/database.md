@@ -23,7 +23,7 @@ como snapshot/bootstrap generado o se retirará mediante una decisión explícit
 - IDs internos `BIGINT`; códigos públicos derivados cuando corresponda.
 - `TIMESTAMPTZ` y almacenamiento UTC; presentación en zona del usuario.
 - Eliminación lógica para usuarios y centros.
-- Catálogos utilizados se desactivan, no se borran.
+- Catálogos utilizados conservan sus filas y relaciones; se desactivan o eliminan lógicamente.
 - FKs de catálogo con `RESTRICT`; detalles exclusivos con `CASCADE`; referencias
   opcionales históricas con `SET NULL` según diseño.
 - Todas las FKs consultadas se indexan.
@@ -51,6 +51,14 @@ para el historial del agente. Las conversaciones anteriores quedan fuera del his
 voluntario. La API debe desplegarse después de aplicar esta migración.
 
 ## Migraciones
+
+`20261002_admin_logical_deletion.sql` distingue eliminación de desactivación con
+`eliminado_at` en centros, establecimientos, opiniones y los cinco catálogos del panel.
+Las eliminaciones se auditan con `ELIMINAR` en la misma transacción y conservan las FKs
+y los identificadores. Los registros eliminados se excluyen de los listados operativos,
+no pueden reactivarse, y quedan fuera de las calificaciones públicas. Los centros y
+catastros conservan sus códigos y números de registro; las opiniones nuevas pueden
+reemplazar una raíz eliminada gracias a los índices de unicidad de registros vigentes.
 
 - Una migración por cambio coherente.
 - Toda migración destructiva incluye inventario, respaldo, transformación y rollback.

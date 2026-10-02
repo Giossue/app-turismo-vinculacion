@@ -118,7 +118,7 @@ datos\_nuevos JSONB NULL
 
 created\_at TIMESTAMPTZ NOT NULL
 
-CHECK (accion IN ('CREAR', 'MODIFICAR', 'SOLICITAR_REVISION', 'APROBAR', 'RECHAZAR', 'PUBLICAR', 'DESACTIVAR', 'REACTIVAR'))
+CHECK (accion IN ('CREAR', 'MODIFICAR', 'SOLICITAR_REVISION', 'APROBAR', 'RECHAZAR', 'PUBLICAR', 'DESACTIVAR', 'REACTIVAR', 'AGREGAR_MULTIMEDIA', 'ELIMINAR_MULTIMEDIA', 'PUBLICAR_MULTIMEDIA', 'ELIMINAR'))
 
 **Cardinalidades:**
 
@@ -318,6 +318,8 @@ estado\_moderacion VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE'
 
 version\_publicada\_id BIGINT (FK → opinion_versiones.id) NULL
 
+eliminado\_at TIMESTAMPTZ NULL
+
 created\_at TIMESTAMPTZ NOT NULL
 
 updated\_at TIMESTAMPTZ NOT NULL
@@ -386,7 +388,7 @@ motivo TEXT NULL
 
 created\_at TIMESTAMPTZ NOT NULL
 
-CHECK (accion IN ('APROBAR', 'RECHAZAR'))
+CHECK (accion IN ('APROBAR', 'RECHAZAR', 'ELIMINAR'))
 
 **Cardinalidades:**
 
@@ -600,6 +602,8 @@ updated\_at TIMESTAMPTZ NOT NULL
 
 publicado\_at TIMESTAMPTZ NULL
 
+eliminado\_at TIMESTAMPTZ NULL
+
 UNIQUE (parroquia\_id, secuencial\_atractivo)
 
 CHECK (secuencial\_atractivo BETWEEN 1 AND 999\)
@@ -607,6 +611,9 @@ CHECK (secuencial\_atractivo BETWEEN 1 AND 999\)
 CHECK (puntaje\_total IS NULL OR puntaje\_total BETWEEN 0 AND 100\)
 
 `codigo_atractivo`, `jerarquia_id` y `puntaje_total` se calculan automáticamente. El centro se vincula al subtipo; la categoría y el tipo se obtienen mediante sus relaciones y no se duplican en esta tabla.
+
+La eliminación lógica conserva la ficha y su código, registra auditoría y exige
+`activo=false` cuando `eliminado_at` está informado. No se reutiliza su secuencial.
 
 &nbsp;
 

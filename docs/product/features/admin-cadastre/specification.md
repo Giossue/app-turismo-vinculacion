@@ -64,6 +64,7 @@ POST  /api/v1/admin/establishments/:id/submit-review
 PATCH /api/v1/admin/establishments/:id/review
 POST  /api/v1/admin/establishments/:id/deactivate
 POST  /api/v1/admin/establishments/:id/reactivate
+DELETE /api/v1/admin/establishments/:id
 GET   /api/v1/establishments/nearby
 GET   /api/v1/establishments/tiles/:z/:x/:y
 ```
@@ -72,6 +73,16 @@ La captura y consulta privada requieren `AGENTE_TURISTICO` o `ADMINISTRADOR`; la
 de revisión también admite ambos roles y la ruta `/review` requiere `ADMINISTRADOR`. La
 consulta pública devuelve `items`,
 `requestedLocalityName`, `effectiveLocality` y `fallbackApplied`.
+
+## Eliminación administrativa
+
+El DELETE requiere `ADMINISTRADOR` y confirmación en el portal. Marca `eliminado_at` y
+`activo=false` y registra `ELIMINAR` en `auditoria_catalogos` dentro de una transacción.
+El establecimiento se retira del listado, la revisión, las consultas públicas y las
+teselas nuevas. Edición, envío, revisión y reactivación posteriores responden como registro
+no disponible. Se conservan la fila, el número de registro, las relaciones y la auditoría.
+Las teselas ya cacheadas se renuevan según su vencimiento y las descargas offline conservan
+su snapshot hasta actualizarse. Requiere `20261002_admin_logical_deletion.sql`.
 
 ## Pendientes explícitos
 

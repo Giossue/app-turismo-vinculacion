@@ -17,3 +17,6 @@
 - [ ] La UI resuelve carga, vacío, error, conflicto, reintento y autenticación.
 - [ ] Los controles táctiles y formularios son accesibles.
 - [ ] Migración, OpenAPI, pruebas y documentación cuentan la misma historia.
+- [x] Solo el administrador puede eliminar una opinión completa con confirmación.
+- [x] Las opiniones eliminadas dejan de contar en la lista y las calificaciones públicas.
+- [x] La eliminación conserva todas las versiones, registra auditoría y admite un nuevo envío.

@@ -50,6 +50,17 @@ alteran la versión publicada hasta ser aprobadas.
   `GET /admin/opinions/:reviewCode/history`, incluyendo versiones y moderaciones, solo
   para el rol `ADMINISTRADOR`.
 
+## Eliminación administrativa
+
+El administrador puede eliminar la opinión completa mediante
+`DELETE /admin/opinions/:reviewCode`. La API bloquea la raíz, marca `eliminado_at` y
+registra `ELIMINAR` en moderaciones dentro de la misma transacción. Todas las versiones
+y decisiones se conservan; el historial incluye `deletedAt`. La eliminación repetida no
+duplica auditoría. La opinión deja de aparecer en el panel, la lista y las calificaciones
+públicas, y no puede editarse ni moderarse. El autor puede enviar una nueva opinión.
+Una eliminación concurrente de un centro se serializa con la creación/edición de opiniones.
+Requiere la migración `20261002_admin_logical_deletion.sql`.
+
 ## Integraciones
 
 - API NestJS/Fastify y PostgreSQL.
