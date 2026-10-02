@@ -277,6 +277,7 @@ def inspect_screen(adb, screen, profile, output):
             check_control(result, root, "Iniciar navegación", profile)
 
         elif screen == "search":
+            check(result, "Tab navigation visible before search", all(find(root, name) is not None for name in ("Explorar", "Guardados", "Menú")))
             tap(adb, find(root, "QA Abrir búsqueda"))
             _, root = adb.dump()
             field_name = "Buscar atractivos, servicios y lugares"
@@ -284,6 +285,7 @@ def inspect_screen(adb, screen, profile, output):
             tap(adb, field)
             adb.shell("input", "text", "cafe")
             root = capture(adb, folder, "typing")
+            check(result, "Search hides tab navigation", all(find(root, name) is None for name in ("Explorar", "Guardados", "Menú")))
             top = keyboard_top(adb, root, folder / "keyboard-window.txt")
             ime_dump = adb.shell("dumpsys", "input_method")
             (folder / "keyboard-input-method.txt").write_text(ime_dump)
@@ -304,12 +306,14 @@ def inspect_screen(adb, screen, profile, output):
             root = capture(adb, folder, "after-submit")
             check_control(result, root, field_name, profile)
             check(result, "Submit retains the live list", find(root, "Volver al mapa") is not None)
+            check(result, "Tab navigation stays hidden without keyboard", all(find(root, name) is None for name in ("Explorar", "Guardados", "Menú")))
             root = reach(adb, root, result_name, profile, prefix=True, min_height=44)
             root = capture(adb, folder, "selectable-result")
             row = check_control(result, root, result_name, profile, prefix=True, min_height=44)
             tap(adb, row)
             root = capture(adb, folder, "selected")
             check(result, "One tap selects a result", find(root, "QA_SEARCH:selected:service") is not None)
+            check(result, "Selection restores tab navigation", all(find(root, name) is not None for name in ("Explorar", "Guardados", "Menú")))
 
         elif screen == "form":
             for name in ("QA Nombre", "QA Correo"):

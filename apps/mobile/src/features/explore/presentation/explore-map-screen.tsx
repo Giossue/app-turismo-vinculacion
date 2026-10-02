@@ -7,6 +7,7 @@ import { useTourismMenu } from "@/core/ui/tourism-navigation";
 import { TourismGlassScope } from "@/core/ui/tourism-glass";
 import {
   useTourismTabBarInset,
+  useTourismTabBarHidden,
   useTourismTabGlassTarget,
 } from "@/core/ui/tourism-tab-bar";
 import { useAgentConversation } from "@/features/agent/application/use-agent-conversation";
@@ -95,6 +96,7 @@ export function ExploreMapScreen() {
   // Las sheets se dibujan en el host del layout de pestañas (encima de la
   // barra); en otra pestaña no se muestran, pero su estado se conserva.
   const focused = useIsFocused();
+  useTourismTabBarHidden(focused && search.focused);
 
   /** A selected result returns to the same live list when its detail closes. */
   const closeDetail = () => {

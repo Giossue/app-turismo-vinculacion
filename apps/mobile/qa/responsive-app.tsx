@@ -35,6 +35,7 @@ import { TourismSheetHandle } from "../src/core/ui/tourism-sheet-handle";
 import {
   TourismTabBar,
   TourismTabBarInsetProvider,
+  useTourismTabBarHidden,
 } from "../src/core/ui/tourism-tab-bar";
 import { TourismTabs } from "../src/core/ui/tourism-tabs";
 import { turismoSpacing, turismoTypography } from "../src/core/ui/tokens";
@@ -127,7 +128,12 @@ function QaScene({ screen }: Readonly<{ screen: QaScreen }>) {
   if (screen === "chat") return <ChatScene />;
   if (screen === "route") return <RouteScene />;
   if (screen === "form") return <FormScene />;
-  if (screen === "search") return <SearchScene />;
+  if (screen === "search")
+    return (
+      <TourismTabBarInsetProvider>
+        <SearchScene />
+      </TourismTabBarInsetProvider>
+    );
   return <TabsScene />;
 }
 
@@ -228,6 +234,7 @@ function SearchScene() {
     onRequestLocation: () => console.error("QA_SEARCH:unexpected-gps"),
     onResetOverlay: () => undefined,
   });
+  useTourismTabBarHidden(search.focused);
   const items = rankSearchSuggestions(
     searchFixtures.filter(
       (item) =>
@@ -291,6 +298,29 @@ function SearchScene() {
           ) : null}
         </TourismScreenFrame>
       )}
+      <TourismTabBar
+        items={[
+          {
+            key: "explore",
+            label: "Explorar",
+            icon: "map",
+            selected: true,
+            onPress: () => undefined,
+          },
+          {
+            key: "saved",
+            label: "Guardados",
+            icon: "bookmark",
+            onPress: () => undefined,
+          },
+          {
+            key: "menu",
+            label: "Menú",
+            icon: "menu",
+            onPress: () => undefined,
+          },
+        ]}
+      />
     </View>
   );
 }

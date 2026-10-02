@@ -279,6 +279,9 @@ En Explorar, un único estado `ExploreOverlay` decide qué overlay está abierto
 centro o de establecimiento, opciones superpuestas, enfoque de cámara en curso o agente), de
 modo que dos fichas no pueden coexistir. Buscar actualiza una lista debajo del campo en
 la misma interfaz de búsqueda; no monta una sheet de resultados al escribir o enviar.
+`useTourismTabBarHidden` publica la búsqueda abierta de la pestaña enfocada al contexto
+del layout: la barra no se dibuja y su inset vale cero. Se restaura al cerrar, elegir
+un resultado, perder foco o desmontarse. La visibilidad no depende del teclado.
 Elegir un centro o establecimiento sigue el mismo camino que tocar un pin: cierra la
 interfaz transitoria de búsqueda, abre la ficha y, a la vez, centra la cámara. Elegir una
 referencia geográfica cierra esa interfaz y centra el mapa. Una coincidencia descargada

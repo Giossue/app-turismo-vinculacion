@@ -30,6 +30,9 @@ una hoja inferior de resultados. Explorar y buscar no solicitan permiso de ubica
    Las consultas remotas esperan 300 ms desde el último cambio; los datos descargados se
    consultan localmente. No hace falta enviar desde el teclado ni se abre una hoja inferior
    al enviar. Vacío, carga, fallo y cobertura descargada se comunican junto a la lista.
+   Mientras la búsqueda está abierta, se oculta la barra «Explorar / Guardados / Menú»
+   y la lista usa ese espacio. La barra vuelve al cerrar o seleccionar un resultado;
+   ocultar únicamente el teclado mantiene la búsqueda y la barra oculta.
 4. El alcance inicial es «Todo Ecuador». «En esta zona» limita la consulta al rectángulo
    geográfico realmente visible en el mapa al terminar el movimiento de la cámara. Sin
    un viewport válido, esa consulta espera; no se amplía silenciosamente a todo el país.

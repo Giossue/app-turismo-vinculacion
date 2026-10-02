@@ -3,6 +3,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -51,9 +52,22 @@ const TourismTabBarInsetContext = createContext(0);
 const TourismTabBarHeightContext = createContext<
   ((height: number | null) => void) | null
 >(null);
+const TourismTabBarHiddenContext = createContext(false);
+const TourismTabBarHiddenSetterContext = createContext<
+  ((hidden: boolean) => void) | null
+>(null);
 
 export function useTourismTabBarInset(): number {
   return useContext(TourismTabBarInsetContext);
+}
+
+/** A focused screen can hide the shared bar while its full-screen search is open. */
+export function useTourismTabBarHidden(hidden: boolean): void {
+  const setHidden = useContext(TourismTabBarHiddenSetterContext);
+  useLayoutEffect(() => {
+    setHidden?.(hidden);
+    return () => setHidden?.(false);
+  }, [hidden, setHidden]);
 }
 
 type GlassTarget = RefObject<View | null>;
@@ -69,16 +83,23 @@ export function TourismTabBarInsetProvider({
 }: Readonly<{ children: ReactNode }>) {
   const insets = useSafeAreaInsets();
   const [barHeight, setBarHeight] = useState<number | null>(null);
-  const inset = insets.bottom + barGap * 2 + (barHeight ?? estimatedBarHeight);
+  const [hidden, setHidden] = useState(false);
+  const inset = hidden
+    ? 0
+    : insets.bottom + barGap * 2 + (barHeight ?? estimatedBarHeight);
   const [target, setTarget] = useState<GlassTarget | null>(null);
   return (
-    <TourismTabBarInsetContext.Provider value={inset}>
-      <TourismTabBarHeightContext.Provider value={setBarHeight}>
-        <TourismTabGlassContext.Provider value={{ target, setTarget }}>
-          {children}
-        </TourismTabGlassContext.Provider>
-      </TourismTabBarHeightContext.Provider>
-    </TourismTabBarInsetContext.Provider>
+    <TourismTabBarHiddenSetterContext.Provider value={setHidden}>
+      <TourismTabBarHiddenContext.Provider value={hidden}>
+        <TourismTabBarInsetContext.Provider value={inset}>
+          <TourismTabBarHeightContext.Provider value={setBarHeight}>
+            <TourismTabGlassContext.Provider value={{ target, setTarget }}>
+              {children}
+            </TourismTabGlassContext.Provider>
+          </TourismTabBarHeightContext.Provider>
+        </TourismTabBarInsetContext.Provider>
+      </TourismTabBarHiddenContext.Provider>
+    </TourismTabBarHiddenSetterContext.Provider>
   );
 }
 
@@ -116,12 +137,15 @@ export function TourismTabBar({
   const insets = useSafeAreaInsets();
   const { target } = useContext(TourismTabGlassContext);
   const setBarHeight = useContext(TourismTabBarHeightContext);
+  const hidden = useContext(TourismTabBarHiddenContext);
   useEffect(
     () => () => {
       setBarHeight?.(null);
     },
     [setBarHeight],
   );
+
+  if (hidden) return null;
 
   return (
     <View

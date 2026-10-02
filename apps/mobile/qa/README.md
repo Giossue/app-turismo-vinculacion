@@ -44,6 +44,8 @@ La escena de búsqueda usa el estado y la lista del producto, con resultados fic
 Comprueba opciones visibles sobre el teclado, permanencia después de enviar y selección
 con un toque. El historial guarda únicamente texto en el emulador aislado; no utiliza
 datos del teléfono. No consulta la API ni verifica la navegación del mapa real.
+Incluye la barra inferior real: se verifica visible antes de buscar, oculta al
+escribir y después de enviar, y visible de nuevo al seleccionar un resultado.
 
 El runner ADB y la preparación del emulador están documentados en
 [mobile-responsive-checks.md](../../../docs/quality/mobile-responsive-checks.md).

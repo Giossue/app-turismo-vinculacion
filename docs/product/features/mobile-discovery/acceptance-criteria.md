@@ -13,6 +13,8 @@
       enviar desde el teclado.
 - [x] Los resultados se listan debajo del campo dentro de la interfaz de búsqueda;
       escribir o enviar no abre un bottom sheet de resultados.
+- [x] La barra inferior está oculta mientras la búsqueda está abierta y enfocada,
+      incluso sin teclado; se restaura al cerrar, seleccionar o dejar la pestaña.
 - [x] Los filtros «Todo», «Atractivos», «Servicios» y «Lugares» comparten el mismo campo.
 - [x] «Todo Ecuador» es el alcance inicial y «En esta zona» utiliza el bbox real del mapa,
       capturado al estar listo y después del movimiento, sin lecturas por cada frame.
