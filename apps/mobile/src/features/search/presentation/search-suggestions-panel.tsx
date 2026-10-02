@@ -75,7 +75,7 @@ export function SearchSuggestionsPanel({
         >
           {offlineCoverage.length
             ? `Búsqueda en línea no disponible. Solo puedes buscar en tus mapas descargados: ${offlineCoverage.map((city) => city.name).join(", ")}.`
-            : "Búsqueda en línea no disponible. No tienes mapas descargados para buscar sin conexión."}
+            : "Búsqueda en línea no disponible. No hay mapas descargados con cobertura para esta búsqueda."}
         </Text>
       ) : null}
       {hasQuery && isSearching ? (

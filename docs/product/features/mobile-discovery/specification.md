@@ -24,6 +24,8 @@ una hoja inferior de resultados. Explorar y buscar no solicitan permiso de ubica
    los centros públicos confirmados. Los catastros se muestran mediante teselas vectoriales.
 2. «Buscar aquí» ofrece un solo campo y los filtros «Todo», «Atractivos», «Servicios» y
    «Lugares». Permite buscar nombres o actividades como «cafeterías» y «hoteles».
+   «Lugares» incluye referencias geográficas remotas y POIs/recorridos publicados de
+   las ciudades descargadas; no mezcla centros o catastros en ese filtro.
 3. A partir de dos caracteres, la lista se actualiza en la misma interfaz de búsqueda.
    Las consultas remotas esperan 300 ms desde el último cambio; los datos descargados se
    consultan localmente. No hace falta enviar desde el teclado ni se abre una hoja inferior
@@ -35,8 +37,8 @@ una hoja inferior de resultados. Explorar y buscar no solicitan permiso de ubica
    contenido y otros campos públicos. La búsqueda normaliza tildes y mayúsculas, admite
    pequeños errores y grupos definidos de palabras equivalentes, como café/cafetería y
    hotel/alojamiento. Entre resultados de relevancia equivalente se utiliza la distancia
-   directa a una posición ya disponible o al centro del mapa. Esa distancia ordena lugares;
-   no representa una ruta vial ni un tiempo de viaje.
+   directa a una posición ya disponible o al centro del mapa. Esa distancia se usa solo
+   para ordenar: la lista no muestra metros, minutos ni afirmaciones de «cerca de ti».
 6. Elegir un centro o establecimiento abre su ficha y centra el mapa. Elegir una referencia
    geográfica centra esa ubicación. Una coincidencia descargada abre el visor local de
    su ciudad y el elemento correspondiente, sin pedir su ficha a la API.
@@ -61,10 +63,11 @@ una hoja inferior de resultados. Explorar y buscar no solicitan permiso de ubica
   anterior no reemplaza sus resultados. La lista puede estar vacía sin bloquear el mapa.
 - «En esta zona» no cambia de ciudad automáticamente cuando no hay coincidencias.
 - Sin GPS no se pide permiso como efecto de escribir. Sigue siendo posible ordenar por
-  relevancia y usar el centro del mapa para desempatar por distancia, indicando el origen
-  sin presentarlo como la ubicación de la persona.
+  relevancia y usar el centro del mapa para desempatar internamente por distancia;
+  no se presenta el centro del mapa como la ubicación de la persona.
 - Sin conexión, «Todo Ecuador» solo consulta los paquetes presentes en el dispositivo;
-  la interfaz informa las ciudades cubiertas. No promete cobertura nacional ni mapas
+  la interfaz informa las ciudades cubiertas y, al buscar en área, limita esa cobertura
+  por intersección con el bbox. No promete cobertura nacional ni mapas
   por provincia. Los paquetes pueden incluir centros, catastros, POIs y recorridos
   publicados; no proporcionan geocodificación general de calles sin conexión.
 

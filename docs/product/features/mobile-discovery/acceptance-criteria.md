@@ -22,7 +22,8 @@
 - [x] Tildes y mayúsculas no impiden coincidencias; los grupos definidos de sinónimos y
       errores pequeños amplían la búsqueda sin modificar la clasificación institucional.
 - [x] Las coincidencias exactas y la relevancia preceden a la distancia directa.
-      La búsqueda no muestra ni calcula minutos de viaje.
+      La distancia solo se utiliza internamente para ordenar; la lista no muestra
+      metros, minutos ni «cerca de ti».
 - [x] Seleccionar un centro o catastro abre su ficha; una referencia geográfica centra
       el mapa. Las coincidencias locales abren el visor de la ciudad descargada.
 - [x] Sin red o ante error remoto se buscan únicamente datos descargados disponibles

@@ -53,6 +53,23 @@
   aplicación móvil nunca llama directamente a Photon ni a Nominatim.
 - Un fallo o timeout de Photon degrada la búsqueda geográfica, pero no oculta los centros ni
   catastros propios que sí estén disponibles.
+- El móvil consulta desde dos caracteres con debounce remoto de 300 ms y muestra las
+  opciones debajo del campo, sin abrir una hoja de resultados. Los filtros «Todo»,
+  «Atractivos», «Servicios» y «Lugares» comparten esa consulta. «Todo Ecuador» es el
+  alcance inicial; «En esta zona» envía `west/south/east/north` del viewport real del mapa.
+  La API exige una caja completa y ordenada, aplica el filtro en todas sus fuentes y
+  no cambia de ciudad para suplir una zona sin resultados.
+- Los nombres y campos públicos se normalizan para tildes y mayúsculas. Los alias
+  definidos de actividad y la similitud de palabras amplían las coincidencias; nombre
+  exacto, prefijo y relevancia tienen prioridad. La distancia directa al punto opcional
+  solo desempata esa relevancia: no equivale a una ruta vial ni a minutos de viaje.
+- El área visible se recibe al terminar un movimiento de cámara, no mediante lecturas
+  por frame. Buscar o elegir área no solicita GPS. Consultas y claves con coordenadas
+  o bbox permanecen en memoria y no se persisten.
+- Los manifiestos de ciudades descargadas también pueden aportar coincidencias a la
+  lista. Sin red, la cobertura se limita a esos paquetes y se informa por ciudad;
+  seleccionar una coincidencia local abre `/offline-city` sin consultar su ficha remota.
+  Esta búsqueda no ofrece mapas de provincias ni geocodificación general offline.
 - El panel administrativo no guarda una dirección inferida por geocodificación. Al crear o
   editar una ficha o un catastro, el operador abre un modal MapLibre, hace clic en el mapa y
   confirma únicamente latitud y longitud; la dirección descriptiva continúa siendo un campo
@@ -224,7 +241,8 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   visible del mapa, encima de la ficha. El pin seleccionado se ve
   igual que el resto: no se agranda ni cambia de icono.
 - Al abrir la pantalla principal no se solicita la ubicación: `while in use` se pide al tocar
-  "mi ubicación", activar "Servicios cercanos" o iniciar una ruta; si la
+  "mi ubicación" o activar una función de ruta que la necesita; buscar y filtrar no
+  solicitan ese permiso. Si la
   persona lo concede, espera una posición fresca con precisión de 100 m o menos, centra la
   cámara con zoom 15 y dibuja un punto azul en una fuente GeoJSON separada. Una única
   sesión global mantiene `Location.watchPositionAsync` con alta precisión mientras la app

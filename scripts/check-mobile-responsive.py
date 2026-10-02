@@ -25,7 +25,7 @@ import xml.etree.ElementTree as ET
 
 
 PACKAGE = "ec.edu.ueb.turismovinculacion.software.dev"
-SCREENS = ("tabs", "chat", "route", "form")
+SCREENS = ("tabs", "chat", "route", "form", "search")
 DEFAULT_MATRIX = (
     "320x568:1,360x640:1,390x844:1,412x915:1,640x360:1,844x390:1,"
     "360x640:1.5,320x568:2,640x360:2"
@@ -275,6 +275,38 @@ def inspect_screen(adb, screen, profile, output):
             root = reach(adb, root, "Iniciar navegación", profile)
             root = capture(adb, folder, "expanded-primary-action")
             check_control(result, root, "Iniciar navegación", profile)
+
+        elif screen == "search":
+            tap(adb, find(root, "QA Abrir búsqueda"))
+            _, root = adb.dump()
+            field_name = "Buscar atractivos, servicios y lugares"
+            field = check_control(result, root, field_name, profile)
+            tap(adb, field)
+            adb.shell("input", "text", "cafe")
+            root = capture(adb, folder, "typing")
+            top = keyboard_top(adb, root, folder / "keyboard-window.txt")
+            ime_dump = adb.shell("dumpsys", "input_method")
+            (folder / "keyboard-input-method.txt").write_text(ime_dump)
+            fullscreen = ime_fullscreen_from_dump(ime_dump)
+            check(result, "Search keyboard appears", top is not None, keyboardTop=top)
+            check(result, "Search IME leaves list visible", fullscreen is False, fullscreen=fullscreen)
+            check(result, "Search field above keyboard", field is not None and top is not None and bounds(field)[3] <= top + 2)
+            result_name = "Cafetería de prueba con un nombre extenso"
+            root = reach(adb, root, result_name, profile, prefix=True, min_height=44)
+            root = capture(adb, folder, "live-result")
+            check_control(result, root, result_name, profile, prefix=True, min_height=44)
+            # Reach may dismiss the keyboard by scrolling. Refocus and submit.
+            tap(adb, find(root, field_name))
+            adb.shell("input", "keyevent", "66")
+            root = capture(adb, folder, "after-submit")
+            check_control(result, root, field_name, profile)
+            check(result, "Submit retains the live list", find(root, "Volver al mapa") is not None)
+            root = reach(adb, root, result_name, profile, prefix=True, min_height=44)
+            root = capture(adb, folder, "selectable-result")
+            row = check_control(result, root, result_name, profile, prefix=True, min_height=44)
+            tap(adb, row)
+            root = capture(adb, folder, "selected")
+            check(result, "One tap selects a result", find(root, "QA_SEARCH:selected:service") is not None)
 
         elif screen == "form":
             for name in ("QA Nombre", "QA Correo"):

@@ -17,7 +17,7 @@ cleanup_search_cluster() {
   if [[ -f "$search_temp/data/postmaster.pid" ]]; then
     pg_ctl -D "$search_temp/data" -m fast -w stop >>"$search_log" 2>&1 || true
   fi
-  if [[ ${1:-0} != 0 ]]; then cat "$search_log" >&2; fi
+  if [[ ${1:-0} != 0 ]]; then tail -n 50 "$search_log" >&2; fi
   rm -rf -- "$search_temp"
 }
 trap 'cleanup_search_cluster $?' EXIT
@@ -26,7 +26,10 @@ initdb -D "$search_temp/data" -A trust --no-locale -E UTF8 -U public_search_test
 pg_ctl -D "$search_temp/data" -l "$search_temp/postgres.log" \
   -o "-F -k $search_temp -h '' -p 55493" -w -t 15 start >>"$search_log" 2>&1
 
-export PGPASSFILE=/dev/null PGHOST="$search_temp" PGPORT=55493 PGUSER=public_search_test
+touch "$search_temp/no-credentials.pass"
+chmod 600 "$search_temp/no-credentials.pass"
+unset PGHOSTADDR PGSERVICE PGSERVICEFILE PGOPTIONS
+export PGPASSFILE="$search_temp/no-credentials.pass" PGHOST="$search_temp" PGPORT=55493 PGUSER=public_search_test
 cd "$search_repo"
 printf 'Verificando búsqueda en PostgreSQL/PostGIS temporal.\n'
 while IFS= read -r search_migration; do

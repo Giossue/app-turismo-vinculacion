@@ -4,8 +4,9 @@
 
 - La creación de cuenta no sustituye el permiso de ubicación; pedirlo cuando la persona
   active la función que lo necesita.
-- Pedirla al abrir el mapa o al usar cercanía/navegación; el mapa continúa disponible si
-  se deniega.
+- Pedirla al activar «mi ubicación» o una función de navegación que la necesita; abrir
+  el mapa, escribir, filtrar servicios o buscar en la zona visible no la solicitan.
+  El mapa continúa disponible si se deniega.
 - Explicar finalidad antes del diálogo del sistema.
 - Permitir explorar, buscar y usar origen manual sin permiso.
 - No convertir permiso del sistema en consentimiento para analítica o personalización.
@@ -53,3 +54,9 @@ La consulta de establecimientos puede usar la posición puntual solo para ordena
 durante la solicitud. La API no la guarda dentro del catastro ni la devuelve junto con datos
 fiscales; sin coordenadas se puede buscar por localidad y se informa la precisión territorial
 disponible.
+
+La búsqueda pública puede usar una posición ya autorizada o el viewport visible durante
+la solicitud, sin iniciar una lectura ni pedir permiso como efecto de escribir. Sus
+consultas y claves con coordenadas/bbox viven solo en memoria y quedan fuera de la caché
+persistida. Las búsquedas recientes locales conservan únicamente texto borrable, sin
+posición, alcance geográfico ni historial del mapa.

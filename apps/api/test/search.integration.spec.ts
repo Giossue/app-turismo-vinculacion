@@ -1,6 +1,7 @@
 import "reflect-metadata";
 
 import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { DataSource } from "typeorm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -39,7 +40,7 @@ describe.skipIf(!isolated)("public search with PostgreSQL/PostGIS", () => {
          COALESCE((SELECT id FROM subtipos_atractivo WHERE nombre = $6 LIMIT 1), c.subtipo_atractivo_id),
          c.zona_turistica_id, c.parroquia_id, c.linea_producto_id, c.escenario_id,
          (SELECT id FROM estados_resenia WHERE codigo = $4),
-         $3, -79, ST_SetSRID(ST_MakePoint(-79, $3), 4326)::geography, $5, 'Ficha pública de prueba'
+         $3::double precision, -79, ST_SetSRID(ST_MakePoint(-79, $3::double precision), 4326)::geography, $5, 'Ficha pública de prueba'
        FROM centros_turisticos c WHERE c.nombre = 'Mirador turístico de Guaranda'
        RETURNING id, codigo_atractivo AS code`,
       [sequence, name, latitude, state, active, subtypeName ?? null],
@@ -59,7 +60,7 @@ describe.skipIf(!isolated)("public search with PostgreSQL/PostGIS", () => {
     const rows = await source.query<Array<{ id: string }>>(
       `INSERT INTO establecimientos_turisticos
        (localidad_id, nombre_comercial, actividad, clasificacion, latitud, longitud, ubicacion, estado_revision, activo, telefono, razon_social)
-       SELECT id, $1, $2, $3, $4, -79, ST_SetSRID(ST_MakePoint(-79, $4), 4326)::geography, $5, $6, 'private-phone', 'private-company'
+       SELECT id, $1, $2, $3, $4::double precision, -79, ST_SetSRID(ST_MakePoint(-79, $4::double precision), 4326)::geography, $5, $6, 'private-phone', 'private-company'
        FROM localidades WHERE nombre = 'Guaranda' RETURNING id`,
       [name, activity, classification, latitude, state, active],
     );
@@ -264,9 +265,9 @@ describe.skipIf(!isolated)("public search with PostgreSQL/PostGIS", () => {
       "SELECT count(*) FROM centros_turisticos",
     );
     const migration = await readFile(
-      new URL(
+      resolve(
+        __dirname,
         "../../../database/migrations/20261002_unified_search.sql",
-        import.meta.url,
       ),
       "utf8",
     );

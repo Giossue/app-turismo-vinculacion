@@ -150,6 +150,7 @@ export function ExploreMapScreen() {
       data.centers,
       defaultEstablishmentPin,
     );
+    setSelectedFromSearch(target?.kind === "feature");
     if (target?.kind === "feature") overlay.focusFeature(target.selection);
     else if (target) search.showPlace(target.title, target.coordinate);
   };
@@ -164,7 +165,6 @@ export function ExploreMapScreen() {
         params: { slug: item.offline.slug, itemKey: item.offline.itemKey },
       });
     } else if (item.result) {
-      setSelectedFromSearch(true);
       selectSearchPlace(item.result);
     }
   };
@@ -201,15 +201,18 @@ export function ExploreMapScreen() {
             }
             onBearingChange={bearingStore.setBearing}
             onCenterPress={(center) => {
-              setSelectedFromSearch(false);
+              if (current.kind !== "focusing") setSelectedFromSearch(false);
               overlay.selectCenter(center);
             }}
             onEstablishmentPress={(establishment) => {
-              setSelectedFromSearch(false);
+              if (current.kind !== "focusing") setSelectedFromSearch(false);
               overlay.selectEstablishment(establishment);
             }}
             onLocationFocusChange={location.onLocationFocusChange}
-            onOverlappingFeaturePress={overlay.showChoices}
+            onOverlappingFeaturePress={(selections) => {
+              if (current.kind !== "focusing") setSelectedFromSearch(false);
+              overlay.showChoices(selections);
+            }}
             onViewportChange={setViewport}
             resetNorthKey={resetNorthKey}
             userLocation={location.userLocation}

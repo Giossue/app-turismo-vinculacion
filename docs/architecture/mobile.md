@@ -223,8 +223,10 @@ Antes de crear una utilidad o un componente nuevo, reutilizar estos módulos del
 - Explorar: la ruta `app/(tabs)/index.tsx` solo decide la entrada; la pantalla vive en
   `features/explore` (`ExploreMapScreen`, hooks `use-explore-search`, `use-explore-overlay`,
   `use-explore-location-focus` y `use-explore-queries`, y el dominio `explore-overlay.ts`).
-  La búsqueda a pantalla completa, sus sugerencias y los chips de modo están en
-  `features/search/presentation`.
+  La lista en vivo bajo el buscador y sus filtros de tipo y alcance están en
+  `features/search/presentation`; `use-public-search` y `use-debounced-search-text`
+  coordinan consulta/cancelación y espera de escritura. `search-relevance` y
+  `offline-search` reúnen y ordenan coincidencias públicas y descargadas.
 
 ## Estado
 
@@ -275,10 +277,12 @@ otra pantalla, para evitar que una ficha quede montada junto a una ruta activa.
 
 En Explorar, un único estado `ExploreOverlay` decide qué overlay está abierto (ficha de
 centro o de establecimiento, opciones superpuestas, enfoque de cámara en curso o agente), de
-modo que dos fichas no pueden coexistir. La sheet de resultados es declarativa: se monta
-mientras hay una búsqueda enviada y ningún overlay abierto, así que al cerrar una ficha
-abierta desde los resultados se vuelve a la lista. Elegir un resultado o una sugerencia
-sigue el mismo camino que tocar un pin: abre la ficha y, a la vez, centra la cámara.
+modo que dos fichas no pueden coexistir. Buscar actualiza una lista debajo del campo en
+la misma interfaz de búsqueda; no monta una sheet de resultados al escribir o enviar.
+Elegir un centro o establecimiento sigue el mismo camino que tocar un pin: cierra la
+interfaz transitoria de búsqueda, abre la ficha y, a la vez, centra la cámara. Elegir una
+referencia geográfica cierra esa interfaz y centra el mapa. Una coincidencia descargada
+cierra la búsqueda antes de navegar al visor local de su ciudad.
 
 Las transiciones de pantalla usan movimiento en ambas plataformas: el Stack usa
 `animation: "slide_from_right"` (en iOS también se vuelve deslizando desde el borde) y las
@@ -333,6 +337,40 @@ hoja es fija (sin arrastre; el scrim no la cierra, y su asa no lleva barra) y cu
 cierre (X, entrada, perfil sin sesión o Atrás) anima la hoja y solo al
 terminar oculta el modal y ejecuta la acción elegida.
 
+## Búsqueda en vivo
+
+Un solo campo ofrece «Todo», «Atractivos», «Servicios» y «Lugares». Desde dos caracteres
+se actualizan las coincidencias; las peticiones a `GET /api/v1/search` usan debounce de
+300 ms y cancelación de TanStack Query. Los cambios de texto, tipo y alcance forman parte
+de la clave de consulta para que una respuesta anterior no sustituya la lista actual.
+Las coincidencias locales leen manifiestos guardados y no hacen peticiones a la API.
+El filtro «Lugares» reúne referencias geográficas remotas y, en los paquetes descargados,
+POIs y recorridos publicados; «Atractivos» limita a centros y «Servicios» al catastro.
+
+«Todo Ecuador» es el alcance inicial. «En esta zona» envía el bbox completo de la zona
+visible. `CenterMap` publica `CenterMapViewport` una vez al estar listo y al finalizar cada
+movimiento, utilizando `getViewState` inicial y `onRegionDidChange` de MapLibre v11. Valida
+centro/bounds, deduplica el ruido de precisión e invalida lecturas iniciales asíncronas
+cuando comienza otro movimiento o se desmonta. No calcula el área desde un centro
+supuesto ni consulta bounds por frame. Sin viewport válido se espera antes de buscar
+en la zona; el placeholder web no fabrica uno.
+
+La relevancia textual prioriza nombre exacto, prefijo y contenido sobre otros campos
+públicos. La normalización elimina diferencias de tildes y mayúsculas, aplica grupos
+definidos de sinónimos y admite errores pequeños; los alias de consulta no reemplazan
+la clasificación administrable. La distancia directa solo desempata la relevancia con
+una coordenada ya disponible o el centro del mapa, únicamente para ordenar. Las filas
+muestran tipo, nombre, descripción/localidad y, cuando corresponde, «Mapa descargado»;
+no muestran metros, minutos ni «cerca de ti». No calcula rutas ni solicita GPS como
+consecuencia de escribir, cambiar tipo o seleccionar alcance.
+
+La lista reúne y deduplica resultados remotos y datos de los mapas descargados. Ante
+error remoto o consultas pausadas por falta de red conserva solo las coincidencias locales
+y comunica la cobertura disponible por ciudad, limitada por la zona elegida cuando
+corresponde. «Todo Ecuador» no significa cobertura nacional sin conexión. Una coincidencia
+local navega a `/offline-city` con su ciudad y elemento para abrirlo sin una solicitud de
+ficha. No proporciona geocodificación offline general de calles ni paquetes provinciales.
+
 ## Caché y funcionamiento sin conexión
 
 TanStack Query persiste en AsyncStorage durante un máximo de 24 horas
@@ -349,7 +387,9 @@ muestra como tal.
 El mapa en línea revalida los centros publicados al montar. Los centros confirmados en caché
 permanecen visibles mientras se ejecuta una revalidación en segundo plano; una respuesta vacía
 los reemplaza al completarse y la caché nunca sustituye la fuente remota PostgreSQL. Los
-manifiestos guardados se usan únicamente desde el flujo explícito de mapas sin conexión.
+manifiestos guardados no sustituyen la capa remota de centros de Explorar. También
+aportan coincidencias identificadas a la búsqueda; seleccionarlas abre el visor explícito
+de mapas sin conexión.
 
 Los paquetes de mapa se descargan por ciudad desde `Mapas sin conexión` y requieren una
 sesión turística autenticada. MapLibre `OfflineManager` persiste los recursos del estilo
@@ -357,7 +397,8 @@ HTTP/S `/offline/map-style` y Expo SQLite conserva el manifiesto con estilos cla
 centros, POIs propios públicos, catastros publicados y recorridos de transporte. El visor
 `/offline-city?slug=…` consulta SQLite con `networkMode: always`, busca y abre fichas
 localmente y monta fuentes GeoJSON en vez de la capa MVT remota. No mezcla datos locales
-con los centros de Explorar en línea. El catálogo descargado abre aun sin catálogo remoto.
+con la capa de centros de Explorar en línea. La búsqueda de Explorar puede leer esos
+manifiestos y conducir al mismo visor local. El catálogo descargado abre aun sin catálogo remoto.
 
 Solo las ciudades con un paquete institucional PUBLICADO son descargables. Sus límites
 oficiales tienen prioridad; sin ellos, una caja acotada alrededor de sus coordenadas define
@@ -381,7 +422,8 @@ Véase `product/features/offline-maps/`.
 ## Ubicación
 
 - Explorar no solicita la ubicación al abrirse: `while in use` se pide solo cuando la
-  persona toca "mi ubicación", activa "Servicios cercanos" o inicia una ruta. El mapa y el
+  persona toca "mi ubicación" o activa una función de ruta que la necesita. Buscar
+  servicios o filtrar por la zona visible no pide ese permiso. El mapa y el
   resto del catálogo siguen disponibles si la deniega.
 - El control “mi ubicación”, la cercanía y el inicio de ruta reutilizan la misma sesión.
   Si el agente recibe una pregunta cercana o por tiempo para llegar y el permiso ya está concedido, obtiene

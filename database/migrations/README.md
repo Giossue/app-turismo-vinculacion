@@ -11,6 +11,27 @@ fecha. No se edita el baseline después de que un entorno compartido lo haya eje
 No ejecutar migraciones con el ORM en modo `synchronize`; PostgreSQL/PostGIS es la
 fuente de verdad del esquema.
 
+La migración `20261002_unified_search.sql` añade dos índices GIN de nombres
+normalizados, usando `pg_trgm` ya presente en el bootstrap. La expresión elimina
+marcas de acento con NFD, convierte mayúsculas con collation `C` y normaliza espacios
+y puntuación; coincide con la consulta parametrizada de `/search`. No crea funciones,
+extensiones ni datos, y la API mantiene la búsqueda antes de aplicar los índices.
+Aplicarla después de las anteriores para indexar también los registros ya existentes.
+La construcción normal de GIN puede bloquear escrituras; usar una ventana operativa
+con `lock_timeout=5s` y `statement_timeout=5min`. Si no cabe en esa ventana, preparar
+una migración operativa con construcción concurrente antes de repetir el despliegue.
+No requiere backfill ni cambia publicación, auditorías o códigos. Es idempotente;
+para revertir una optimización, quitar únicamente sus dos índices mediante otra
+migración, conservando filas e índices históricos.
+
+`bash scripts/verify-public-search.sh` monta y elimina un cluster PostgreSQL/PostGIS
+con socket privado en `/tmp`. Aplica el esquema desde cero, verifica la búsqueda
+sin los nuevos índices y repite la migración sobre fixtures con contenido público,
+borradores, inactivos y eliminados. También comprueba equivalencia SQL/JS de tildes,
+sinónimos definidos, errores leves, ranking, área y ausencia de identificadores o
+datos privados. Requiere `initdb`, `pg_ctl`, `psql`, `rg`, PostGIS y Corepack; no lee
+`.pgpass`, URLs de aplicación ni conexiones de despliegue.
+
 La migración `20261002_admin_logical_deletion.sql` añade `eliminado_at` a centros,
 establecimientos, opiniones y los cinco catálogos administrables, y permite la acción
 `ELIMINAR` en sus auditorías. Conserva filas, FKs, versiones, acciones previas e

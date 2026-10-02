@@ -39,11 +39,21 @@ import {
 import { TourismTabs } from "../src/core/ui/tourism-tabs";
 import { turismoSpacing, turismoTypography } from "../src/core/ui/tokens";
 import { AgentChatContent } from "../src/features/agent/presentation/agent-chat-content";
+import { useExploreSearch } from "../src/features/explore/application/use-explore-search";
+import {
+  getSearchRelevance,
+  rankSearchSuggestions,
+} from "../src/features/search/domain/search-relevance";
+import type {
+  SearchScope,
+  SearchSuggestionItem,
+} from "../src/features/search/domain/search-suggestion";
+import { SearchOverlay } from "../src/features/search/presentation/search-overlay";
 import type { RouteMode } from "../src/features/routing/domain/routing";
 import { RoutePreviewPanel } from "../src/features/routing/presentation/route-preview-panel";
 import { calculatedRouteFixture, useConversationFixture } from "./fixtures";
 
-const screens = ["tabs", "chat", "route", "form"] as const;
+const screens = ["tabs", "chat", "route", "form", "search"] as const;
 type QaScreen = (typeof screens)[number];
 
 function parseScreen(url: string | null): QaScreen | null {
@@ -117,6 +127,7 @@ function QaScene({ screen }: Readonly<{ screen: QaScreen }>) {
   if (screen === "chat") return <ChatScene />;
   if (screen === "route") return <RouteScene />;
   if (screen === "form") return <FormScene />;
+  if (screen === "search") return <SearchScene />;
   return <TabsScene />;
 }
 
@@ -180,6 +191,107 @@ function TabsScene() {
         />
       </View>
     </TourismTabBarInsetProvider>
+  );
+}
+
+const searchFixtures: readonly SearchSuggestionItem[] = [
+  {
+    key: "service",
+    title: "Cafetería de prueba con un nombre extenso",
+    subtitle: "Cafetería · Guaranda, Bolívar",
+    kind: "establishment",
+    distanceMeters: 300,
+  },
+  {
+    key: "poi",
+    title: "Café del mirador",
+    subtitle: "Punto de interés · Guaranda",
+    kind: "poi",
+    distanceMeters: 600,
+    offline: { slug: "guaranda", itemKey: "poi:cafe", cityName: "Guaranda" },
+  },
+  {
+    key: "center",
+    title: "Cascada de prueba",
+    subtitle: "Atractivo natural · Bolívar",
+    kind: "center",
+    distanceMeters: 900,
+  },
+];
+
+/** Production search state and views; only the sources and navigation are fixtures. */
+function SearchScene() {
+  const [scope, setScope] = useState<SearchScope>("country");
+  const [selected, setSelected] = useState<string | null>(null);
+  const search = useExploreSearch({
+    hasLocation: false,
+    onRequestLocation: () => console.error("QA_SEARCH:unexpected-gps"),
+    onResetOverlay: () => undefined,
+  });
+  const items = rankSearchSuggestions(
+    searchFixtures.filter(
+      (item) =>
+        getSearchRelevance(search.text, item.title, item.subtitle) &&
+        (search.mode === "ALL" ||
+          (search.mode === "ESTABLISHMENTS" && item.kind === "establishment") ||
+          (search.mode === "CENTERS" && item.kind === "center") ||
+          (search.mode === "GEOGRAPHIC" && item.kind === "poi")),
+    ),
+    search.text,
+  );
+  return (
+    <View style={styles.root}>
+      <QaMetrics screen="search" />
+      {search.focused ? (
+        <SearchOverlay
+          areaAvailable
+          field={{
+            mode: search.mode,
+            value: search.text,
+            onChangeText: search.changeText,
+            onClear: search.clearInput,
+            onFocus: search.beginFocus,
+            onSubmit: search.submit,
+          }}
+          history={search.history}
+          isSearching={false}
+          items={items}
+          offlineCoverage={[{ slug: "guaranda", name: "Guaranda" }]}
+          onlineUnavailable={false}
+          onClearHistory={search.clearHistory}
+          onClose={search.closeFocus}
+          onModeChange={search.changeMode}
+          onRecentPress={search.repeat}
+          onRetry={() => undefined}
+          onScopeChange={setScope}
+          onSuggestionPress={(item) => {
+            setSelected(item.key);
+            search.remember(search.text);
+            search.closeFocus();
+          }}
+          scope={scope}
+          searchError={null}
+        />
+      ) : (
+        <TourismScreenFrame title="Prueba de búsqueda">
+          <TourismActionButton
+            label="QA Abrir búsqueda"
+            onPress={() => {
+              setSelected(null);
+              search.beginFocus();
+            }}
+          />
+          {selected ? (
+            <Text
+              accessibilityLabel={`QA_SEARCH:selected:${selected}`}
+              style={styles.copy}
+            >
+              Resultado seleccionado: {selected}
+            </Text>
+          ) : null}
+        </TourismScreenFrame>
+      )}
+    </View>
   );
 }
 

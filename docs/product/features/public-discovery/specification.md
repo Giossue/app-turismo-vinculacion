@@ -39,9 +39,11 @@ ordenar por cercanía sin solicitar permiso al escribir.
 ## Datos públicos
 
 La ficha muestra clasificación, ubicación referencial, ingreso, actividades,
-accesibilidad y facilidades solo cuando estén confirmadas. Los servicios cercanos muestran
+accesibilidad y facilidades solo cuando estén confirmadas. Los servicios muestran
 solo nombre comercial, actividad, clasificación, categoría, dirección, teléfono publicado,
-localidad y distancia. Se excluyen responsables, auditoría, seguridad técnica, rutas
+localidad y otros campos públicos disponibles. La distancia opcional de la API solo sirve
+para ordenar la búsqueda: la lista no muestra metros, minutos ni «cerca de ti».
+Se excluyen responsables, auditoría, seguridad técnica, rutas
 internas, proveedores, datos fiscales e IDs internos.
 
 ## Fuera de alcance
