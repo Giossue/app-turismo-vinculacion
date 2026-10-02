@@ -32,13 +32,26 @@ export class CentersPublicController {
   ) {}
 
   @Get()
-  @ApiOkResponse({ description: "Centros turísticos publicados." })
+  @ApiOkResponse({
+    description:
+      "Página de centros turísticos publicados; meta incluye total, limit y offset.",
+  })
   @ApiQuery({ name: "q", required: false, description: "Texto de búsqueda." })
   @ApiQuery({ name: "west", required: false })
   @ApiQuery({ name: "south", required: false })
   @ApiQuery({ name: "east", required: false })
   @ApiQuery({ name: "north", required: false })
-  @ApiQuery({ name: "limit", required: false, example: 50 })
+  @ApiQuery({
+    name: "limit",
+    required: false,
+    schema: { type: "integer", minimum: 1, maximum: 100, default: 50 },
+  })
+  @ApiQuery({
+    name: "offset",
+    required: false,
+    description: "Cantidad de centros que se omiten antes de esta página.",
+    schema: { type: "integer", minimum: 0, default: 0 },
+  })
   async list(@Query() query: Record<string, unknown>) {
     const parsed = listCentersQuerySchema.safeParse(query);
     if (!parsed.success) {
@@ -53,6 +66,7 @@ export class CentersPublicController {
       east,
       north,
       limit,
+      offset,
       ...filters
     } = parsed.data;
     const page = await this.listPublishedCenters.execute({
@@ -63,8 +77,9 @@ export class CentersPublicController {
           : { west, south: south!, east: east!, north: north! },
       ...filters,
       limit,
+      offset,
     });
-    return { data: page.items, meta: { total: page.total, limit } };
+    return { data: page.items, meta: { total: page.total, limit, offset } };
   }
 
   @Get("catalogs/discovery")

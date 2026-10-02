@@ -17,6 +17,7 @@ describe("ListPublishedCentersUseCase", () => {
       text: "Guaranda",
       bounds: { west: -79.1, south: -1.7, east: -78.9, north: -1.5 },
       limit: 25,
+      offset: 100,
     };
 
     await expect(useCase.execute(query)).resolves.toEqual({

@@ -1,0 +1,10 @@
+{
+  "sourceUrl": "https://aplicaciones2.ecuadorencifras.gob.ec/SIN/descargas/cdpa2026.xlsx",
+  "sourceSha256": "0d0ae33a0a0023ed44abcaa6b38a1c173fbda423e368a8f12bedda59d65d8f3a",
+  "sourceSheet": "CODIGOS",
+  "excludedProvinceCodes": ["90"],
+  "catalogSha256": "2fe5f9fc7a581e76e22be3e55857424ed9edb2e038fbd460134d617803c91bac",
+  "localities": 1046,
+  "cities": 222,
+  "towns": 824
+}

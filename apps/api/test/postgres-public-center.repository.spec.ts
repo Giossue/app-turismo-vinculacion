@@ -23,6 +23,76 @@ const row = {
 };
 
 describe("PostgresPublicCenterRepository", () => {
+  it("pages the published viewport with a stable order and its full count", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([row])
+      .mockResolvedValueOnce([{ total: "142" }]);
+    const repository = new PostgresPublicCenterRepository({ query } as never);
+
+    await expect(
+      repository.listPublished({
+        text: "Mirador",
+        bounds: { west: -79.1, south: -1.7, east: -78.9, north: -1.5 },
+        categoryCode: "AN",
+        provinceCode: "02",
+        limit: 100,
+        offset: 100,
+      }),
+    ).resolves.toEqual({
+      items: [expect.objectContaining({ code: row.code })],
+      total: 142,
+    });
+
+    const [pageSql, pageValues] = query.mock.calls[0] as [string, unknown[]];
+    const [countSql, countValues] = query.mock.calls[1] as [string, unknown[]];
+    expect(pageValues).toEqual([
+      "Mirador",
+      -79.1,
+      -1.7,
+      -78.9,
+      -1.5,
+      "AN",
+      null,
+      null,
+      "02",
+      null,
+      null,
+      null,
+      null,
+      100,
+      100,
+    ]);
+    expect(countValues).toEqual(pageValues.slice(0, 13));
+    expect(pageSql).toContain(
+      "DESC, c.nombre ASC, c.codigo_atractivo ASC LIMIT $14 OFFSET $15",
+    );
+    for (const sql of [pageSql, countSql]) {
+      expect(sql).toContain("WHERE c.activo AND er.codigo = 'PUBLICADO'");
+      expect(sql).toContain("ST_Intersects(c.ubicacion");
+      expect(sql).toContain("ca.codigo = $6");
+      expect(sql).toContain("p.codigo_dpa = $9");
+    }
+    expect(countSql).not.toContain("LIMIT");
+    expect(countSql).not.toContain("OFFSET");
+  });
+
+  it("preserves the first page for callers that omit offset", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ total: "0" }]);
+    const repository = new PostgresPublicCenterRepository({ query } as never);
+
+    await repository.listPublished({ limit: 25 });
+
+    expect(query.mock.calls[0]?.[1]).toEqual([
+      ...Array<null>(13).fill(null),
+      25,
+      0,
+    ]);
+  });
+
   it("returns published centers ordered by PostGIS distance", async () => {
     const query = vi.fn().mockResolvedValue([row]);
     const repository = new PostgresPublicCenterRepository({ query } as never);

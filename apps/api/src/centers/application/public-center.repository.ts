@@ -28,6 +28,7 @@ export type ListPublishedCentersQuery = Readonly<{
   parishCode?: string;
   hierarchyCode?: string;
   limit: number;
+  offset?: number;
 }>;
 
 export interface PublicCenterRepository {

@@ -21,6 +21,11 @@ la ficha técnica de un centro turístico.
 - Auditoría inmutable de altas, ediciones, activaciones y desactivaciones mediante la
   tabla existente `auditoria_catalogos`, identificada con `ESTABLISHMENT`.
 - Catálogo activo de `localidades` para seleccionar la ciudad o poblado de referencia.
+- Cobertura nacional desde el catálogo oficial INEC 2026: 222 cabeceras y 824
+  parroquias rurales en las 24 provincias. El buscador de localidad permite buscar por
+  nombre, cantón y provincia, y muestra esos tres datos para distinguir homónimos.
+  Las parroquias urbanas se agrupan en su cabecera cantonal. El código `90` (zonas en estudio)
+  y sus jurisdicciones se excluyen de esta carga.
 - Catálogos dependientes de actividad, clasificación y categoría; las categorías de
   atractivos turísticos no se mezclan con las categorías del catastro.
 - La categoría conserva el sistema semántico de la fuente (`ESTRELLAS`, `TENEDORES`,
@@ -51,6 +56,12 @@ la ficha técnica de un centro turístico.
    `CIUDAD`. Una localidad con otra actividad no es una alternativa válida.
 6. El catastro público solo incluye establecimientos activos y `PUBLICADO`. La disponibilidad no implica
    reserva ni garantiza que el establecimiento esté abierto en tiempo real.
+7. El catálogo territorial puede contener localidades sin coordenadas; esas posiciones
+   no se inventan a partir de nombres ni se copian de establecimientos. El alta exige
+   siempre las coordenadas individuales del establecimiento. Las localidades sin
+   posición sirven para la captura y consulta territorial explícita, y quedan fuera de
+   la elección por cercanía y del fallback espacial hasta disponer de coordenadas
+   verificadas.
 
 ## Contrato REST
 

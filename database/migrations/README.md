@@ -8,6 +8,39 @@ tablas, funciones, índices y catálogos mínimos.
 Las modificaciones posteriores se añaden como archivos SQL incrementales ordenados por
 fecha. No se edita el baseline después de que un entorno compartido lo haya ejecutado.
 
+La migración `20261002_seed_national_localities.sql` carga el catálogo territorial oficial
+INEC 2026: 222 cabeceras cantonales como `CIUDAD` y 824 parroquias rurales como
+`POBLADO`, en las 24 provincias del país. Excluye el código `90` (zonas en estudio) y agrupa
+las parroquias urbanas bajo su cabecera; conserva los nombres reales de ciudades cuyo
+nombre difiere del cantón. Requiere la DPA activa de
+`20260920_seed_xlsm_fixed_catalogs.sql` y añade únicamente el cantón nuevo
+`14/13 Sevilla Don Bosco` si no existe. No reasigna parroquias históricas ni cambia
+códigos de centros.
+
+Es una carga aditiva e idempotente: preserva IDs, nombres, coordenadas y activación
+de todas las localidades previas, incluidas las inactivas, y evita duplicados por
+mayúsculas o espacios externos. Las localidades nuevas tienen coordenadas nulas
+porque el catálogo oficial no proporciona posiciones; los establecimientos siguen
+requiriendo sus propias coordenadas. El fallback espacial omite las localidades sin
+posición y la consulta explícita por localidad utiliza las coordenadas del
+establecimiento. Usa `lock_timeout=5s` y `statement_timeout=60s`; se cancela si falta
+un cantón/provincia activo requerido y valida las 1.046 referencias antes del commit.
+
+Antes del despliegue, respaldar `provincias`, `cantones` y `localidades`, verificar
+el destino y aplicar con `psql -X -v ON_ERROR_STOP=1`. No requiere desplegar la API
+ni backfill de establecimientos. La reversión se realiza con una nueva migración
+que desactive solo las altas no utilizadas, tras inventariar referencias; no borrar
+localidades ni retirar el cantón una vez utilizados. La fuente y su checksum viven
+en `database/catalogs/`; el SQL se reproduce con
+`python3 scripts/generate-national-localities-migration.py`.
+
+`bash scripts/verify-national-localities.sh` comprueba el catálogo en un cluster
+PostgreSQL/PostGIS temporal, con socket privado y sin credenciales de despliegue.
+Verifica generación reproducible, 1.046 referencias, preservación de posiciones/IDs,
+localidades inactivas y registros propios, repetición idempotente y rollback completo
+ante una DPA incompleta. Requiere las herramientas PostgreSQL locales, PostGIS y
+Python 3; no instala dependencias ni se conecta a la base compartida.
+
 No ejecutar migraciones con el ORM en modo `synchronize`; PostgreSQL/PostGIS es la
 fuente de verdad del esquema.
 

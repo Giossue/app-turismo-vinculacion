@@ -52,6 +52,16 @@ voluntario. La API debe desplegarse después de aplicar esta migración.
 
 ## Migraciones
 
+`20261002_seed_national_localities.sql` completa el catálogo de 1.046 referencias del INEC
+2026 (222 cabeceras y 824 parroquias rurales de 24 provincias), omitiendo las zonas
+del código provincial `90`. Los nombres provienen de la cabecera/parroquia oficial,
+no del nombre del cantón. Añade el cantón `14/13 Sevilla Don Bosco` requerido por
+esta fuente y conserva la DPA y los códigos históricos de las fichas. Las altas no
+incluyen coordenadas, ya que la fuente no las contiene, y todas las localidades
+existentes conservan sus IDs, posiciones, nombres y activación. El snapshot original
+y su procedencia viven en `database/catalogs/` y el generador no requiere acceso a
+la base ni dependencias adicionales.
+
 `20261002_admin_logical_deletion.sql` distingue eliminación de desactivación con
 `eliminado_at` en centros, establecimientos, opiniones y los cinco catálogos del panel.
 Las eliminaciones se auditan con `ELIMINAR` en la misma transacción y conservan las FKs

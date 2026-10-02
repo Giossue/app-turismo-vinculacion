@@ -59,8 +59,8 @@ export class PostgresPublicCenterRepository implements PublicCenterRepository {
     const where = this.publishedCentersWhereClause();
     const [rows, counts] = await Promise.all([
       this.dataSource.query<CenterRow[]>(
-        `SELECT ${this.publicFields()} ${from} ${where} ORDER BY ${this.searchRelevanceExpression()} DESC, c.nombre ASC, c.codigo_atractivo ASC LIMIT $14`,
-        [...values, query.limit],
+        `SELECT ${this.publicFields()} ${from} ${where} ORDER BY ${this.searchRelevanceExpression()} DESC, c.nombre ASC, c.codigo_atractivo ASC LIMIT $14 OFFSET $15`,
+        [...values, query.limit, query.offset ?? 0],
       ),
       this.dataSource.query<readonly { total: string }[]>(
         `SELECT COUNT(*)::text AS total ${from} ${where}`,
