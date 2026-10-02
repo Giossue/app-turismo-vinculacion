@@ -44,5 +44,31 @@ su prueba verifica reinicios, reintentos, rollback y adopción del checkpoint co
 
 ## Estado
 
-Implementado localmente y pendiente de despliegue. No se modificó la base desplegada;
-los clústeres temporales de pruebas se retiraron al terminar.
+Implementado y aplicado a la base de producción `turismo_vinculacion_app` el
+2026-10-02. Los clústeres temporales de pruebas se retiraron al terminar.
+
+## Incidencia del despliegue del 2026-10-02
+
+El panel devolvió «Ocurrió un error inesperado» en los listados después de actualizar
+la aplicación sin aplicar esta migración. La conexión verificada a
+`turismo_vinculacion_app` confirmó que faltaban las ocho columnas `eliminado_at`.
+Las consultas públicas de catastro y teselas también devolvían HTTP 500; el health
+del proceso permanecía en HTTP 200 y no detectaba este desfase.
+
+- [x] Verificar la base objetivo, propietarios, restricciones e índices anteriores.
+- [x] Crear y verificar un respaldo completo fuera del repositorio, con acceso local restringido.
+- [x] Aplicar únicamente `20261002_admin_logical_deletion.sql` como propietario de las tablas.
+- [x] Verificar columnas, restricciones, índices y conservación de registros e historial.
+- [x] Comprobar las consultas públicas que fallaban y las consultas de lectura del panel.
+
+La migración terminó con `COMMIT`; quedaron verificadas las ocho columnas nullable,
+las diez restricciones validadas y los dos índices únicos válidos. Los recuentos
+anteriores y posteriores coinciden: 15 centros, 76 establecimientos y ningún cambio
+en opiniones, versiones ni las tres tablas de auditoría.
+
+La consulta pública de catastro cercano y una tesela de Guaranda pasaron de HTTP 500
+a HTTP 200, con sobre JSON y MIME vectorial correctos. Las consultas de Resumen,
+Opiniones y los cinco catálogos se ejecutaron en una transacción de solo lectura sin
+errores. El esquema conserva los datos existentes; no se usaron seeds ni una
+reconstrucción de la base. La comprobación visual del panel requiere recargar la
+sesión del navegador.
