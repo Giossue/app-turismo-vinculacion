@@ -32,7 +32,6 @@ import {
 } from "@/core/ui/tokens";
 import type { RouteMode } from "@/features/routing/domain/routing";
 import type { useAgentConversation } from "../application/use-agent-conversation";
-import type { useAgentPlans } from "../application/use-agent-plans";
 import {
   AGENT_MESSAGE_MAX_LENGTH,
   type AgentCard,
@@ -50,13 +49,11 @@ import { useAgentVoiceInput } from "./agent-voice-input";
 /** Conversation and composer of the agent sheet. */
 export function AgentChatContent({
   conversation,
-  plans,
   onOpenCard,
   onOpenCenter,
   onStartRoute,
 }: Readonly<{
   conversation: ReturnType<typeof useAgentConversation>;
-  plans: ReturnType<typeof useAgentPlans>;
   onOpenCard: (card: AgentCard) => void;
   onOpenCenter: (code: string) => void;
   onStartRoute: (destination: AgentRouteDestination, mode: RouteMode) => void;
@@ -137,15 +134,9 @@ export function AgentChatContent({
               onRequestLocation={() =>
                 void conversation.requestLocationForMessage(message.id)
               }
-              onSaveItinerary={() => {
-                if (message.itinerary)
-                  void plans.saveFromMessage(message.id, message.itinerary);
-              }}
               onStartRoute={onStartRoute}
               pendingRouteAction={conversation.pendingRouteAction}
               requestingLocation={conversation.requestingLocation}
-              savedItinerary={plans.savedMessageIds.has(message.id)}
-              savingItinerary={plans.busy}
             />
           ))}
           {!conversation.sending &&
@@ -170,11 +161,6 @@ export function AgentChatContent({
               onPress={conversation.retry}
               style={styles.retry}
             />
-          ) : null}
-          {plans.error ? (
-            <Text style={[styles.error, { color: colors.danger }]}>
-              {plans.error}
-            </Text>
           ) : null}
           {conversation.locationFeedback ? (
             <Text style={[styles.error, { color: colors.danger }]}>

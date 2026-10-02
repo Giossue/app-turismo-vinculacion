@@ -9,8 +9,6 @@ import { RoutingModule } from "../routing/routing.module";
 import { AdminModule } from "../admin/admin.module";
 import { AiAgentController } from "./presentation/ai-agent.controller";
 import { AiAgentService } from "./application/ai-agent.service";
-import { AgentItinerariesService } from "./application/agent-itineraries.service";
-import { AgentItinerariesController } from "./presentation/agent-itineraries.controller";
 import { AgentHistoryService } from "./application/agent-history.service";
 import { AgentHistoryController } from "./presentation/agent-history.controller";
 import { AgentMediaService } from "./application/agent-media.service";
@@ -34,14 +32,12 @@ import { PUBLIC_NEARBY_ESTABLISHMENT_SEARCH } from "./application/public-nearby-
   ],
   controllers: [
     AiAgentController,
-    AgentItinerariesController,
     AgentHistoryController,
     AgentMediaController,
     AgentEditorialController,
   ],
   providers: [
     AiAgentService,
-    AgentItinerariesService,
     AgentHistoryService,
     AgentMediaService,
     AgentEditorialService,

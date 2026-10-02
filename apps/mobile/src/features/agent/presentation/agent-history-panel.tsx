@@ -83,7 +83,7 @@ export function AgentHistoryPanel({
   const confirmDisable = () => {
     Alert.alert(
       "Desactivar historial",
-      "Se eliminarán todas tus conversaciones guardadas. Los planes guardados se conservarán.",
+      "Se eliminarán todas tus conversaciones guardadas.",
       [
         { text: "Cancelar", style: "cancel" },
         {

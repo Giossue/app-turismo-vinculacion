@@ -117,12 +117,11 @@ describe("agent starter prompts", () => {
 });
 
 describe("location minimization in agent requests", () => {
-  it("does not share GPS for general catalog or itinerary questions", () => {
+  it("does not share GPS for general catalog questions", () => {
     expect(
       shouldShareAgentLocation("¿Qué lugares turísticos puedo visitar?"),
     ).toBe(false);
     expect(shouldShareAgentLocation("¿Dónde puedo comer?")).toBe(false);
-    expect(shouldShareAgentLocation("Arma un plan para mi día")).toBe(false);
   });
 
   it("shares GPS for explicitly nearby or current-origin questions", () => {

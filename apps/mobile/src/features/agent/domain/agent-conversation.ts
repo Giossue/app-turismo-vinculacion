@@ -25,7 +25,6 @@ export const agentStarterPrompts: readonly AgentStarterPrompt[] = [
   { icon: "restaurant", text: "¿Dónde puedo comer?" },
   { icon: "hotel", text: "¿Dónde puedo hospedarme?" },
   { icon: "mapPin", text: "¿Qué hay cerca de mí?" },
-  { icon: "calendar", text: "Arma un plan para mi día" },
 ];
 
 /** The starter prompts stay until the conversation has a question. */

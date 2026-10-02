@@ -67,25 +67,6 @@ const agentCardSchema = z.discriminatedUnion("type", [
   agentPoiCardSchema,
 ]);
 
-const agentItineraryStopSchema = z
-  .object({
-    type: z.literal("center"),
-    code: z.string().min(1).max(120),
-    name: z.string().min(1).max(180),
-    latitude: finiteCoordinate.min(-90).max(90),
-    longitude: finiteCoordinate.min(-180).max(180),
-    order: z.number().int().min(1).max(6),
-  })
-  .strict();
-
-const agentItinerarySchema = z
-  .object({
-    title: z.string().min(1).max(160),
-    summary: z.string().min(1).max(500),
-    stops: z.array(agentItineraryStopSchema).min(2).max(6),
-  })
-  .strict();
-
 const agentRouteDestinationSchema = z
   .object({
     type: z.enum(["center", "establishment", "poi"]),
@@ -126,7 +107,6 @@ export const agentResponseSchema = z
     text: z.string().min(1).max(4_000),
     cards: z.array(agentCardSchema).max(6),
     actions: z.array(agentActionSchema).max(4),
-    itinerary: agentItinerarySchema.optional(),
     sources: z.array(agentSourceSchema).max(24),
     conversationId: z.uuid().optional(),
     historySaveError: z.boolean().optional(),
@@ -143,7 +123,6 @@ export const agentHistoryItemSchema = z
 
 export type AgentLocation = z.infer<typeof agentLocationSchema>;
 export type AgentCard = z.infer<typeof agentCardSchema>;
-export type AgentItinerary = z.infer<typeof agentItinerarySchema>;
 export type AgentAction = z.infer<typeof agentActionSchema>;
 export type AgentRouteDestination = z.infer<typeof agentRouteDestinationSchema>;
 export type AgentResponse = z.infer<typeof agentResponseSchema>;
@@ -163,7 +142,6 @@ export type AgentMessage = Readonly<{
   text: string;
   kind?: "intro" | "error" | "partial";
   cards?: readonly AgentCard[];
-  itinerary?: AgentItinerary;
   actions?: readonly AgentAction[];
   sources?: readonly AgentSource[];
 }>;

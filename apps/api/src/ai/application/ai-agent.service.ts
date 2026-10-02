@@ -124,13 +124,6 @@ export const calculateRoadRouteInputSchema = z
   })
   .strict();
 
-const itineraryCandidatesInputSchema = z
-  .object({
-    text: z.string().trim().min(2).max(120),
-    limit: z.number().int().min(2).max(6).default(4),
-  })
-  .strict();
-
 const genericToolFailure = {
   available: false,
   message:
@@ -316,12 +309,11 @@ export class AiAgentService {
           "Para preguntas generales sobre dónde comer u hospedarse sin intención de cercanía, usa searchPublishedEstablishments. La ubicación y localidad son opcionales; sin ellas ofrece resultados publicados sin afirmar que están cerca. Si el visitante indica una localidad, úsala como filtro.",
           "Cuando el visitante diga cerca, cercano, cerca de mí, lo que haya alrededor o use una intención equivalente, y haya ubicación aproximada, debes usar searchNearbyPublishedPlaces antes de cualquier búsqueda textual. Esa herramienta combina centros, puntos de interés y establecimientos; no intentes buscar la frase cerca de mí como texto.",
           "Si una consulta cercana no tiene ubicación, usa requestLocationAccess. Esa herramienta solo propone una acción para que el móvil solicite o actualice la ubicación; no otorga permisos ni accede al GPS del teléfono.",
-          "Cuando pidan un plan, paseo o recorrido de varias paradas, usa findItineraryCandidates y devuelve un itinerary de 2 a 6 centros publicados en el orden sugerido.",
-          "El título y resumen del itinerary son una propuesta; no afirmes horarios, precios, disponibilidad, servicios ni duración sin una herramienta que los verifique.",
+          "La función de planes e itinerarios está retirada. Si solicitan un plan de viaje o un recorrido de varias paradas, explica que no está disponible y ofrece buscar lugares o preparar una ruta a un destino; no generes un itinerario ni prometas guardarlo.",
           "Para transporte usa getPublishedTransportForCenter o searchNearbyTransportStops cuando la pregunta lo requiera. Si no hay rutas, paradas u horarios publicados, dilo así; no inventes transporte, frecuencias, precios ni tiempos.",
           "Para calcular una ruta vial usa calculateRoadRoute después de obtener referencias confiables. Puede calcular desde la ubicación aproximada o entre dos lugares registrados; no le envíes coordenadas. Las métricas desde la ubicación son aproximadas y el móvil volverá a calcular la ruta antes de navegar.",
           "Si una herramienta no tiene datos o falla, dilo claramente y no rellenes el vacío con conocimiento externo.",
-          "Para tarjetas, itineraries y acciones usa solamente las referencias ref devueltas por las herramientas.",
+          "Para tarjetas y acciones usa solamente las referencias ref devueltas por las herramientas.",
           "Si incluyes tarjetas de lugares, no repitas la lista de nombres, categorías, direcciones o distancias en text. Usa text para resumir el resultado, explicar criterios y señalar información no verificada; cada lugar se presenta en su tarjeta.",
           "No pongas coordenadas ni códigos inventados en la salida estructurada.",
           "open_center solo sirve para centros publicados.",
@@ -603,41 +595,6 @@ export class AiAgentService {
                           "No encontré lugares publicados dentro de este radio. Puedo buscar por ciudad, categoría o ampliar la distancia.",
                       }
                     : {}),
-                };
-              } catch {
-                return genericToolFailure;
-              }
-            },
-          }),
-          findItineraryCandidates: tool({
-            description:
-              "Busca entre 2 y 6 lugares turísticos publicados que puedan formar una propuesta de recorrido. No calcula horarios, duración ni rutas.",
-            inputSchema: itineraryCandidatesInputSchema,
-            execute: async ({ text, limit }) => {
-              try {
-                const result = await this.centers.listPublished({
-                  text,
-                  limit,
-                });
-                return {
-                  total: result.total,
-                  results: result.items.map((center) => {
-                    const ref = registerCenter(
-                      `center:${center.code}`,
-                      center,
-                      "Candidatos de recorrido del catálogo publicado",
-                    );
-                    return {
-                      ref,
-                      code: center.code,
-                      name: center.name,
-                      description: center.description,
-                      category: center.category,
-                      type: center.type,
-                      subtype: center.subtype,
-                    };
-                  }),
-                  source: "Candidatos de recorrido del catálogo publicado",
                 };
               } catch {
                 return genericToolFailure;

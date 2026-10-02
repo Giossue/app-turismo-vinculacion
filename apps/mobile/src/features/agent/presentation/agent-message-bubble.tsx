@@ -19,7 +19,6 @@ import {
   plainAgentText,
 } from "../domain/agent-text";
 import { AgentActionList, type AgentRouteHandlers } from "./agent-action-list";
-import { AgentItineraryCard } from "./agent-itinerary-card";
 import { AgentResultCard, getAgentCardKey } from "./agent-result-card";
 
 /** A user question or an agent answer with its cards, actions and sources. */
@@ -29,9 +28,6 @@ export function AgentMessageBubble({
   onOpenCenter,
   onRequestLocation,
   requestingLocation,
-  onSaveItinerary,
-  savedItinerary,
-  savingItinerary,
   ...routeHandlers
 }: Readonly<
   AgentRouteHandlers & {
@@ -40,9 +36,6 @@ export function AgentMessageBubble({
     onOpenCenter: (code: string) => void;
     onRequestLocation: () => void;
     requestingLocation: boolean;
-    onSaveItinerary: () => void;
-    savedItinerary: boolean;
-    savingItinerary: boolean;
   }
 >) {
   const colors = useTurismoPalette();
@@ -151,15 +144,6 @@ export function AgentMessageBubble({
             </TourismPressable>
           ) : null}
         </View>
-        {message.itinerary ? (
-          <AgentItineraryCard
-            itinerary={message.itinerary}
-            onOpenCenter={onOpenCenter}
-            onSave={onSaveItinerary}
-            saved={savedItinerary}
-            saving={savingItinerary}
-          />
-        ) : null}
         {message.cards?.map((card) => (
           <AgentResultCard
             card={card}

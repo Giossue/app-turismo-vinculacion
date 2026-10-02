@@ -13,10 +13,8 @@ import type {
   AgentRouteDestination,
 } from "@/features/agent/domain/agent";
 import type { useAgentConversation } from "@/features/agent/application/use-agent-conversation";
-import { useAgentPlans } from "@/features/agent/application/use-agent-plans";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { AgentChatContent } from "@/features/agent/presentation/agent-chat-content";
-import { AgentSavedPlans } from "@/features/agent/presentation/agent-saved-plans";
 import { AgentHistoryPanel } from "@/features/agent/presentation/agent-history-panel";
 import type { RouteMode } from "@/features/routing/domain/routing";
 import { AgentPlaceSheet, type AgentPlaceSelection } from "./agent-place-sheet";
@@ -51,9 +49,8 @@ function ExploreAgentSheetInner({
   const colors = useTurismoPalette();
   const sheetRef = useRef<BottomSheetModal>(null);
   const presentedRef = useRef(false);
-  const plans = useAgentPlans();
   const auth = useAuth();
-  const [view, setView] = useState<"chat" | "plans" | "history">("chat");
+  const [view, setView] = useState<"chat" | "history">("chat");
   const [selectedPlace, setSelectedPlace] =
     useState<AgentPlaceSelection | null>(null);
   const openCenter = (code: string) =>
@@ -96,17 +93,6 @@ function ExploreAgentSheetInner({
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
               <TourismIconAction
                 accessibilityLabel={
-                  view === "plans" ? "Volver al chat" : "Ver mis planes"
-                }
-                icon={view === "plans" ? "arrowLeft" : "calendar"}
-                onPress={() => {
-                  if (view !== "plans") void plans.load();
-                  setView(view === "plans" ? "chat" : "plans");
-                }}
-                variant="ghost"
-              />
-              <TourismIconAction
-                accessibilityLabel={
                   view === "history" ? "Volver al chat" : "Ver historial"
                 }
                 icon={view === "history" ? "arrowLeft" : "history"}
@@ -124,13 +110,7 @@ function ExploreAgentSheetInner({
               />
             </View>
             <View style={styles.content}>
-              {view === "plans" ? (
-                <AgentSavedPlans
-                  key={auth.user?.id}
-                  plans={plans}
-                  onOpenCenter={openCenter}
-                />
-              ) : view === "history" ? (
+              {view === "history" ? (
                 <AgentHistoryPanel
                   key={auth.user?.id}
                   onDisable={conversation.newConversation}
@@ -146,7 +126,6 @@ function ExploreAgentSheetInner({
                   onOpenCard={openCard}
                   onOpenCenter={openCenter}
                   onStartRoute={onStartRoute}
-                  plans={plans}
                 />
               )}
             </View>

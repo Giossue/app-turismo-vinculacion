@@ -347,7 +347,6 @@ function toCompleteMessage(id: string, answer: AgentResponse): AgentMessage {
     actions: answer.actions,
     cards: answer.cards,
     id,
-    itinerary: answer.itinerary,
     role: "assistant",
     sources: answer.sources,
     text: answer.historySaveError
