@@ -17,7 +17,6 @@ type FocusCoordinateRequest = Readonly<{
  */
 export function useExploreSearch({
   hasLocation,
-  onRequestLocation,
   onResetOverlay,
 }: Readonly<{
   hasLocation: boolean;
@@ -27,7 +26,7 @@ export function useExploreSearch({
   const history = useSearchHistory();
   const [text, setText] = useState("");
   const [submittedText, setSubmittedText] = useState("");
-  const [mode, setMode] = useState<SearchMode>("CENTERS");
+  const [mode, setMode] = useState<SearchMode>("ALL");
   const [focused, setFocused] = useState(false);
   const [sortByDistance, setSortByDistance] = useState(false);
   const [focusCoordinate, setFocusCoordinate] =
@@ -41,7 +40,8 @@ export function useExploreSearch({
   };
 
   const search = (query: string) => {
-    closeFocus();
+    Keyboard.dismiss();
+    setFocused(true);
     void history.remember(query);
     setSubmittedText(query);
     setSortByDistance(false);
@@ -52,7 +52,7 @@ export function useExploreSearch({
     closeFocus();
     setText("");
     setSubmittedText("");
-    setMode("CENTERS");
+    setMode("ALL");
     setSortByDistance(false);
     onResetOverlay();
   };
@@ -69,18 +69,20 @@ export function useExploreSearch({
      * Typed or submitted text, or the nearby services mode: the top bar shows
      * the mode chips and Back clears the search.
      */
-    active: mode === "ESTABLISHMENTS" || Boolean(submittedQuery || text.trim()),
+    active: focused || mode !== "ALL" || Boolean(submittedQuery || text.trim()),
     beginFocus: () => {
       setFocused(true);
       onResetOverlay();
     },
     changeMode: (nextMode: SearchMode) => {
       setMode(nextMode);
-      setSubmittedText("");
+      setFocused(true);
       onResetOverlay();
-      if (nextMode === "ESTABLISHMENTS" && !hasLocation) onRequestLocation();
     },
-    changeText: setText,
+    changeText: (value: string) => {
+      setText(value);
+      setFocused(true);
+    },
     clear,
     clearHistory: () => void history.clear(),
     /** Empties the box and keeps typing in the full-screen search. */
@@ -97,6 +99,7 @@ export function useExploreSearch({
     },
     /** Shows a geographic place: its name stays in the box, no sheet opens. */
     showPlace: (title: string, coordinate: GeoCoordinate) => {
+      closeFocus();
       onResetOverlay();
       setText(title);
       setSubmittedText("");

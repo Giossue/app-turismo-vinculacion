@@ -2,6 +2,9 @@ import { Inject, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { z } from "zod";
 
+import { normalizeSearchText, withinBounds } from "../search-ranking";
+import type { PublicSearchQueryDto } from "../search.dto";
+
 export const PHOTON_FETCHER = Symbol("PHOTON_FETCHER");
 
 const photonResponseSchema = z.object({
@@ -14,6 +17,7 @@ const photonResponseSchema = z.object({
           county: z.string().optional(),
           state: z.string().optional(),
           country: z.string().optional(),
+          countrycode: z.string().optional(),
           type: z.string().optional(),
           osm_value: z.string().optional(),
         })
@@ -42,7 +46,7 @@ export class PhotonClient {
 
   async search(
     query: string,
-    coordinates?: { latitude?: number; longitude?: number },
+    coordinates?: Pick<PublicSearchQueryDto, "latitude" | "longitude" | "west" | "south" | "east" | "north">,
   ): Promise<readonly PhotonPlace[]> {
     const url = new URL("/api", this.getBaseUrl());
     url.searchParams.set("q", query);
@@ -68,6 +72,9 @@ export class PhotonClient {
     ) {
       url.searchParams.set("lat", String(coordinates.latitude));
       url.searchParams.set("lon", String(coordinates.longitude));
+    }
+    if (coordinates?.west !== undefined) {
+      url.searchParams.set("bbox", [coordinates.west, coordinates.south, coordinates.east, coordinates.north].join(","));
     }
 
     const controller = new AbortController();
@@ -97,6 +104,11 @@ export class PhotonClient {
           )
           .join(", ");
         const [longitude, latitude] = feature.geometry.coordinates;
+        // Defensive validation also covers a misconfigured provider that ignores
+        // the requested country or viewport. OSM IDs and arbitrary fields stay private.
+        if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180 ||
+            (feature.properties.countrycode && feature.properties.countrycode.toUpperCase() !== "EC") ||
+            !withinBounds(latitude, longitude, coordinates ?? {})) return [];
         return [
           {
             title: name,
@@ -146,14 +158,6 @@ export function selectPreferredPlaces(
       (place) => normalizeSearchText(place.title) !== normalizedQuery,
     ),
   ].slice(0, 8);
-}
-
-function normalizeSearchText(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLocaleLowerCase("es");
 }
 
 function placeTypePriority(type: string | null): number {

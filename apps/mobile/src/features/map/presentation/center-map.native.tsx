@@ -38,9 +38,10 @@ import {
   getNearbyMapFeatureSelections,
   type MapFeatureSelection,
 } from "../domain/map-feature-selection";
-import type { CenterMapProps } from "./center-map.types";
+import type { CenterMapProps, CenterMapViewport } from "./center-map.types";
 import { MapAttributionButton } from "./map-attribution-button";
 import { MapLoadingOverlay } from "./map-loading-overlay";
+import { isSameMapViewport, parseMapViewport } from "./map-viewport";
 import { useBasemapStyle } from "./use-basemap-style";
 import { useMapLifecycle } from "./use-map-lifecycle";
 import { UserLocationLayers } from "./user-location-layers";
@@ -152,6 +153,7 @@ export function CenterMap({
   focusCoordinateKey,
   focusSelection = null,
   onBearingChange,
+  onViewportChange,
   onCenterPress,
   onEstablishmentPress,
   onOverlappingFeaturePress,
@@ -164,6 +166,13 @@ export function CenterMap({
   const pendingLocationFocusRef = useRef<PendingLocationFocus | null>(null);
   const focusedLocationKeyRef = useRef<number | undefined>(undefined);
   const fittedInitialBoundsRef = useRef(false);
+  const viewportCallbackRef = useRef(onViewportChange);
+  const viewportRequestKeyRef = useRef(0);
+  const viewportMovingRef = useRef(false);
+  const lastViewportRef = useRef<CenterMapViewport | null>(null);
+  useEffect(() => {
+    viewportCallbackRef.current = onViewportChange;
+  }, [onViewportChange]);
   const selectionCallbacksRef = useRef<SelectionCallbacks>({
     onCenterPress,
     onEstablishmentPress,
@@ -190,6 +199,17 @@ export function CenterMap({
     showLoadingOverlay,
   } = useMapLifecycle(mapRef);
   const establishmentTiles = useMemo(() => [getEstablishmentTilesUrl()], []);
+  const publishViewport = useCallback(
+    (center: unknown, bounds: unknown) => {
+      if (!isActive() || !viewportCallbackRef.current) return;
+      const viewport = parseMapViewport(center, bounds);
+      if (!viewport || isSameMapViewport(lastViewportRef.current, viewport))
+        return;
+      lastViewportRef.current = viewport;
+      viewportCallbackRef.current(viewport);
+    },
+    [isActive],
+  );
   const establishmentVisibility = establishmentLayer.visible
     ? "visible"
     : "none";
@@ -432,6 +452,26 @@ export function CenterMap({
     });
   }, [focusBounds, focusCoordinateKey, nativeReady]);
 
+  const hasViewportListener = onViewportChange !== undefined;
+  useEffect(() => {
+    if (!nativeReady || !hasViewportListener || viewportMovingRef.current)
+      return;
+    // One snapshot covers maps that never emit a camera-change event on load.
+    // A gesture or newer event invalidates it before the native promise returns.
+    const requestKey = ++viewportRequestKeyRef.current;
+    const viewStateRequest = mapRef.current?.getViewState();
+    if (!viewStateRequest) return;
+    void viewStateRequest
+      .then(({ center, bounds }) => {
+        if (requestKey !== viewportRequestKeyRef.current) return;
+        publishViewport(center, bounds);
+      })
+      .catch(() => undefined);
+    return () => {
+      viewportRequestKeyRef.current += 1;
+    };
+  }, [hasViewportListener, nativeReady, publishViewport]);
+
   useEffect(() => {
     if (!resetNorthKey || !nativeReady) return;
     let cancelled = false;
@@ -465,11 +505,18 @@ export function CenterMap({
         onDidFailLoadingMap={markFailed}
         onDidFinishLoadingMap={markReady}
         onDidFinishLoadingStyle={markReady}
+        onRegionWillChange={() => {
+          viewportMovingRef.current = true;
+          viewportRequestKeyRef.current += 1;
+        }}
         onRegionIsChanging={(event) => {
           onBearingChange?.(event.nativeEvent.bearing);
         }}
         onRegionDidChange={(event) => {
           const { center, userInteraction, zoom } = event.nativeEvent;
+          viewportMovingRef.current = false;
+          viewportRequestKeyRef.current += 1;
+          publishViewport(center, event.nativeEvent.bounds);
           onBearingChange?.(event.nativeEvent.bearing);
           const camera: CameraState = { center, zoom };
           const pendingLocationFocus = pendingLocationFocusRef.current;

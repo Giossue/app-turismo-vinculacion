@@ -4,7 +4,7 @@ import { TourismChoiceChip } from "@/core/ui/tourism-controls";
 import { turismoSpacing } from "@/core/ui/tokens";
 
 /** Published tourist attractions, or the tourism registry near the tourist. */
-export type SearchMode = "CENTERS" | "ESTABLISHMENTS";
+export type SearchMode = "ALL" | "CENTERS" | "ESTABLISHMENTS" | "GEOGRAPHIC";
 
 export function SearchModeChips({
   mode,
@@ -14,15 +14,27 @@ export function SearchModeChips({
     <View style={styles.row}>
       <TourismChoiceChip
         glass
+        label="Todo"
+        onPress={() => onChange("ALL")}
+        selected={mode === "ALL"}
+      />
+      <TourismChoiceChip
+        glass
         label="Atractivos"
         onPress={() => onChange("CENTERS")}
         selected={mode === "CENTERS"}
       />
       <TourismChoiceChip
         glass
-        label="Servicios cercanos"
+        label="Servicios"
         onPress={() => onChange("ESTABLISHMENTS")}
         selected={mode === "ESTABLISHMENTS"}
+      />
+      <TourismChoiceChip
+        glass
+        label="Lugares"
+        onPress={() => onChange("GEOGRAPHIC")}
+        selected={mode === "GEOGRAPHIC"}
       />
     </View>
   );

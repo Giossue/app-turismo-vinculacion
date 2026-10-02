@@ -5,6 +5,7 @@ export type PublicSearchResult = Readonly<{
   subtitle: string;
   latitude: number;
   longitude: number;
+  distanceMeters?: number | null;
   centerCode?: string;
   category?: string | null;
   type?: string | null;

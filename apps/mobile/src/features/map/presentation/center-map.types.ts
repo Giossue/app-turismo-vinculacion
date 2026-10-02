@@ -14,6 +14,12 @@ export type LocalMapPlace = Readonly<{
   icon: string;
 }>;
 
+/** Actual visible map area, read after the camera settles. */
+export type CenterMapViewport = Readonly<{
+  center: GeoCoordinate;
+  bounds: GeoBoundingBox;
+}>;
+
 /** Props shared by the native MapLibre map and its web placeholder. */
 export type CenterMapProps = Readonly<{
   /** Offset of the "i" attribution control from the bottom-left corner. */
@@ -45,6 +51,8 @@ export type CenterMapProps = Readonly<{
   focusSelection?: MapFeatureSelection | null;
   /** Called on every camera frame; keep it cheap (see `MapCompass`). */
   onBearingChange?: (bearing: number) => void;
+  /** Reports the initial visible area and the final area after camera moves. */
+  onViewportChange?: (viewport: CenterMapViewport) => void;
   onCenterPress: (center: PublicCenter) => void;
   onEstablishmentPress: (establishment: PublicMapEstablishment) => void;
   onLocationFocusChange?: (focused: boolean) => void;

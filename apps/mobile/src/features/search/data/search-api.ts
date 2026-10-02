@@ -8,6 +8,7 @@ import {
 } from "@/core/api/http";
 import type { GeoCoordinate } from "@/core/geo/types";
 import type { PublicSearchResultPage } from "../domain/search-result";
+import { isValidSearchBounds, type SearchFilters } from "../domain/search-suggestion";
 
 const resultSchema = z.object({
   kind: z.enum(["center", "establishment", "geographic"]),
@@ -16,6 +17,7 @@ const resultSchema = z.object({
   subtitle: z.string(),
   latitude: z.number().finite(),
   longitude: z.number().finite(),
+  distanceMeters: z.number().finite().nonnegative().nullable().optional(),
   centerCode: z.string().min(1).optional(),
   category: z.string().nullable().optional(),
   type: z.string().nullable().optional(),
@@ -46,12 +48,19 @@ const responseSchema = z.object({
 export async function searchPublicPlaces(
   query: string,
   coordinate?: GeoCoordinate | null,
-  { apiUrl = getApiUrl(), fetcher, signal }: ApiRequestOptions = {},
+  { apiUrl = getApiUrl(), fetcher, signal, kind, bounds }: ApiRequestOptions & SearchFilters = {},
 ): Promise<PublicSearchResultPage> {
   const params = new URLSearchParams({ q: query.trim() });
   if (coordinate) {
     params.set("latitude", String(coordinate.latitude));
     params.set("longitude", String(coordinate.longitude));
+  }
+  if (kind) params.set("kind", kind);
+  if (isValidSearchBounds(bounds)) {
+    params.set("west", String(bounds[0]));
+    params.set("south", String(bounds[1]));
+    params.set("east", String(bounds[2]));
+    params.set("north", String(bounds[3]));
   }
   const payload = await requestJson(
     `${apiUrl}/search?${params}`,

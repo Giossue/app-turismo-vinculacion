@@ -11,6 +11,7 @@ import type { CenterMapProps } from "./center-map.types";
 
 export function CenterMap({ centers }: CenterMapProps) {
   const colors = useTurismoMapPalette();
+  // This placeholder has no camera or visible geographic area to report.
   return (
     <View
       accessibilityLabel="Mapa disponible en la aplicación móvil"

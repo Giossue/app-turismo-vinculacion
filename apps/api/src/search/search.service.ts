@@ -4,6 +4,13 @@ import type { DataSource } from "typeorm";
 
 import type { PublicSearchQueryDto } from "./search.dto";
 import { PhotonClient } from "./infrastructure/photon.client";
+import {
+  distanceFromOrigin,
+  normalizeSearchText,
+  searchTerms,
+  textualRelevance,
+  withinBounds,
+} from "./search-ranking";
 
 type SearchItem = Readonly<{
   kind: "center" | "establishment" | "geographic";
@@ -12,6 +19,7 @@ type SearchItem = Readonly<{
   subtitle: string;
   latitude: number;
   longitude: number;
+  distanceMeters: number | null;
   centerCode?: string;
   category?: string | null;
   type?: string | null;
@@ -46,6 +54,9 @@ type CenterSearchRow = {
   cantonCode: string;
   parishCode: string;
   hierarchyCode: string | null;
+  subtitle: string;
+  relevance: number;
+  distanceMeters: number | null;
 };
 
 type EstablishmentSearchRow = {
@@ -56,6 +67,8 @@ type EstablishmentSearchRow = {
   approximate: boolean;
   icon: string;
   color: string;
+  relevance: number;
+  distanceMeters: number | null;
 };
 
 @Injectable()
@@ -66,70 +79,103 @@ export class SearchService {
   ) {}
 
   async search(query: PublicSearchQueryDto) {
-    const text = query.q.trim();
+    const text = normalizeSearchText(query.q);
+    if (!text) return { items: [], meta: { photonAvailable: false } };
+    const terms = searchTerms(text);
     const [centers, establishments, geographic] = await Promise.all([
-      this.searchCenters(text),
-      this.searchEstablishments(text),
-      this.photon.search(text, query),
+      !query.kind || query.kind === "center"
+        ? this.searchCenters(query, text, terms)
+        : Promise.resolve([]),
+      !query.kind || query.kind === "establishment"
+        ? this.searchEstablishments(query, text, terms)
+        : Promise.resolve([]),
+      !query.kind || query.kind === "geographic"
+        ? this.photon.search(query.q.trim(), query)
+        : Promise.resolve([]),
     ]);
 
-    const internal: SearchItem[] = [
-      ...centers.map((row): SearchItem => ({
-        kind: "center",
-        source: "internal",
-        title: row.title,
-        subtitle: [row.category, row.type, row.cantonCode]
-          .filter(Boolean)
-          .join(" · "),
-        latitude: Number(row.latitude),
-        longitude: Number(row.longitude),
-        centerCode: row.code,
-        category: row.category,
-        type: row.type,
-        subtype: row.subtype,
-        hierarchy: row.hierarchy,
-        categoryCode: row.categoryCode,
-        typeCode: row.typeCode,
-        subtypeCode: row.subtypeCode,
-        provinceCode: row.provinceCode,
-        cantonCode: row.cantonCode,
-        parishCode: row.parishCode,
-        hierarchyCode: row.hierarchyCode,
+    const candidates: Array<{ item: SearchItem; relevance: number }> = [
+      ...centers.map((row) => ({
+        relevance: Number(row.relevance),
+        item: {
+          kind: "center" as const,
+          source: "internal" as const,
+          title: row.title,
+          subtitle: row.subtitle,
+          latitude: Number(row.latitude),
+          longitude: Number(row.longitude),
+          distanceMeters: distanceFromOrigin(Number(row.latitude), Number(row.longitude), query),
+          centerCode: row.code,
+          category: row.category,
+          type: row.type,
+          subtype: row.subtype,
+          hierarchy: row.hierarchy,
+          categoryCode: row.categoryCode,
+          typeCode: row.typeCode,
+          subtypeCode: row.subtypeCode,
+          provinceCode: row.provinceCode,
+          cantonCode: row.cantonCode,
+          parishCode: row.parishCode,
+          hierarchyCode: row.hierarchyCode,
+        },
       })),
-      ...establishments.map((row): SearchItem => ({
-        kind: "establishment",
-        source: "internal",
-        title: row.title,
-        subtitle: row.subtitle,
-        latitude: Number(row.latitude),
-        longitude: Number(row.longitude),
-        approximate: row.approximate,
-        icon: row.icon,
-        color: row.color,
+      ...establishments.map((row) => ({
+        relevance: Number(row.relevance),
+        item: {
+          kind: "establishment" as const,
+          source: "internal" as const,
+          title: row.title,
+          subtitle: row.subtitle,
+          latitude: Number(row.latitude),
+          longitude: Number(row.longitude),
+          distanceMeters: distanceFromOrigin(Number(row.latitude), Number(row.longitude), query),
+          approximate: row.approximate,
+          icon: row.icon,
+          color: row.color,
+        },
       })),
-    ];
-
-    return {
-      items: [
-        ...internal,
-        ...geographic.map((place): SearchItem => ({
-          kind: "geographic",
-          source: "photon",
+      ...geographic.map((place) => ({
+        relevance: textualRelevance(text, place.title, place.subtitle, terms),
+        item: {
+          kind: "geographic" as const,
+          source: "photon" as const,
           title: place.title,
           subtitle: place.subtitle,
           latitude: place.latitude,
           longitude: place.longitude,
+          distanceMeters: distanceFromOrigin(place.latitude, place.longitude, query),
           type: place.type,
-        })),
-      ].slice(0, 24),
-      meta: { photonAvailable: geographic.length > 0 },
-    };
+        },
+      })),
+    ];
+
+    // No source owns a fixed block of the list. Exactness wins over proximity;
+    // equally relevant matches are compared by their distance to the focus point.
+    candidates.sort((left, right) =>
+      right.relevance - left.relevance ||
+      (left.item.distanceMeters ?? Infinity) - (right.item.distanceMeters ?? Infinity),
+    );
+    const seen = new Set<string>();
+    const items = candidates.flatMap(({ item }) => {
+      if (!withinBounds(item.latitude, item.longitude, query)) return [];
+      const identity = `${normalizeSearchText(item.title)}:${item.latitude.toFixed(5)}:${item.longitude.toFixed(5)}`;
+      if (seen.has(identity)) return [];
+      seen.add(identity);
+      return [item];
+    }).slice(0, 24);
+
+    return { items, meta: { photonAvailable: geographic.length > 0 } };
   }
 
-  private searchCenters(query: string): Promise<CenterSearchRow[]> {
+  private searchCenters(
+    query: PublicSearchQueryDto,
+    text: string,
+    terms: readonly string[],
+  ): Promise<CenterSearchRow[]> {
     return this.dataSource.query<CenterSearchRow[]>(
       `SELECT c.codigo_atractivo AS code,
               c.nombre AS title,
+              CONCAT_WS(' · ', ca.nombre, ta.nombre, ct.nombre) AS subtitle,
               c.descripcion AS description,
               c.latitud AS latitude,
               c.longitud AS longitude,
@@ -143,7 +189,9 @@ export class SearchService {
               p.codigo_dpa AS "provinceCode",
               ct.codigo_cton AS "cantonCode",
               pa.codigo_pqa AS "parishCode",
-              rj.codigo AS "hierarchyCode"
+              rj.codigo AS "hierarchyCode",
+              ${rankingSql("c.nombre", "CONCAT_WS(' ', c.descripcion, ca.nombre, ta.nombre, sa.nombre, pa.nombre, ct.nombre, p.nombre)")} AS relevance,
+              ${distanceSql("c")} AS "distanceMeters"
          FROM centros_turisticos c
          JOIN estados_resenia er ON er.id = c.estado_resenia_id
          JOIN subtipos_atractivo sa ON sa.id = c.subtipo_atractivo_id
@@ -155,25 +203,25 @@ export class SearchService {
          LEFT JOIN rangos_jerarquia rj ON rj.id = c.jerarquia_id
         WHERE c.activo AND er.codigo = 'PUBLICADO'
           AND c.latitud IS NOT NULL AND c.longitud IS NOT NULL
-          AND (c.nombre ILIKE '%' || $1 || '%'
-            OR COALESCE(c.descripcion, '') ILIKE '%' || $1 || '%'
-            OR ca.nombre ILIKE '%' || $1 || '%'
-            OR ta.nombre ILIKE '%' || $1 || '%'
-            OR sa.nombre ILIKE '%' || $1 || '%')
-        ORDER BY CASE WHEN lower(c.nombre) = lower($1) THEN 0 ELSE 1 END,
+          AND ${boundsSql("c")}
+          AND ${matchingSql("c.nombre", "CONCAT_WS(' ', c.descripcion, ca.nombre, ta.nombre, sa.nombre, pa.nombre, ct.nombre, p.nombre)")}
+        ORDER BY relevance DESC, "distanceMeters" ASC NULLS LAST,
                  c.nombre, c.codigo_atractivo
-        LIMIT 8`,
-      [query],
+        LIMIT 48`,
+      searchParameters(query, text, terms),
     );
   }
 
   private searchEstablishments(
-    query: string,
+    query: PublicSearchQueryDto,
+    text: string,
+    terms: readonly string[],
   ): Promise<EstablishmentSearchRow[]> {
+    const details = "CONCAT_WS(' ', e.actividad, e.categoria, activity_catalog.nombre, classification_catalog.nombre, category_catalog.nombre, e.direccion, l.nombre, co.nombre, p.nombre)";
     return this.dataSource.query<EstablishmentSearchRow[]>(
       `SELECT e.nombre_comercial AS title,
               CONCAT_WS(' · ',
-                COALESCE(category_catalog.nombre, e.categoria),
+                COALESCE(classification_catalog.nombre, category_catalog.nombre, e.categoria),
                 l.nombre,
                 e.direccion
               ) AS subtitle,
@@ -181,7 +229,9 @@ export class SearchService {
               e.longitud AS longitude,
               e.coordenadas_aproximadas AS approximate,
               COALESCE(NULLIF(classification_catalog.icono, 'mapPin'), NULLIF(category_catalog.icono, 'mapPin'), 'shop-supermarket') AS icon,
-              COALESCE(classification_catalog.color, category_catalog.color, '#be123c') AS color
+              COALESCE(classification_catalog.color, category_catalog.color, '#be123c') AS color,
+              ${rankingSql("e.nombre_comercial", details)} AS relevance,
+              ${distanceSql("e")} AS "distanceMeters"
          FROM establecimientos_turisticos e
          JOIN localidades l ON l.id = e.localidad_id
          JOIN cantones co ON co.id = l.canton_id
@@ -195,15 +245,63 @@ export class SearchService {
         WHERE e.activo AND e.estado_revision = 'PUBLICADO'
           AND l.activo AND co.activo AND p.activo
           AND e.latitud IS NOT NULL AND e.longitud IS NOT NULL
-          AND (e.nombre_comercial ILIKE '%' || $1 || '%'
-            OR COALESCE(e.actividad, '') ILIKE '%' || $1 || '%'
-            OR COALESCE(activity_catalog.nombre, '') ILIKE '%' || $1 || '%'
-            OR COALESCE(classification_catalog.nombre, '') ILIKE '%' || $1 || '%'
-            OR COALESCE(category_catalog.nombre, '') ILIKE '%' || $1 || '%'
-            OR COALESCE(e.direccion, '') ILIKE '%' || $1 || '%')
-        ORDER BY e.nombre_comercial, e.id
-        LIMIT 8`,
-      [query],
+          AND ${boundsSql("e")}
+          AND ${matchingSql("e.nombre_comercial", details)}
+        ORDER BY relevance DESC, "distanceMeters" ASC NULLS LAST,
+                 e.nombre_comercial, e.id
+        LIMIT 48`,
+      searchParameters(query, text, terms),
     );
   }
+}
+
+// These expressions contain only source-controlled identifiers. User input is
+// always bound as a parameter, including aliases and every map coordinate.
+export function normalizedSearchSql(value: string): string {
+  return String.raw`btrim(regexp_replace(
+    lower(regexp_replace(normalize(${value}, NFD), U&'[\0300-\036f]', '', 'g') COLLATE "C"),
+    '[^a-z0-9]+', ' ', 'g'
+  ))`;
+}
+
+function matchingSql(title: string, details: string): string {
+  return `(${normalizedSearchSql(title)} LIKE '%' || $1 || '%'
+    OR (length($1) >= 4 AND $1 <% ${normalizedSearchSql(title)})
+    OR EXISTS (SELECT 1 FROM unnest($2::text[]) term
+      WHERE ${normalizedSearchSql(title)} LIKE '%' || term || '%'
+         OR ${normalizedSearchSql(details)} LIKE '%' || term || '%')
+    OR (length($1) >= 4 AND $1 <% ${normalizedSearchSql(details)}))`;
+}
+
+function rankingSql(title: string, details: string): string {
+  return `CASE
+    WHEN ${normalizedSearchSql(title)} = $1 THEN 600
+    WHEN ${normalizedSearchSql(title)} LIKE $1 || '%' THEN 500
+    WHEN ${normalizedSearchSql(title)} LIKE '%' || $1 || '%' THEN 400
+    WHEN EXISTS (SELECT 1 FROM unnest($2::text[]) term
+      WHERE ${normalizedSearchSql(title)} LIKE '%' || term || '%') THEN 300
+    WHEN EXISTS (SELECT 1 FROM unnest($2::text[]) term
+      WHERE ${normalizedSearchSql(details)} LIKE '%' || term || '%') THEN 200
+    ELSE 100 + floor(50 * greatest(
+      word_similarity($1, ${normalizedSearchSql(title)}),
+      word_similarity($1, ${normalizedSearchSql(details)})))
+  END`;
+}
+
+function distanceSql(table: string): string {
+  return `CASE WHEN $3::double precision IS NOT NULL AND $4::double precision IS NOT NULL
+    THEN ST_Distance(${table}.ubicacion,
+      ST_SetSRID(ST_MakePoint($4::double precision, $3::double precision), 4326)::geography, false)
+    ELSE NULL END`;
+}
+
+function boundsSql(table: string): string {
+  return `($5::double precision IS NULL OR (
+    ${table}.longitud BETWEEN $5::double precision AND $7::double precision
+    AND ${table}.latitud BETWEEN $6::double precision AND $8::double precision))`;
+}
+
+function searchParameters(query: PublicSearchQueryDto, text: string, terms: readonly string[]) {
+  return [text, terms, query.latitude ?? null, query.longitude ?? null,
+    query.west ?? null, query.south ?? null, query.east ?? null, query.north ?? null];
 }
