@@ -5,7 +5,10 @@ import {
   agentIntroMessage,
   agentStarterPrompts,
   buildAgentHistory,
+  countAgentUserMessages,
   getRetryableAgentTurn,
+  hasAgentMessageLimit,
+  prepareAgentTurn,
   shouldShareAgentLocation,
   showsAgentStarterPrompts,
 } from "./agent-conversation";
@@ -75,7 +78,7 @@ describe("agent history", () => {
 });
 
 describe("retrying an agent turn", () => {
-  it("reuses the failed question and keeps only completed earlier turns", () => {
+  it("identifies the failed answer and its question for a retry", () => {
     const previous = [
       agentIntroMessage,
       user(1, "¿Qué visitar?"),
@@ -87,7 +90,7 @@ describe("retrying an agent turn", () => {
         user(3, "¿Cómo llego?"),
         assistant(4, "Respuesta detenida.", "error"),
       ]),
-    ).toEqual({ question: "¿Cómo llego?", previous });
+    ).toEqual({ question: "¿Cómo llego?", answerId: "assistant-4" });
   });
 
   it("does not retry a completed or partial response", () => {
@@ -97,6 +100,108 @@ describe("retrying an agent turn", () => {
     expect(
       getRetryableAgentTurn([user(1, "Hola"), assistant(2, "Ho", "partial")]),
     ).toBeNull();
+  });
+});
+
+describe("agent chat message limit", () => {
+  const ids = { questionId: "user-new", answerId: "assistant-new" };
+  const conversation = (count: number): readonly AgentMessage[] => [
+    agentIntroMessage,
+    ...Array.from({ length: count }, (_, index) => [
+      user(index, `Pregunta ${index}`),
+      assistant(index, `Respuesta ${index}`),
+    ]).flat(),
+  ];
+
+  it("allows the twentieth user message and rejects the twenty-first", () => {
+    const messages = conversation(19);
+    const turn = prepareAgentTurn(messages, "Última pregunta", ids);
+    expect(turn).not.toBeNull();
+    expect(countAgentUserMessages(turn!.messages)).toBe(20);
+    expect(hasAgentMessageLimit(turn!.messages)).toBe(true);
+    expect(prepareAgentTurn(turn!.messages, "Una más", ids)).toBeNull();
+    expect(countAgentUserMessages(messages)).toBe(19);
+  });
+
+  it("counts failed and stopped questions but excludes assistant messages", () => {
+    const messages = conversation(20).map((message): AgentMessage =>
+      message.role === "assistant" && message.kind !== "intro"
+        ? { ...message, kind: "error", text: "Respuesta detenida." }
+        : message,
+    );
+    expect(countAgentUserMessages(messages)).toBe(20);
+    expect(prepareAgentTurn(messages, "Una más", ids)).toBeNull();
+  });
+
+  it("retries the twentieth question without consuming a new message", () => {
+    const messages = [
+      ...conversation(19),
+      user(19, "Pregunta final"),
+      assistant(19, "No disponible", "error"),
+    ];
+    const turn = prepareAgentTurn(messages, "Pregunta final", {
+      ...ids,
+      retryAnswerId: "assistant-19",
+    });
+    expect(turn?.question).toEqual(user(19, "Pregunta final"));
+    expect(turn?.answerId).toBe("assistant-19");
+    expect(countAgentUserMessages(turn!.messages)).toBe(20);
+    expect(turn?.messages).toHaveLength(messages.length);
+    expect(turn?.history.at(-2)?.content).toBe("Pregunta 18");
+    expect(turn?.history).not.toContainEqual({
+      role: "user",
+      content: "Pregunta final",
+    });
+  });
+
+  it("repeats an earlier location question at the limit without discarding later turns", () => {
+    const messages = [...conversation(20)];
+    messages[2] = {
+      ...assistant(0, "Necesito ubicación"),
+      actions: [{ type: "request_location" }],
+    };
+    const turn = prepareAgentTurn(messages, "Pregunta 0", {
+      ...ids,
+      retryAnswerId: "assistant-0",
+    });
+    expect(countAgentUserMessages(turn!.messages)).toBe(20);
+    expect(turn?.messages).toHaveLength(messages.length);
+    expect(turn?.messages.at(-1)).toEqual(messages.at(-1));
+    expect(turn?.history).toEqual([]);
+    expect(turn?.answerId).toBe("assistant-0");
+  });
+
+  it("cannot bypass the limit by inventing a retry or changing its question", () => {
+    const messages = [...conversation(20)];
+    messages[messages.length - 1] = assistant(19, "No disponible", "error");
+    expect(
+      prepareAgentTurn(messages, "Pregunta 0", {
+        ...ids,
+        retryAnswerId: "missing",
+      }),
+    ).toBeNull();
+    expect(
+      prepareAgentTurn(messages, "Otra pregunta", {
+        ...ids,
+        retryAnswerId: "assistant-19",
+      }),
+    ).toBeNull();
+    expect(
+      prepareAgentTurn(messages, "Pregunta 18", {
+        ...ids,
+        retryAnswerId: "assistant-18",
+      }),
+    ).toBeNull();
+  });
+
+  it("starts at zero in a new chat and ignores empty input", () => {
+    const messages = [agentIntroMessage];
+    expect(countAgentUserMessages(messages)).toBe(0);
+    expect(hasAgentMessageLimit(messages)).toBe(false);
+    expect(prepareAgentTurn(messages, "  ", ids)).toBeNull();
+    expect(
+      countAgentUserMessages(prepareAgentTurn(messages, "Hola", ids)!.messages),
+    ).toBe(1);
   });
 });
 

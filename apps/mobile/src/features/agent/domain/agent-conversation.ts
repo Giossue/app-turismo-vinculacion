@@ -1,6 +1,7 @@
 import type { TurismoIconName } from "@/core/ui/turismo-icons";
 import {
   AGENT_HISTORY_MAX_ITEMS,
+  AGENT_MAX_USER_MESSAGES,
   AGENT_MESSAGE_MAX_LENGTH,
   type AgentHistoryItem,
   type AgentMessage,
@@ -37,6 +38,77 @@ export function showsAgentStarterPrompts(
 /** Shown when a failure has no user-safe message of its own. */
 export const agentFallbackErrorMessage = "No pudimos responder ahora.";
 
+export function countAgentUserMessages(
+  messages: readonly AgentMessage[],
+): number {
+  return messages.filter((message) => message.role === "user").length;
+}
+
+export function hasAgentMessageLimit(
+  messages: readonly AgentMessage[],
+): boolean {
+  return countAgentUserMessages(messages) >= AGENT_MAX_USER_MESSAGES;
+}
+
+/** Starts a question, or replaces only the answer when retrying an existing turn. */
+export function prepareAgentTurn(
+  messages: readonly AgentMessage[],
+  text: string,
+  ids: Readonly<{
+    questionId: string;
+    answerId: string;
+    retryAnswerId?: string;
+  }>,
+): {
+  question: AgentMessage;
+  answerId: string;
+  history: AgentHistoryItem[];
+  messages: readonly AgentMessage[];
+} | null {
+  const message = text.trim();
+  if (!message) return null;
+
+  if (ids.retryAnswerId) {
+    const answerIndex = messages.findIndex(
+      (item) => item.id === ids.retryAnswerId,
+    );
+    const answer = messages[answerIndex];
+    const question = messages[answerIndex - 1];
+    if (
+      answer?.role !== "assistant" ||
+      question?.role !== "user" ||
+      question.text !== message ||
+      (answer.kind !== "error" &&
+        !answer.actions?.some((action) => action.type === "request_location"))
+    )
+      return null;
+
+    return {
+      question,
+      answerId: answer.id,
+      history: buildAgentHistory(messages.slice(0, answerIndex - 1)),
+      messages: messages.map((item) =>
+        item.id === answer.id
+          ? { id: answer.id, role: "assistant", kind: "partial", text: "" }
+          : item,
+      ),
+    };
+  }
+
+  if (hasAgentMessageLimit(messages)) return null;
+  const question: AgentMessage = {
+    id: ids.questionId,
+    role: "user",
+    text: message,
+  };
+  return {
+    question,
+    answerId: ids.answerId,
+    history: buildAgentHistory(messages),
+    messages: [...messages, question],
+  };
+}
+
 /**
  * Context for the next question: the latest completed exchanges only. A
  * user message counts when the next bubble is a complete answer; the
@@ -69,11 +141,11 @@ export function buildAgentHistory(
 /** The final failed turn can be sent again without duplicating its question. */
 export function getRetryableAgentTurn(
   messages: readonly AgentMessage[],
-): { question: string; previous: readonly AgentMessage[] } | null {
+): { question: string; answerId: string } | null {
   const answer = messages.at(-1);
   const question = messages.at(-2);
   if (answer?.kind !== "error" || question?.role !== "user") return null;
-  return { question: question.text, previous: messages.slice(0, -2) };
+  return { question: question.text, answerId: answer.id };
 }
 
 /** Share the current position only when this question explicitly needs it. */

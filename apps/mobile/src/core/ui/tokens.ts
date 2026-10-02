@@ -32,6 +32,7 @@ export const turismoMetrics = {
   controlMd: 48,
   controlLg: 52,
   avatarSm: 32,
+  optionIconSm: 28,
   avatarLg: 52,
   iconButtonLg: 56,
   contentMaxWidth: 720,

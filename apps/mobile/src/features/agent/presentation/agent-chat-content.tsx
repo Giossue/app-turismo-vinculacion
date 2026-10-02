@@ -34,6 +34,7 @@ import type { RouteMode } from "@/features/routing/domain/routing";
 import type { useAgentConversation } from "../application/use-agent-conversation";
 import {
   AGENT_MESSAGE_MAX_LENGTH,
+  AGENT_MAX_USER_MESSAGES,
   type AgentCard,
   type AgentRouteDestination,
 } from "../domain/agent";
@@ -68,12 +69,16 @@ export function AgentChatContent({
   const onMediaStatus = (value: string | null, error = false) =>
     setMediaStatus(value ? { text: value, error } : null);
   const voice = useAgentVoiceInput({
-    disabled: conversation.sending || conversation.requestingLocation,
+    disabled:
+      conversation.limitReached ||
+      conversation.sending ||
+      conversation.requestingLocation,
     onStatus: onMediaStatus,
     onTranscript: conversation.setDraft,
     onWorkingChange: setVoiceBusy,
   });
   const mediaMenuDisabled =
+    conversation.limitReached ||
     conversation.sending ||
     conversation.requestingLocation ||
     voice.processing ||
@@ -82,6 +87,7 @@ export function AgentChatContent({
   const messagesScrollRef = useRef<ScrollView>(null);
   const canSend =
     Boolean(conversation.draft.trim()) &&
+    !conversation.limitReached &&
     !conversation.sending &&
     !conversation.requestingLocation &&
     !voiceBusy;
@@ -124,26 +130,29 @@ export function AgentChatContent({
         style={styles.messagesScroll}
       >
         <View style={styles.messages}>
-          {conversation.messages.map((message) => (
-            <AgentMessageBubble
-              key={message.id}
-              message={message}
-              onChangePendingRoute={conversation.setPendingRouteAction}
-              onOpenCard={onOpenCard}
-              onOpenCenter={onOpenCenter}
-              onRequestLocation={() =>
-                void conversation.requestLocationForMessage(message.id)
-              }
-              onStartRoute={onStartRoute}
-              pendingRouteAction={conversation.pendingRouteAction}
-              requestingLocation={conversation.requestingLocation}
-            />
-          ))}
+          {conversation.messages
+            .filter((message) => message.kind !== "partial" || message.text)
+            .map((message) => (
+              <AgentMessageBubble
+                key={message.id}
+                message={message}
+                onChangePendingRoute={conversation.setPendingRouteAction}
+                onOpenCard={onOpenCard}
+                onOpenCenter={onOpenCenter}
+                onRequestLocation={() =>
+                  void conversation.requestLocationForMessage(message.id)
+                }
+                onStartRoute={onStartRoute}
+                pendingRouteAction={conversation.pendingRouteAction}
+                requestingLocation={conversation.requestingLocation}
+              />
+            ))}
           {!conversation.sending &&
           showsAgentStarterPrompts(conversation.messages) ? (
             <View style={styles.starters}>
               {agentStarterPrompts.map((prompt) => (
                 <TourismOptionRow
+                  compact
                   icon={prompt.icon}
                   key={prompt.text}
                   onPress={() => void conversation.send(prompt.text)}
@@ -170,6 +179,26 @@ export function AgentChatContent({
         </View>
       </BottomSheetScrollView>
 
+      {conversation.limitReached ? (
+        <View style={styles.limitNotice}>
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[styles.limitText, { color: colors.textMuted }]}
+          >
+            Llegaste a {AGENT_MAX_USER_MESSAGES} mensajes. Inicia un nuevo chat
+            para continuar.
+          </Text>
+          <TourismActionButton
+            label="Nuevo chat"
+            onPress={() => {
+              setMediaMenuOpen(false);
+              setMediaStatus(null);
+              conversation.newConversation();
+            }}
+          />
+        </View>
+      ) : null}
+
       {mediaStatus ? (
         <Text
           style={[
@@ -180,6 +209,12 @@ export function AgentChatContent({
           {mediaStatus.text}
         </Text>
       ) : null}
+      <Text
+        accessibilityLabel={`${conversation.userMessageCount} de ${AGENT_MAX_USER_MESSAGES} mensajes enviados`}
+        style={[styles.counter, { color: colors.textMuted }]}
+      >
+        {conversation.userMessageCount}/{AGENT_MAX_USER_MESSAGES} mensajes
+      </Text>
       <TourismSurface style={styles.composer}>
         <Menu
           anchor={
@@ -246,12 +281,22 @@ export function AgentChatContent({
             espacio lo reserva `keyboardStyle`. */}
         <TextInput
           accessibilityLabel="Escribe una consulta al agente"
-          editable={!conversation.sending && !conversation.requestingLocation}
+          editable={
+            !conversation.limitReached &&
+            !conversation.sending &&
+            !conversation.requestingLocation
+          }
           maxLength={AGENT_MESSAGE_MAX_LENGTH}
           multiline
           onChangeText={conversation.setDraft}
           onFocus={() => setMediaMenuOpen(false)}
-          placeholder={conversation.sending ? "Consultando…" : "Pregunta algo…"}
+          placeholder={
+            conversation.limitReached
+              ? "Inicia un nuevo chat"
+              : conversation.sending
+                ? "Consultando…"
+                : "Pregunta algo…"
+          }
           placeholderTextColor={colors.textFaint}
           style={[styles.composerInput, { color: colors.text }]}
           value={conversation.draft}
@@ -289,12 +334,20 @@ const styles = StyleSheet.create({
   },
   messages: { gap: turismoSpacing.lg },
   // Alineadas con la burbuja del agente, a la derecha de su ícono.
-  starters: { gap: turismoSpacing.xs, marginLeft: turismoSpacing.xxl },
+  starters: { gap: turismoSpacing.xxs, marginLeft: turismoSpacing.xxl },
   retry: { alignSelf: "flex-start", marginLeft: turismoSpacing.xxl },
   error: { ...turismoTypography.bodySmall, marginLeft: turismoSpacing.xxl },
   mediaStatus: {
     ...turismoTypography.caption,
     marginHorizontal: turismoSpacing.sm,
+  },
+  limitNotice: { gap: turismoSpacing.sm },
+  limitText: { ...turismoTypography.bodySmall },
+  counter: {
+    ...turismoTypography.caption,
+    alignSelf: "flex-end",
+    marginRight: turismoSpacing.sm,
+    textAlign: "right",
   },
   composer: {
     alignItems: "flex-end",

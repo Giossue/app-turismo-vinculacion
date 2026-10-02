@@ -11,6 +11,15 @@ revisión sobre sus propios borradores, sin delegar la publicación.
 
 - La conversación textual admite español e inglés, texto parcial, detener, reintentar
   y comenzar de nuevo. Las preguntas de descubrimiento general funcionan sin GPS.
+- Cada chat admite hasta veinte mensajes del usuario. El saludo y las respuestas del
+  agente no cuentan. Al alcanzar veinte, se bloquean preguntas nuevas por texto o voz,
+  se muestra el contador y se ofrece «Nuevo chat». Reintentar una respuesta fallida o
+  repetir una consulta con ubicación reutiliza el mismo mensaje, sin consumir otro.
+  Cerrar y reabrir la hoja conserva el contador; un chat nuevo lo reinicia.
+- El botón «+» de nuevo chat se ubica arriba a la izquierda, en la misma fila que
+  el cierre. El contador se ubica abajo a la derecha, justo encima del campo de mensaje.
+- Las consultas rápidas usan filas compactas: tipografía de 14 puntos, iconos pequeños
+  y menor espaciado, con un objetivo táctil mínimo de 44 puntos.
 - El agente consulta el catálogo publicado antes de afirmar hechos turísticos; presenta
   la entidad y fuente concreta, o comunica que no encontró un dato verificable.
 - La ubicación aproximada solo se usa si la persona activa ubicación y la consulta
@@ -22,8 +31,10 @@ revisión sobre sus propios borradores, sin delegar la publicación.
 
 ## Persistencia y multimedia
 
-- Guardar historial es opt-in y reversible. La persona puede ver y borrar sus
-  conversaciones; la ubicación puntual y el audio no se persisten en el historial.
+- La app no muestra un historial de conversaciones ni permite restaurarlas: solo
+  muestra el chat actual en memoria y la acción para comenzar uno nuevo. La API conserva
+  sus operaciones de historial consentido y borrado para cuentas que lo activaron; esta
+  retirada visual no borra registros ni guarda ubicación puntual o audio.
 - El turista puede hablar, revisar la transcripción antes de enviar y escuchar la
   respuesta. Puede detener grabación y reproducción; un permiso denegado deja texto.
 - El chat del agente acepta texto y voz; no ofrece cámara, galería ni envío de

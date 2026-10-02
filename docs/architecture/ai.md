@@ -130,6 +130,12 @@ se genera desde los controladores actuales y ya no anuncia este campo ni sus end
 
 ## Historial
 
+El móvil no visualiza ni restaura conversaciones históricas. Solo mantiene el chat
+actual en memoria, con hasta veinte mensajes del usuario; un chat nuevo reinicia ese
+límite. Reintentar o repetir con GPS reutiliza el turno. El contexto enviado al modelo
+sigue acotado a doce entradas y no representa el contador del chat. Los endpoints y
+registros de historial consentido se conservan en la API; retirar su vista no los borra.
+
 `/ai/history` guarda turnos textuales y fuentes solo después del opt-in. La preferencia
 apagada bloquea escrituras; apagarla borra las conversaciones voluntarias. Audio
 y ubicación puntual no se guardan en esas tablas. Los textos con pares de coordenadas

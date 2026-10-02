@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { useTurismoPalette } from "./theme-context";
@@ -20,6 +21,7 @@ export function TourismSheetHandle({
   indicatorAccessibilityLabel,
   indicatorExpanded,
   insetClose = false,
+  leadingAction,
   onClose,
   onIndicatorPress,
   showIndicator = true,
@@ -32,6 +34,8 @@ export function TourismSheetHandle({
    * (mismo margen que la X del menú).
    */
   insetClose?: boolean;
+  /** Acción opcional a la izquierda, a la misma altura que el cierre. */
+  leadingAction?: ReactNode;
   onClose: () => void;
   onIndicatorPress?: () => void;
   /** Sin barra de arrastre, para paneles fijos que solo se cierran con la X. */
@@ -44,6 +48,9 @@ export function TourismSheetHandle({
 
   return (
     <View style={styles.handle}>
+      {leadingAction ? (
+        <View style={styles.leadingAction}>{leadingAction}</View>
+      ) : null}
       {!showIndicator ? null : onIndicatorPress ? (
         <Pressable
           accessibilityLabel={indicatorAccessibilityLabel}
@@ -94,6 +101,7 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: turismoOpacity.pressed },
   close: { position: "absolute", right: turismoSpacing.sm },
+  leadingAction: { position: "absolute", left: turismoSpacing.sm },
   closeInset: {
     right: turismoSpacing.sm + turismoSpacing.xs,
     top: turismoSpacing.sm,

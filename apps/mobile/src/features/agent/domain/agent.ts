@@ -7,6 +7,9 @@ export const AGENT_MESSAGE_MAX_LENGTH = 2_000;
 export const AGENT_HISTORY_MAX_ITEMS = 12;
 export const AGENT_MAX_ACCURACY_METERS = 10_000;
 
+/** New user messages allowed in the current mobile chat. */
+export const AGENT_MAX_USER_MESSAGES = 20;
+
 const finiteCoordinate = z.number().finite();
 
 export const agentLocationSchema = z

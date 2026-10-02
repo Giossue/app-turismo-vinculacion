@@ -9,3 +9,5 @@
 | 2026-09-24 | El historial voluntario se conserva hasta que el titular lo borra o desactiva; no hay borrado automático por fecha.            | La interfaz debe explicar claramente el control y la duración.  |
 | 2026-09-24 | La voz usa OpenAI para transcribir; la foto usa el proveedor configurado para describir y luego coteja con catálogo publicado. | El modelo no puede crear por sí solo una coincidencia pública.  |
 | 2026-09-27 | Retirar el envío de fotos y el acceso a cámara/galería del agente; cerrar también la ruta de análisis visual.                  | El agente turístico acepta consultas por texto y voz.           |
+| 2026-10-02 | Retirar la vista y restauración del historial móvil; cada chat admite veinte mensajes del usuario y requiere iniciar otro para continuar. | Simplificar el chat y limitar su longitud por solicitud del usuario. |
+| 2026-10-02 | Reintentos y repeticiones con ubicación reutilizan el turno; errores y respuestas detenidas conservan el mensaje enviado en el contador. | El límite cuenta preguntas del usuario y evita duplicarlas. |

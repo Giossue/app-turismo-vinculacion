@@ -42,8 +42,23 @@ cerrar la sheet cancela la respuesta en curso y al reabrirla se pueden continuar
 intercambios completados. El chat permite detener, reintentar el último turno fallido y
 comenzar una conversación nueva; el cambio de cuenta borra el estado en memoria. No se
 persiste el chat ni la ubicación en el dispositivo. El historial del servidor está
-apagado por defecto; el usuario puede activarlo, abrir y borrar conversaciones o
-desactivarlo para borrarlas todas.
+apagado por defecto y conserva sus controles en la API para cuentas con consentimiento
+previo. El móvil no ofrece botón, panel ni restauración de historial; solo muestra el chat
+actual. Esta retirada visual no elimina registros históricos del servidor.
+
+Cada chat admite veinte mensajes del usuario, incluidos los que tienen respuesta fallida
+o detenida. El contador se deriva de las burbujas del usuario, con una validación antes
+de cada envío sobre el estado actual en memoria. Al alcanzar veinte, texto y voz quedan
+bloqueados para preguntas nuevas y se muestra «Nuevo chat». Reintentos y repeticiones con
+GPS conservan los IDs del turno y reemplazan su respuesta, incluso si hay mensajes
+posteriores; no consumen otro mensaje ni eliminan esos mensajes posteriores. El contexto
+para repetir ese turno contiene solo los intercambios completados que lo preceden.
+El límite se conserva al cerrar/reabrir la hoja y se reinicia al comenzar un chat nuevo
+o cambiar de cuenta. Es una regla del chat móvil; el contexto del modelo mantiene su
+límite independiente de doce entradas.
+El encabezado usa `TourismSheetHandle` con la acción de nuevo chat a la izquierda
+y el cierre a la derecha, en una sola fila. El contador se alinea a la derecha
+encima del compositor y se desplaza con él al abrir el teclado.
 
 `expo-audio` graba hasta 30 segundos tras el permiso del sistema;
 la transcripción vuelve al borrador editable. El compositor muestra un botón «+»

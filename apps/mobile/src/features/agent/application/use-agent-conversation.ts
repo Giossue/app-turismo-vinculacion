@@ -6,7 +6,6 @@ import { getLocationAvailability } from "@/core/location/location-availability";
 import { useUserLocation } from "@/core/location/use-user-location";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { askTourismAgentStream } from "../data/agent-api";
-import type { SavedAgentConversationDetail } from "../data/agent-history-api";
 import type {
   AgentMessage,
   AgentResponse,
@@ -15,7 +14,9 @@ import type {
 import {
   agentFallbackErrorMessage,
   agentIntroMessage,
-  buildAgentHistory,
+  countAgentUserMessages,
+  hasAgentMessageLimit,
+  prepareAgentTurn,
   getRetryableAgentTurn,
   shouldShareAgentLocation,
 } from "../domain/agent-conversation";
@@ -106,39 +107,6 @@ export function useAgentConversation() {
     setDraft("");
   }, []);
 
-  const loadSavedConversation = useCallback(
-    (saved: SavedAgentConversationDetail) => {
-      locationRequestIdRef.current += 1;
-      locationRequestRef.current = false;
-      setRequestingLocation(false);
-      setLocationFeedback(null);
-      abortRef.current?.abort();
-      abortRef.current = null;
-      answerIdRef.current = null;
-      sendingRef.current = false;
-      conversationIdRef.current = saved.id;
-      messagesRef.current = [
-        agentIntroMessage,
-        ...saved.messages.map((message, index): AgentMessage => ({
-          id: `history-${saved.id}-${index}`,
-          role: message.role,
-          text: message.text,
-          sources: message.sources,
-        })),
-      ];
-      setMessages(messagesRef.current);
-      setSending(false);
-      setAwaitingText(false);
-      setPendingRouteAction(null);
-      setDraft("");
-    },
-    [],
-  );
-
-  const forgetSavedConversation = useCallback((id: string) => {
-    if (conversationIdRef.current === id) conversationIdRef.current = null;
-  }, []);
-
   useEffect(() => {
     if (userIdRef.current === auth.user?.id) return;
     userIdRef.current = auth.user?.id;
@@ -150,30 +118,31 @@ export function useAgentConversation() {
     return `${prefix}-${nextIdRef.current}`;
   };
 
-  const send = async (
+  const sendTurn = async (
     text: string,
-    baseMessages: readonly AgentMessage[] = messagesRef.current,
+    retryAnswerId?: string,
     locationOverride?: GeoCoordinate,
   ) => {
-    const message = text.trim();
-    if (!message || sendingRef.current) return;
+    if (sendingRef.current || (locationRequestRef.current && !locationOverride))
+      return;
+    const turn = prepareAgentTurn(messagesRef.current, text, {
+      questionId: createId("user"),
+      answerId: createId("assistant"),
+      retryAnswerId,
+    });
+    if (!turn) return;
+    const { answerId, history } = turn;
+    const message = turn.question.text;
     sendingRef.current = true;
     const controller = new AbortController();
     abortRef.current = controller;
-    const history = buildAgentHistory(baseMessages);
-    const question: AgentMessage = {
-      id: createId("user"),
-      role: "user",
-      text: message,
-    };
-    const answerId = createId("assistant");
     answerIdRef.current = answerId;
 
     setPendingRouteAction(null);
     setSending(true);
     setAwaitingText(true);
     setLocationFeedback(null);
-    updateMessages(() => [...baseMessages, question]);
+    updateMessages(() => turn.messages);
 
     const showText = (partial: string) => {
       if (!partial || controller.signal.aborted) return;
@@ -286,11 +255,7 @@ export function useAgentConversation() {
         );
         return;
       }
-      const baseMessages =
-        answerIndex === messagesRef.current.length - 1
-          ? messagesRef.current.slice(0, answerIndex - 1)
-          : messagesRef.current;
-      void send(question.text, baseMessages, position);
+      void sendTurn(question.text, answerId, position);
     } catch {
       if (mountedRef.current && requestId === locationRequestIdRef.current) {
         setLocationFeedback(
@@ -306,9 +271,9 @@ export function useAgentConversation() {
   };
 
   const retry = () => {
-    if (sendingRef.current) return;
+    if (sendingRef.current || locationRequestRef.current) return;
     const turn = getRetryableAgentTurn(messagesRef.current);
-    if (turn) void send(turn.question, turn.previous);
+    if (turn) void sendTurn(turn.question, turn.answerId);
   };
 
   return {
@@ -316,8 +281,7 @@ export function useAgentConversation() {
     awaitingText: sending && awaitingText,
     cancel,
     draft,
-    forgetSavedConversation,
-    loadSavedConversation,
+    limitReached: hasAgentMessageLimit(messages),
     locationFeedback,
     messages,
     newConversation,
@@ -325,10 +289,11 @@ export function useAgentConversation() {
     retry,
     requestLocationForMessage,
     requestingLocation,
-    send,
+    send: (text: string) => sendTurn(text),
     sending,
     setDraft,
     setPendingRouteAction,
+    userMessageCount: countAgentUserMessages(messages),
   };
 }
 
@@ -349,8 +314,6 @@ function toCompleteMessage(id: string, answer: AgentResponse): AgentMessage {
     id,
     role: "assistant",
     sources: answer.sources,
-    text: answer.historySaveError
-      ? `${answer.text}\n\nNo se pudo guardar esta respuesta en el historial.`
-      : answer.text,
+    text: answer.text,
   };
 }

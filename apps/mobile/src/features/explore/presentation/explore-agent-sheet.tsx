@@ -7,7 +7,7 @@ import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismBottomSheetModal } from "@/core/ui/tourism-bottom-sheet";
 import { TourismIconAction } from "@/core/ui/tourism-controls";
 import { TourismSheetHandle } from "@/core/ui/tourism-sheet-handle";
-import { turismoMetrics, turismoSpacing } from "@/core/ui/tokens";
+import { turismoSpacing } from "@/core/ui/tokens";
 import type {
   AgentCard,
   AgentRouteDestination,
@@ -15,7 +15,6 @@ import type {
 import type { useAgentConversation } from "@/features/agent/application/use-agent-conversation";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { AgentChatContent } from "@/features/agent/presentation/agent-chat-content";
-import { AgentHistoryPanel } from "@/features/agent/presentation/agent-history-panel";
 import type { RouteMode } from "@/features/routing/domain/routing";
 import { AgentPlaceSheet, type AgentPlaceSelection } from "./agent-place-sheet";
 
@@ -49,8 +48,6 @@ function ExploreAgentSheetInner({
   const colors = useTurismoPalette();
   const sheetRef = useRef<BottomSheetModal>(null);
   const presentedRef = useRef(false);
-  const auth = useAuth();
-  const [view, setView] = useState<"chat" | "history">("chat");
   const [selectedPlace, setSelectedPlace] =
     useState<AgentPlaceSelection | null>(null);
   const openCenter = (code: string) =>
@@ -75,7 +72,6 @@ function ExploreAgentSheetInner({
         onDismiss={() => {
           presentedRef.current = false;
           setSelectedPlace(null);
-          setView("chat");
           onClose();
         }}
         ref={sheetRef}
@@ -87,47 +83,24 @@ function ExploreAgentSheetInner({
           >
             <TourismSheetHandle
               closeLabel="Cerrar agente turístico"
+              leadingAction={
+                <TourismIconAction
+                  accessibilityLabel="Nueva conversación"
+                  icon="plus"
+                  onPress={conversation.newConversation}
+                  variant="ghost"
+                />
+              }
               onClose={closeAgent}
               showIndicator={false}
             />
-            <View style={[styles.header, { borderBottomColor: colors.border }]}>
-              <TourismIconAction
-                accessibilityLabel={
-                  view === "history" ? "Volver al chat" : "Ver historial"
-                }
-                icon={view === "history" ? "arrowLeft" : "history"}
-                onPress={() => setView(view === "history" ? "chat" : "history")}
-                variant="ghost"
-              />
-              <TourismIconAction
-                accessibilityLabel="Nueva conversación"
-                icon="plus"
-                onPress={() => {
-                  conversation.newConversation();
-                  setView("chat");
-                }}
-                variant="ghost"
-              />
-            </View>
             <View style={styles.content}>
-              {view === "history" ? (
-                <AgentHistoryPanel
-                  key={auth.user?.id}
-                  onDisable={conversation.newConversation}
-                  onDelete={conversation.forgetSavedConversation}
-                  onSelect={(saved) => {
-                    conversation.loadSavedConversation(saved);
-                    setView("chat");
-                  }}
-                />
-              ) : (
-                <AgentChatContent
-                  conversation={conversation}
-                  onOpenCard={openCard}
-                  onOpenCenter={openCenter}
-                  onStartRoute={onStartRoute}
-                />
-              )}
+              <AgentChatContent
+                conversation={conversation}
+                onOpenCard={openCard}
+                onOpenCenter={openCenter}
+                onStartRoute={onStartRoute}
+              />
             </View>
           </SafeAreaView>
         </BottomSheetView>
@@ -148,14 +121,6 @@ function ExploreAgentSheetInner({
 const styles = StyleSheet.create({
   sheet: { flex: 1, height: "100%", minHeight: 0 },
   safeArea: { flex: 1, minHeight: 0 },
-  header: {
-    alignItems: "center",
-    borderBottomWidth: turismoMetrics.borderWidth,
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    minHeight: turismoMetrics.controlLg,
-    paddingHorizontal: turismoSpacing.md,
-  },
   content: {
     flex: 1,
     minHeight: 0,

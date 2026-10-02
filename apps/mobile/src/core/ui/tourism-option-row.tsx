@@ -17,6 +17,7 @@ import {
  */
 export function TourismOptionRow({
   accessibilityHint,
+  compact = false,
   icon,
   onPress,
   selected = false,
@@ -24,6 +25,7 @@ export function TourismOptionRow({
   title,
 }: Readonly<{
   accessibilityHint?: string;
+  compact?: boolean;
   icon: TurismoIconName;
   onPress: () => void;
   selected?: boolean;
@@ -40,6 +42,7 @@ export function TourismOptionRow({
       onPress={onPress}
       style={({ pressed }) => [
         styles.row,
+        compact && styles.rowCompact,
         {
           backgroundColor: selected ? colors.primarySoft : colors.surfaceMuted,
           borderColor: selected ? colors.primary : colors.border,
@@ -47,15 +50,28 @@ export function TourismOptionRow({
         pressed && styles.pressed,
       ]}
     >
-      <View style={[styles.icon, { backgroundColor: colors.primarySoft }]}>
+      <View
+        style={[
+          styles.icon,
+          compact && styles.iconCompact,
+          { backgroundColor: colors.primarySoft },
+        ]}
+      >
         <TurismoIcon
           color={colors.primaryStrong}
           name={icon}
-          size={turismoIconSizes.md}
+          size={compact ? turismoIconSizes.sm : turismoIconSizes.md}
         />
       </View>
       <View style={styles.copy}>
-        <Text numberOfLines={2} style={[styles.title, { color: colors.text }]}>
+        <Text
+          numberOfLines={2}
+          style={[
+            styles.title,
+            compact && styles.titleCompact,
+            { color: colors.text },
+          ]}
+        >
           {title}
         </Text>
         {subtitle ? (
@@ -67,7 +83,7 @@ export function TourismOptionRow({
       <TurismoIcon
         color={selected ? colors.primaryStrong : colors.textMuted}
         name={selected ? "check" : "chevronRight"}
-        size={turismoIconSizes.md}
+        size={compact ? turismoIconSizes.sm : turismoIconSizes.md}
       />
     </Pressable>
   );
@@ -84,6 +100,13 @@ const styles = StyleSheet.create({
     paddingVertical: turismoSpacing.sm,
   },
   pressed: { opacity: turismoOpacity.pressed },
+  rowCompact: {
+    borderRadius: turismoRadii.sm,
+    gap: turismoSpacing.xs,
+    minHeight: turismoMetrics.touchTarget,
+    paddingHorizontal: turismoSpacing.sm,
+    paddingVertical: turismoSpacing.xs,
+  },
   icon: {
     alignItems: "center",
     borderRadius: turismoRadii.lg,
@@ -92,6 +115,12 @@ const styles = StyleSheet.create({
     width: turismoMetrics.touchTarget,
   },
   copy: { flex: 1, gap: turismoSpacing.xxs },
+  iconCompact: {
+    borderRadius: turismoRadii.pill,
+    height: turismoMetrics.optionIconSm,
+    width: turismoMetrics.optionIconSm,
+  },
   title: { ...turismoTypography.body, fontWeight: "700" },
+  titleCompact: { ...turismoTypography.label },
   subtitle: { ...turismoTypography.caption },
 });

@@ -11,8 +11,15 @@
 - [ ] El agente no ofrece planes ni itinerarios: no hay consulta rápida ni «Mis planes»,
       la respuesta estructurada no acepta `itinerary` y `/ai/itineraries` no está expuesto.
       Buscar lugares y preparar rutas individuales sigue disponible.
-- [ ] El historial requiere activación explícita; solo el titular accede o borra, y
-      ningún registro guarda coordenadas o audio de la consulta.
+- [ ] La app no muestra botón ni panel de historial, ni restaura conversaciones guardadas.
+- [ ] El chat acepta el vigésimo mensaje del usuario y bloquea el vigesimoprimero por
+      texto, voz y consultas rápidas; presenta el contador y la acción «Nuevo chat».
+      El saludo y las respuestas no cuentan; fallos y respuestas detenidas sí conservan
+      el mensaje enviado. Reintentar o repetir con GPS no duplica ni consume un mensaje.
+- [ ] Cerrar y reabrir la hoja conserva el límite; «Nuevo chat» y cambiar de cuenta
+      reinician el contador. El contexto enviado al modelo sigue acotado a doce entradas.
+- [ ] El historial de la API sigue requiriendo consentimiento; solo el titular accede
+      o borra y ningún registro guarda coordenadas o audio de la consulta.
 - [ ] Voz: permiso denegado, silencio, cancelación, red interrumpida y reproducción
       detenida conservan el chat textual utilizable y sus fuentes.
 - [ ] El chat del agente no muestra cámara ni galería; la API no acepta fotos
