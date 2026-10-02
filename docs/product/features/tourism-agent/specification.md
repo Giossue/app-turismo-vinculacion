@@ -2,7 +2,7 @@
 
 ## Personas y propósito
 
-El turista autenticado pregunta por destinos, servicios, transporte y planes de viaje.
+El turista autenticado pregunta por destinos, servicios, transporte y cómo llegar.
 El agente responde con datos públicos verificables y propone acciones que el turista
 confirma. El guía operativo `AGENTE_TURISTICO` puede solicitar ayuda de redacción y
 revisión sobre sus propios borradores, sin delegar la publicación.
@@ -16,8 +16,9 @@ revisión sobre sus propios borradores, sin delegar la publicación.
 - La ubicación aproximada solo se usa si la persona activa ubicación y la consulta
   requiere cercanía o cálculo desde su posición. Se puede buscar por localidad sin GPS.
 - Las tarjetas abren fichas públicas. Una ruta es propuesta y siempre pide confirmación.
-- Los itinerarios se proponen con paradas ordenadas. Los horarios y tiempos solo se
-  presentan como verificados cuando hay datos reales; el turista puede editar y guardar.
+- La función de planes e itinerarios está retirada: no hay consulta rápida, tarjetas,
+  guardado ni edición. Ante una petición de plan, el agente informa que no está disponible
+  y ofrece búsqueda de lugares o una ruta a un destino.
 
 ## Persistencia y multimedia
 

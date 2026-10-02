@@ -12,7 +12,7 @@
 | Revisión | Propuesta pendiente de aprobación que todavía no altera la versión pública. |
 | Ruta registrada | Recorrido, paradas y horarios declarados por una entidad de transporte. |
 | Ruta calculada | Trayecto generado por el motor de navegación para un origen y destino. |
-| Itinerario | Plan de viaje con jornadas y visitas ordenadas. |
+| Itinerario | Función retirada de planes con jornadas y visitas; el esquema histórico conserva sus tablas. |
 | Ubicación en uso | Acceso al GPS mientras la app se encuentra activa. |
 | Ubicación en segundo plano | Acceso al GPS fuera de primer plano mientras una función explícitamente habilitada está activa. |
 

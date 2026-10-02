@@ -12,7 +12,7 @@ secuencial; el `id` interno nunca cambia.
 ### Punto de interés
 
 Lugar georreferenciado perteneciente a una zona turística. Puede recibir favoritos y
-opiniones, y participar en itinerarios.
+opiniones.
 
 ### Establecimiento turístico
 
@@ -37,11 +37,6 @@ Cooperativa, ruta, geometría de recorrido, paradas y horarios. Una ruta registr
 lo mismo que una ruta calculada por un proveedor de rutas. La duración declarada por la
 administración prevalece; si falta, puede estimarse desde la geometría y una velocidad
 media del tipo de transporte, sin presentarla como tiempo garantizado.
-
-### Itinerario
-
-Plan del turista compuesto por jornadas y paradas ordenadas. Debe respetar horarios,
-distancias, duración, preferencias y restricciones conocidas.
 
 ### Conversación de IA
 

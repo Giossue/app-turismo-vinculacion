@@ -101,6 +101,12 @@ describe("retrying an agent turn", () => {
 });
 
 describe("agent starter prompts", () => {
+  it("does not offer the retired planning feature", () => {
+    expect(agentStarterPrompts.map((prompt) => prompt.text)).not.toContain(
+      "Arma un plan para mi día",
+    );
+  });
+
   it("are valid questions for the agent", () => {
     for (const prompt of agentStarterPrompts) {
       expect(prompt.text.trim()).toBe(prompt.text);

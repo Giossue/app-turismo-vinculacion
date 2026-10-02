@@ -17,7 +17,6 @@
 | Publicación | comparación, observación, aprobación, rechazo, publicación y auditoría por administrador | núcleo |
 | Importaciones | Excel/CSV, validación, duplicados y reporte por fila | núcleo administrativo |
 | IA | chat fundamentado, recomendaciones y fuentes | fase 2 |
-| Itinerarios | jornadas, visitas, tiempos, rutas y replanificación | fase 2 |
 | Multimedia | fotos, videos, audioguías, subtítulos y traducciones | fase 2 |
 | Eventos/clima | agenda, pronóstico, alertas y cierres | fase 2 |
 | Notificaciones | preferencias, push y entregas | fase 2 |

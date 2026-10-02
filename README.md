@@ -2,7 +2,7 @@
 
 Plataforma turística institucional orientada inicialmente a Guaranda y diseñada para
 escalar a todo Ecuador. Combina información turística validada, mapas, transporte,
-navegación, itinerarios e inteligencia artificial con un flujo formal de registro,
+navegación e inteligencia artificial con un flujo formal de registro,
 revisión y publicación.
 
 Este repositorio está en fase de ingeniería y contiene actualmente:

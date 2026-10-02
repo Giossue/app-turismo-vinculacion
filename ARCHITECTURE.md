@@ -45,7 +45,7 @@ domain <- application <- adapters (HTTP, DB, queues, providers)
 
 Identidad, territorio, catálogo turístico, centros, puntos de interés, establecimientos,
 fichas, publicación, transporte, rutas, navegación, accesibilidad, multimedia, opiniones,
-favoritos, itinerarios, IA, notificaciones, importaciones, valoración y auditoría.
+favoritos, IA, notificaciones, importaciones, valoración y auditoría.
 
 ## Fuentes de verdad
 

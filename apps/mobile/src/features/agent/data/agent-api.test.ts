@@ -98,6 +98,34 @@ describe("agent response schema", () => {
 });
 
 describe("askTourismAgentStream", () => {
+  it("rejects a retired itinerary from an outdated API response", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      sseResponse([
+        completeEvent({
+          text: "Plan de paseo",
+          cards: [],
+          actions: [],
+          sources: [],
+          itinerary: {
+            title: "Plan",
+            summary: "Paseo",
+            stops: ["GUA-001", "GUA-002"].map((code, index) => ({
+              type: "center",
+              code,
+              name: "Centro publicado",
+              latitude: -1.59,
+              longitude: -79,
+              order: index + 1,
+            })),
+          },
+        }),
+      ]),
+    );
+    await expect(
+      askTourismAgentStream("Hola", [], vi.fn(), { apiUrl, fetcher }),
+    ).rejects.toThrow(AGENT_INVALID_FORMAT_MESSAGE);
+  });
+
   it("reconstructs fragmented SSE events and forwards cumulative text", async () => {
     const fetcher = vi.fn().mockResolvedValue(
       sseResponse([

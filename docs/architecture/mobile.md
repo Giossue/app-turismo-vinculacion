@@ -24,8 +24,8 @@ lo amerita. Evitar capas ceremoniales para componentes triviales.
 La navegación turística está organizada alrededor del mapa: `Explorar` muestra MapLibre y
 una ficha rápida nativa; el `Agente` se abre como un botón flotante sobre el mapa y una
 sheet nativa de conversación; `Cómo llegar` representa la ruta activa sin solicitar GPS
-en la vista previa. La sheet del agente permite guardar, recuperar y editar itinerarios
-con jornadas y paradas de centros publicados.
+en la vista previa. La sheet del agente ofrece chat e historial; la función de planes
+e itinerarios se retiró.
 El agente turístico consulta la API autenticada y valida una respuesta estructurada con
 texto, tarjetas, acciones propuestas y fuentes. Todas las tarjetas abren una ficha en una
 sheet apilada sobre el chat: Atrás o cerrar la ficha devuelve a la misma conversación sin
@@ -43,7 +43,7 @@ intercambios completados. El chat permite detener, reintentar el último turno f
 comenzar una conversación nueva; el cambio de cuenta borra el estado en memoria. No se
 persiste el chat ni la ubicación en el dispositivo. El historial del servidor está
 apagado por defecto; el usuario puede activarlo, abrir y borrar conversaciones o
-desactivarlo para borrarlas todas. Los planes guardados se administran por separado.
+desactivarlo para borrarlas todas.
 
 `expo-audio` graba hasta 30 segundos tras el permiso del sistema;
 la transcripción vuelve al borrador editable. El compositor muestra un botón «+»
@@ -202,7 +202,7 @@ La app presenta una entrada única de identidad con `Iniciar sesión`, `Crear cu
 nombre y correo del turista autenticado (con «Cerrar sesión» al final) o, sin sesión, lleva a
 la entrada de autenticación. Mapa, fichas
 públicas y la vista previa de rutas funcionan como invitado; iniciar navegación, descargar
-mapas sin conexión, guardar, abrir Guardados, el agente y futuras opiniones/itinerarios
+mapas sin conexión, guardar, abrir Guardados, el agente y futuras opiniones
 llevan a la autenticación. El access token vive en memoria y el
 refresh token en SecureStore. `request` solo adjunta el token a URL de la API configurada.
 Si la renovación falla por red o por un error 5xx, la sesión guardada se conserva: con el

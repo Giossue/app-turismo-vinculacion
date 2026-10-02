@@ -45,6 +45,7 @@ const center: PublicCenter = {
 
 type ToolExecutor = (input: Record<string, unknown>) => Promise<unknown>;
 type Options = {
+  system: string;
   prepareStep: (input: { stepNumber: number }) => unknown;
   tools: Record<string, { execute?: ToolExecutor }>;
 };
@@ -113,6 +114,35 @@ function service(
 }
 
 describe("general tourism discovery", () => {
+  it("keeps destination search available after retiring itinerary tools", async () => {
+    const { agent, listPublished } = service([center]);
+    vi.mocked(streamText).mockImplementation((input) => {
+      const options = input as unknown as Options;
+      expect(options.tools).not.toHaveProperty("findItineraryCandidates");
+      expect(options.system).toContain(
+        "no generes un itinerario ni prometas guardarlo",
+      );
+      return {
+        output: (async () => {
+          await options.tools.listPublishedCenters.execute?.({ limit: 6 });
+          return {
+            text: "Puedes visitar este lugar publicado.",
+            cards: [{ ref: `center:${center.code}` }],
+            actions: [],
+          };
+        })(),
+        partialOutputStream: (async function* () {})(),
+      } as never;
+    });
+    const answer = await agent.generate({
+      message: "¿Qué lugares turísticos puedo visitar?",
+      history: [],
+    });
+    expect(listPublished).toHaveBeenCalledWith({ limit: 6 });
+    expect(answer.cards).toMatchObject([{ code: center.code }]);
+    expect(answer).not.toHaveProperty("itinerary");
+  });
+
   it("recognizes broad discovery without making GPS mandatory", () => {
     expect(
       hasGeneralDiscoveryIntent("¿Qué lugares turísticos puedo visitar?"),

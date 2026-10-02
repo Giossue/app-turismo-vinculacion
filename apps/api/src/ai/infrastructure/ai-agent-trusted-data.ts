@@ -79,4 +79,3 @@ export function sanitizeAgentResponse(
     text: output.text,
   };
 }
-

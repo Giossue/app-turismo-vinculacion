@@ -8,13 +8,13 @@ accesibilidad y seguridad. La primera operación será Guaranda, sin codificar r
 impidan extenderla al resto del país.
 
 El sistema transforma fichas técnicas del sector turístico en experiencias útiles:
-mapa, búsqueda, rutas, navegación, itinerarios y un asistente de IA que cita información
+mapa, búsqueda, rutas, navegación y un asistente de IA que cita información
 aprobada. Los administradores registran y publican el contenido institucional.
 
 ## Usuarios
 
 - Visitante: explora mapa y lugares públicos sin cuenta.
-- Turista: favoritos, opiniones, preferencias, itinerarios e IA personalizada.
+- Turista: favoritos, opiniones, preferencias e IA personalizada.
 - Administrador: crea, edita, revisa, publica y mantiene fichas, catálogos, moderación y configuración.
 
 ## Problemas que resuelve
@@ -29,7 +29,7 @@ aprobada. Los administradores registran y publican el contenido institucional.
 
 1. Explorar: buscar o navegar el mapa y abrir una ficha pública.
 2. Llegar: elegir origen/modo, calcular una ruta y navegar.
-3. Planificar: guardar destinos y generar un itinerario viable.
+3. Guardar: conservar lugares favoritos para consultarlos después.
 4. Consultar IA: recibir respuestas con fuentes publicadas.
 5. Registrar: un administrador guarda borradores y prepara una ficha.
 6. Publicar: un administrador compara, observa, aprueba y publica.

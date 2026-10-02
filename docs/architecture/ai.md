@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Chat turístico, recomendaciones, itinerarios y apoyo de redacción/validación para guías.
+Chat turístico, recomendaciones y apoyo de redacción/validación para guías.
 La IA explica información oficial; no se convierte en fuente de verdad.
 
 ## Flujo fundamentado
@@ -19,12 +19,12 @@ La integración expone `POST /api/v1/ai/chat` como JSON estructurado y
 `POST /api/v1/ai/chat/stream` como SSE para el chat móvil. El backend usa AI SDK Core
 (`streamText` + `Output.object`) y selecciona OpenAI o Anthropic con `AI_PROVIDER` y
 `AI_MODEL`; las claves `OPENAI_API_KEY` y `ANTHROPIC_API_KEY` nunca llegan a la aplicación
-móvil. La respuesta final contiene `text`, `cards`, `itinerary` opcional, `actions` y
+móvil. La respuesta final contiene `text`, `cards`, `actions` y
 `sources`.
 
 Las herramientas allowlisted de esta unidad son `listPublishedCenters`,
 `searchPublishedEstablishments`, `searchPublishedCenters`,
-`findItineraryCandidates`, `getPublishedCenter`, `searchNearbyEstablishments`,
+`getPublishedCenter`, `searchNearbyEstablishments`,
 `searchNearbyPublishedPlaces`, `requestLocationAccess`, `getPublishedTransportForCenter`,
 `searchNearbyTransportStops` y `calculateRoadRoute`. Las consultas de cercanía usan PostGIS sobre centros publicados,
 POI activos y establecimientos activos; `searchNearbyPublishedPlaces` recibe únicamente radio,
@@ -32,7 +32,7 @@ límite y categoría opcional, mientras que las coordenadas se toman del context
 request. La intención cercana detectada en español obliga a ejecutar esa herramienta en el
 primer paso para evitar convertir “cerca de mí” en una búsqueda textual. Las primeras tools
 delegan en repositorios públicos y el modelo solo recibe referencias opacas de resultados; el
-backend rehidrata/sanitiza tarjetas, itinerarios, fuentes y destinos y no acepta coordenadas ni
+backend rehidrata/sanitiza tarjetas, fuentes y destinos y no acepta coordenadas ni
 detalles escritos por el modelo. `calculateRoadRoute` solo recibe referencias emitidas por otras
 tools y delega el cálculo al proveedor vial existente; devuelve distancia, duración e
 instrucciones acotadas, sin exponer geometría al modelo. Desde la ubicación del visitante marca
@@ -87,8 +87,6 @@ móvil y no ejecuta navegación desde la API.
 - Buscar por radio y filtros.
 - Consultar rutas, paradas y horarios publicados, sin rellenar ausencias.
 - Calcular rutas viales verificadas entre lugares registrados y validar distancia/duración.
-- Proponer itinerarios con paradas publicadas y señalar las partes sin verificación
-  de horario o tiempo de traslado.
 - Recuperar fuentes de una recomendación.
 
 El modelo no recibe acceso SQL, credenciales ni una herramienta genérica para ejecutar
@@ -117,11 +115,21 @@ publicado. La respuesta distingue dato oficial, inferencia y ausencia de informa
 La IA puede redactar, traducir o detectar faltantes, pero nunca aprueba ni publica. El
 usuario revisa el texto generado y queda autor/a de la decisión final.
 
-## Planes e historial
+## Retirada de planes
 
-`/ai/itineraries` guarda hasta siete jornadas con una a seis paradas cada una, siempre
-referidas a centros publicados y autorizadas por titular. La propuesta inicial del
-modelo se marca como no verificada en cuanto a horarios y tiempos de traslado.
+La función de planes e itinerarios se retiró. La API no registra `/ai/itineraries`,
+el contrato de chat no admite `itinerary` y el modelo no recibe herramientas de
+planificación. Ante una solicitud de plan, se indica que no está disponible y se
+ofrece buscar lugares o preparar una ruta a un destino. La app no muestra «Mis planes»
+ni permite guardar o editar itinerarios.
+
+Las migraciones y datos históricos se conservan sin acceso desde la app; esta retirada
+no ejecuta borrados de base de datos. La API debe actualizarse antes o junto con el
+móvil, porque el nuevo cliente rechaza respuestas antiguas con `itinerary`. OpenAPI
+se genera desde los controladores actuales y ya no anuncia este campo ni sus endpoints.
+
+## Historial
+
 `/ai/history` guarda turnos textuales y fuentes solo después del opt-in. La preferencia
 apagada bloquea escrituras; apagarla borra las conversaciones voluntarias. Audio
 y ubicación puntual no se guardan en esas tablas. Los textos con pares de coordenadas
@@ -148,5 +156,5 @@ persona la aplique en el formulario. La IA no guarda, aprueba ni publica fichas.
 ## Calidad
 
 Mantener un conjunto de evaluaciones en español e inglés que mida exactitud, citas,
-rechazo ante datos ausentes, geografía, accesibilidad, itinerarios imposibles y prompt
+rechazo ante datos ausentes, geografía, accesibilidad y prompt
 injection contenido en documentos.

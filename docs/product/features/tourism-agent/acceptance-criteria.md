@@ -7,8 +7,10 @@
 - [ ] Preguntas de comida, hospedaje, transporte, acceso y horarios consultan sus
       registros públicos; datos no publicados o inexistentes se expresan como ausencia.
 - [ ] Una propuesta de ruta no navega sin confirmación y sus métricas vienen del
-      proveedor vial. Un itinerario guarda jornadas y paradas del titular y se puede
-      recuperar, editar y borrar.
+      proveedor vial.
+- [ ] El agente no ofrece planes ni itinerarios: no hay consulta rápida ni «Mis planes»,
+      la respuesta estructurada no acepta `itinerary` y `/ai/itineraries` no está expuesto.
+      Buscar lugares y preparar rutas individuales sigue disponible.
 - [ ] El historial requiere activación explícita; solo el titular accede o borra, y
       ningún registro guarda coordenadas o audio de la consulta.
 - [ ] Voz: permiso denegado, silencio, cancelación, red interrumpida y reproducción
@@ -18,6 +20,6 @@
 - [ ] El guía puede generar sugerencias sobre un borrador propio y rechazarlas o
       aplicarlas manualmente; turista/guía no pueden aprobar ni publicar mediante IA.
 - [ ] Evaluaciones cubren fuentes, datos ausentes, geografía, accesibilidad,
-      itinerarios inviables e instrucciones inyectadas en contenidos publicados.
+      instrucciones inyectadas en contenidos publicados.
 - [ ] API y móvil pasan formato, lint, tipos y pruebas; el flujo principal funciona
       en la build de desarrollo Android conectada por ADB.
