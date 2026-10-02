@@ -234,13 +234,32 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 
 ## Paquetes offline por ciudad
 
-La API pública expone `GET /api/v1/offline/cities` y
-`GET /api/v1/offline/cities/:slug/manifest`. El manifiesto incluye atractivos publicados,
-límites oficiales cuando están importados y rutas de transporte con una versión PUBLICADA.
-La app descarga los tiles con `OfflineManager` y guarda el manifiesto en Expo SQLite. Cada
-descarga usa un paquete nuevo; los anteriores de la ciudad se borran solo al completarse, y
-después se guarda el manifiesto. No se
-intenta recalcular una ruta sin red: la fase offline usa rutas institucionales registradas.
+La API pública expone `GET /api/v1/offline/cities`,
+`GET /api/v1/offline/cities/:slug/manifest` y `GET /api/v1/offline/map-style`. El manifiesto
+incluye atractivos publicados, POIs propios públicos, catastros publicados, cobertura y
+rutas de transporte con una versión PUBLICADA. Los límites oficiales vigentes tienen
+prioridad; sin ellos se usa una caja de ±0.12 grados alrededor de las coordenadas de la
+ciudad. No se descarga una ciudad sin datos geográficos válidos.
+
+El estilo offline proviene de `OFFLINE_MAP_STYLE_URL`, configurado por operación, nunca
+de una URL enviada por el cliente. La API normaliza los recursos a URLs absolutas y las
+familias a Noto Sans Regular; MapLibre descarga ese endpoint HTTP/S. Un `file://` o un JSON
+serializado no sustituye la URL HTTP en el descargador offline nativo. La app conserva el
+estilo normalizado en ambas paletas junto al manifiesto SQLite y usa las mismas URLs de
+recursos que el paquete nativo. El visor local no llama a búsqueda/fichas remotas ni
+monta la fuente MVT de catastros online: renderiza el snapshot de esa ciudad en GeoJSON.
+
+Cada descarga usa un paquete nuevo. Solo después de completarlo y guardar el manifiesto
+se liberan los anteriores. Las descargas guardadas se pueden actualizar y borrar; su
+catálogo local no depende de la caché pública de 24 horas.
+
+Las rutas institucionales se visualizan como recorridos registrados; no se inventan
+instrucciones giro a giro. Las rutas calculadas pueden guardarse explícitamente por
+cuenta en AsyncStorage y abrirse sin consultar el backend. GPS e instrucciones siguen la
+geometría guardada; no se recalcula un desvío sin red. La cobertura del mapa base se
+descarga por separado y puede no abarcar todo el recorrido.
+
+Especificación y límites: `docs/product/features/offline-maps/specification.md`.
 
 La migración `20260917_offline_routes_and_city_packages.sql` crea los límites oficiales,
 versiones editables/publicables de rutas y metadatos de paquetes. La edición y aprobación de

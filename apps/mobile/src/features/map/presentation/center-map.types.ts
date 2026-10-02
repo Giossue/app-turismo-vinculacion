@@ -26,8 +26,12 @@ export type CenterMapProps = Readonly<{
   /** Presence switches the registry source from remote MVT to local GeoJSON. */
   localPlaces?: readonly LocalMapPlace[];
   onLocalPlacePress?: (key: string) => void;
+  onLocalPlacesPress?: (keys: readonly string[]) => void;
   /** Published transport geometry chosen in the local city browser. */
   localRoute?: GeoJSON.LineString | null;
+  /** Selection padding for an embedded map; full-screen maps keep the default. */
+  selectionBottomInset?: number;
+  focusBounds?: GeoBoundingBox | null;
   /** Registry pins (vector tiles): hidden, all, or only one map group. */
   establishmentLayer: Readonly<{
     visible: boolean;

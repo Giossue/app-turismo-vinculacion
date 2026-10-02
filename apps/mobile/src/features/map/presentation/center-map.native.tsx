@@ -44,7 +44,7 @@ import { MapLoadingOverlay } from "./map-loading-overlay";
 import { useBasemapStyle } from "./use-basemap-style";
 import { useMapLifecycle } from "./use-map-lifecycle";
 import { UserLocationLayers } from "./user-location-layers";
-import { turismoMapLayerStyle } from "@/core/ui/tokens";
+import { turismoMapLayerStyle, turismoSpacing } from "@/core/ui/tokens";
 
 type CenterFeatureCollection = GeoJSON.FeatureCollection<
   GeoJSON.Point,
@@ -143,6 +143,9 @@ export function CenterMap({
   localRoute,
   mapStyleOverride,
   onLocalPlacePress,
+  onLocalPlacesPress,
+  selectionBottomInset,
+  focusBounds,
   establishmentLayer,
   focusLocationKey,
   focusCoordinate = null,
@@ -228,7 +231,9 @@ export function CenterMap({
     }),
     [localPlaces],
   );
-  const localRouteFeature = useMemo<GeoJSON.FeatureCollection<GeoJSON.LineString>>(
+  const localRouteFeature = useMemo<
+    GeoJSON.FeatureCollection<GeoJSON.LineString>
+  >(
     () => ({
       type: "FeatureCollection",
       features: localRoute
@@ -238,13 +243,16 @@ export function CenterMap({
     [localRoute],
   );
   const startingView = useMemo<CameraState>(
-    () => initialBounds
-      ? {
-          center: [(initialBounds[0] + initialBounds[2]) / 2,
-            (initialBounds[1] + initialBounds[3]) / 2],
-          zoom: 12,
-        }
-      : initialViewState,
+    () =>
+      initialBounds
+        ? {
+            center: [
+              (initialBounds[0] + initialBounds[2]) / 2,
+              (initialBounds[1] + initialBounds[3]) / 2,
+            ],
+            zoom: 12,
+          }
+        : initialViewState,
     [initialBounds],
   );
   // La ficha se abre enseguida, mientras la cámara se mueve: no se espera a
@@ -259,7 +267,7 @@ export function CenterMap({
         duration: focusCameraDurationMs,
         easing: "ease",
         padding: {
-          bottom: windowHeight * tourismSheetOpenRatio,
+          bottom: selectionBottomInset ?? windowHeight * tourismSheetOpenRatio,
           left: 0,
           right: 0,
           top: 0,
@@ -267,7 +275,7 @@ export function CenterMap({
         zoom: focusZoom,
       });
     },
-    [windowHeight],
+    [selectionBottomInset, windowHeight],
   );
 
   const handleFeaturePress = useCallback(
@@ -283,9 +291,20 @@ export function CenterMap({
       const features = Array.isArray(event?.nativeEvent?.features)
         ? event.nativeEvent.features
         : [];
-      const localKey = features.find(
-        (feature) => typeof feature.properties?.offlineKey === "string",
-      )?.properties?.offlineKey;
+      const localKeys = [
+        ...new Set(
+          features.flatMap((feature) =>
+            typeof feature.properties?.offlineKey === "string"
+              ? [feature.properties.offlineKey]
+              : [],
+          ),
+        ),
+      ];
+      if (localKeys.length > 1 && onLocalPlacesPress) {
+        onLocalPlacesPress(localKeys);
+        return;
+      }
+      const [localKey] = localKeys;
       if (typeof localKey === "string") {
         const place = localPlaces?.find((item) => item.key === localKey);
         if (place) {
@@ -334,15 +353,29 @@ export function CenterMap({
       );
       focusSelections(selections, getMapFeatureCoordinate(anchor));
     },
-    [centersByCode, centers, focusSelections, isActive, localPlaces,
-      onLocalPlacePress, onLocationFocusChange],
+    [
+      centersByCode,
+      centers,
+      focusSelections,
+      isActive,
+      localPlaces,
+      onLocalPlacePress,
+      onLocalPlacesPress,
+      onLocationFocusChange,
+    ],
   );
 
   useEffect(() => {
-    if (!nativeReady || !initialBounds || fittedInitialBoundsRef.current) return;
+    if (!nativeReady || !initialBounds || fittedInitialBoundsRef.current)
+      return;
     fittedInitialBoundsRef.current = true;
     cameraRef.current?.fitBounds(initialBounds, {
-      padding: { top: 16, bottom: 16, left: 16, right: 16 },
+      padding: {
+        top: turismoSpacing.md,
+        bottom: turismoSpacing.md,
+        left: turismoSpacing.md,
+        right: turismoSpacing.md,
+      },
       duration: focusCameraDurationMs,
     });
   }, [initialBounds, nativeReady]);
@@ -370,7 +403,12 @@ export function CenterMap({
   }, [focusLocationKey, nativeReady, userLocation]);
 
   useEffect(() => {
-    if (!nativeReady || !focusCoordinate || focusCoordinateKey === undefined) {
+    if (
+      !nativeReady ||
+      !focusCoordinate ||
+      focusCoordinateKey === undefined ||
+      focusBounds
+    ) {
       return;
     }
     cameraRef.current?.easeTo({
@@ -379,7 +417,20 @@ export function CenterMap({
       padding: noPadding,
       zoom: focusZoom,
     });
-  }, [focusCoordinate, focusCoordinateKey, nativeReady]);
+  }, [focusBounds, focusCoordinate, focusCoordinateKey, nativeReady]);
+
+  useEffect(() => {
+    if (!nativeReady || !focusBounds) return;
+    cameraRef.current?.fitBounds(focusBounds, {
+      padding: {
+        top: turismoSpacing.md,
+        bottom: turismoSpacing.md,
+        left: turismoSpacing.md,
+        right: turismoSpacing.md,
+      },
+      duration: focusCameraDurationMs,
+    });
+  }, [focusBounds, focusCoordinateKey, nativeReady]);
 
   useEffect(() => {
     if (!resetNorthKey || !nativeReady) return;
@@ -457,7 +508,10 @@ export function CenterMap({
         />
         <Images images={mapImages} />
         {localRoute ? (
-          <GeoJSONSource data={localRouteFeature} id="tourism-offline-route-source">
+          <GeoJSONSource
+            data={localRouteFeature}
+            id="tourism-offline-route-source"
+          >
             <Layer
               id="tourism-offline-route-line"
               type="line"
@@ -508,53 +562,62 @@ export function CenterMap({
               id="tourism-offline-place-dots"
               type="circle"
               maxzoom={pinMinZoom}
-              paint={{ "circle-color": colors.primary, "circle-radius": 5,
-                "circle-stroke-color": colors.surface, "circle-stroke-width": 1 }}
+              paint={{
+                "circle-color": colors.primary,
+                "circle-radius": 5,
+                "circle-stroke-color": colors.surface,
+                "circle-stroke-width": 1,
+              }}
             />
             <Layer
               id="tourism-offline-place-pins"
               type="symbol"
               minzoom={pinMinZoom}
-              layout={{ ...pinLayout, "icon-image": establishmentPinImageExpression,
-                "icon-size": pinIconSize }}
+              layout={{
+                ...pinLayout,
+                "icon-image": establishmentPinImageExpression,
+                "icon-size": pinIconSize,
+              }}
             />
           </GeoJSONSource>
-        ) : <VectorSource
-          hitbox={featureHitbox}
-          id="tourism-establishments-source"
-          maxzoom={establishmentTileMaxZoom}
-          onPress={handleFeaturePress}
-          tiles={establishmentTiles}
-        >
-          <Layer
-            filter={establishmentFilter}
-            id={layerIds.establishmentPins}
-            layout={{
-              ...pinLayout,
-              "icon-image": establishmentPinImageExpression,
-              "icon-size": pinIconSize,
-              visibility: establishmentVisibility,
-            }}
-            minzoom={pinMinZoom}
-            source-layer={establishmentTileLayer}
-            type="symbol"
-          />
-          <Layer
-            filter={establishmentFilter}
-            id={layerIds.establishmentDots}
-            layout={{ visibility: establishmentVisibility }}
-            maxzoom={pinMinZoom}
-            paint={{
-              "circle-color": establishmentPinColorExpression,
-              "circle-opacity": turismoMapLayerStyle.establishmentDotOpacity,
-              "circle-radius": establishmentDotRadius,
-              "circle-stroke-color": colors.surface,
-              "circle-stroke-width": 1,
-            }}
-            source-layer={establishmentTileLayer}
-            type="circle"
-          />
-        </VectorSource>}
+        ) : (
+          <VectorSource
+            hitbox={featureHitbox}
+            id="tourism-establishments-source"
+            maxzoom={establishmentTileMaxZoom}
+            onPress={handleFeaturePress}
+            tiles={establishmentTiles}
+          >
+            <Layer
+              filter={establishmentFilter}
+              id={layerIds.establishmentPins}
+              layout={{
+                ...pinLayout,
+                "icon-image": establishmentPinImageExpression,
+                "icon-size": pinIconSize,
+                visibility: establishmentVisibility,
+              }}
+              minzoom={pinMinZoom}
+              source-layer={establishmentTileLayer}
+              type="symbol"
+            />
+            <Layer
+              filter={establishmentFilter}
+              id={layerIds.establishmentDots}
+              layout={{ visibility: establishmentVisibility }}
+              maxzoom={pinMinZoom}
+              paint={{
+                "circle-color": establishmentPinColorExpression,
+                "circle-opacity": turismoMapLayerStyle.establishmentDotOpacity,
+                "circle-radius": establishmentDotRadius,
+                "circle-stroke-color": colors.surface,
+                "circle-stroke-width": 1,
+              }}
+              source-layer={establishmentTileLayer}
+              type="circle"
+            />
+          </VectorSource>
+        )}
         <UserLocationLayers
           coordinate={userLocation}
           dotRadius={7}

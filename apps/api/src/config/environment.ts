@@ -9,11 +9,20 @@ const optionalSecret = z.preprocess(
   z.string().trim().min(1).optional(),
 );
 const optionalPublicMapStyleUrl = z.preprocess(
-  (value) => typeof value === "string" && !value.trim() ? undefined : value,
-  z.string().trim().url().refine((value) => {
-    const url = new URL(value);
-    return (url.protocol === "https:" || url.protocol === "http:") && !url.username && !url.password;
-  }, "El estilo offline debe usar HTTP/S sin credenciales en la URL.").optional(),
+  (value) => (typeof value === "string" && !value.trim() ? undefined : value),
+  z
+    .string()
+    .trim()
+    .url()
+    .refine((value) => {
+      const url = new URL(value);
+      return (
+        (url.protocol === "https:" || url.protocol === "http:") &&
+        !url.username &&
+        !url.password
+      );
+    }, "El estilo offline debe usar HTTP/S sin credenciales en la URL.")
+    .optional(),
 );
 
 const environmentSchema = z.object({

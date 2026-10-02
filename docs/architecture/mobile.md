@@ -327,14 +327,29 @@ los reemplaza al completarse y la caché nunca sustituye la fuente remota Postgr
 manifiestos guardados se usan únicamente desde el flujo explícito de mapas sin conexión.
 
 Los paquetes de mapa se descargan por ciudad desde `Mapas sin conexión` y requieren una
-sesión turística autenticada. MapLibre `OfflineManager` persiste tiles del estilo de calles
-y Expo SQLite conserva el manifiesto, fichas y rutas publicadas. Si la API no está
-disponible, el descubrimiento y la ficha básica se hidratan desde ese manifiesto local.
-Solo las ciudades con un paquete institucional PUBLICADO aparecen como descargables; sus
-límites proceden de una fuente oficial y no se editan en el móvil. Cada descarga crea un
-paquete nuevo y, solo cuando termina, borra los anteriores de esa ciudad y guarda el
-manifiesto: una descarga fallida conserva el paquete previo. Una ciudad nunca se descarga dos
-veces a la vez y la descarga sigue aunque se salga de la pantalla.
+sesión turística autenticada. MapLibre `OfflineManager` persiste los recursos del estilo
+HTTP/S `/offline/map-style` y Expo SQLite conserva el manifiesto con estilos claro/oscuro,
+centros, POIs propios públicos, catastros publicados y recorridos de transporte. El visor
+`/offline-city?slug=…` consulta SQLite con `networkMode: always`, busca y abre fichas
+localmente y monta fuentes GeoJSON en vez de la capa MVT remota. No mezcla datos locales
+con los centros de Explorar en línea. El catálogo descargado abre aun sin catálogo remoto.
+
+Solo las ciudades con un paquete institucional PUBLICADO son descargables. Sus límites
+oficiales tienen prioridad; sin ellos, una caja acotada alrededor de sus coordenadas define
+la cobertura. Sin ninguna de esas referencias la descarga falla. Actualizar crea un paquete
+nuevo, guarda su manifiesto y después borra los anteriores: una descarga fallida conserva
+la anterior. Descarga y borrado se excluyen mutuamente; salir de la pantalla no cancela una
+descarga. Borrar elimina los recursos nativos y el manifiesto de esa ciudad. El tamaño mostrado
+son bytes de recursos cartográficos, no el espacio exacto total del teléfono.
+
+«Cómo llegar» permite guardar explícitamente una ruta calculada, con origen, destino,
+modo, geometría e instrucciones. AsyncStorage separa hasta 20 rutas por cuenta; no se
+registran trayectorias GPS. El listado y la carga usan consultas locales sin TTL público y
+sin persistir las consultas por GPS. Abrir una ruta guardada no solicita permisos ni
+calcula de nuevo; iniciar navegación sigue siendo explícito. Sobre una ruta guardada no
+hay recálculo por red. Una navegación online conserva su trazo y permite reintento manual
+cuando falla un recálculo. Los recorridos institucionales solo se muestran como recorridos
+publicados, sin fabricar navegación giro a giro. Véase `product/features/offline-maps/`.
 
 ## Ubicación
 

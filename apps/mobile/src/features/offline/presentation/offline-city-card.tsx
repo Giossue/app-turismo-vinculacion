@@ -45,7 +45,9 @@ export function OfflineCityCard({
 }>) {
   const colors = useTurismoPalette();
   const downloading = progress !== null;
-  const mapSize = formatOfflineMapSize(storedManifest?.download?.resourceSizeBytes);
+  const mapSize = formatOfflineMapSize(
+    storedManifest?.download?.resourceSizeBytes,
+  );
   return (
     <TourismSurface style={styles.card}>
       <View style={styles.heading}>
@@ -66,8 +68,11 @@ export function OfflineCityCard({
       </View>
       {storedManifest ? (
         <Text style={[styles.caption, { color: colors.textMuted }]}>
-          {storedManifest.centers.length} centros · {storedManifest.pois.length} puntos de interés
-          {" · "}{storedManifest.establishments.length} establecimientos · {storedManifest.routes.length} rutas
+          {storedManifest.centers.length} centros · {storedManifest.pois.length}{" "}
+          puntos de interés
+          {" · "}
+          {storedManifest.establishments.length} establecimientos ·{" "}
+          {storedManifest.routes.length} rutas
           {mapSize ? `\n${mapSize}` : ""}
           {storedManifest.download?.savedAt
             ? `\nDescargado el ${new Date(storedManifest.download.savedAt).toLocaleDateString("es")}`
@@ -75,7 +80,11 @@ export function OfflineCityCard({
         </Text>
       ) : null}
       {stored && onOpen ? (
-        <TourismActionButton icon="map" label="Abrir ciudad descargada" onPress={onOpen} />
+        <TourismActionButton
+          icon="map"
+          label="Abrir ciudad descargada"
+          onPress={onOpen}
+        />
       ) : null}
       {city.package ? (
         <TourismActionButton
@@ -83,8 +92,10 @@ export function OfflineCityCard({
           icon={stored ? "refresh" : "download"}
           label={
             downloading
-                ? `Descargando ${progress}%`
-                : stored ? "Actualizar descarga" : "Descargar ciudad"
+              ? `Descargando ${progress}%`
+              : stored
+                ? "Actualizar descarga"
+                : "Descargar ciudad"
           }
           loading={downloading}
           onPress={onDownload}

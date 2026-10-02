@@ -1,9 +1,10 @@
-import { Controller, Get, Header, Inject } from "@nestjs/common";
+import { Controller, Get, Inject, Res } from "@nestjs/common";
 import {
   ApiOkResponse,
   ApiServiceUnavailableResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import type { FastifyReply } from "fastify";
 
 import {
   OFFLINE_MAP_STYLE_CACHE_SECONDS,
@@ -19,7 +20,6 @@ export class OfflineMapStyleController {
   ) {}
 
   @Get()
-  @Header("Cache-Control", `public, max-age=${OFFLINE_MAP_STYLE_CACHE_SECONDS}`)
   @ApiOkResponse({
     description:
       "Estilo MapLibre GL v8 normalizado, JSON crudo para el descargador nativo.",
@@ -50,8 +50,14 @@ export class OfflineMapStyleController {
   @ApiServiceUnavailableResponse({
     description: "El estilo no está configurado o no se puede descargar.",
   })
-  getStyle() {
+  async getStyle(@Res({ passthrough: true }) response: FastifyReply) {
     // MapLibre expects the style itself, rather than the API's { data } envelope.
-    return this.styles.getStyle();
+    const style = await this.styles.getStyle();
+    // Do not cache a temporary 503 response for the successful style's lifetime.
+    response.header(
+      "Cache-Control",
+      `public, max-age=${OFFLINE_MAP_STYLE_CACHE_SECONDS}`,
+    );
+    return style;
   }
 }

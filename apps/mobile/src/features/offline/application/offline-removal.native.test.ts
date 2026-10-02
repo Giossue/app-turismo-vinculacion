@@ -43,4 +43,13 @@ describe("native offline removal", () => {
     await expect(removeOfflineCity("guaranda")).rejects.toThrow("borrar toda");
     expect(mocks.removeManifest).not.toHaveBeenCalled();
   });
+
+  it("deletes the active pack last even when native packs are listed in reverse order", async () => {
+    mocks.getPacks.mockResolvedValueOnce([
+      { id: "new", metadata: { citySlug: "guaranda" } },
+      { id: "old", metadata: { citySlug: "guaranda" } },
+    ]);
+    await removeOfflineCity("guaranda");
+    expect(mocks.calls).toEqual(["old", "new", "manifest"]);
+  });
 });
