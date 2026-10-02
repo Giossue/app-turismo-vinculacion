@@ -76,6 +76,7 @@ export class MediaService {
          JOIN centros_turisticos c ON c.id = a.centro_turistico_id
          JOIN tipos_archivo_centro_turistico t ON t.id = a.tipo_archivo_centro_id
         WHERE TRIM(c.codigo_atractivo) = TRIM($1)
+          AND c.eliminado_at IS NULL
           AND a.estado <> 'ELIMINADO'
           AND ${ownerCondition}
         ORDER BY a.orden NULLS LAST, a.created_at DESC, a.id DESC`,
@@ -186,7 +187,7 @@ export class MediaService {
     try {
       return await this.dataSource.transaction(async (manager) => {
         const centerRows = (await manager.query(
-          `SELECT id FROM centros_turisticos WHERE id = $1 FOR UPDATE`,
+          `SELECT id FROM centros_turisticos WHERE id = $1 AND eliminado_at IS NULL FOR UPDATE`,
           [prepared.centerId],
         )) as Array<{ id: string }>;
         if (!centerRows[0])
@@ -258,6 +259,7 @@ export class MediaService {
            JOIN estados_resenia center_state ON center_state.id = c.estado_resenia_id
           WHERE a.id = $1 AND TRIM(c.codigo_atractivo) = TRIM($2)
             AND a.estado <> 'ELIMINADO'
+            AND c.eliminado_at IS NULL
             AND ($3::boolean OR c.responsable_usuario_id = $4)
             AND ($3::boolean OR center_state.codigo IN ('BORRADOR', 'RECHAZADO'))
           FOR UPDATE`,
@@ -310,6 +312,7 @@ export class MediaService {
          JOIN tipos_archivo_centro_turistico t ON t.id = a.tipo_archivo_centro_id
         WHERE a.id = $1 AND a.estado = 'PUBLICADO' AND t.codigo IN ('FOTOGRAFIA', 'VIDEO', 'AUDIO')
           AND c.activo AND e.codigo = 'PUBLICADO'
+          AND c.eliminado_at IS NULL
         LIMIT 1`,
       [id],
     )) as Array<{ key: string; mimeType: string }>;
@@ -329,6 +332,7 @@ export class MediaService {
          FROM centros_turisticos c
          JOIN estados_resenia center_state ON center_state.id = c.estado_resenia_id
         WHERE TRIM(codigo_atractivo) = TRIM($1)
+          AND c.eliminado_at IS NULL
           AND ($2::boolean OR responsable_usuario_id = $3)
           AND ($2::boolean OR center_state.codigo IN ('BORRADOR', 'RECHAZADO'))
         FOR UPDATE`,

@@ -111,6 +111,7 @@ interface CenterRow extends JsonRecord {
   statusCode: string;
   statusName: string;
   active: boolean;
+  deletedAt: string | null;
   responsibleId: number | null;
   publishedAt: string | null;
   subtypeId: number;
@@ -1895,6 +1896,7 @@ export class AdminCentersService {
               LIMIT 1
            ) rp ON TRUE
            LEFT JOIN usuarios u ON u.id = rp.solicitado_por
+          WHERE c.eliminado_at IS NULL
        )
        SELECT code, name, status_code AS "statusCode", status_name AS "statusName",
               base_status_code AS "baseStatusCode", "updatedAt", "submittedAt",
@@ -1944,6 +1946,7 @@ export class AdminCentersService {
            JOIN estados_resenia er ON er.id = c.estado_resenia_id
            LEFT JOIN borradores_centros_turisticos b ON b.centro_turistico_id = c.id
            LEFT JOIN estados_resenia bstate ON bstate.id = b.estado_resenia_id
+          WHERE c.eliminado_at IS NULL
        )
        SELECT code, name, COUNT(*)::int AS total,
               COUNT(*) FILTER (WHERE active = TRUE)::int AS active
@@ -2038,7 +2041,7 @@ export class AdminCentersService {
         `SELECT id, codigo AS code, nombre AS name, activo AS active,
                 actividad_id AS "activityId", icono AS icon, color
            FROM catalogo_catastro_clasificaciones
-          WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
+          WHERE eliminado_at IS NULL AND ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1)
           ORDER BY nombre`,
         [like],
       ),
@@ -2060,6 +2063,7 @@ export class AdminCentersService {
            JOIN catalogo_catastro_actividades activity
              ON activity.id = classification.actividad_id
           WHERE ${query.includeInactive ? "TRUE" : "category.activo = TRUE AND classification.activo = TRUE AND activity.activo = TRUE"}
+            AND category.eliminado_at IS NULL AND classification.eliminado_at IS NULL
             AND ($1::text IS NULL OR category.nombre ILIKE $1)
           ORDER BY activity.nombre, classification.nombre, category.orden, category.nombre`,
         [like],
@@ -2123,7 +2127,7 @@ export class AdminCentersService {
         `SELECT id, codigo, nombre FROM modalidades_atencion WHERE activo ORDER BY nombre`,
       ),
       this.dataSource.query(
-        `SELECT id, codigo AS code, nombre AS name, activo AS active FROM tipos_accesibilidad WHERE ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1) ORDER BY nombre`,
+        `SELECT id, codigo AS code, nombre AS name, activo AS active FROM tipos_accesibilidad WHERE eliminado_at IS NULL AND ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1) ORDER BY nombre`,
         [like],
       ),
       this.dataSource.query(
@@ -2322,6 +2326,7 @@ export class AdminCentersService {
            FROM actividades_turisticas at
            JOIN grupos_actividad ga ON ga.id = at.grupo_actividad_id
            WHERE ${query.includeInactive ? "TRUE" : "at.activo = TRUE AND ga.activo = TRUE"} AND ($1::text IS NULL OR at.nombre ILIKE $1)
+             AND at.eliminado_at IS NULL
           ORDER BY ga.nombre, at.nombre`,
         [like],
       ),
@@ -2335,6 +2340,7 @@ export class AdminCentersService {
            FROM tipos_facilidad tf
            JOIN categorias_facilidad cf ON cf.id = tf.categoria_facilidad_id
           WHERE ${query.includeInactive ? "TRUE" : "tf.activo = TRUE AND cf.activo = TRUE"} AND ($1::text IS NULL OR tf.nombre ILIKE $1)
+            AND tf.eliminado_at IS NULL
           ORDER BY cf.nombre, tf.nombre`,
         [like],
       ),
@@ -2453,7 +2459,7 @@ export class AdminCentersService {
 
       const ensureParent = async (table: string, id: number, label: string) => {
         const rows = await manager.query(
-          `SELECT id FROM ${table} WHERE id = $1 AND activo = TRUE`,
+          `SELECT id FROM ${table} WHERE id = $1 AND activo = TRUE FOR SHARE`,
           [id],
         );
         if (!rows[0]) throw new NotFoundException(`No se encontró ${label}.`);
@@ -2676,7 +2682,7 @@ export class AdminCentersService {
         : "";
       const rows = (await manager.query(
         `SELECT id, codigo AS code, nombre AS name, activo AS active${activitySelect}${visualSelect}
-           FROM ${target.table} WHERE id = $1 FOR UPDATE`,
+           FROM ${target.table} WHERE id = $1 AND eliminado_at IS NULL FOR UPDATE`,
         [id],
       )) as Array<{
         id: string;
@@ -2794,6 +2800,85 @@ export class AdminCentersService {
         active: nextActive,
         ...(target.supportsVisual ? { icon: nextIcon, color: nextColor } : {}),
       };
+    });
+  }
+
+  async deleteCatalog(actorId: number, catalog: string, id: number) {
+    const target = CATALOG_TARGETS[catalog as CatalogKey];
+    if (!target) throw new ConflictException("El catálogo no está disponible.");
+
+    return this.dataSource.transaction(async (manager) => {
+      const rows = (await manager.query(
+        `SELECT to_jsonb(catalog_option) AS snapshot
+           FROM ${target.table} catalog_option
+          WHERE id = $1 AND eliminado_at IS NULL FOR UPDATE`,
+        [id],
+      )) as Array<{ snapshot: JsonRecord }>;
+      const current = rows[0];
+      if (!current)
+        throw new NotFoundException("No se encontró la opción del catálogo.");
+      if (catalog === "ESTABLISHMENT_CLASSIFICATION") {
+        const children = await manager.query(
+          `SELECT 1 FROM catalogo_catastro_categorias
+            WHERE clasificacion_id = $1 AND eliminado_at IS NULL LIMIT 1`,
+          [id],
+        );
+        if (children[0]) {
+          throw new ConflictException(
+            "Elimina primero las categorías de esta clasificación.",
+          );
+        }
+      }
+      const updated = (await manager.query(
+        `UPDATE ${target.table} catalog_option
+            SET activo = FALSE, eliminado_at = CURRENT_TIMESTAMP
+          WHERE id = $1 RETURNING to_jsonb(catalog_option) AS snapshot`,
+        [id],
+      )) as Array<{ snapshot: JsonRecord }>;
+      await manager.query(
+        `INSERT INTO auditoria_catalogos
+          (usuario_id, catalogo_codigo, registro_id, accion, datos_anteriores, datos_nuevos)
+         VALUES ($1,$2,$3,'ELIMINAR',$4::jsonb,$5::jsonb)`,
+        [
+          actorId,
+          catalog,
+          id,
+          JSON.stringify(current.snapshot),
+          JSON.stringify(updated[0].snapshot),
+        ],
+      );
+      return { catalog, id, deleted: true };
+    });
+  }
+
+  async deleteCenter(code: string, actorId: number) {
+    return this.dataSource.transaction(async (manager) => {
+      const rows = (await manager.query(
+        `SELECT id, TRIM(codigo_atractivo) AS code, to_jsonb(c) AS snapshot
+           FROM centros_turisticos c
+          WHERE TRIM(codigo_atractivo) = TRIM($1)
+            AND eliminado_at IS NULL FOR UPDATE`,
+        [code],
+      )) as Array<{ id: string; code: string; snapshot: JsonRecord }>;
+      const current = rows[0];
+      if (!current)
+        throw new NotFoundException("No se encontró la ficha turística.");
+      const updated = (await manager.query(
+        `UPDATE centros_turisticos c
+            SET activo = FALSE, eliminado_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1 RETURNING to_jsonb(c) AS snapshot`,
+        [current.id],
+      )) as Array<{ snapshot: JsonRecord }>;
+      await this.audit(
+        manager,
+        current.id,
+        actorId,
+        "ELIMINAR",
+        current.snapshot,
+        updated[0].snapshot,
+      );
+      return { code: current.code, deleted: true };
     });
   }
 
@@ -3118,7 +3203,8 @@ export class AdminCentersService {
   async sections(code: string, actorId?: number, isAdmin = true) {
     return this.dataSource.transaction(async (manager) => {
       const rows = (await manager.query(
-        this.centerSelect() + " WHERE TRIM(c.codigo_atractivo) = TRIM($1)",
+        this.centerSelect() +
+          " WHERE TRIM(c.codigo_atractivo) = TRIM($1) AND c.eliminado_at IS NULL",
         [code],
       )) as CenterRow[];
       const center = rows[0];
@@ -3144,7 +3230,7 @@ export class AdminCentersService {
                 ,c.responsable_usuario_id AS "responsibleId"
            FROM centros_turisticos c
            LEFT JOIN rangos_jerarquia rj ON rj.id = c.jerarquia_id
-          WHERE TRIM(c.codigo_atractivo) = TRIM($1)`,
+          WHERE TRIM(c.codigo_atractivo) = TRIM($1) AND c.eliminado_at IS NULL`,
         [code],
       )) as Array<{
         id: string;
@@ -3304,7 +3390,8 @@ export class AdminCentersService {
     code: string,
   ): Promise<CenterRow> {
     const rows = (await manager.query(
-      this.centerSelect() + " WHERE TRIM(c.codigo_atractivo) = TRIM($1)",
+      this.centerSelect() +
+        " WHERE TRIM(c.codigo_atractivo) = TRIM($1) AND c.eliminado_at IS NULL",
       [code],
     )) as CenterRow[];
     if (!rows[0])
@@ -3324,7 +3411,7 @@ export class AdminCentersService {
 
   private async findById(manager: EntityManager, id: string) {
     const rows = (await manager.query(
-      this.centerSelect() + " WHERE c.id = $1",
+      this.centerSelect() + " WHERE c.id = $1 AND c.eliminado_at IS NULL",
       [id],
     )) as CenterRow[];
     if (!rows[0])
@@ -3464,6 +3551,7 @@ export class AdminCentersService {
   private centerSelect(): string {
     return `SELECT c.id, TRIM(c.codigo_atractivo) AS code, c.nombre AS name,
                    er.codigo AS "statusCode", er.nombre AS "statusName", c.activo AS active,
+                   c.eliminado_at AS "deletedAt",
                    c.responsable_usuario_id AS "responsibleId",
                    c.publicado_at AS "publishedAt", c.subtipo_atractivo_id AS "subtypeId",
                    c.zona_turistica_id AS "touristZoneId", c.parroquia_id AS "parishId",
@@ -3516,7 +3604,7 @@ export class AdminCentersService {
   ): Promise<CenterRow> {
     const rows = (await manager.query(
       this.centerSelect() +
-        " WHERE TRIM(c.codigo_atractivo) = TRIM($1) FOR UPDATE OF c",
+        " WHERE TRIM(c.codigo_atractivo) = TRIM($1) AND c.eliminado_at IS NULL FOR UPDATE OF c",
       [code],
     )) as CenterRow[];
     if (!rows[0])

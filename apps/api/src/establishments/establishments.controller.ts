@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Inject,
   Param,
@@ -101,6 +102,15 @@ export class AdminEstablishmentsController {
         user.roles.includes("ADMINISTRADOR"),
       ),
     };
+  }
+
+  @Delete(":id")
+  @Roles("ADMINISTRADOR")
+  async remove(
+    @Param("id") id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return { data: await this.establishments.remove(id, user.id) };
   }
 
   @Post(":id/submit-review")

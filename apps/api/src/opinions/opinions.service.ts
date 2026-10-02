@@ -76,7 +76,7 @@ export type AdminOpinionPage = Readonly<{
 }>;
 
 export type AdminOpinionModeration = Readonly<{
-  action: "APROBAR" | "RECHAZAR";
+  action: "APROBAR" | "RECHAZAR" | "ELIMINAR";
   moderatorName: string;
   reason: string | null;
   createdAt: string;
@@ -95,6 +95,7 @@ export type AdminOpinionHistoryVersion = Readonly<{
 
 export type AdminOpinionHistory = Readonly<{
   reviewCode: string;
+  deletedAt: string | null;
   authorName: string;
   target: Readonly<{
     type: "CENTRO" | "PUNTO_INTERES";
@@ -135,7 +136,8 @@ export class OpinionsService {
                                       AND v.estado_moderacion = 'APROBADA'
            JOIN usuarios u ON u.id = o.usuario_id
           WHERE o.centro_turistico_id = $1
-            AND o.estado_moderacion = 'APROBADA'
+            AND o.eliminado_at IS NULL
+            AND o.estado_moderacion IN ('PENDIENTE', 'APROBADA')
           ORDER BY v.created_at DESC, v.id DESC
           LIMIT $2 OFFSET $3`,
         [center.id, limit, offset],
@@ -153,7 +155,8 @@ export class OpinionsService {
            JOIN opinion_versiones v ON v.id = o.version_publicada_id
                                       AND v.estado_moderacion = 'APROBADA'
           WHERE o.centro_turistico_id = $1
-            AND o.estado_moderacion = 'APROBADA'`,
+            AND o.eliminado_at IS NULL
+            AND o.estado_moderacion IN ('PENDIENTE', 'APROBADA')`,
         [center.id],
       ),
     ]);
@@ -218,6 +221,7 @@ export class OpinionsService {
              FROM opiniones
             WHERE usuario_id = $1
               AND centro_turistico_id = $2
+              AND eliminado_at IS NULL
               AND estado_moderacion IN ('PENDIENTE', 'APROBADA')
             FOR UPDATE`,
           [userId, center.id],
@@ -279,6 +283,7 @@ export class OpinionsService {
              FROM opiniones
             WHERE usuario_id = $1
               AND centro_turistico_id = $2
+              AND eliminado_at IS NULL
               AND estado_moderacion IN ('PENDIENTE', 'APROBADA')
             ORDER BY updated_at DESC, id DESC
             LIMIT 1
@@ -407,6 +412,7 @@ export class OpinionsService {
              ON published_v.id = o.version_publicada_id
             AND published_v.estado_moderacion = 'APROBADA'
           WHERE o.estado_moderacion IN ('PENDIENTE', 'APROBADA')
+            AND o.eliminado_at IS NULL
             AND (pending_v.id IS NOT NULL OR published_v.id IS NOT NULL)
           ORDER BY CASE WHEN pending_v.id IS NOT NULL THEN 0 ELSE 1 END,
                    CASE WHEN pending_v.id IS NOT NULL
@@ -424,6 +430,7 @@ export class OpinionsService {
              ON published_v.id = o.version_publicada_id
             AND published_v.estado_moderacion = 'APROBADA'
           WHERE o.estado_moderacion IN ('PENDIENTE', 'APROBADA')
+            AND o.eliminado_at IS NULL
             AND (
               published_v.id IS NOT NULL
               OR EXISTS (
@@ -489,6 +496,7 @@ export class OpinionsService {
               v.estado_moderacion AS status,
               v.created_at AS submitted_at,
               v.revisado_at AS reviewed_at,
+              o.eliminado_at AS deleted_at,
               u.nombre AS author_name,
               CASE WHEN c.id IS NOT NULL THEN 'CENTRO' ELSE 'PUNTO_INTERES' END AS target_type,
               c.codigo_atractivo AS target_code,
@@ -525,6 +533,7 @@ export class OpinionsService {
                  v.estado_moderacion,
                  v.created_at,
                  v.revisado_at,
+                 o.eliminado_at,
                  u.nombre,
                  c.id,
                  c.codigo_atractivo,
@@ -542,6 +551,7 @@ export class OpinionsService {
 
     return {
       reviewCode: normalizedCode,
+      deletedAt: nullableIsoDate(first, "deleted_at"),
       authorName: stringValue(first, "author_name") || "Usuario",
       target: {
         type: stringValue(first, "target_type") as "CENTRO" | "PUNTO_INTERES",
@@ -560,6 +570,50 @@ export class OpinionsService {
         moderations: moderationValues(row.moderations),
       })),
     };
+  }
+
+  async remove(
+    reviewCode: string,
+    moderatorId: number,
+  ): Promise<Readonly<{ reviewCode: string; deleted: true }>> {
+    const normalizedCode = reviewCode.trim().toLowerCase();
+    if (!isUuid(normalizedCode)) {
+      throw new BadRequestException("El código de revisión no es válido.");
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      const rows = await manager.query<SqlRow[]>(
+        `SELECT o.id AS opinion_id, o.eliminado_at,
+                v.id AS version_id
+           FROM opiniones o
+           JOIN opinion_versiones v ON v.opinion_id = o.id
+          WHERE v.codigo_publico = $1::uuid
+          FOR UPDATE OF o`,
+        [normalizedCode],
+      );
+      const opinion = rows[0];
+      if (!opinion) {
+        throw new NotFoundException("La opinión no está disponible.");
+      }
+
+      if (opinion.eliminado_at == null) {
+        await manager.query(
+          `UPDATE opiniones
+              SET eliminado_at = CURRENT_TIMESTAMP,
+                  updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1`,
+          [opinion.opinion_id],
+        );
+        await manager.query(
+          `INSERT INTO moderaciones_opinion
+             (opinion_id, opinion_version_id, moderador_id, accion, motivo)
+           VALUES ($1, $2, $3, 'ELIMINAR', NULL)`,
+          [opinion.opinion_id, opinion.version_id, moderatorId],
+        );
+      }
+
+      return { reviewCode: normalizedCode, deleted: true };
+    });
   }
 
   async review(
@@ -590,6 +644,7 @@ export class OpinionsService {
            FROM opinion_versiones v
            JOIN opiniones o ON o.id = v.opinion_id
           WHERE v.codigo_publico = $1::uuid
+            AND o.eliminado_at IS NULL
             AND v.estado_moderacion = 'PENDIENTE'
           FOR UPDATE OF v, o`,
         [normalizedCode],
@@ -714,6 +769,7 @@ export class OpinionsService {
          ) rejected_v ON TRUE
         WHERE o.usuario_id = $1
           AND o.centro_turistico_id = $2
+          AND o.eliminado_at IS NULL
         ORDER BY CASE
                    WHEN o.estado_moderacion IN ('PENDIENTE', 'APROBADA') THEN 0
                    ELSE 1
@@ -867,7 +923,13 @@ function moderationValues(value: unknown): AdminOpinionModeration[] {
     if (!item || typeof item !== "object") return [];
     const row = item as SqlRow;
     const action = stringValue(row, "action");
-    if (action !== "APROBAR" && action !== "RECHAZAR") return [];
+    if (
+      action !== "APROBAR" &&
+      action !== "RECHAZAR" &&
+      action !== "ELIMINAR"
+    ) {
+      return [];
+    }
     return [
       {
         action,

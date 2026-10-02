@@ -1,3 +1,4 @@
+import { DataSource } from "typeorm";
 import { describe, expect, it, vi } from "vitest";
 
 import { EstablishmentsService } from "../src/establishments/establishments.service";
@@ -35,6 +36,21 @@ const row = {
   distanceMeters: "120.4",
 };
 
+function transactionalDataSource(query: ReturnType<typeof vi.fn>) {
+  const dataSource = new DataSource({ type: "postgres" });
+  const queryRunner = {
+    manager: { query },
+    startTransaction: vi.fn().mockResolvedValue(undefined),
+    commitTransaction: vi.fn().mockResolvedValue(undefined),
+    rollbackTransaction: vi.fn().mockResolvedValue(undefined),
+    release: vi.fn().mockResolvedValue(undefined),
+  };
+  vi.spyOn(dataSource, "createQueryRunner").mockReturnValue(
+    queryRunner as never,
+  );
+  return { dataSource, queryRunner };
+}
+
 describe("EstablishmentsService", () => {
   it("returns the vector tile of published establishments", async () => {
     const tile = Buffer.from([0x1a, 0x02]);
@@ -44,6 +60,7 @@ describe("EstablishmentsService", () => {
     await expect(service.tile({ z: 14, x: 4596, y: 8264 })).resolves.toBe(tile);
     const [sql, params] = query.mock.calls[0] ?? [];
     expect(sql).toContain("e.estado_revision = 'PUBLICADO'");
+    expect(sql).toContain("e.eliminado_at IS NULL");
     expect(sql).toContain("ST_AsMVT(features, 'establishments'");
     expect(params.slice(0, 3)).toEqual([14, 4596, 8264]);
   });
@@ -97,6 +114,139 @@ describe("EstablishmentsService", () => {
     await expect(service.find("8", 10, false)).rejects.toThrow(
       "No se encontró el establecimiento",
     );
+  });
+
+  it("excludes deleted records even when listing inactive catastros", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([{ total: 0 }])
+      .mockResolvedValueOnce([]);
+    const service = new EstablishmentsService({ query } as never);
+
+    await expect(
+      service.list({ active: false, limit: 25, offset: 0 }),
+    ).resolves.toMatchObject({ items: [], total: 0 });
+    for (const [sql] of query.mock.calls) {
+      expect(sql).toContain("e.eliminado_at IS NULL");
+      expect(sql).toContain("e.activo = $1");
+    }
+  });
+
+  it("does not expose an eliminated catastro by id", async () => {
+    const query = vi.fn().mockResolvedValue([]);
+    const service = new EstablishmentsService({ query } as never);
+
+    await expect(service.find("8", 7, true)).rejects.toThrow(
+      "No se encontró el establecimiento.",
+    );
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("e.id = $1 AND e.eliminado_at IS NULL"),
+      [8],
+    );
+  });
+
+  it.each([
+    "save",
+    "submitReview",
+    "review",
+    "reactivate",
+    "deactivate",
+    "remove",
+  ])(
+    "rejects %s for an eliminated catastro before writing",
+    async (operation) => {
+      const query = vi.fn().mockResolvedValue([]);
+      const { dataSource, queryRunner } = transactionalDataSource(query);
+      const service = new EstablishmentsService(dataSource);
+      const operations: Record<string, () => Promise<unknown>> = {
+        save: () => service.save("8", 7, {}),
+        submitReview: () => service.submitReview("8", 7),
+        review: () => service.review("8", 7, { action: "APPROVE" }),
+        reactivate: () => service.setActive("8", 7, true),
+        deactivate: () => service.setActive("8", 7, false),
+        remove: () => service.remove("8", 7),
+      };
+
+      await expect(operations[operation]()).rejects.toThrow(
+        "No se encontró el establecimiento.",
+      );
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(query.mock.calls[0]?.[0]).toContain("e.eliminado_at IS NULL");
+      expect(query.mock.calls[0]?.[0]).toContain("FOR UPDATE OF e");
+      expect(queryRunner.rollbackTransaction).toHaveBeenCalledOnce();
+      expect(queryRunner.commitTransaction).not.toHaveBeenCalled();
+    },
+  );
+
+  it("marks a catastro deleted and audits both snapshots in one transaction", async () => {
+    const deletedAt = "2026-10-02T15:00:00.000Z";
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([{ ...row, reviewStatus: "PUBLICADO" }])
+      .mockResolvedValueOnce([{ deletedAt, updatedAt: deletedAt }])
+      .mockResolvedValueOnce([]);
+    const { dataSource, queryRunner } = transactionalDataSource(query);
+    const service = new EstablishmentsService(dataSource);
+
+    await expect(service.remove("8", 7)).resolves.toEqual({
+      id: 8,
+      deleted: true,
+    });
+
+    expect(query.mock.calls[0]?.[0]).toContain("FOR UPDATE OF e");
+    expect(query.mock.calls[1]?.[0]).toContain(
+      "eliminado_at = CURRENT_TIMESTAMP",
+    );
+    expect(query.mock.calls[1]?.[0]).toContain("activo = FALSE");
+    expect(query.mock.calls[1]?.[1]).toEqual([8]);
+    const [auditSql, auditValues] = query.mock.calls[2] ?? [];
+    expect(auditSql).toContain("INSERT INTO auditoria_catalogos");
+    expect(auditValues.slice(0, 3)).toEqual([7, 8, "ELIMINAR"]);
+    expect(JSON.parse(auditValues[3])).toMatchObject({
+      numeroRegistro: "CAT-8",
+      active: true,
+      reviewStatus: "PUBLICADO",
+      deletedAt: null,
+    });
+    expect(JSON.parse(auditValues[4])).toMatchObject({
+      numeroRegistro: "CAT-8",
+      active: false,
+      reviewStatus: "PUBLICADO",
+      deletedAt,
+    });
+    expect(queryRunner.commitTransaction).toHaveBeenCalledOnce();
+    expect(queryRunner.rollbackTransaction).not.toHaveBeenCalled();
+    expect(queryRunner.release).toHaveBeenCalledOnce();
+  });
+
+  it("rolls deletion back if its immutable audit cannot be recorded", async () => {
+    const cause = new Error("Audit insert failed");
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([row])
+      .mockResolvedValueOnce([
+        { deletedAt: "2026-10-02T15:00:00.000Z", updatedAt: row.updatedAt },
+      ])
+      .mockRejectedValueOnce(cause);
+    const { dataSource, queryRunner } = transactionalDataSource(query);
+    const service = new EstablishmentsService(dataSource);
+
+    await expect(service.remove("8", 7)).rejects.toBe(cause);
+
+    expect(queryRunner.startTransaction).toHaveBeenCalledOnce();
+    expect(queryRunner.rollbackTransaction).toHaveBeenCalledOnce();
+    expect(queryRunner.commitTransaction).not.toHaveBeenCalled();
+    expect(queryRunner.release).toHaveBeenCalledOnce();
+  });
+
+  it("rejects an invalid deletion id before opening a transaction", async () => {
+    const transaction = vi.fn();
+    const service = new EstablishmentsService({ transaction } as never);
+
+    await expect(service.remove("invalid", 7)).rejects.toThrow(
+      "El identificador del establecimiento no es válido.",
+    );
+    expect(transaction).not.toHaveBeenCalled();
   });
 
   it("rejects a public search without an activity or location", async () => {

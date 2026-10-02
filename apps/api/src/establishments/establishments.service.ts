@@ -101,6 +101,10 @@ type AdminEstablishmentItem = {
   updatedAt: string;
 };
 
+type EstablishmentAuditItem = AdminEstablishmentItem & {
+  deletedAt?: string | null;
+};
+
 type ResolvedTaxonomy = {
   activityId: number | null;
   classificationId: number | null;
@@ -204,7 +208,7 @@ export class EstablishmentsService {
 
   async list(query: AdminEstablishmentsQueryDto, actorId = 0, isAdmin = true) {
     const params: unknown[] = [];
-    const where: string[] = [];
+    const where: string[] = ["e.eliminado_at IS NULL"];
     const add = (value: unknown) => {
       params.push(value);
       return `$${params.length}`;
@@ -265,7 +269,7 @@ export class EstablishmentsService {
   async find(id: string, actorId?: number, isAdmin = true) {
     const numericId = this.parseId(id);
     const rows = (await this.dataSource.query(
-      `${establishmentSelect} ${establishmentJoin} WHERE e.id = $1`,
+      `${establishmentSelect} ${establishmentJoin} WHERE e.id = $1 AND e.eliminado_at IS NULL`,
       [numericId],
     )) as EstablishmentRow[];
     const row = rows[0];
@@ -524,6 +528,32 @@ export class EstablishmentsService {
     });
   }
 
+  async remove(id: string, actorId: number) {
+    const numericId = this.parseId(id);
+    return this.dataSource.transaction(async (manager) => {
+      const current = await this.findWithManager(manager, numericId, true);
+      const [removed] = (await manager.query(
+        `UPDATE establecimientos_turisticos
+            SET eliminado_at = CURRENT_TIMESTAMP,
+                activo = FALSE,
+                updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1 AND eliminado_at IS NULL
+          RETURNING eliminado_at AS "deletedAt", updated_at AS "updatedAt"`,
+        [numericId],
+      )) as Array<{ deletedAt: string; updatedAt: string }>;
+      if (!removed) {
+        throw new NotFoundException("No se encontró el establecimiento.");
+      }
+      await this.audit(manager, numericId, actorId, "ELIMINAR", current, {
+        ...current,
+        active: false,
+        deletedAt: removed.deletedAt,
+        updatedAt: removed.updatedAt,
+      });
+      return { id: numericId, deleted: true };
+    });
+  }
+
   async getAudit(id: string) {
     const numericId = this.parseId(id);
     const rows = await this.dataSource.query(
@@ -644,6 +674,7 @@ export class EstablishmentsService {
       `${publicEstablishmentSelect}
          ${establishmentJoin}
         WHERE e.activo = TRUE
+          AND e.eliminado_at IS NULL
           AND e.estado_revision = 'PUBLICADO'
           AND l.activo = TRUE
           AND co.activo = TRUE
@@ -696,6 +727,7 @@ export class EstablishmentsService {
               ST_Distance(e.ubicacion, ${origin}) AS "distanceMeters"
          ${establishmentJoin}
         WHERE e.activo = TRUE
+          AND e.eliminado_at IS NULL
           AND e.estado_revision = 'PUBLICADO'
           AND l.activo = TRUE
           AND co.activo = TRUE
@@ -729,7 +761,7 @@ export class EstablishmentsService {
     lock = false,
   ) {
     const rows = (await manager.query(
-      `${establishmentSelect} ${establishmentJoin} WHERE e.id = $1${lock ? " FOR UPDATE OF e" : ""}`,
+      `${establishmentSelect} ${establishmentJoin} WHERE e.id = $1 AND e.eliminado_at IS NULL${lock ? " FOR UPDATE OF e" : ""}`,
       [id],
     )) as EstablishmentRow[];
     const row = rows[0];
@@ -747,7 +779,7 @@ export class EstablishmentsService {
     const rows = (await manager.query(
       `SELECT responsable_usuario_id AS "responsibleId"
          FROM establecimientos_turisticos
-        WHERE id = $1`,
+        WHERE id = $1 AND eliminado_at IS NULL`,
       [id],
     )) as Array<{ responsibleId: number | null }>;
     if (!rows[0] || !actorId || Number(rows[0].responsibleId) !== actorId) {
@@ -1130,6 +1162,7 @@ export class EstablishmentsService {
          ${establishmentJoin}
         WHERE e.localidad_id = $1
           AND e.activo = TRUE
+          AND e.eliminado_at IS NULL
           AND e.estado_revision = 'PUBLICADO'
           AND ${this.matchingActivitySql("e", "$2", "$5")}
         ORDER BY "distanceMeters" NULLS LAST, e.nombre_comercial, e.id
@@ -1158,6 +1191,7 @@ export class EstablishmentsService {
          ON category_match.id = e_match.categoria_catalogo_id
        WHERE e_match.localidad_id = l.id
          AND e_match.activo = TRUE
+         AND e_match.eliminado_at IS NULL
          AND e_match.estado_revision = 'PUBLICADO'
          AND ${this.normalizedSql("COALESCE(activity_match.nombre, e_match.actividad)")} = ${this.normalizedSql(activityParam)}
          AND (${categoryParam}::text IS NULL OR ${this.normalizedSql("COALESCE(category_match.nombre, e_match.categoria)")} = ${this.normalizedSql(categoryParam)})`;
@@ -1216,11 +1250,12 @@ export class EstablishmentsService {
       | "MODIFICAR"
       | "ACTIVAR"
       | "DESACTIVAR"
+      | "ELIMINAR"
       | "SOLICITAR_REVISION"
       | "APROBAR"
       | "RECHAZAR",
-    previous: AdminEstablishmentItem | null,
-    next: AdminEstablishmentItem | null,
+    previous: EstablishmentAuditItem | null,
+    next: EstablishmentAuditItem | null,
   ) {
     await manager.query(
       `INSERT INTO auditoria_catalogos
@@ -1236,7 +1271,7 @@ export class EstablishmentsService {
     );
   }
 
-  private auditData(item: AdminEstablishmentItem) {
+  private auditData(item: EstablishmentAuditItem) {
     return {
       localityId: item.localityId,
       numeroRegistro: item.numeroRegistro,
@@ -1256,6 +1291,7 @@ export class EstablishmentsService {
       active: item.active,
       reviewStatus: item.reviewStatus,
       reviewObservation: item.reviewObservation,
+      deletedAt: item.deletedAt ?? null,
     };
   }
 

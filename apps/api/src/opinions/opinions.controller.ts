@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -92,6 +93,15 @@ export class AdminOpinionsController {
     return {
       data: await this.opinions.getAdminHistory(reviewCode),
     };
+  }
+
+  @Delete(":reviewCode")
+  @Roles("ADMINISTRADOR")
+  async remove(
+    @Param("reviewCode") reviewCode: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return { data: await this.opinions.remove(reviewCode, user.id) };
   }
 
   @Patch(":reviewCode")

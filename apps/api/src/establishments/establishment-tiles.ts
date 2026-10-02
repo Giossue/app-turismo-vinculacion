@@ -90,6 +90,7 @@ export function buildEstablishmentTileQuery({
         ON category_catalog.id = e.categoria_catalogo_id
       , tile
      WHERE e.activo = TRUE
+       AND e.eliminado_at IS NULL
        AND e.estado_revision = 'PUBLICADO'
        AND e.ubicacion IS NOT NULL
        AND ${mercator} && tile.buffered`;

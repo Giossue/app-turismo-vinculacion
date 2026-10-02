@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -154,6 +155,33 @@ export class AdminController {
     return {
       data: await this.centers.updateCatalog(user.id, catalog, numericId, body),
     };
+  }
+
+  @Delete("catalogs/:catalog/:id")
+  @Roles("ADMINISTRADOR")
+  async deleteCatalog(
+    @Param("catalog") catalog: string,
+    @Param("id") id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const numericId = Number(id);
+    if (!Number.isInteger(numericId) || numericId < 1) {
+      throw new BadRequestException(
+        "El identificador del catálogo no es válido.",
+      );
+    }
+    return {
+      data: await this.centers.deleteCatalog(user.id, catalog, numericId),
+    };
+  }
+
+  @Delete("centers/:code")
+  @Roles("ADMINISTRADOR")
+  async deleteCenter(
+    @Param("code") code: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return { data: await this.centers.deleteCenter(code, user.id) };
   }
 
   @Post("centers")
