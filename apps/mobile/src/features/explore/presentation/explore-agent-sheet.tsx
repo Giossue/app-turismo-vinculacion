@@ -92,6 +92,7 @@ function ExploreAgentSheetInner({
                 />
               }
               onClose={closeAgent}
+              hideForLandscapeKeyboard
               showIndicator={false}
             />
             <View style={styles.content}>

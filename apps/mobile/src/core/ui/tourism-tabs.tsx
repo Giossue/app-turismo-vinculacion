@@ -17,8 +17,8 @@ export type TourismTabItem<T extends string> = Readonly<{
 }>;
 
 /**
- * Underlined tab row. Tabs keep their natural width by default; `fill`
- * splits the row evenly, as in the route mode picker.
+ * Underlined tab row. Tabs keep their natural width while it fits, then
+ * shrink and wrap their labels. `fill` splits the row evenly.
  */
 export function TourismTabs<T extends string>({
   fill = false,
@@ -91,8 +91,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderBottomColor: "transparent",
     borderBottomWidth: turismoMetrics.borderWidthStrong,
+    flexShrink: 1,
     justifyContent: "center",
     minHeight: turismoMetrics.touchTarget,
+    minWidth: 0,
     paddingHorizontal: turismoSpacing.xs,
   },
   iconTab: {
@@ -102,5 +104,10 @@ const styles = StyleSheet.create({
   },
   fillTab: { flex: 1, paddingHorizontal: 0 },
   pressed: { opacity: turismoOpacity.pressed },
-  label: { ...turismoTypography.label },
+  label: {
+    ...turismoTypography.label,
+    alignSelf: "stretch",
+    minWidth: 0,
+    textAlign: "center",
+  },
 });

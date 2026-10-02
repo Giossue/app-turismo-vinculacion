@@ -71,22 +71,61 @@ describe("AdminCentersService workflow boundaries", () => {
     );
   });
 
-  it("rejects editing while a center is being reviewed", async () => {
-    const draft = {
-      id: "8",
-      stateCode: "EN_REVISION",
-      stateName: "En revisión",
-      version: 2,
-      data: {},
-    };
-    const query = vi
-      .fn()
-      .mockResolvedValueOnce([center])
-      .mockResolvedValueOnce([draft]);
-    const service = serviceWithManager(query);
+  it.each(["save", "saveSection"])(
+    "rejects %s while a center is being reviewed before reading published details",
+    async (operation) => {
+      const draft = {
+        id: "8",
+        stateCode: "EN_REVISION",
+        stateName: "En revisión",
+        version: 2,
+        data: {},
+      };
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce([center])
+        .mockResolvedValueOnce([draft]);
+      const service = serviceWithManager(query);
 
-    await expect(
-      service.save(center.code, 99, { name: "Cambio concurrente" }),
-    ).rejects.toThrow("no se puede editar");
-  });
+      await expect(
+        operation === "save"
+          ? service.save(center.code, 99, { name: "Cambio concurrente" })
+          : service.saveSection(center.code, "descripcion", 99, {
+              content: {},
+            }),
+      ).rejects.toThrow("no se puede editar");
+      expect(query).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it.each(["save", "saveSection"])(
+    "rejects a stale %s version before reading published details",
+    async (operation) => {
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce([center])
+        .mockResolvedValueOnce([
+          {
+            id: "8",
+            stateCode: "BORRADOR",
+            stateName: "Borrador",
+            version: 2,
+            data: {},
+          },
+        ]);
+      const service = serviceWithManager(query);
+      await expect(
+        operation === "save"
+          ? service.save(center.code, 99, {
+              version: 1,
+              name: "Cambio concurrente",
+            })
+          : service.saveSection(center.code, "descripcion", 99, {
+              version: 1,
+              content: {},
+            }),
+      ).rejects.toThrow("La ficha cambió mientras la editabas");
+      expect(query).toHaveBeenCalledTimes(2);
+    },
+  );
 });

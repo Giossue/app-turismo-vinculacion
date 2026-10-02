@@ -109,8 +109,11 @@ DELETE /api/v1/admin/opinions/:reviewCode
 DELETE /api/v1/admin/catalogs/:catalog/:id
 ```
 
-Los registros eliminados dejan de aparecer en listados y selectores, no pueden editarse
-ni reactivarse, y conservan sus relaciones y auditoría. Una clasificación de catastro
+Los registros eliminados dejan de aparecer en listados y opciones para nuevas fichas,
+no pueden editarse ni reactivarse, y conservan sus relaciones y auditoría. En una ficha
+que ya los usa, los catálogos retirados siguen visibles como «ya no disponible» y pueden
+conservarse al editar otros campos, sin ofrecerse para nuevas asignaciones.
+Una clasificación de catastro
 con categorías conservadas exige eliminarlas primero. La eliminación de una opinión
 retira todas sus versiones de las consultas públicas y las calificaciones; su historial
 administrativo conserva la fecha y la acción. La migración

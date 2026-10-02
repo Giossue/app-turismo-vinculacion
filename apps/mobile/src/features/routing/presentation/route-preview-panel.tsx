@@ -131,6 +131,8 @@ export function RoutePreviewPanel({
     expandedHeight,
     measuredCompactHeight ?? estimatedCompactContentHeight + insets.bottom,
   );
+  const compactContentOverflows =
+    measuredCompactHeight !== null && measuredCompactHeight > expandedHeight;
   const restingHeight = expanded ? expandedHeight : compactHeight;
   const panelHeight = useSharedValue(restingHeight);
   const dragStartHeight = useSharedValue(restingHeight);
@@ -149,7 +151,7 @@ export function RoutePreviewPanel({
 
   const panGesture = Gesture.Pan()
     .activeOffsetY([-panelDragActivationOffset, panelDragActivationOffset])
-    .enabled(!expanded)
+    .enabled(!expanded && !compactContentOverflows)
     .onBegin(() => {
       dragStartHeight.set(panelHeight.get());
     })
@@ -175,8 +177,8 @@ export function RoutePreviewPanel({
     height: panelHeight.get(),
   }));
 
-  const header = (
-    <View style={styles.header}>
+  const handle = (
+    <View style={styles.handle}>
       <TourismSheetHandle
         closeLabel="Cerrar ruta"
         indicatorAccessibilityLabel={
@@ -188,19 +190,16 @@ export function RoutePreviewPanel({
         onClose={onClose}
         onIndicatorPress={() => onExpandedChange(!expanded)}
       />
-      <View style={styles.headerRow}>
-        <View style={styles.titleCopy}>
-          <Text style={[styles.title, { color: colors.text }]}>
-            {modeOption.title}
-          </Text>
-          <Text
-            numberOfLines={2}
-            style={[styles.eyebrow, { color: colors.textMuted }]}
-          >
-            Ruta hacia {destinationName}
-          </Text>
-        </View>
-      </View>
+    </View>
+  );
+  const title = (
+    <View style={styles.titleCopy}>
+      <Text style={[styles.title, { color: colors.text }]}>
+        {modeOption.title}
+      </Text>
+      <Text style={[styles.eyebrow, { color: colors.textMuted }]}>
+        Ruta hacia {destinationName}
+      </Text>
     </View>
   );
   const primaryAction = (actionStyle?: typeof styles.fullWidthAction) =>
@@ -222,12 +221,13 @@ export function RoutePreviewPanel({
       navigationNotice ?? routeError ?? (route ? null : locationMessage);
     content = (
       <>
-        {header}
+        {handle}
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           style={styles.scroll}
         >
+          {title}
           {savedRoute ? null : (
             <RouteModeTabs mode={mode} onChange={onModeChange} />
           )}
@@ -312,17 +312,25 @@ export function RoutePreviewPanel({
     );
   } else {
     content = (
-      // Measured without the animated height, so the collapsed panel always
-      // fits its content, including with enlarged system text.
-      <View
-        onLayout={(event) =>
-          setMeasuredCompactHeight(
-            event.nativeEvent.layout.height + turismoGlassBorderWidth * 2,
-          )
-        }
-      >
-        {header}
-        <View style={[styles.compactContent, { paddingBottom: bottomPadding }]}>
+      <>
+        {handle}
+        <ScrollView
+          contentContainerStyle={[
+            styles.compactContent,
+            { paddingBottom: bottomPadding },
+          ]}
+          onContentSizeChange={(_width, contentHeight) =>
+            setMeasuredCompactHeight(
+              contentHeight +
+                turismoMetrics.touchTarget +
+                turismoGlassBorderWidth * 2,
+            )
+          }
+          scrollEnabled={compactContentOverflows}
+          showsVerticalScrollIndicator={false}
+          style={styles.scroll}
+        >
+          {title}
           {isCalculating ? (
             <TourismStateView
               layout="inline"
@@ -342,8 +350,8 @@ export function RoutePreviewPanel({
               {navigationNotice}
             </Text>
           ) : null}
-        </View>
-      </View>
+        </ScrollView>
+      </>
     );
   }
 
@@ -377,16 +385,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 0,
   },
-  header: {
-    paddingBottom: turismoSpacing.sm,
+  handle: {
     paddingHorizontal: turismoSpacing.md,
   },
-  headerRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-  },
-  titleCopy: { flex: 1, gap: turismoSpacing.xxs, minWidth: 0 },
+  titleCopy: { gap: turismoSpacing.xxs, minWidth: 0 },
   eyebrow: { ...turismoTypography.caption },
   title: { ...turismoTypography.title, flexShrink: 1 },
   scroll: { flex: 1 },

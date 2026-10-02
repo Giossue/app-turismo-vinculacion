@@ -1869,8 +1869,7 @@ export class AdminCentersService {
                 COALESCE(rp.observacion, bd.observation) AS observation,
                 c.activo AS active,
                 c.responsable_usuario_id AS responsible_id,
-                (bd.id IS NOT NULL AND bd.state_code <> 'PUBLICADO') AS "hasDraft",
-                COUNT(*) OVER() AS total
+                (bd.id IS NOT NULL AND bd.state_code <> 'PUBLICADO') AS "hasDraft"
            FROM centros_turisticos c
            JOIN estados_resenia er ON er.id = c.estado_resenia_id
            LEFT JOIN LATERAL (
@@ -1900,7 +1899,8 @@ export class AdminCentersService {
        )
        SELECT code, name, status_code AS "statusCode", status_name AS "statusName",
               base_status_code AS "baseStatusCode", "updatedAt", "submittedAt",
-              "requestedBy", observation, active, responsible_id AS "responsibleId", "hasDraft", total
+              "requestedBy", observation, active, responsible_id AS "responsibleId", "hasDraft",
+              COUNT(*) OVER() AS total
          FROM inventory
         WHERE ${conditions.join(" AND ")}
         ORDER BY "updatedAt" DESC, code ASC
@@ -2131,11 +2131,14 @@ export class AdminCentersService {
         [like],
       ),
       this.dataSource.query(
-        `SELECT id, codigo AS code, descripcion AS name, activo AS active,
-                tipo_accesibilidad_id AS "typeId"
-           FROM criterios_accesibilidad
-          WHERE ${activeCondition} AND ($1::text IS NULL OR descripcion ILIKE $1)
-          ORDER BY tipo_accesibilidad_id, orden, descripcion`,
+        `SELECT criterion.id, criterion.codigo AS code, criterion.descripcion AS name,
+                criterion.activo AS active, criterion.tipo_accesibilidad_id AS "typeId"
+           FROM criterios_accesibilidad criterion
+           JOIN tipos_accesibilidad accessibility ON accessibility.id = criterion.tipo_accesibilidad_id
+          WHERE accessibility.eliminado_at IS NULL
+            AND ${query.includeInactive ? "TRUE" : "criterion.activo = TRUE AND accessibility.activo = TRUE"}
+            AND ($1::text IS NULL OR criterion.descripcion ILIKE $1)
+          ORDER BY criterion.tipo_accesibilidad_id, criterion.orden, criterion.descripcion`,
         [like],
       ),
       this.dataSource.query(
@@ -2811,12 +2814,14 @@ export class AdminCentersService {
       const rows = (await manager.query(
         `SELECT to_jsonb(catalog_option) AS snapshot
            FROM ${target.table} catalog_option
-          WHERE id = $1 AND eliminado_at IS NULL FOR UPDATE`,
+          WHERE id = $1 FOR UPDATE`,
         [id],
       )) as Array<{ snapshot: JsonRecord }>;
       const current = rows[0];
       if (!current)
         throw new NotFoundException("No se encontró la opción del catálogo.");
+      if (current.snapshot.eliminado_at != null)
+        return { catalog, id, deleted: true };
       if (catalog === "ESTABLISHMENT_CLASSIFICATION") {
         const children = await manager.query(
           `SELECT 1 FROM catalogo_catastro_categorias
@@ -2830,9 +2835,11 @@ export class AdminCentersService {
         }
       }
       const updated = (await manager.query(
-        `UPDATE ${target.table} catalog_option
+        `WITH removed AS (
+           UPDATE ${target.table}
             SET activo = FALSE, eliminado_at = CURRENT_TIMESTAMP
-          WHERE id = $1 RETURNING to_jsonb(catalog_option) AS snapshot`,
+          WHERE id = $1 RETURNING *
+         ) SELECT to_jsonb(removed) AS snapshot FROM removed`,
         [id],
       )) as Array<{ snapshot: JsonRecord }>;
       await manager.query(
@@ -2856,18 +2863,21 @@ export class AdminCentersService {
       const rows = (await manager.query(
         `SELECT id, TRIM(codigo_atractivo) AS code, to_jsonb(c) AS snapshot
            FROM centros_turisticos c
-          WHERE TRIM(codigo_atractivo) = TRIM($1)
-            AND eliminado_at IS NULL FOR UPDATE`,
+          WHERE TRIM(codigo_atractivo) = TRIM($1) FOR UPDATE`,
         [code],
       )) as Array<{ id: string; code: string; snapshot: JsonRecord }>;
       const current = rows[0];
       if (!current)
         throw new NotFoundException("No se encontró la ficha turística.");
+      if (current.snapshot.eliminado_at != null)
+        return { code: current.code, deleted: true };
       const updated = (await manager.query(
-        `UPDATE centros_turisticos c
+        `WITH removed AS (
+           UPDATE centros_turisticos
             SET activo = FALSE, eliminado_at = CURRENT_TIMESTAMP,
                 updated_at = CURRENT_TIMESTAMP
-          WHERE id = $1 RETURNING to_jsonb(c) AS snapshot`,
+          WHERE id = $1 RETURNING *
+         ) SELECT to_jsonb(removed) AS snapshot FROM removed`,
         [current.id],
       )) as Array<{ snapshot: JsonRecord }>;
       await this.audit(
@@ -2949,13 +2959,6 @@ export class AdminCentersService {
       const center = await this.lockCenter(manager, code);
       this.assertCenterAccess(center, actorId, isAdmin);
       const currentDraft = await this.getDraft(manager, center.id);
-      const base =
-        currentDraft && currentDraft.stateCode !== "PUBLICADO"
-          ? currentDraft.data
-          : {
-              ...this.centerToDraft(center),
-              sections: currentDraft?.data.sections,
-            };
       const draftState = currentDraft?.stateCode ?? center.statusCode;
       if (!isAdmin && !EDITABLE_DRAFT_STATES.has(draftState)) {
         throw new ConflictException(
@@ -2979,6 +2982,13 @@ export class AdminCentersService {
           "La ficha cambió mientras la editabas. Recarga antes de guardar.",
         );
       }
+      const published = await this.readPublishedDraft(manager, center);
+      const base = this.mergeDraftWithPublished(
+        published,
+        currentDraft && currentDraft.stateCode !== "PUBLICADO"
+          ? currentDraft.data
+          : { ...published, sections: currentDraft?.data.sections },
+      );
       const next = mergeDraft(base, input);
       if (
         input.hierarchyId !== undefined &&
@@ -2993,7 +3003,13 @@ export class AdminCentersService {
         : this.requireComplete(
             await this.ensureProvisionalHierarchy(manager, next),
           );
-      await this.validateReferences(manager, normalized);
+      await this.validateReferences(
+        manager,
+        normalized,
+        false,
+        center.id,
+        base,
+      );
       const state = await this.stateId(manager, "BORRADOR");
       const nextVersion = (currentDraft?.version ?? 0) + 1;
       await this.upsertDraft(
@@ -3026,10 +3042,14 @@ export class AdminCentersService {
           "No existe un borrador editable para enviar a revisión.",
         );
       }
-      const complete = this.requireComplete(
-        await this.ensureProvisionalHierarchy(manager, draft.data),
+      const base = this.mergeDraftWithPublished(
+        await this.readPublishedDraft(manager, center),
+        draft.data,
       );
-      await this.validateReferences(manager, complete);
+      const complete = this.requireComplete(
+        await this.ensureProvisionalHierarchy(manager, base),
+      );
+      await this.validateReferences(manager, complete, false, center.id, base);
       const state = await this.stateId(manager, "EN_REVISION");
       await manager.query(
         `UPDATE borradores_centros_turisticos
@@ -3112,8 +3132,12 @@ export class AdminCentersService {
           "Solo se pueden publicar fichas aprobadas.",
         );
       }
-      const complete = this.requireComplete(draft.data);
-      await this.validateReferences(manager, complete, true, center.id);
+      const base = this.mergeDraftWithPublished(
+        await this.readPublishedDraft(manager, center),
+        draft.data,
+      );
+      const complete = this.requireComplete(base);
+      await this.validateReferences(manager, complete, true, center.id, base);
       await this.applyDraft(manager, center, complete);
       const published = await this.stateId(manager, "PUBLICADO");
       await manager.query(
@@ -3323,13 +3347,6 @@ export class AdminCentersService {
       const center = await this.lockCenter(manager, code);
       this.assertCenterAccess(center, actorId, isAdmin);
       const currentDraft = await this.getDraft(manager, center.id);
-      const base =
-        currentDraft && currentDraft.stateCode !== "PUBLICADO"
-          ? currentDraft.data
-          : {
-              ...this.centerToDraft(center),
-              sections: currentDraft?.data.sections,
-            };
       const draftState = currentDraft?.stateCode ?? center.statusCode;
       if (
         !EDITABLE_DRAFT_STATES.has(draftState) &&
@@ -3348,6 +3365,13 @@ export class AdminCentersService {
           "La ficha cambió mientras la editabas. Recarga antes de guardar.",
         );
       }
+      const published = await this.readPublishedDraft(manager, center);
+      const base = this.mergeDraftWithPublished(
+        published,
+        currentDraft && currentDraft.stateCode !== "PUBLICADO"
+          ? currentDraft.data
+          : { ...published, sections: currentDraft?.data.sections },
+      );
       const next: CenterDraft = {
         ...base,
         sections: {
@@ -3356,7 +3380,7 @@ export class AdminCentersService {
         },
       };
       this.validateSectionMap(next.sections);
-      await this.validateReferences(manager, next);
+      await this.validateReferences(manager, next, false, center.id, base);
       const state = await this.stateId(manager, "BORRADOR");
       const nextVersion = (currentDraft?.version ?? 0) + 1;
       await this.upsertDraft(
@@ -3419,16 +3443,7 @@ export class AdminCentersService {
     return this.mapDetail(manager, rows[0]);
   }
 
-  private async mapDetail(manager: EntityManager, center: CenterRow) {
-    const draft = await this.getDraft(manager, center.id);
-    const revision = await this.latestRevision(manager, center.id);
-    const hasPendingDraft = draft && draft.stateCode !== "PUBLICADO";
-    const effectiveStatus =
-      center.active === false
-        ? { code: "INACTIVO", name: "Inactivo" }
-        : hasPendingDraft
-          ? { code: draft.stateCode, name: draft.stateName }
-          : { code: center.statusCode, name: center.statusName };
+  private async readPublishedDraft(manager: EntityManager, center: CenterRow) {
     const published = this.centerToDraft(center);
     const [
       publishedAccessibility,
@@ -3511,9 +3526,28 @@ export class AdminCentersService {
       publishedSections["higiene-seguridad"] = publishedHygiene;
     if (publishedAnnexes) publishedSections.anexos = publishedAnnexes;
     published.sections = publishedSections;
+    return published;
+  }
+
+  private async mapDetail(manager: EntityManager, center: CenterRow) {
+    const draft = await this.getDraft(manager, center.id);
+    const revision = await this.latestRevision(manager, center.id);
+    const hasPendingDraft = draft && draft.stateCode !== "PUBLICADO";
+    const effectiveStatus =
+      center.active === false
+        ? { code: "INACTIVO", name: "Inactivo" }
+        : hasPendingDraft
+          ? { code: draft.stateCode, name: draft.stateName }
+          : { code: center.statusCode, name: center.statusName };
+    const published = await this.readPublishedDraft(manager, center);
     const effectiveDraft = hasPendingDraft
       ? this.mergeDraftWithPublished(published, draft.data)
       : null;
+    const retainedCatalogOptions = await this.readRetainedCatalogOptions(
+      manager,
+      published,
+      effectiveDraft,
+    );
     return {
       code: center.code,
       status: effectiveStatus,
@@ -3523,6 +3557,7 @@ export class AdminCentersService {
       version: draft?.version ?? 0,
       published,
       draft: effectiveDraft,
+      retainedCatalogOptions,
       review: revision
         ? {
             status: { code: revision.stateCode, name: revision.stateName },
@@ -3545,6 +3580,116 @@ export class AdminCentersService {
         ...(published.sections ?? {}),
         ...(draft.sections ?? {}),
       },
+    };
+  }
+
+  private managedSectionCatalogReferences(draft?: CenterDraft | null) {
+    const ids = (value: unknown, key: string): number[] =>
+      Array.isArray(value)
+        ? [
+            ...new Set(
+              value.flatMap((item) =>
+                isJsonRecord(item) &&
+                Number.isInteger(item[key]) &&
+                Number(item[key]) > 0
+                  ? [Number(item[key])]
+                  : [],
+              ),
+            ),
+          ]
+        : [];
+    const plant = draft ? getAdminSectionRecord(draft, "planta") : null;
+    const accessibility = draft
+      ? getAdminSectionRecord(draft, "accesibilidad")
+      : null;
+    const details = isJsonRecord(accessibility?.accessibilityDetails)
+      ? accessibility.accessibilityDetails
+      : null;
+    return {
+      facilities: ids(plant?.facilitiesDetails, "typeId"),
+      accessibilityTypes: ids(details?.criteria, "accessibilityTypeId"),
+      accessibilityCriteria: ids(details?.criteria, "criterionId"),
+    };
+  }
+
+  private async readRetainedCatalogOptions(
+    manager: EntityManager,
+    published: CenterDraft,
+    draft: CenterDraft | null,
+  ) {
+    const activities = new Set<number>();
+    const accessibilityTypes = new Set<number>();
+    const accessibilityCriteria = new Set<number>();
+    const facilities = new Set<number>();
+    for (const snapshot of [published, draft]) {
+      if (!snapshot) continue;
+      for (const item of snapshot.activities ?? [])
+        activities.add(item.activityId);
+      for (const item of snapshot.accessibility ?? [])
+        accessibilityTypes.add(item.typeId);
+      for (const item of snapshot.facilities ?? []) facilities.add(item.typeId);
+      const section = this.managedSectionCatalogReferences(snapshot);
+      for (const id of section.facilities) facilities.add(id);
+      for (const id of section.accessibilityTypes) accessibilityTypes.add(id);
+      for (const id of section.accessibilityCriteria)
+        accessibilityCriteria.add(id);
+    }
+    const activityOptions =
+      activities.size > 0
+        ? await manager.query(
+            `SELECT at.id::int AS id, at.codigo AS code, at.nombre AS name, FALSE AS active,
+              at.grupo_actividad_id::int AS "groupId", ga.categoria_atractivo_id::int AS "categoryId"
+         FROM actividades_turisticas at JOIN grupos_actividad ga ON ga.id = at.grupo_actividad_id
+        WHERE at.id = ANY($1::bigint[])
+          AND (at.activo = FALSE OR at.eliminado_at IS NOT NULL OR ga.activo = FALSE)
+        ORDER BY at.nombre`,
+            [[...activities]],
+          )
+        : [];
+    const accessibilityOptions =
+      accessibilityTypes.size > 0 || accessibilityCriteria.size > 0
+        ? await manager.query(
+            `SELECT accessibility.id::int AS id, accessibility.codigo AS code,
+              accessibility.nombre AS name, FALSE AS active
+         FROM tipos_accesibilidad accessibility
+        WHERE (accessibility.id = ANY($1::bigint[]) OR EXISTS (
+                SELECT 1 FROM criterios_accesibilidad criterion
+                 WHERE criterion.tipo_accesibilidad_id = accessibility.id AND criterion.id = ANY($2::bigint[])))
+          AND (accessibility.activo = FALSE OR accessibility.eliminado_at IS NOT NULL)
+        ORDER BY accessibility.nombre`,
+            [[...accessibilityTypes], [...accessibilityCriteria]],
+          )
+        : [];
+    const criterionOptions =
+      accessibilityCriteria.size > 0
+        ? await manager.query(
+            `SELECT criterion.id::int AS id, criterion.codigo AS code, criterion.descripcion AS name,
+              FALSE AS active, criterion.tipo_accesibilidad_id::int AS "typeId"
+         FROM criterios_accesibilidad criterion
+         JOIN tipos_accesibilidad accessibility ON accessibility.id = criterion.tipo_accesibilidad_id
+        WHERE criterion.id = ANY($1::bigint[])
+          AND (criterion.activo = FALSE OR accessibility.activo = FALSE OR accessibility.eliminado_at IS NOT NULL)
+        ORDER BY criterion.descripcion`,
+            [[...accessibilityCriteria]],
+          )
+        : [];
+    const facilityOptions =
+      facilities.size > 0
+        ? await manager.query(
+            `SELECT tf.id::int AS id, tf.codigo AS code, tf.nombre AS name, FALSE AS active,
+              tf.categoria_facilidad_id::int AS "categoryId"
+         FROM tipos_facilidad tf JOIN categorias_facilidad cf ON cf.id = tf.categoria_facilidad_id
+        WHERE tf.id = ANY($1::bigint[])
+          AND (tf.activo = FALSE OR tf.eliminado_at IS NOT NULL OR cf.activo = FALSE)
+        ORDER BY tf.nombre`,
+            [[...facilities]],
+          )
+        : [];
+    return {
+      activities: activityOptions,
+      accessibilityTypes: accessibilityOptions,
+      accessibilityCriteria: criterionOptions,
+      facilities: facilityOptions,
     };
   }
 
@@ -6327,6 +6472,7 @@ export class AdminCentersService {
     draft: CenterDraft,
     forPublication = false,
     centerId?: string,
+    previousDraft?: CenterDraft,
   ) {
     this.validateSectionMap(draft.sections);
     const references: Array<[string, number, string]> = [
@@ -6373,6 +6519,7 @@ export class AdminCentersService {
       draft,
       forPublication,
       centerId,
+      previousDraft,
     );
   }
 
@@ -6409,6 +6556,7 @@ export class AdminCentersService {
     draft: CenterDraft,
     forPublication = false,
     centerId?: string,
+    previousDraft?: CenterDraft,
   ) {
     const unique = (values: number[], label: string) => {
       if (new Set(values).size !== values.length) {
@@ -6427,9 +6575,15 @@ export class AdminCentersService {
            JOIN subtipos_atractivo sa ON sa.id = $2
            JOIN tipos_atractivo ta ON ta.id = sa.tipo_atractivo_id
           WHERE at.id = ANY($1::bigint[])
-            AND at.activo = TRUE AND ga.activo = TRUE
-            AND ga.categoria_atractivo_id = ta.categoria_id`,
-        [draft.activities.map((item) => item.activityId), draft.subtypeId],
+            AND ((at.activo = TRUE AND at.eliminado_at IS NULL AND ga.activo = TRUE)
+                 OR at.id = ANY($3::bigint[]))
+            AND ga.categoria_atractivo_id = ta.categoria_id
+          ORDER BY at.id FOR SHARE OF at`,
+        [
+          draft.activities.map((item) => item.activityId),
+          draft.subtypeId,
+          previousDraft?.activities?.map((item) => item.activityId) ?? [],
+        ],
       )) as { id: string }[];
       if (rows.length !== draft.activities.length) {
         throw new ConflictException(
@@ -6447,6 +6601,7 @@ export class AdminCentersService {
         "tipos_accesibilidad",
         draft.accessibility.map((item) => item.typeId),
         "condición de accesibilidad",
+        previousDraft?.accessibility?.map((item) => item.typeId) ?? [],
       );
     }
     if (draft.facilities) {
@@ -6459,11 +6614,48 @@ export class AdminCentersService {
         "tipos_facilidad",
         draft.facilities.map((item) => item.typeId),
         "facilidad",
+        previousDraft?.facilities?.map((item) => item.typeId) ?? [],
       );
     }
+    const managed = this.managedSectionCatalogReferences(draft);
+    const previousManaged = this.managedSectionCatalogReferences(previousDraft);
+    await this.ensureReferences(
+      manager,
+      "tipos_facilidad",
+      managed.facilities,
+      "facilidad",
+      previousManaged.facilities,
+    );
+    await this.ensureReferences(
+      manager,
+      "tipos_accesibilidad",
+      managed.accessibilityTypes,
+      "condición de accesibilidad",
+      previousManaged.accessibilityTypes,
+    );
+    if (managed.accessibilityCriteria.length > 0) {
+      const rows = await manager.query(
+        `SELECT criterion.id FROM criterios_accesibilidad criterion
+           JOIN tipos_accesibilidad accessibility ON accessibility.id = criterion.tipo_accesibilidad_id
+          WHERE criterion.id = ANY($1::bigint[])
+            AND ((criterion.activo = TRUE AND accessibility.activo = TRUE AND accessibility.eliminado_at IS NULL)
+                 OR criterion.id = ANY($2::bigint[]))
+          ORDER BY criterion.id FOR SHARE OF criterion, accessibility`,
+        [managed.accessibilityCriteria, previousManaged.accessibilityCriteria],
+      );
+      if (rows.length !== managed.accessibilityCriteria.length) {
+        throw new ConflictException(
+          "El criterio de accesibilidad seleccionado no está disponible.",
+        );
+      }
+    }
     if (forPublication) {
-      await this.validatePlantSectionReferences(manager, draft);
-      await this.validateAccessibilitySectionReferences(manager, draft);
+      await this.validatePlantSectionReferences(manager, draft, previousDraft);
+      await this.validateAccessibilitySectionReferences(
+        manager,
+        draft,
+        previousDraft,
+      );
       await this.validateVisitorsSectionReferences(manager, draft);
       await this.validatePoliciesSectionReferences(manager, draft);
       await this.validatePromotionSectionReferences(manager, draft);
@@ -7088,6 +7280,7 @@ export class AdminCentersService {
   private async validatePlantSectionReferences(
     manager: EntityManager,
     draft: CenterDraft,
+    previousDraft?: CenterDraft,
   ) {
     const section = getAdminSectionRecord(draft, "planta");
     if (!section) return;
@@ -7170,6 +7363,7 @@ export class AdminCentersService {
           "tipos_facilidad",
           typeId,
           "facilidad",
+          this.managedSectionCatalogReferences(previousDraft).facilities,
         );
         if (item.categoryId !== undefined && item.categoryId !== null) {
           await this.ensureReference(
@@ -7229,6 +7423,7 @@ export class AdminCentersService {
   private async validateAccessibilitySectionReferences(
     manager: EntityManager,
     draft: CenterDraft,
+    previousDraft?: CenterDraft,
   ) {
     const section = getAdminSectionRecord(draft, "accesibilidad");
     if (!section) return;
@@ -7288,6 +7483,10 @@ export class AdminCentersService {
           table,
           requireCatalogId(item, key, label),
           label,
+          table === "tipos_accesibilidad"
+            ? this.managedSectionCatalogReferences(previousDraft)
+                .accessibilityTypes
+            : [],
         );
       }
     };
@@ -7403,6 +7602,8 @@ export class AdminCentersService {
           "criterios_accesibilidad",
           requireCatalogId(item, "criterionId", "criterio de accesibilidad"),
           "criterio de accesibilidad",
+          this.managedSectionCatalogReferences(previousDraft)
+            .accessibilityCriteria,
         );
         await ensureOptional(
           item,
@@ -7440,11 +7641,14 @@ export class AdminCentersService {
     table: string,
     ids: number[],
     label: string,
+    retainedIds: number[] = [],
   ) {
     if (ids.length === 0) return;
     const rows = await manager.query(
-      `SELECT id FROM ${table} WHERE id = ANY($1::bigint[]) AND activo = TRUE`,
-      [ids],
+      `SELECT id FROM ${table} WHERE id = ANY($1::bigint[])
+         AND ((activo = TRUE AND eliminado_at IS NULL) OR id = ANY($2::bigint[]))
+       ORDER BY id FOR SHARE`,
+      [ids, retainedIds],
     );
     if (rows.length !== ids.length) {
       throw new ConflictException(
@@ -7458,10 +7662,17 @@ export class AdminCentersService {
     table: string,
     id: number,
     label: string,
+    retainedIds: number[] = [],
   ) {
+    const managed =
+      table === "tipos_accesibilidad" || table === "tipos_facilidad";
     const rows = await manager.query(
-      `SELECT 1 FROM ${table} WHERE id = $1 AND activo = TRUE LIMIT 1`,
-      [id],
+      managed || retainedIds.length > 0
+        ? `SELECT 1 FROM ${table} WHERE id = $1
+             AND (activo = TRUE${managed ? " AND eliminado_at IS NULL" : ""}
+                  OR id = ANY($2::bigint[])) LIMIT 1 FOR SHARE`
+        : `SELECT 1 FROM ${table} WHERE id = $1 AND activo = TRUE LIMIT 1`,
+      managed || retainedIds.length > 0 ? [id, retainedIds] : [id],
     );
     if (!rows[0])
       throw new ConflictException(

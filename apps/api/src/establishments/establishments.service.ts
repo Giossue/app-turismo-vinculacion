@@ -54,6 +54,7 @@ type EstablishmentRow = {
   reviewedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  deletedAt: string | null;
   distanceMeters?: string | null;
 };
 
@@ -153,7 +154,8 @@ const establishmentSelect = `
          requested_user.nombre AS "requestedBy",
          e.fecha_revision AS "reviewedAt",
          e.created_at AS "createdAt",
-         e.updated_at AS "updatedAt"`;
+         e.updated_at AS "updatedAt",
+         e.eliminado_at AS "deletedAt"`;
 
 const establishmentJoin = `
     FROM establecimientos_turisticos e
@@ -397,7 +399,7 @@ export class EstablishmentsService {
                 telefono = $13,
                 latitud = $14,
                 longitud = $15,
-                ubicacion = ST_SetSRID(ST_MakePoint($15::double precision, $14::double precision), 4326)::geography,
+                ubicacion = ST_SetSRID(ST_MakePoint($15::numeric::double precision, $14::numeric::double precision), 4326)::geography,
                 estado_revision = CASE WHEN $17::boolean THEN estado_revision ELSE 'BORRADOR' END,
                 observacion_revision = CASE WHEN $17::boolean THEN observacion_revision ELSE NULL END,
                 coordenadas_aproximadas = CASE
@@ -531,14 +533,22 @@ export class EstablishmentsService {
   async remove(id: string, actorId: number) {
     const numericId = this.parseId(id);
     return this.dataSource.transaction(async (manager) => {
-      const current = await this.findWithManager(manager, numericId, true);
+      const current = await this.findWithManager(
+        manager,
+        numericId,
+        true,
+        true,
+      );
+      if (current.deletedAt != null) return { id: numericId, deleted: true };
       const [removed] = (await manager.query(
-        `UPDATE establecimientos_turisticos
+        `WITH removed AS (
+          UPDATE establecimientos_turisticos
             SET eliminado_at = CURRENT_TIMESTAMP,
                 activo = FALSE,
                 updated_at = CURRENT_TIMESTAMP
           WHERE id = $1 AND eliminado_at IS NULL
-          RETURNING eliminado_at AS "deletedAt", updated_at AS "updatedAt"`,
+          RETURNING eliminado_at AS "deletedAt", updated_at AS "updatedAt"
+        ) SELECT "deletedAt", "updatedAt" FROM removed`,
         [numericId],
       )) as Array<{ deletedAt: string; updatedAt: string }>;
       if (!removed) {
@@ -759,14 +769,18 @@ export class EstablishmentsService {
     manager: EntityManager,
     id: string | number,
     lock = false,
+    includeDeleted = false,
   ) {
     const rows = (await manager.query(
-      `${establishmentSelect} ${establishmentJoin} WHERE e.id = $1 AND e.eliminado_at IS NULL${lock ? " FOR UPDATE OF e" : ""}`,
+      `${establishmentSelect} ${establishmentJoin} WHERE e.id = $1${includeDeleted ? "" : " AND e.eliminado_at IS NULL"}${lock ? " FOR UPDATE OF e" : ""}`,
       [id],
     )) as EstablishmentRow[];
     const row = rows[0];
     if (!row) throw new NotFoundException("No se encontró el establecimiento.");
-    return this.toAdminItem(row);
+    return {
+      ...this.toAdminItem(row),
+      ...(includeDeleted ? { deletedAt: row.deletedAt ?? null } : {}),
+    };
   }
 
   private async assertEstablishmentAccess(
@@ -810,7 +824,7 @@ export class EstablishmentsService {
          estado_revision, created_at, updated_at
        ) VALUES (
          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-         ST_SetSRID(ST_MakePoint($15::double precision, $14::double precision), 4326)::geography,
+         ST_SetSRID(ST_MakePoint($15::numeric::double precision, $14::numeric::double precision), 4326)::geography,
          FALSE,
          $16, $17, $18, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
        ) RETURNING id`,
@@ -886,13 +900,29 @@ export class EstablishmentsService {
       input.categoria !== undefined
         ? input.categoria.trim() || null
         : (current?.categoria ?? null);
+    const retainingActivity = Boolean(
+      current && !activityChanged && activityId === current.activityId,
+    );
+    const retainingClassification = Boolean(
+      current &&
+      !activityChanged &&
+      !classificationChanged &&
+      classificationId === current.classificationId,
+    );
+    const retainingCategory = Boolean(
+      current &&
+      !activityChanged &&
+      !classificationChanged &&
+      categoryId === current.categoryId,
+    );
 
     let activityRow: { id: string; name: string } | undefined;
     if (activityId !== null) {
       const rows = (await manager.query(
         `SELECT id, nombre AS name
            FROM catalogo_catastro_actividades
-          WHERE id = $1${input.activityId !== undefined ? " AND activo = TRUE" : ""}`,
+          WHERE id = $1${retainingActivity ? "" : " AND activo = TRUE"}
+          FOR SHARE`,
         [activityId],
       )) as Array<{ id: string; name: string }>;
       activityRow = rows[0];
@@ -909,11 +939,24 @@ export class EstablishmentsService {
       { id: string; activityId: string; name: string } | undefined;
     if (classificationId !== null) {
       const rows = (await manager.query(
-        `SELECT id, actividad_id AS "activityId", nombre AS name
-           FROM catalogo_catastro_clasificaciones
-          WHERE id = $1
-            AND ($2::bigint IS NULL OR actividad_id = $2)
-            ${input.classificationId !== undefined ? "AND activo = TRUE" : ""}`,
+        `SELECT classification.id,
+                classification.actividad_id AS "activityId",
+                classification.nombre AS name
+           FROM catalogo_catastro_clasificaciones classification
+          WHERE classification.id = $1
+            AND ($2::bigint IS NULL OR classification.actividad_id = $2)
+            ${
+              retainingClassification
+                ? ""
+                : `AND classification.activo = TRUE
+              AND classification.eliminado_at IS NULL
+              AND EXISTS (
+                SELECT 1 FROM catalogo_catastro_actividades activity
+                 WHERE activity.id = classification.actividad_id AND activity.activo = TRUE
+                 FOR SHARE OF activity
+              )`
+            }
+            FOR SHARE OF classification`,
         [classificationId, activityId],
       )) as Array<{ id: string; activityId: string; name: string }>;
       classificationRow = rows[0];
@@ -954,7 +997,16 @@ export class EstablishmentsService {
           WHERE category.id = $1
             AND ($2::bigint IS NULL OR category.clasificacion_id = $2)
             AND ($3::bigint IS NULL OR classification.actividad_id = $3)
-            ${input.categoryId !== undefined ? "AND category.activo = TRUE" : ""}`,
+            ${
+              retainingCategory
+                ? ""
+                : `AND category.activo = TRUE
+              AND category.eliminado_at IS NULL
+              AND classification.activo = TRUE
+              AND classification.eliminado_at IS NULL
+              AND activity.activo = TRUE`
+            }
+            FOR SHARE OF activity, classification, category`,
         [categoryId, classificationId, activityId],
       )) as Array<{
         id: string;
@@ -980,7 +1032,7 @@ export class EstablishmentsService {
 
     if (activityId !== null && !activityRow) {
       const rows = (await manager.query(
-        `SELECT id, nombre AS name FROM catalogo_catastro_actividades WHERE id = $1`,
+        `SELECT id, nombre AS name FROM catalogo_catastro_actividades WHERE id = $1 FOR SHARE`,
         [activityId],
       )) as Array<{ id: string; name: string }>;
       activityRow = rows[0];
@@ -989,7 +1041,7 @@ export class EstablishmentsService {
     if (classificationId !== null && !classificationRow && !categoryRow) {
       const rows = (await manager.query(
         `SELECT id, actividad_id AS "activityId", nombre AS name
-           FROM catalogo_catastro_clasificaciones WHERE id = $1`,
+           FROM catalogo_catastro_clasificaciones WHERE id = $1 FOR SHARE`,
         [classificationId],
       )) as Array<{ id: string; activityId: string; name: string }>;
       classificationRow = rows[0];
@@ -1111,11 +1163,12 @@ export class EstablishmentsService {
     latitude?: number,
     longitude?: number,
   ): Promise<LocalityRow | null> {
-    const origin =
-      latitude !== undefined && longitude !== undefined
-        ? "ST_SetSRID(ST_MakePoint($4, $3), 4326)::geography"
-        : `(SELECT COALESCE(l0.ubicacion, ST_SetSRID(ST_MakePoint(l0.longitud, l0.latitud), 4326)::geography)
-             FROM localidades l0 WHERE l0.id = $1)`;
+    const origin = `CASE
+      WHEN $3::double precision IS NOT NULL AND $4::double precision IS NOT NULL
+      THEN ST_SetSRID(ST_MakePoint($4::double precision, $3::double precision), 4326)::geography
+      ELSE (SELECT COALESCE(l0.ubicacion, ST_SetSRID(ST_MakePoint(l0.longitud, l0.latitud), 4326)::geography)
+              FROM localidades l0 WHERE l0.id = $1)
+      END`;
     const rows = (await this.dataSource.query(
       `${this.localitySelect(
         `ST_Distance(
@@ -1150,13 +1203,13 @@ export class EstablishmentsService {
     longitude: number | undefined,
     limit: number,
   ) {
-    const hasPoint = latitude !== undefined && longitude !== undefined;
-    const distanceExpression = hasPoint
-      ? `ST_Distance(
+    const distanceExpression = `CASE
+         WHEN $3::double precision IS NULL OR $4::double precision IS NULL
+         THEN NULL::double precision
+         ELSE ST_Distance(
            COALESCE(e.ubicacion, l.ubicacion),
-           ST_SetSRID(ST_MakePoint($4, $3), 4326)::geography
-         )`
-      : "NULL::double precision";
+           ST_SetSRID(ST_MakePoint($4::double precision, $3::double precision), 4326)::geography
+         ) END`;
     const rows = (await this.dataSource.query(
       `${establishmentSelect}, ${distanceExpression} AS "distanceMeters"
          ${establishmentJoin}

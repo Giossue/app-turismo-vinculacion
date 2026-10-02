@@ -1,0 +1,15 @@
+{
+  "name": "@turismo/mobile-responsive-qa",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start --port 8092",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "expo": "~57.0.24",
+    "react": "19.2.3",
+    "react-native": "0.86.3"
+  }
+}

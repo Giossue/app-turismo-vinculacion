@@ -298,6 +298,10 @@ Las columnas de texto conservan el valor del consolidado. Las tres relaciones op
 resuelven la taxonomía canónica actividad → clasificación → categoría y permiten una
 normalización progresiva sin perder aliases del origen.
 
+`eliminado_at TIMESTAMPTZ NULL` distingue la eliminación lógica de la desactivación.
+Cuando tiene valor, `activo` debe ser falso; se conserva la fila, el número de registro
+y la auditoría mientras se retira de las consultas operativas y públicas.
+
 &nbsp;
 
 &nbsp;
@@ -2599,5 +2603,14 @@ catálogos 1:N tablas operativas
 6. `codigo_atractivo` definitivo de 17 caracteres.
 
 Este orden evita calcular la jerarquía o el código con una ficha incompleta.
+
+## Eliminación de catálogos administrables
+
+`tipos_accesibilidad`, `actividades_turisticas`, `tipos_facilidad`,
+`catalogo_catastro_clasificaciones` y `catalogo_catastro_categorias` incluyen
+`eliminado_at TIMESTAMPTZ NULL`. Las opciones eliminadas conservan sus identificadores
+y referencias históricas y exigen `activo=false`. `auditoria_catalogos` registra
+`ELIMINAR` con el estado anterior y posterior; las clasificaciones no pueden eliminarse
+mientras mantengan categorías no eliminadas.
 
 &nbsp;

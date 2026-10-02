@@ -2,10 +2,12 @@ import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { useEffect, useRef, useState } from "react";
 import {
   BackHandler,
+  Keyboard,
   type ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { Menu } from "react-native-paper";
@@ -60,6 +62,38 @@ export function AgentChatContent({
   onStartRoute: (destination: AgentRouteDestination, mode: RouteMode) => void;
 }>) {
   const colors = useTurismoPalette();
+  const { fontScale, height, width } = useWindowDimensions();
+  const [composerContentHeight, setComposerContentHeight] = useState<number>(
+    turismoMetrics.controlMd,
+  );
+  const [keyboardHeight, setKeyboardHeight] = useState(
+    () => Keyboard.metrics()?.height ?? 0,
+  );
+  useEffect(() => {
+    const shown = Keyboard.addListener("keyboardDidShow", (event) =>
+      setKeyboardHeight(event.endCoordinates.height),
+    );
+    const hidden = Keyboard.addListener("keyboardDidHide", () =>
+      setKeyboardHeight(0),
+    );
+    return () => {
+      shown.remove();
+      hidden.remove();
+    };
+  }, []);
+  const composerMinHeight = Math.max(
+    turismoMetrics.controlMd,
+    turismoTypography.body.lineHeight * fontScale + turismoSpacing.xs * 2,
+  );
+  const composerMaxHeight = Math.max(
+    composerMinHeight,
+    Math.min(height * 0.25, (height - keyboardHeight) * 0.3),
+  );
+  const composerHeight = Math.min(
+    composerMaxHeight,
+    Math.max(composerMinHeight, composerContentHeight),
+  );
+  const compactKeyboard = width > height && keyboardHeight > 0;
   const [mediaStatus, setMediaStatus] = useState<{
     text: string;
     error: boolean;
@@ -118,7 +152,13 @@ export function AgentChatContent({
   };
 
   return (
-    <Animated.View style={[styles.root, keyboardStyle]}>
+    <Animated.View
+      style={[
+        styles.root,
+        compactKeyboard && styles.compactKeyboardRoot,
+        keyboardStyle,
+      ]}
+    >
       <BottomSheetScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -209,13 +249,20 @@ export function AgentChatContent({
           {mediaStatus.text}
         </Text>
       ) : null}
-      <Text
-        accessibilityLabel={`${conversation.userMessageCount} de ${AGENT_MAX_USER_MESSAGES} mensajes enviados`}
-        style={[styles.counter, { color: colors.textMuted }]}
+      {compactKeyboard ? null : (
+        <Text
+          accessibilityLabel={`${conversation.userMessageCount} de ${AGENT_MAX_USER_MESSAGES} mensajes enviados`}
+          style={[styles.counter, { color: colors.textMuted }]}
+        >
+          {conversation.userMessageCount}/{AGENT_MAX_USER_MESSAGES} mensajes
+        </Text>
+      )}
+      <TourismSurface
+        style={[
+          styles.composer,
+          compactKeyboard && styles.compactKeyboardComposer,
+        ]}
       >
-        {conversation.userMessageCount}/{AGENT_MAX_USER_MESSAGES} mensajes
-      </Text>
-      <TourismSurface style={styles.composer}>
         <Menu
           anchor={
             <TourismIconAction
@@ -281,6 +328,7 @@ export function AgentChatContent({
             espacio lo reserva `keyboardStyle`. */}
         <TextInput
           accessibilityLabel="Escribe una consulta al agente"
+          disableFullscreenUI
           editable={
             !conversation.limitReached &&
             !conversation.sending &&
@@ -289,6 +337,9 @@ export function AgentChatContent({
           maxLength={AGENT_MESSAGE_MAX_LENGTH}
           multiline
           onChangeText={conversation.setDraft}
+          onContentSizeChange={(event) =>
+            setComposerContentHeight(event.nativeEvent.contentSize.height)
+          }
           onFocus={() => setMediaMenuOpen(false)}
           placeholder={
             conversation.limitReached
@@ -298,7 +349,10 @@ export function AgentChatContent({
                 : "Pregunta algo…"
           }
           placeholderTextColor={colors.textFaint}
-          style={[styles.composerInput, { color: colors.text }]}
+          style={[
+            styles.composerInput,
+            { color: colors.text, height: composerHeight },
+          ]}
           value={conversation.draft}
         />
         {conversation.sending ? (
@@ -328,6 +382,8 @@ const styles = StyleSheet.create({
     minHeight: 0,
   },
   messagesScroll: { flex: 1 },
+  compactKeyboardRoot: { gap: 0 },
+  compactKeyboardComposer: { marginBottom: 0 },
   content: {
     flexGrow: 1,
     paddingBottom: turismoSpacing.xs,
@@ -368,9 +424,8 @@ const styles = StyleSheet.create({
   composerInput: {
     ...turismoTypography.body,
     flex: 1,
-    height: turismoMetrics.controlMd,
     paddingHorizontal: turismoSpacing.sm,
     paddingVertical: turismoSpacing.xs,
-    textAlignVertical: "center",
+    textAlignVertical: "top",
   },
 });

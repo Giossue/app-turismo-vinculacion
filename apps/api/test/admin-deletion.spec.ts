@@ -124,6 +124,31 @@ describe("administrative logical deletion", () => {
   });
 
   it.each(["center", "catalog"])(
+    "accepts repeated %s deletion without a second audit",
+    async (entity) => {
+      const query = vi.fn().mockResolvedValue([
+        {
+          id: "10",
+          code: "EC-001",
+          snapshot: {
+            id: 10,
+            activo: false,
+            eliminado_at: "2026-10-02T12:00:00Z",
+          },
+        },
+      ]);
+      const { service } = createService(query);
+
+      await expect(
+        entity === "center"
+          ? service.deleteCenter("EC-001", 7)
+          : service.deleteCatalog(7, "FACILITY", 10),
+      ).resolves.toMatchObject({ deleted: true });
+      expect(query).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each(["center", "catalog"])(
     "propagates an audit failure from the %s deletion transaction",
     async (entity) => {
       const query = vi

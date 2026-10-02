@@ -145,14 +145,7 @@ describe("EstablishmentsService", () => {
     );
   });
 
-  it.each([
-    "save",
-    "submitReview",
-    "review",
-    "reactivate",
-    "deactivate",
-    "remove",
-  ])(
+  it.each(["save", "submitReview", "review", "reactivate", "deactivate"])(
     "rejects %s for an eliminated catastro before writing",
     async (operation) => {
       const query = vi.fn().mockResolvedValue([]);
@@ -164,7 +157,6 @@ describe("EstablishmentsService", () => {
         review: () => service.review("8", 7, { action: "APPROVE" }),
         reactivate: () => service.setActive("8", 7, true),
         deactivate: () => service.setActive("8", 7, false),
-        remove: () => service.remove("8", 7),
       };
 
       await expect(operations[operation]()).rejects.toThrow(
@@ -198,6 +190,9 @@ describe("EstablishmentsService", () => {
       "eliminado_at = CURRENT_TIMESTAMP",
     );
     expect(query.mock.calls[1]?.[0]).toContain("activo = FALSE");
+    expect(query.mock.calls[1]?.[0]).toContain(
+      'SELECT "deletedAt", "updatedAt" FROM removed',
+    );
     expect(query.mock.calls[1]?.[1]).toEqual([8]);
     const [auditSql, auditValues] = query.mock.calls[2] ?? [];
     expect(auditSql).toContain("INSERT INTO auditoria_catalogos");
@@ -217,6 +212,37 @@ describe("EstablishmentsService", () => {
     expect(queryRunner.commitTransaction).toHaveBeenCalledOnce();
     expect(queryRunner.rollbackTransaction).not.toHaveBeenCalled();
     expect(queryRunner.release).toHaveBeenCalledOnce();
+  });
+
+  it("acknowledges repeat deletion without adding another audit entry", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValue([
+        { ...row, active: false, deletedAt: "2026-10-02T15:00:00.000Z" },
+      ]);
+    const { dataSource, queryRunner } = transactionalDataSource(query);
+    const service = new EstablishmentsService(dataSource);
+
+    await expect(service.remove("8", 7)).resolves.toEqual({
+      id: 8,
+      deleted: true,
+    });
+    expect(query).toHaveBeenCalledOnce();
+    expect(query.mock.calls[0]?.[0]).toContain(
+      "WHERE e.id = $1 FOR UPDATE OF e",
+    );
+    expect(queryRunner.commitTransaction).toHaveBeenCalledOnce();
+  });
+
+  it("keeps unknown deletion ids unavailable", async () => {
+    const query = vi.fn().mockResolvedValue([]);
+    const { dataSource } = transactionalDataSource(query);
+    const service = new EstablishmentsService(dataSource);
+
+    await expect(service.remove("8", 7)).rejects.toThrow(
+      "No se encontró el establecimiento.",
+    );
+    expect(query).toHaveBeenCalledOnce();
   });
 
   it("rolls deletion back if its immutable audit cannot be recorded", async () => {
@@ -350,6 +376,30 @@ describe("EstablishmentsService", () => {
     expect(query.mock.calls[2]?.[0]).toContain("l.id <> $1");
   });
 
+  it("falls back using locality coordinates when GPS is absent", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([locality])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ ...locality, id: "2", name: "San José" }])
+      .mockResolvedValueOnce([row]);
+    const service = new EstablishmentsService({ query } as never);
+
+    const result = await service.nearby({
+      activity: "Alimentación",
+      localityId: 1,
+      limit: 20,
+    });
+
+    expect(result.fallbackApplied).toBe(true);
+    expect(result.effectiveLocality?.name).toBe("San José");
+    const [sql, params] = query.mock.calls[2] ?? [];
+    expect(sql).toContain("$3::double precision IS NOT NULL");
+    expect(sql).toContain("$4::double precision IS NOT NULL");
+    expect(sql).toContain("FROM localidades l0 WHERE l0.id = $1");
+    expect(params).toEqual(["1", "Alimentación", null, null, null]);
+  });
+
   it("requires the minimum fields before opening a create transaction", async () => {
     const transaction = vi.fn();
     const service = new EstablishmentsService({ transaction } as never);
@@ -467,6 +517,159 @@ describe("EstablishmentsService", () => {
         12,
       ]),
     );
+    expect(managerQuery.mock.calls[2]?.[0]).toContain("FOR SHARE");
+    expect(managerQuery.mock.calls[3]?.[0]).toContain("FOR SHARE OF activity");
+    expect(managerQuery.mock.calls[3]?.[0]).toContain(
+      "FOR SHARE OF classification",
+    );
+    expect(managerQuery.mock.calls[4]?.[0]).toContain(
+      "FOR SHARE OF activity, classification, category",
+    );
+  });
+
+  it.each([false, true])(
+    "preserves retired taxonomy references when editing with explicit ids: %s",
+    async (explicitIds) => {
+      const current = {
+        ...row,
+        activityId: "10",
+        classificationId: "11",
+        categoryId: "12",
+      };
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce([current])
+        .mockResolvedValueOnce([{ 1: 1 }])
+        .mockResolvedValueOnce([{ id: "10", name: row.actividad }])
+        .mockResolvedValueOnce([
+          { id: "11", activityId: "10", name: row.clasificacion },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: "12",
+            classificationId: "11",
+            activityId: "10",
+            categoryName: row.categoria,
+            classificationName: row.clasificacion,
+            activityName: row.actividad,
+          },
+        ])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          { ...current, nombreComercial: "Comedor actualizado" },
+        ])
+        .mockResolvedValueOnce([]);
+      const { dataSource, queryRunner } = transactionalDataSource(query);
+      const service = new EstablishmentsService(dataSource);
+
+      await expect(
+        service.save("8", 7, {
+          nombreComercial: "Comedor actualizado",
+          ...(explicitIds
+            ? { activityId: 10, classificationId: 11, categoryId: 12 }
+            : {}),
+        }),
+      ).resolves.toMatchObject({
+        nombreComercial: "Comedor actualizado",
+        activityId: 10,
+        classificationId: 11,
+        categoryId: 12,
+      });
+      for (const [sql] of query.mock.calls.slice(2, 5)) {
+        expect(sql).not.toContain("activo = TRUE");
+        expect(sql).not.toContain("eliminado_at IS NULL");
+      }
+      const [, savedValues] = query.mock.calls[5] ?? [];
+      expect(savedValues.slice(8, 11)).toEqual([10, 11, 12]);
+      expect(queryRunner.commitTransaction).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each([
+    { input: { activityId: 20 }, reads: 1, catalog: "actividades" },
+    { input: { classificationId: 21 }, reads: 2, catalog: "clasificaciones" },
+    { input: { categoryId: 22 }, reads: 3, catalog: "categorias" },
+  ])("rejects a newly assigned retired $catalog", async ({ input, reads }) => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([
+        { ...row, activityId: "10", classificationId: "11", categoryId: "12" },
+      ])
+      .mockResolvedValueOnce([{ 1: 1 }]);
+    if (reads > 1) {
+      query.mockResolvedValueOnce([{ id: "10", name: row.actividad }]);
+    }
+    if (reads > 2) {
+      query.mockResolvedValueOnce([
+        { id: "11", activityId: "10", name: row.clasificacion },
+      ]);
+    }
+    query.mockResolvedValueOnce([]);
+    const { dataSource, queryRunner } = transactionalDataSource(query);
+    const service = new EstablishmentsService(dataSource);
+
+    await expect(service.save("8", 7, input)).rejects.toThrow("inactiva");
+    const [sql] = query.mock.calls.at(-1) ?? [];
+    expect(sql).toContain("activo = TRUE");
+    if (reads > 1) expect(sql).toContain("eliminado_at IS NULL");
+    expect(queryRunner.rollbackTransaction).toHaveBeenCalledOnce();
+    expect(queryRunner.commitTransaction).not.toHaveBeenCalled();
+    expect(
+      query.mock.calls.some(([statement]) => statement.startsWith("UPDATE")),
+    ).toBe(false);
+  });
+
+  it("rejects assigning a category with a retired parent when creating", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([{ 1: 1 }])
+      .mockResolvedValueOnce([]);
+    const { dataSource, queryRunner } = transactionalDataSource(query);
+    const service = new EstablishmentsService(dataSource);
+
+    await expect(
+      service.create(7, {
+        localityId: 1,
+        nombreComercial: "Nuevo comedor",
+        actividad: row.actividad,
+        categoryId: 12,
+        latitude: -1.59,
+        longitude: -79.01,
+      }),
+    ).rejects.toThrow("inactiva");
+    const [sql] = query.mock.calls[1] ?? [];
+    expect(sql).toContain("category.activo = TRUE");
+    expect(sql).toContain("category.eliminado_at IS NULL");
+    expect(sql).toContain("classification.activo = TRUE");
+    expect(sql).toContain("classification.eliminado_at IS NULL");
+    expect(sql).toContain("activity.activo = TRUE");
+    expect(queryRunner.rollbackTransaction).toHaveBeenCalledOnce();
+  });
+
+  it("rejects retaining a classification when its selected activity changes", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([
+        { ...row, activityId: "10", classificationId: "11", categoryId: "12" },
+      ])
+      .mockResolvedValueOnce([{ 1: 1 }])
+      .mockResolvedValueOnce([{ id: "20", name: "ALOJAMIENTO" }])
+      .mockResolvedValueOnce([]);
+    const { dataSource, queryRunner } = transactionalDataSource(query);
+    const service = new EstablishmentsService(dataSource);
+
+    await expect(
+      service.save("8", 7, {
+        activityId: 20,
+        classificationId: 11,
+        categoryId: 12,
+      }),
+    ).rejects.toThrow("no pertenece a la actividad");
+    const [sql, params] = query.mock.calls[3] ?? [];
+    expect(sql).toContain("classification.actividad_id = $2");
+    expect(sql).toContain("classification.activo = TRUE");
+    expect(params).toEqual([11, 20]);
+    expect(queryRunner.rollbackTransaction).toHaveBeenCalledOnce();
   });
 
   it("audits activation changes and locks the establishment first", async () => {

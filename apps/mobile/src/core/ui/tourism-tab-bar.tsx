@@ -38,7 +38,8 @@ export type TourismTabBarItem = Readonly<{
   onPress: () => void;
 }>;
 
-const itemHeight = turismoMetrics.touchTarget + turismoSpacing.md;
+const itemMinHeight = turismoMetrics.touchTarget + turismoSpacing.md;
+const estimatedBarHeight = itemMinHeight + turismoGlassBorderWidth * 2;
 const barGap = turismoSpacing.sm;
 
 /**
@@ -47,6 +48,9 @@ const barGap = turismoSpacing.sm;
  * no queden debajo de ella. Fuera de las pestañas vale 0.
  */
 const TourismTabBarInsetContext = createContext(0);
+const TourismTabBarHeightContext = createContext<
+  ((height: number | null) => void) | null
+>(null);
 
 export function useTourismTabBarInset(): number {
   return useContext(TourismTabBarInsetContext);
@@ -64,13 +68,16 @@ export function TourismTabBarInsetProvider({
   children,
 }: Readonly<{ children: ReactNode }>) {
   const insets = useSafeAreaInsets();
-  const inset = insets.bottom + barGap * 2 + itemHeight;
+  const [barHeight, setBarHeight] = useState<number | null>(null);
+  const inset = insets.bottom + barGap * 2 + (barHeight ?? estimatedBarHeight);
   const [target, setTarget] = useState<GlassTarget | null>(null);
   return (
     <TourismTabBarInsetContext.Provider value={inset}>
-      <TourismTabGlassContext.Provider value={{ target, setTarget }}>
-        {children}
-      </TourismTabGlassContext.Provider>
+      <TourismTabBarHeightContext.Provider value={setBarHeight}>
+        <TourismTabGlassContext.Provider value={{ target, setTarget }}>
+          {children}
+        </TourismTabGlassContext.Provider>
+      </TourismTabBarHeightContext.Provider>
     </TourismTabBarInsetContext.Provider>
   );
 }
@@ -108,6 +115,13 @@ export function TourismTabBar({
   );
   const insets = useSafeAreaInsets();
   const { target } = useContext(TourismTabGlassContext);
+  const setBarHeight = useContext(TourismTabBarHeightContext);
+  useEffect(
+    () => () => {
+      setBarHeight?.(null);
+    },
+    [setBarHeight],
+  );
 
   return (
     <View
@@ -116,6 +130,9 @@ export function TourismTabBar({
     >
       <View
         accessibilityRole="tablist"
+        onLayout={(event) =>
+          setBarHeight?.(Math.ceil(event.nativeEvent.layout.height))
+        }
         style={[styles.bar, { borderColor: glassBorderColor }]}
       >
         <TourismGlassTargetProvider
@@ -142,7 +159,6 @@ export function TourismTabBar({
                 size={turismoIconSizes.md}
               />
               <Text
-                numberOfLines={1}
                 style={[
                   styles.label,
                   { color },
@@ -181,9 +197,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
     gap: turismoSpacing.xxs,
-    height: itemHeight,
     justifyContent: "center",
+    minHeight: itemMinHeight,
+    minWidth: 0,
+    paddingHorizontal: turismoSpacing.xxs,
+    paddingVertical: turismoSpacing.xxs,
   },
-  label: { ...turismoTypography.caption },
+  label: {
+    ...turismoTypography.caption,
+    alignSelf: "stretch",
+    minWidth: 0,
+    textAlign: "center",
+  },
   labelSelected: { fontWeight: "700" },
 });

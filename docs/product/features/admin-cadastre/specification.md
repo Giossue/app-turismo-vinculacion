@@ -84,6 +84,10 @@ no disponible. Se conservan la fila, el número de registro, las relaciones y la
 Las teselas ya cacheadas se renuevan según su vencimiento y las descargas offline conservan
 su snapshot hasta actualizarse. Requiere `20261002_admin_logical_deletion.sql`.
 
+Un establecimiento existente puede conservar su clasificación y categoría retiradas
+al editar otros campos. El editor muestra el valor anterior como «ya no disponible»;
+las altas y nuevas asignaciones requieren opciones activas y no eliminadas.
+
 ## Pendientes explícitos
 
 - La importación Excel/CSV se implementará con el módulo persistente de importaciones.

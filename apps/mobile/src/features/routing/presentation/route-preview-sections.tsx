@@ -1,6 +1,7 @@
 import {
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
   type StyleProp,
   type ViewStyle,
@@ -208,29 +209,37 @@ export function RoutePrimaryAction({
   startingNavigation: boolean;
   style?: StyleProp<ViewStyle>;
 }>) {
+  const { fontScale } = useWindowDimensions();
+  const enlargedText = fontScale > 1;
   if (hasRoute) {
     return (
       <TourismActionButton
+        accessibilityLabel="Iniciar navegación"
         disabled={startingNavigation}
         icon="navigation"
-        label="Iniciar navegación"
+        label={enlargedText ? "Navegar" : "Iniciar navegación"}
         loading={startingNavigation}
         onPress={onStartNavigation}
         style={style}
       />
     );
   }
+  const actionLabel = locationRequesting
+    ? "Obteniendo ubicación…"
+    : routeError
+      ? "Reintentar ruta"
+      : "Calcular ruta";
+  const shortActionLabel = locationRequesting
+    ? "Ubicando…"
+    : routeError
+      ? "Reintentar"
+      : "Calcular";
   return (
     <TourismActionButton
+      accessibilityLabel={actionLabel}
       disabled={locationRequesting}
       icon={locationRequesting ? undefined : "navigation"}
-      label={
-        locationRequesting
-          ? "Obteniendo ubicación…"
-          : routeError
-            ? "Reintentar ruta"
-            : "Calcular ruta"
-      }
+      label={enlargedText ? shortActionLabel : actionLabel}
       onPress={onCalculateRoute}
       style={style}
     />

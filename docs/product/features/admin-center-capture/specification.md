@@ -121,8 +121,8 @@ la ficha. Importaciones y procesamiento avanzado quedan para una fase posterior.
 3. Las ediciones de un centro publicado se almacenan como borrador aislado.
 4. Al consultar un borrador parcial, la versión publicada completa sirve como base de lectura y los valores presentes en el borrador la sobrescriben por sección.
 5. Una ficha no puede publicarse sin revisión aprobada.
-7. La publicación aplica el snapshot y registra auditoría en una transacción.
-8. Una fotografía pendiente no tiene URL pública utilizable; la URL solo se incluye cuando
+6. La publicación aplica el snapshot y registra auditoría en una transacción.
+7. Una fotografía pendiente no tiene URL pública utilizable; la URL solo se incluye cuando
    la ficha y el archivo están publicados.
 
 La cola de revisión abre la ficha completa en modo de solo lectura, incluyendo núcleo,
@@ -142,3 +142,8 @@ opciones de catálogo administrables. Las opciones eliminadas se excluyen inclus
 catálogos inactivos. Un tipo de establecimiento con categorías no eliminadas devuelve
 conflicto hasta retirar dichas categorías. La desactivación sigue siendo reversible y
 distinta de la eliminación. La migración es `20261002_admin_logical_deletion.sql`.
+
+Las fichas existentes pueden conservar sus referencias a actividades, accesibilidades
+y facilidades retiradas al editar otros campos. El detalle privado proporciona las
+opciones ya usadas para mostrarlas como «ya no disponible»; no se ofrecen en nuevas
+fichas ni se aceptan como nuevas asignaciones.

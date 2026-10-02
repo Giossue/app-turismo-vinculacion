@@ -1,5 +1,11 @@
-import type { ReactNode } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
 import { useTurismoPalette } from "./theme-context";
 import { TourismIconAction } from "./tourism-controls";
@@ -20,6 +26,7 @@ export function TourismSheetHandle({
   closeLabel = "Cerrar",
   indicatorAccessibilityLabel,
   indicatorExpanded,
+  hideForLandscapeKeyboard = false,
   insetClose = false,
   leadingAction,
   onClose,
@@ -29,6 +36,8 @@ export function TourismSheetHandle({
   closeLabel?: string;
   indicatorAccessibilityLabel?: string;
   indicatorExpanded?: boolean;
+  /** Reserve the short landscape viewport for editing; Back restores the handle. */
+  hideForLandscapeKeyboard?: boolean;
   /**
    * Baja y mete la X, lejos de la esquina redondeada, sin mover la barra
    * (mismo margen que la X del menú).
@@ -42,6 +51,25 @@ export function TourismSheetHandle({
   showIndicator?: boolean;
 }>) {
   const colors = useTurismoPalette();
+  const { width, height } = useWindowDimensions();
+  const [keyboardVisible, setKeyboardVisible] = useState(() =>
+    Keyboard.isVisible(),
+  );
+  useEffect(() => {
+    if (!hideForLandscapeKeyboard) return;
+    const shown = Keyboard.addListener("keyboardDidShow", () =>
+      setKeyboardVisible(true),
+    );
+    const hidden = Keyboard.addListener("keyboardDidHide", () =>
+      setKeyboardVisible(false),
+    );
+    return () => {
+      shown.remove();
+      hidden.remove();
+    };
+  }, [hideForLandscapeKeyboard]);
+  if (hideForLandscapeKeyboard && width > height && keyboardVisible)
+    return null;
   const indicator = (
     <View style={[styles.indicator, { backgroundColor: colors.textFaint }]} />
   );

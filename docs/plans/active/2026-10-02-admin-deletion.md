@@ -13,6 +13,8 @@ Los agentes y turistas no reciben este permiso. La desactivación sigue siendo r
 - Migración aditiva de `eliminado_at`, restricciones de activación y acciones de auditoría.
 - DELETE protegido por autenticación y rol, con bloqueo y escritura en una transacción.
 - Filtros de lectura y controles de mutación para registros eliminados.
+- Referencias históricas de catálogos visibles y conservables en fichas existentes;
+  validación estricta para asignaciones nuevas.
 - Exclusión de opiniones eliminadas de calificaciones y unicidad de opiniones vigentes.
 - Confirmación, feedback y paginación en `web-turismo-admin`.
 - Pruebas de autorización, transacciones, historia y desaparición de los registros.
@@ -30,6 +32,17 @@ resolver cualquier ajuste con una nueva migración.
 
 ## Verificación
 
-Formato, lint, tipos, pruebas y build aplicables. Aplicar migraciones sobre una base
-vacía aislada y repetir la nueva migración con registros históricos. Verificar servicios
-reales contra PostgreSQL/PostGIS temporal; no operar sobre la base desplegada.
+Formato, lint, tipos, pruebas y build de la API y web aprobados. El portal tiene 175
+pruebas y la API 327 pruebas unitarias aprobadas; el harness de PostgreSQL/PostGIS
+aplica el esquema desde cero y pasa 20
+pruebas reales, incluidas referencias históricas y cinco comprobaciones de bloqueo
+ante asignación y eliminación simultáneas. La migración se repite con registros y
+auditoría conservados.
+
+El runner local registra migraciones y checksums para ejecutar solo las pendientes;
+su prueba verifica reinicios, reintentos, rollback y adopción del checkpoint completo.
+
+## Estado
+
+Implementado localmente y pendiente de despliegue. No se modificó la base desplegada;
+los clústeres temporales de pruebas se retiraron al terminar.

@@ -18,6 +18,7 @@ web_url="http://localhost:${web_port}"
 
 children=()
 database_started_by_script=false
+fresh_database=false
 
 log() {
   printf '[dev-local] %s\n' "$*"
@@ -118,6 +119,7 @@ if [[ -z "$database_exists" ]]; then
   log "Creando el esquema base..."
   psql "$admin_database_url" -X -v ON_ERROR_STOP=1 \
     -f "$project_root/database/migrations/00000000000000_initial.sql"
+  fresh_database=true
 else
   schema_exists="$(psql "$database_url" -X -Atqc "SELECT to_regclass('public.usuarios')")"
   [[ "$schema_exists" == "usuarios" ]] || fail \
@@ -125,12 +127,11 @@ else
   log "Esquema base ya existente; no se vuelve a ejecutar."
 fi
 
-log "Aplicando migraciones y datos demo..."
-for migration_file in "$project_root"/database/migrations/*.sql; do
-  migration_name="$(basename "$migration_file")"
-  [[ "$migration_name" == "00000000000000_initial.sql" ]] && continue
-  psql "$database_url" -X -v ON_ERROR_STOP=1 -f "$migration_file" >/dev/null
-done
+log "Aplicando migraciones pendientes..."
+migration_options=()
+[[ "$fresh_database" == true ]] && migration_options+=(--fresh)
+TURISMO_LOCAL_MIGRATION_DATABASE_URL="$database_url" \
+  bash "$project_root/scripts/apply-local-migrations.sh" "${migration_options[@]}"
 bash "$project_root/scripts/seed-guaranda-demo-media.sh" >/dev/null
 
 if [[ ! -x "$project_root/node_modules/.bin/tsx" ]]; then

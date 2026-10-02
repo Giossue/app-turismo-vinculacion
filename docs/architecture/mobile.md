@@ -133,6 +133,18 @@ una sheet nativa de altura completa sobre el mapa; no se cierra por gesto y mues
 en el encabezado. El compositor usa el manejo nativo de teclado y permanece sobre el área
 visible cuando aparece el teclado del sistema.
 
+El campo del agente crece según el contenido con un límite que depende de la ventana
+y el teclado, respetando la fuente del sistema. Android mantiene la edición dentro
+de la app incluso en horizontal. Mientras se escribe en horizontal, el encabezado
+del chat y el contador se ocultan temporalmente para reservar espacio al campo y al
+envío; vuelven al cerrar el teclado. Las etiquetas de `TourismTabs` y de la barra
+inferior permiten varias líneas; el espacio reservado para la barra utiliza su
+altura medida. En la ruta expandida, título y destino forman parte del scroll; en
+compacto el contenido se desplaza cuando excede la altura disponible. En ese caso
+la expansión sigue disponible al tocar el asa y el cuerpo reserva el gesto para
+scroll. Con fuente ampliada la acción muestra «Navegar» y conserva la etiqueta
+accesible completa «Iniciar navegación».
+
 La hoja de menú se abre desde la pestaña `Menú` de la barra inferior. Un
 `TourismMenuProvider` posee una única hoja para el shell principal: sube desde abajo con
 superficie sólida, `TourismSheetHandle`, una cabecera de perfil (`TourismMenuProfile`: avatar
