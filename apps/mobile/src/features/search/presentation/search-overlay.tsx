@@ -8,8 +8,8 @@ import {
   View,
 } from "react-native";
 import Animated, {
-  FadeIn,
-  FadeOut,
+  Easing,
+  Keyframe,
   ReduceMotion,
 } from "react-native-reanimated";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
@@ -170,8 +170,27 @@ export function SearchOverlay({
 }
 
 // Fundido al abrir y cerrar la búsqueda, en vez de un cambio instantáneo.
-const overlayEntering = FadeIn.duration(200).reduceMotion(ReduceMotion.System);
-const overlayExiting = FadeOut.duration(150).reduceMotion(ReduceMotion.System);
+// Baja un poco mientras aparece, como si saliera de la barra de búsqueda.
+const overlayEntering = new Keyframe({
+  0: { opacity: 0, transform: [{ translateY: -24 }] },
+  100: {
+    opacity: 1,
+    transform: [{ translateY: 0 }],
+    easing: Easing.out(Easing.cubic),
+  },
+})
+  .duration(280)
+  .reduceMotion(ReduceMotion.System);
+const overlayExiting = new Keyframe({
+  0: { opacity: 1, transform: [{ translateY: 0 }] },
+  100: {
+    opacity: 0,
+    transform: [{ translateY: -16 }],
+    easing: Easing.in(Easing.cubic),
+  },
+})
+  .duration(200)
+  .reduceMotion(ReduceMotion.System);
 
 const styles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFill, paddingHorizontal: turismoSpacing.md },
