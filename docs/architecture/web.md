@@ -28,6 +28,13 @@ contenidos, además de componentes reutilizables con tokens centralizados.
 ## Interfaz operativa
 
 - Navegación visible de máximo dos niveles.
+- El sidebar muestra un punto rojo sin contador cuando hay pendientes o cambios aún sin
+  ver en Revisión, Opiniones, Centros, Catastro o Catálogos. La API agrega estas señales
+  en `/admin/navigation-summary`, respetando el rol y la propiedad de los registros;
+  los catálogos sólo señalan cambios auditados, no un estado pendiente. Abrir una sección
+  registra su última fecha vista por cuenta en el navegador: desaparecen las novedades
+  leídas, mientras los pendientes permanecen hasta resolverse. Sólo se guardan fechas,
+  nunca tokens ni contenido; si no se permite persistirlas se conservan en memoria.
 - Formularios breves en diálogo; ficha de 14 secciones en páginas con progreso y guardado.
 - Tablas con filtros consistentes, paginación y acciones por permisos/estado. Centros,
   Catastro, Catálogos, Opiniones y las colas de revisión usan un único botón de tres puntos
