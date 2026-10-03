@@ -27,6 +27,7 @@ export async function transcribeAgentAudio(
     {
       fetcher: request,
       errorMessage: "No se pudo transcribir el audio.",
+      useServerMessage: true,
       invalidMessage: "La transcripción no tiene el formato esperado.",
       init: { method: "POST", body: fileForm(upload), signal },
     },

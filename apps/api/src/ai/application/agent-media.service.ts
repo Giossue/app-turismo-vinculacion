@@ -1,4 +1,5 @@
 import {
+  Logger,
   BadRequestException,
   Inject,
   Injectable,
@@ -14,6 +15,8 @@ export const agentAudioMaxBytes = 5 * 1024 * 1024;
 
 @Injectable()
 export class AgentMediaService {
+  private readonly logger = new Logger(AgentMediaService.name);
+
   constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
 
   async transcribeAudio(
@@ -46,15 +49,24 @@ export class AgentMediaService {
         body: form,
         signal: AbortSignal.timeout(30_000),
       });
-    } catch {
+    } catch (error) {
+      this.logger.warn(
+        `OpenAI transcription request failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
       throw new ServiceUnavailableException(
         "La transcripción no está disponible.",
       );
     }
-    if (!response.ok)
+    if (!response.ok) {
+      // OpenAI's error body explains invalid keys, missing credit or models.
+      const detail = (await response.text().catch(() => "")).slice(0, 500);
+      this.logger.warn(
+        `OpenAI transcription failed with ${response.status}: ${detail}`,
+      );
       throw new ServiceUnavailableException(
         "La transcripción no está disponible.",
       );
+    }
     let payload: unknown;
     try {
       payload = await response.json();
