@@ -1,4 +1,6 @@
-type PublicEstablishment = Readonly<{
+export type PublicEstablishment = Readonly<{
+  /** Absent in older cached responses. */
+  id?: number;
   nombreComercial: string;
   actividad: string;
   clasificacion: string | null;
@@ -13,6 +15,8 @@ type PublicEstablishment = Readonly<{
 }>;
 
 export type PublicMapEstablishment = Readonly<{
+  /** Registry id; aggregated tiles (low zoom) and POIs have none. */
+  id?: number;
   name: string;
   category: string | null;
   categoryLabel?: string | null;
@@ -45,17 +49,32 @@ export type NearbyEstablishmentsQuery = Readonly<{
 }>;
 
 /**
- * Map establishments have no public identifier; name plus coordinates is
- * stable across refetches and identifies the same pin on the map and sheets.
+ * Identifies the same pin on the map and sheets. The registry id is used when
+ * known; otherwise name plus coordinates is stable across refetches.
  */
 export function getEstablishmentKey(
   establishment: Pick<
     PublicMapEstablishment,
-    "latitude" | "longitude" | "name"
+    "id" | "latitude" | "longitude" | "name"
   >,
 ): string {
+  if (establishment.id !== undefined) return `id:${establishment.id}`;
   return `${establishment.name}:${establishment.latitude}:${establishment.longitude}`;
 }
+
+export type EstablishmentPhoto = Readonly<{
+  id: number;
+  url: string;
+  description: string | null;
+}>;
+
+/** `GET /establishments/:id`: the public record plus its published photos. */
+export type PublicEstablishmentDetail = PublicEstablishment &
+  Readonly<{ id: number; photos: readonly EstablishmentPhoto[] }>;
+
+/** `GET /favorites/establishments` item. */
+export type SavedEstablishment = PublicEstablishment &
+  Readonly<{ id: number; photoUrl: string | null }>;
 
 /** Human category of a map establishment, preferring the curated label. */
 export function getEstablishmentLabel(

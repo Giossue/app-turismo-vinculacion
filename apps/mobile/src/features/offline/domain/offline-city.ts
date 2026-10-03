@@ -4,6 +4,8 @@ import type { StyleSpecification } from "@maplibre/maplibre-react-native";
 import type { GeoBoundingBox } from "@/core/geo/types";
 
 export type OfflineEstablishment = Readonly<{
+  /** Absent in manifests downloaded before the registry exposed ids. */
+  id?: number;
   name: string;
   category: string | null;
   categoryLabel: string | null;

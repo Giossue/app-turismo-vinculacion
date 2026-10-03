@@ -42,6 +42,7 @@ const offlineCityManifestSchema = z.object({
   establishments: z
     .array(
       z.object({
+        id: z.number().int().positive().optional(),
         name: z.string().min(1),
         category: z.string().nullable(),
         categoryLabel: z.string().nullable().default(null),

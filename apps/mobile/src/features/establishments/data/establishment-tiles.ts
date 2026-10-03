@@ -19,6 +19,7 @@ export function getEstablishmentTilesUrl(apiUrl = getApiUrl()): string {
 }
 
 const detailFeatureSchema = z.object({
+  id: z.number().int().positive().optional(),
   name: z.string().min(1),
   category: z.string().nullish(),
   categoryLabel: z.string().nullish(),
@@ -34,8 +35,9 @@ export function parseEstablishmentTileFeature(
 ): PublicMapEstablishment | null {
   const parsed = detailFeatureSchema.safeParse(properties);
   if (!parsed.success) return null;
-  const { category, categoryLabel, ...establishment } = parsed.data;
+  const { category, categoryLabel, id, ...establishment } = parsed.data;
   return {
+    ...(id === undefined ? {} : { id }),
     ...establishment,
     category: category ?? null,
     categoryLabel: categoryLabel ?? category ?? null,

@@ -9,9 +9,11 @@ import {
 import type {
   NearbyEstablishmentsQuery,
   NearbyEstablishmentsResult,
+  PublicEstablishmentDetail,
 } from "../domain/establishment";
 
-const establishmentSchema = z.object({
+export const establishmentSchema = z.object({
+  id: z.number().int().positive().optional(),
   nombreComercial: z.string().min(1),
   actividad: z.string().min(1),
   clasificacion: z.string().nullable(),
@@ -41,6 +43,40 @@ const responseSchema = z.object({
       .nullable(),
   }),
 });
+
+const detailSchema = z.object({
+  data: establishmentSchema.extend({
+    id: z.number().int().positive(),
+    photos: z
+      .array(
+        z.object({
+          id: z.number().int().positive(),
+          url: z.string().min(1),
+          description: z.string().nullable(),
+        }),
+      )
+      .default([]),
+  }),
+});
+
+/** Published establishment with its photos; 404 once it is unpublished. */
+export async function getPublishedEstablishment(
+  id: number,
+  { apiUrl = getApiUrl(), fetcher, signal }: ApiRequestOptions = {},
+): Promise<PublicEstablishmentDetail> {
+  const payload = await requestJson(
+    `${apiUrl}/establishments/${id}`,
+    detailSchema,
+    {
+      errorMessage: "No pudimos cargar el establecimiento.",
+      fetcher,
+      init: { headers: acceptJsonHeaders, signal },
+      invalidMessage: "El establecimiento no tiene el formato esperado.",
+    },
+  );
+  return payload.data;
+}
+
 export async function getNearbyEstablishments(
   query: NearbyEstablishmentsQuery,
   { apiUrl = getApiUrl(), fetcher, signal }: ApiRequestOptions = {},

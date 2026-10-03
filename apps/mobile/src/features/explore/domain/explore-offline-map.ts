@@ -59,6 +59,7 @@ export function buildExploreOfflineMap(
       if (filter?.kind === "establishments" && place.group !== filter.group)
         continue;
       add(`establishment:${getEstablishmentKey(place)}`, {
+        ...(place.id === undefined ? {} : { id: place.id }),
         name: place.name,
         category: place.category,
         categoryLabel: place.categoryLabel,
