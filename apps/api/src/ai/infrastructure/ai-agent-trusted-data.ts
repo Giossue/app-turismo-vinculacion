@@ -80,6 +80,7 @@ export function sanitizeAgentResponse(
   output: AgentModelResponse,
   entities: ReadonlyMap<string, TrustedAgentEntity>,
   trustedSources: readonly AgentSource[] = [],
+  fallbackRef?: string,
 ): {
   text: string;
   cards: AgentCard[];
@@ -122,6 +123,20 @@ export function sanitizeAgentResponse(
       continue;
     }
     addCard(requestedAction.ref);
+  }
+
+  // A focused answer (e.g. an admission price) can omit model references.
+  // Use a detailed lookup or a sole result; never choose among other candidates.
+  if (
+    cards.length === 0 &&
+    output.cards.length === 0 &&
+    output.actions.length === 0
+  ) {
+    if (fallbackRef) addCard(fallbackRef);
+    if (cards.length === 0 && entities.size === 1) {
+      const onlyEntity = entities.values().next().value;
+      if (onlyEntity) addCard(onlyEntity.ref);
+    }
   }
 
   trustedSources.forEach(addSource);

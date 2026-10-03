@@ -9,6 +9,7 @@ import { nearbyPublishedPlacesInputSchema } from "../src/ai/application/ai-agent
 import {
   AiAgentService,
   hasNearbyIntent,
+  hasPlaceDetailIntent,
   hasTravelTimeIntent,
 } from "../src/ai/application/ai-agent.service";
 import type { PublicEstablishmentSearch } from "../src/ai/application/public-establishment-search";
@@ -151,7 +152,8 @@ describe("AiAgentService", () => {
   it("recognizes arrival-time questions without treating named origins as the visitor", () => {
     expect(hasTravelTimeIntent("¿A cuántos minutos está el museo?")).toBe(true);
     expect(hasTravelTimeIntent("¿Cuánto me demoro en llegar?")).toBe(true);
-    expect(hasTravelTimeIntent("¿Cómo llego al museo?")).toBe(true);
+    expect(hasTravelTimeIntent("¿Cómo llego al museo?")).toBe(false);
+    expect(hasTravelTimeIntent("¿Cómo llegar al museo?")).toBe(false);
     expect(hasTravelTimeIntent("How long does it take to get there?")).toBe(
       true,
     );
@@ -188,6 +190,28 @@ describe("AiAgentService", () => {
       nearbyPublishedPlacesInputSchema.safeParse({ radiusMeters: 25_001 })
         .success,
     ).toBe(false);
+  });
+
+  it("distinguishes a focused question from discovery even when it names a tourism type", () => {
+    expect(hasPlaceDetailIntent("Cuéntame del Hotel Central")).toBe(true);
+    expect(
+      hasPlaceDetailIntent(
+        "¿Cuánto cuesta la entrada del atractivo turístico X?",
+      ),
+    ).toBe(true);
+    expect(hasPlaceDetailIntent("¿Cómo llego al Restaurante X?")).toBe(true);
+    expect(hasPlaceDetailIntent("Quiero llegar al Hotel Central")).toBe(true);
+    expect(
+      hasPlaceDetailIntent(
+        "¿A cómo está la entrada del atractivo turístico X?",
+      ),
+    ).toBe(true);
+    expect(hasPlaceDetailIntent("Tell me about Hotel Central")).toBe(true);
+    expect(hasPlaceDetailIntent("¿Qué lugares turísticos puedo visitar?")).toBe(
+      false,
+    );
+    expect(hasPlaceDetailIntent("¿Dónde puedo comer?")).toBe(false);
+    expect(hasPlaceDetailIntent("Hoteles en Guaranda")).toBe(false);
   });
 
   it("drops model-selected references that did not come from tools", () => {

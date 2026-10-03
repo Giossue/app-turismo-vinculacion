@@ -359,8 +359,6 @@ function ChatScene() {
               <AgentChatContent
                 conversation={conversation}
                 onOpenCard={() => console.log("QA_CHAT:card-opened")}
-                onOpenCenter={() => undefined}
-                onStartRoute={() => undefined}
               />
             </View>
           </SafeAreaView>

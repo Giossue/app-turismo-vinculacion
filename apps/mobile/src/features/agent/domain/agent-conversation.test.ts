@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { AgentMessage } from "./agent";
+import type { AgentCard, AgentMessage } from "./agent";
 import {
   agentIntroMessage,
   agentStarterPrompts,
@@ -74,6 +74,115 @@ describe("agent history", () => {
     expect(history).toHaveLength(12);
     expect(history[0]).toEqual({ role: "user", content: "Pregunta 2" });
     expect(history.at(-1)?.content).toHaveLength(2_000);
+  });
+
+  it("keeps ordered card references for a price question about the first place", () => {
+    const answer: AgentMessage = {
+      ...assistant(2, "Aquí tienes algunas opciones."),
+      cards: [
+        {
+          type: "center",
+          code: "GUA-MUSEO",
+          name: "Museo de Guaranda",
+          summary: "Un museo",
+          category: "Cultural",
+          latitude: -1.59,
+          longitude: -79,
+          distanceMeters: null,
+        },
+        {
+          type: "poi",
+          name: "Mirador",
+          summary: "Un mirador",
+          category: "Punto de interés",
+          localityName: "Guaranda",
+          latitude: -1.6,
+          longitude: -79.1,
+          distanceMeters: 650,
+        },
+      ],
+    };
+    const turn = prepareAgentTurn(
+      [user(1, "¿Qué lugares puedo visitar?"), answer],
+      "¿Cuánto vale la entrada del primero?",
+      { questionId: "user-followup", answerId: "assistant-followup" },
+    );
+    expect(turn?.history[1].content).toBe(
+      "Aquí tienes algunas opciones.\n\nLugares mostrados (en orden):\n1. center: Museo de Guaranda (code: GUA-MUSEO)\n2. poi: Mirador",
+    );
+    expect(answer.text).toBe("Aquí tienes algunas opciones.");
+    expect(turn?.messages[1]).toBe(answer);
+  });
+
+  it("reserves card context within the length and history limits", () => {
+    const cards: readonly AgentCard[] = Array.from(
+      { length: 6 },
+      (_, index) => ({
+        type: "center" as const,
+        code: `${index + 1}`.padEnd(120, "C"),
+        name: `${index + 1}`.padEnd(180, "N"),
+        summary: "Un centro",
+        category: "Cultural",
+        latitude: -1.59,
+        longitude: -79,
+        distanceMeters: null,
+      }),
+    );
+    const messages = Array.from({ length: 8 }, (_, index) => [
+      user(index * 2, `Pregunta ${index}`),
+      { ...assistant(index * 2 + 1, "x".repeat(2_100)), cards },
+    ]).flat();
+    const history = buildAgentHistory(messages);
+    expect(history).toHaveLength(12);
+    expect(history[0].content).toBe("Pregunta 2");
+    for (const item of history) {
+      expect(item.content.length).toBeLessThanOrEqual(AGENT_MESSAGE_MAX_LENGTH);
+      if (item.role !== "assistant") continue;
+      for (const card of cards) {
+        expect(item.content).toContain(card.name);
+        if (card.type === "center") expect(item.content).toContain(card.code);
+      }
+      expect(item.content).toHaveLength(AGENT_MESSAGE_MAX_LENGTH);
+    }
+  });
+
+  it("includes only place names, types and public center codes in card context", () => {
+    const cards: readonly AgentCard[] = [
+      {
+        type: "establishment",
+        name: "Cafetería de prueba",
+        category: "CATEGORIA-OMITIDA",
+        summary: "RESUMEN-OMITIDO",
+        address: "DIRECCION-OMITIDA",
+        phone: "TELEFONO-OMITIDO",
+        localityName: "LOCALIDAD-OMITIDA",
+        latitude: -1.23456,
+        longitude: -79.87654,
+        distanceMeters: 12345,
+        travelTimes: [{ mode: "car", status: "unavailable" }],
+      },
+      {
+        type: "poi",
+        name: "Parque de prueba",
+        category: "CATEGORIA-OMITIDA",
+        summary: "RESUMEN-OMITIDO",
+        localityName: "LOCALIDAD-OMITIDA",
+        latitude: -1.23456,
+        longitude: -79.87654,
+        distanceMeters: 12345,
+      },
+    ];
+    const answer: AgentMessage = {
+      ...assistant(2, "Hay dos opciones."),
+      cards,
+      sources: [{ type: "routing", label: "FUENTE-OMITIDA" }],
+    };
+    const content = buildAgentHistory([user(1, "¿Qué hay cerca?"), answer])[1]
+      .content;
+    expect(content).toBe(
+      "Hay dos opciones.\n\nLugares mostrados (en orden):\n1. establishment: Cafetería de prueba\n2. poi: Parque de prueba",
+    );
+    expect(content).not.toMatch(/OMITID|1\.23456|79\.87654|12345|unavailable/);
   });
 });
 
@@ -243,16 +352,26 @@ describe("location minimization in agent requests", () => {
     );
   });
 
-  it("shares GPS for arrival times and routes from the visitor", () => {
+  it("shares GPS for arrival times from the visitor", () => {
     expect(shouldShareAgentLocation("¿A cuántos minutos está el museo?")).toBe(
       true,
     );
     expect(
       shouldShareAgentLocation("¿Cuánto me demoro en llegar al parque?"),
     ).toBe(true);
-    expect(shouldShareAgentLocation("¿Cómo llego al museo?")).toBe(true);
     expect(
       shouldShareAgentLocation("How long does it take to get to the museum?"),
+    ).toBe(true);
+  });
+
+  it("opens a destination from a simple arrival question without sharing GPS", () => {
+    expect(shouldShareAgentLocation("¿Cómo llego al museo?")).toBe(false);
+    expect(shouldShareAgentLocation("¿Cómo llegar al parque?")).toBe(false);
+    expect(shouldShareAgentLocation("¿Cómo llego desde aquí al museo?")).toBe(
+      true,
+    );
+    expect(
+      shouldShareAgentLocation("¿Cómo llegar desde mi ubicación al parque?"),
     ).toBe(true);
   });
 

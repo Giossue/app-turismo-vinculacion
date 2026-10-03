@@ -29,16 +29,16 @@ describe("agent text", () => {
     const text = [
       "Encontré 2 lugares cerca de ti:",
       "",
-      "• **CAFETERIA ART LATE** – Cafetería, a 932 metros.",
+      "• **CAFETERIA ART LATE** – Cafetería.",
       "",
-      "• **PLAZA LUNA** – Alojamiento, a 984 metros.",
+      "• **PLAZA LUNA** – Alojamiento.",
       "",
       "Pregunta por cualquiera de ellos.",
     ].join("\n");
     expect(
       getAgentVisibleText(text, [
-        { name: "CAFETERIA  ART LATE" },
-        { name: "PLAZA LUNA" },
+        { name: "CAFETERIA  ART LATE", category: "Cafetería" },
+        { name: "PLAZA LUNA", category: "Alojamiento" },
       ]),
     ).toBe(
       "Encontré 2 lugares cerca de ti:\n\nPregunta por cualquiera de ellos.",
@@ -48,13 +48,40 @@ describe("agent text", () => {
   it("preserves explanations and places without a matching card", () => {
     const text =
       "• **PLAZA LUNA** – Alojamiento.\n• OTRO LUGAR – Sin ficha.\nPLAZA LUNA tiene horario sin confirmar.";
-    expect(getAgentVisibleText(text, [{ name: "PLAZA LUNA" }])).toBe(
+    expect(
+      getAgentVisibleText(text, [
+        { name: "PLAZA LUNA", category: "Alojamiento" },
+      ]),
+    ).toBe(
       "• OTRO LUGAR – Sin ficha.\nPLAZA LUNA tiene horario sin confirmar.",
     );
     expect(
       getAgentVisibleText("• PLAZA LUNA – Alojamiento.", [
-        { name: "PLAZA LUNA" },
+        { name: "PLAZA LUNA", category: "Alojamiento" },
       ]),
     ).toBe("Aquí tienes algunas opciones.");
+  });
+
+  it("preserves entrance prices and other facts absent from compact cards", () => {
+    const text = [
+      "- **PLAZA LUNA**: entrada $2.",
+      "• PLAZA LUNA – abre de 9:00 a 17:00.",
+      "1. PLAZA LUNA – Alojamiento, a 984 metros.",
+    ].join("\n");
+    expect(
+      getAgentVisibleText(text, [
+        { name: "PLAZA LUNA", category: "Alojamiento" },
+      ]),
+    ).toBe(text);
+  });
+
+  it("preserves unknown categories and names that only share a prefix", () => {
+    const text = "• PLAZA LUNA – Alojamiento.\n• PLAZA LUNAR: Cafetería.";
+    expect(getAgentVisibleText(text, [{ name: "PLAZA LUNA" }])).toBe(text);
+    expect(
+      getAgentVisibleText(text, [
+        { name: "PLAZA LUNA", category: "Restaurante" },
+      ]),
+    ).toBe(text);
   });
 });

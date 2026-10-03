@@ -35,14 +35,19 @@ sin esta cabecera la API mantiene respuestas compatibles con los móviles anteri
 La API aporta la dirección publicada y el nombre del cantón sin inferir
 una ciudad. El cliente combina los datos presentes con « - » y conserva su texto completo
 en la etiqueta accesible. No muestra el pie «Fuentes», aunque valida y conserva las
-referencias recibidas. Si una tarjeta ya abre un centro, se omite el `open_center` de ese
-mismo código para evitar repetir «Ver». Todas las tarjetas abren una ficha en una
+referencias recibidas. Las acciones antiguas `open_center` y `start_route` no muestran
+controles en el chat; solo `request_location` añade «Usar mi ubicación» cuando hace falta.
+Todas las tarjetas abren una ficha en una
 sheet apilada sobre el chat: Atrás o cerrar la ficha devuelve a la misma conversación sin
 navegar. Los centros cargan su ficha pública completa; catastro y POI muestran los campos
 públicos recibidos, y solo ofrecen ruta si hay coordenadas. Si el texto enumera lugares
-que también tienen tarjeta, la lista duplicada se oculta en la vista y en la lectura de
-voz; el historial conserva el texto original. Una acción de ruta se
-presenta como propuesta y requiere confirmación explícita antes de navegar a `/route`. La
+que también tienen tarjeta, solo se ocultan viñetas que repiten exactamente nombre o
+categoría visible; precios, horarios y otros hechos útiles se conservan en texto y voz.
+El historial conserva el texto original y añade un bloque interno con nombres, orden,
+tipos y códigos públicos de centros para resolver preguntas posteriores. Reserva su espacio
+antes de recortar el texto a 2000 caracteres; mantiene doce entradas y no añade coordenadas,
+direcciones, contactos, resúmenes ni fuentes de cards. La ruta se abre y confirma desde
+«Ver» → «Cómo llegar» en los detalles del lugar. La
 app puede enviar una ubicación puntual redondeada para consultas cercanas, sin historial ni
 seguimiento en segundo plano. Como contexto solo se reenvían los intercambios completados
 (ni el saludo, ni los errores, ni respuestas cortadas), con los límites del contrato de la
@@ -66,8 +71,11 @@ La etiqueta accesible indica que son tiempos estimados desde la ubicación aprox
 incluye los nombres de los tres modos y toda la lista
 para evitar controles accesibles anidados. El móvil no calcula minutos ni envía solicitudes
 directas al proveedor vial. Consultar tiempos no inicia navegación. Solo adjunta la
-ubicación cuando el mensaje actual pide cercanía o tiempo/llegada desde la posición del
+ubicación cuando el mensaje actual pide cercanía o tiempos desde la posición del
 visitante; una búsqueda general o por localidad no la comparte ni muestra tiempos.
+«Cómo llego/llegar a X» por sí solo resuelve la tarjeta sin GPS; minutos o cercanía sí
+requieren posición. El chat no conserva estado de confirmación ni callbacks para iniciar
+rutas; `AgentPlaceSheet` mantiene el flujo de ruta existente.
 
 Cada chat admite veinte mensajes del usuario, incluidos los que tienen respuesta fallida
 o detenida. El contador se deriva de las burbujas del usuario, con una validación antes

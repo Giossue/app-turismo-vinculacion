@@ -34,13 +34,16 @@ export function plainAgentText(text: string): string {
     .join("");
 }
 
-/** A result's cards already contain the places named in its bullet list. */
+/** Omit only bullet content already visible in a card; retain useful facts. */
 export function getAgentVisibleText(
   text: string,
-  cards: readonly Readonly<{ name: string }>[],
+  cards: readonly Readonly<{ name: string; category?: string | null }>[],
 ): string {
   if (cards.length === 0) return text;
-  const names = cards.map((card) => normalizePlaceName(card.name));
+  const knownPlaces = cards.map((card) => ({
+    name: normalizePlaceName(card.name),
+    category: card.category ? normalizePlaceName(card.category) : null,
+  }));
   const visible = text
     .split("\n")
     .filter((line) => {
@@ -49,12 +52,21 @@ export function getAgentVisibleText(
       const item = normalizePlaceName(
         plainAgentText(line.slice(bullet[0].length)),
       );
-      return !names.some(
-        (name) =>
-          item === name ||
-          (item.startsWith(name) &&
-            /^[\s.,:;–—(\-]/.test(item.slice(name.length))),
-      );
+      return !knownPlaces.some(({ name, category }) => {
+        if (!item.startsWith(name)) return false;
+        const detail = item.slice(name.length);
+        if (/^[\s.!?]*$/.test(detail)) return true;
+        if (!category) return false;
+        const separator = /^\s*(?:[,:;–—\-]\s*|\(\s*)/.exec(detail);
+        if (!separator) return false;
+        return (
+          detail
+            .slice(separator[0].length)
+            .replace(/\)\s*$/, "")
+            .replace(/[.!?]+$/, "")
+            .trim() === category.replace(/[.!?]+$/, "")
+        );
+      });
     })
     .join("\n")
     .replace(/\n(?:[ \t]*\n){2,}/g, "\n\n")

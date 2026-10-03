@@ -50,8 +50,6 @@ function ExploreAgentSheetInner({
   const presentedRef = useRef(false);
   const [selectedPlace, setSelectedPlace] =
     useState<AgentPlaceSelection | null>(null);
-  const openCenter = (code: string) =>
-    setSelectedPlace({ type: "center-code", code });
   const openCard = (card: AgentCard) => setSelectedPlace(card);
   const closePlace = () => setSelectedPlace(null);
   const closeAgent = () => {
@@ -99,8 +97,6 @@ function ExploreAgentSheetInner({
               <AgentChatContent
                 conversation={conversation}
                 onOpenCard={openCard}
-                onOpenCenter={openCenter}
-                onStartRoute={onStartRoute}
               />
             </View>
           </SafeAreaView>

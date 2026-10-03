@@ -6,11 +6,7 @@ import { getLocationAvailability } from "@/core/location/location-availability";
 import { useUserLocation } from "@/core/location/use-user-location";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { askTourismAgentStream } from "../data/agent-api";
-import type {
-  AgentMessage,
-  AgentResponse,
-  StartRouteAction,
-} from "../domain/agent";
+import type { AgentMessage, AgentResponse } from "../domain/agent";
 import {
   agentFallbackErrorMessage,
   agentIntroMessage,
@@ -22,9 +18,8 @@ import {
 } from "../domain/agent-conversation";
 
 /**
- * One chat with the tourism agent: the bubbles, the streaming answer and
- * the route proposal awaiting confirmation. Closing the chat (unmounting)
- * aborts the answer in progress.
+ * One chat with the tourism agent: the bubbles and the streaming answer.
+ * Closing the chat (unmounting) aborts the answer in progress.
  */
 export function useAgentConversation() {
   const auth = useAuth();
@@ -38,8 +33,6 @@ export function useAgentConversation() {
   const [awaitingText, setAwaitingText] = useState(false);
   const [requestingLocation, setRequestingLocation] = useState(false);
   const [locationFeedback, setLocationFeedback] = useState<string | null>(null);
-  const [pendingRouteAction, setPendingRouteAction] =
-    useState<StartRouteAction | null>(null);
   const nextIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const answerIdRef = useRef<string | null>(null);
@@ -103,7 +96,6 @@ export function useAgentConversation() {
     setMessages(messagesRef.current);
     setSending(false);
     setAwaitingText(false);
-    setPendingRouteAction(null);
     setDraft("");
   }, []);
 
@@ -138,7 +130,6 @@ export function useAgentConversation() {
     abortRef.current = controller;
     answerIdRef.current = answerId;
 
-    setPendingRouteAction(null);
     setSending(true);
     setAwaitingText(true);
     setLocationFeedback(null);
@@ -285,14 +276,12 @@ export function useAgentConversation() {
     locationFeedback,
     messages,
     newConversation,
-    pendingRouteAction,
     retry,
     requestLocationForMessage,
     requestingLocation,
     send: (text: string) => sendTurn(text),
     sending,
     setDraft,
-    setPendingRouteAction,
     userMessageCount: countAgentUserMessages(messages),
   };
 }

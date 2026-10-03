@@ -10,7 +10,10 @@ import { streamText } from "ai";
 
 import { AiAgentService } from "../src/ai/application/ai-agent.service";
 import type { PublicCenterRepository } from "../src/centers/application/public-center.repository";
-import type { PublicCenter } from "../src/centers/domain/public-center";
+import type {
+  PublicCenter,
+  PublicCenterDetail,
+} from "../src/centers/domain/public-center";
 import type { PublicEstablishmentSearch } from "../src/ai/application/public-establishment-search";
 import type { PublicNearbyEstablishmentSearch } from "../src/ai/application/public-nearby-establishment-search";
 import type { PublicPoiRepository } from "../src/pois/application/public-poi.repository";
@@ -86,7 +89,10 @@ function routeUseCase(): CalculateRouteUseCase {
   } as unknown as CalculateRouteUseCase;
 }
 
-function service(calculateRoute: CalculateRouteUseCase) {
+function service(
+  calculateRoute: CalculateRouteUseCase,
+  centerOverrides: Partial<PublicCenterRepository> = {},
+) {
   const establishments: PublicEstablishmentSearch = {
     browse: async () => [],
     nearby: async () => ({
@@ -111,7 +117,7 @@ function service(calculateRoute: CalculateRouteUseCase) {
       AI_PROVIDER: "anthropic",
       ANTHROPIC_API_KEY: "test-key",
     }),
-    centers(),
+    { ...centers(), ...centerOverrides },
     establishments,
     nearbyEstablishments,
     pois,
@@ -121,6 +127,158 @@ function service(calculateRoute: CalculateRouteUseCase) {
 }
 
 describe("AiAgentService calculateRoadRoute tool", () => {
+  it.each([
+    {
+      message: "¿Cómo llego al Centro Cultural Indio Guaranga?",
+      text: "Pulsa Ver y luego Cómo llegar.",
+    },
+    {
+      message: "¿Cuánto cuesta la entrada al Centro Cultural Indio Guaranga?",
+      text: "La entrada cuesta $2.",
+    },
+    {
+      message: "Cuéntame sobre el Centro Cultural Indio Guaranga.",
+      text: "Un espacio dedicado a la cultura de Guaranda.",
+    },
+  ])(
+    "returns only the detailed place for $message without demanding GPS",
+    async (query) => {
+      const calculateRoute = routeUseCase();
+      const findPublishedByCode = vi.fn().mockResolvedValue({
+        ...center,
+        description: "Un espacio dedicado a la cultura de Guaranda.",
+        touristZone: "Zona central",
+        address: null,
+        altitudeMeters: null,
+        admission: {
+          type: "Pagado",
+          attention: "Diaria",
+          opensAt: null,
+          closesAt: null,
+          priceFrom: 2,
+          priceTo: 2,
+        },
+        activities: [],
+        accessibility: [],
+        facilities: [],
+        photos: [],
+      });
+      streamTextMock.mockImplementation((options) => {
+        const tools = (options as unknown as GenerateOptions).tools;
+        return {
+          output: (async () => {
+            await tools.searchPublishedCenters.execute?.({
+              limit: 2,
+              text: "Centro cultural",
+            });
+            await tools.getPublishedCenter.execute?.({ code: center.code });
+            return { text: query.text, cards: [], actions: [] };
+          })(),
+          partialOutputStream: (async function* () {})(),
+        } as never;
+      });
+
+      const response = await service(calculateRoute, {
+        listPublished: async () => ({
+          items: [center, { ...center, code: "GUA-002", name: "Otro lugar" }],
+          total: 2,
+        }),
+        findPublishedByCode,
+      }).generate({ message: query.message, history: [] });
+      expect(response.text).toBe(query.text);
+      expect(response.cards).toMatchObject([
+        {
+          type: "center",
+          code: center.code,
+          name: center.name,
+          latitude: center.latitude,
+          longitude: center.longitude,
+        },
+      ]);
+      expect(response.cards).toHaveLength(1);
+      expect(response.cards[0]).not.toHaveProperty("travelTimes");
+      expect(response.actions).toEqual([]);
+      expect(findPublishedByCode).toHaveBeenCalledExactlyOnceWith(center.code);
+      expect(calculateRoute.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([false, true])(
+    "does not choose an arbitrary card when two detail requests finish in either order (%s)",
+    async (reverseOrder) => {
+      const calculateRoute = routeUseCase();
+      const first: PublicCenterDetail = {
+        ...center,
+        touristZone: "Zona central",
+        address: null,
+        altitudeMeters: null,
+        admission: null,
+        activities: [],
+        accessibility: [],
+        facilities: [],
+        photos: [],
+      };
+      const second: PublicCenterDetail = {
+        ...first,
+        code: "GUA-002",
+        name: "Otro lugar",
+      };
+      const detailResolvers = new Map<
+        string,
+        (detail: PublicCenterDetail) => void
+      >();
+      const findPublishedByCode = vi.fn(
+        (code: string) =>
+          new Promise<PublicCenterDetail>((resolve) => {
+            detailResolvers.set(code, resolve);
+          }),
+      );
+      streamTextMock.mockImplementation((options) => {
+        const tools = (options as unknown as GenerateOptions).tools;
+        return {
+          output: (async () => {
+            const firstRequest = tools.getPublishedCenter.execute?.({
+              code: first.code,
+            });
+            const secondRequest = tools.getPublishedCenter.execute?.({
+              code: second.code,
+            });
+            const ordered = reverseOrder
+              ? ([
+                  [second, secondRequest],
+                  [first, firstRequest],
+                ] as const)
+              : ([
+                  [first, firstRequest],
+                  [second, secondRequest],
+                ] as const);
+            for (const [detail, pending] of ordered) {
+              detailResolvers.get(detail.code)?.(detail);
+              await pending;
+            }
+            return {
+              text: "No tengo el precio de entrada.",
+              cards: [],
+              actions: [],
+            };
+          })(),
+          partialOutputStream: (async function* () {})(),
+        } as never;
+      });
+
+      const response = await service(calculateRoute, {
+        findPublishedByCode,
+      }).generate({
+        message: "Compara la entrada de estos dos lugares.",
+        history: [],
+      });
+      expect(findPublishedByCode).toHaveBeenCalledTimes(2);
+      expect(response.cards).toEqual([]);
+      expect(response.actions).toEqual([]);
+      expect(calculateRoute.execute).not.toHaveBeenCalled();
+    },
+  );
+
   it("uses a trusted result and approximate origin without exposing coordinates to the tool input", async () => {
     const calculateRoute = routeUseCase();
     const routeExecutor = calculateRoute.execute as ReturnType<typeof vi.fn>;
@@ -153,7 +311,7 @@ describe("AiAgentService calculateRoadRoute tool", () => {
     });
 
     const response = await service(calculateRoute).generate({
-      message: "¿Cómo llego al centro cultural?",
+      message: "¿Cuánto tiempo toma ir a pie al centro cultural?",
       history: [],
       location: {
         latitude: -1.59263,

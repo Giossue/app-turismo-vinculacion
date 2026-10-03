@@ -28,7 +28,11 @@ el destino sin narrar búsquedas, catastros, fichas, catálogos o procesos inter
 fuentes y restricciones de publicación siguen en herramientas y contrato, fuera de esa
 narración. Los fallbacks deterministas y los mensajes locales de ubicación usan el mismo
 tono directo, diferenciando falta de resultados y error de consulta sin inventar hechos.
-No se eliminan palabras de la respuesta libre con regex ni se alteran nombres de lugares.
+Las preguntas sobre un lugar reciben el dato solicitado y su tarjeta; no agregan resúmenes
+de categorías, explicaciones de tarjetas o hechos ajenos a la pregunta. Para entradas y
+horarios se consulta `getPublishedCenter`; la búsqueda general no aporta esos datos.
+La orientación simple remite a «Ver» → «Cómo llegar» sin pedir GPS antes de mostrar el
+destino. No se eliminan palabras de la respuesta libre con regex ni se alteran nombres.
 
 Las herramientas allowlisted de esta unidad son `listPublishedCenters`,
 `searchPublishedEstablishments`, `searchPublishedCenters`,
@@ -109,14 +113,24 @@ El endpoint SSE solo transmite el campo de texto parcial acumulado (`text-delta`
 la respuesta completa ya sanitizada (`complete`); nunca transmite tarjetas, coordenadas o
 acciones parciales del modelo.
 Texto y tarjetas son partes distintas de la misma respuesta estructurada: el transporte SSE
-no duplica registros. El prompt pide un resumen breve cuando hay tarjetas; el cliente
-elimina del texto visible solo las viñetas que vuelven a nombrar esas tarjetas, sin
-modificar la respuesta original que se usa como contexto e historial.
+no duplica registros. El prompt contesta la pregunta concreta y adjunta la tarjeta del
+destino; las consultas generales reciben un resumen breve. El cliente solo elimina
+viñetas que repiten exactamente nombre o categoría visible. Conserva precios, horarios
+y otros hechos útiles de una viñeta y no modifica el texto original del mensaje.
+El contexto del siguiente turno incluye nombres, orden y códigos públicos de cards dentro
+de los límites existentes, sin reenviar coordenadas ni contactos. Esos identificadores
+ayudan a buscar el destino de nuevo; no autorizan hechos ni referencias sin una herramienta
+del turno actual.
 Si el cliente cierra la conexión SSE, el servidor aborta la generación del proveedor y no
 emite más eventos. Detener una respuesta desde el móvil conserva la pregunta para un
 reintento sin incluir la respuesta parcial en el historial enviado al modelo.
-Las acciones son intenciones: `start_route` siempre exige confirmación explícita en el
-móvil y no ejecuta navegación desde la API.
+Referencias válidas elegidas para `open_center` o `start_route` se convierten en cards
+confiables si faltaban, con deduplicación y límite de seis; no se emiten esos botones
+en el chat. Si el modelo omite cards y acciones, puede recuperarse un único centro
+consultado con detalle o una única entidad verificada; nunca se elige arbitrariamente
+entre varios. Los contratos mantienen las acciones antiguas por compatibilidad.
+Solo `request_location` es una acción adicional cuando falta ubicación para cercanía o
+tiempos. La API no inicia navegación; la ruta se confirma desde los detalles del lugar.
 
 ## Herramientas permitidas
 

@@ -1,10 +1,7 @@
 import { useState } from "react";
 
 import type { useAgentConversation } from "../src/features/agent/application/use-agent-conversation";
-import type {
-  AgentMessage,
-  StartRouteAction,
-} from "../src/features/agent/domain/agent";
+import type { AgentMessage } from "../src/features/agent/domain/agent";
 import type { CalculatedRoute } from "../src/features/routing/domain/routing";
 
 export const travelTimeAnswer: AgentMessage = {
@@ -47,8 +44,6 @@ export function useConversationFixture(): ReturnType<
     { id: "qa-question", role: "user", text: "¿Cuánto tardaría en llegar?" },
     travelTimeAnswer,
   ]);
-  const [pendingRouteAction, setPendingRouteAction] =
-    useState<StartRouteAction | null>(null);
 
   return {
     awaitingText: false,
@@ -60,9 +55,7 @@ export function useConversationFixture(): ReturnType<
     newConversation: () => {
       setDraft("");
       setMessages([travelTimeAnswer]);
-      setPendingRouteAction(null);
     },
-    pendingRouteAction,
     retry: async () => undefined,
     requestingLocation: false,
     requestLocationForMessage: async () => undefined,
@@ -75,7 +68,6 @@ export function useConversationFixture(): ReturnType<
     },
     sending: false,
     setDraft,
-    setPendingRouteAction,
     userMessageCount: messages.filter((message) => message.role === "user")
       .length,
   };

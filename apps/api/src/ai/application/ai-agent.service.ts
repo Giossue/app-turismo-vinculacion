@@ -192,9 +192,13 @@ export class AiAgentService {
       (forceNearbyTool || hasTravelTimeIntent(input.message)) &&
       !approximateLocation;
     const forceGeneralCatalogTool =
-      !forceNearbyTool && hasGeneralDiscoveryIntent(input.message);
+      !forceNearbyTool &&
+      !hasPlaceDetailIntent(input.message) &&
+      hasGeneralDiscoveryIntent(input.message);
     const forceEstablishmentKind =
-      !forceNearbyTool && !forceGeneralCatalogTool
+      !forceNearbyTool &&
+      !forceGeneralCatalogTool &&
+      !hasPlaceDetailIntent(input.message)
         ? getEstablishmentDiscoveryKind(input.message)
         : null;
     let generalCatalogRefs: string[] | null = null;
@@ -203,6 +207,7 @@ export class AiAgentService {
     let establishmentBrowseFailed = false;
     let establishmentSequence = 0;
     let poiSequence = 0;
+    const detailedCenterRefs = new Set<string>();
     const travelTimeCache = new Map<
       string,
       Promise<readonly TravelTimeEstimate[]>
@@ -413,6 +418,10 @@ export class AiAgentService {
           "Habla de forma natural, amable y práctica. Responde a la pregunta en una a tres frases breves por defecto; amplía solo si el visitante pide detalle o la respuesta lo necesita.",
           "En text habla del lugar y de lo que le sirve al visitante, sin narrar cómo consultaste la información. No menciones catastro, fichas, catálogo, base de datos, herramientas, registros internos ni fuentes como explicación de tus recomendaciones. Evita frases como lo saqué del catastro, según la ficha o datos publicados. Las referencias de fuentes se conservan internamente, no se enumeran en text.",
           "No añadas introducciones genéricas, explicaciones de la app, ofrecimientos repetidos ni una pregunta al final por costumbre. Pregunta solo si necesitas un dato para responder, con una sola pregunta concreta.",
+          "Cada respuesta sobre un lugar consiste en contestar exactamente lo que preguntó el visitante y adjuntar la tarjeta de ese lugar con su ref actual. Si pide un dato, responde solo ese dato; no añadas historia, horarios, categorías, otros lugares ni explicaciones de lo que muestran las tarjetas. Si pide conocer un lugar, resume solo lo que sabes de él. No enumeres cómo funciona la interfaz salvo la indicación breve necesaria para llegar.",
+          "Para precio de entrada, horario u otros detalles de un centro, resuelve primero el lugar y usa getPublishedCenter. La búsqueda general no contiene esos datos. Para el precio de entrada usa admission; si el precio falta, responde No tengo el precio de la entrada, sin asumir que es gratis, y adjunta la tarjeta del lugar encontrado.",
+          "Si pregunta cómo llegar a un lugar, identifica el destino, envía su tarjeta y responde Pulsa «Ver» y luego «Cómo llegar». No pidas ubicación ni calcules una ruta para esta orientación simple. No emitas acciones open_center ni start_route: usa cards y deja actions vacío. Solo calcula métricas viales si pregunta explícitamente por distancia, tiempo o un trayecto entre lugares; el visitante abre y confirma su ruta desde los detalles del lugar.",
+          "Los lugares mostrados en el historial, incluidos sus nombres y códigos públicos, solo ayudan a entender referencias como el primero. Vuelve a consultar el lugar mediante las herramientas de este turno antes de afirmar hechos o adjuntar su tarjeta; las referencias de turnos anteriores no son resultados verificados de este turno.",
           "Usa las herramientas para consultar únicamente centros publicados, puntos de interés activos, establecimientos activos y transporte registrado.",
           "Descubrir lugares turísticos en general no requiere GPS. Para preguntas generales como qué lugares turísticos puedo visitar, usa listPublishedCenters y presenta los lugares encontrados; la ciudad o los intereses son filtros opcionales, no una pregunta obligatoria.",
           "Para preguntas generales sobre dónde comer u hospedarse sin intención de cercanía, usa searchPublishedEstablishments. La ubicación y localidad son opcionales; sin ellas ofrece resultados publicados sin afirmar que están cerca. Si el visitante indica una localidad, úsala como filtro.",
@@ -424,10 +433,9 @@ export class AiAgentService {
           "Las búsquedas con ubicación incluyen travelTimes por carro, a pie y bicicleta desde el visitante. Para consultar esos tiempos usa getTravelTimes con las referencias obtenidas; el origen se toma de la solicitud. Solo status available tiene tiempo y distancia por caminos verificados. No conviertas distanceMeters de cercanía en minutos ni inventes velocidades. Los tiempos son estimados sin tráfico en tiempo real; no_route significa sin ruta y unavailable significa que no se pudo verificar ese modo.",
           "Si una herramienta no tiene datos o falla, dilo con una frase natural como No encontré opciones con esa búsqueda o Ahora no puedo consultar esos lugares. No describas procesos internos ni rellenes el vacío con conocimiento externo.",
           "Para tarjetas y acciones usa solamente las referencias ref devueltas por las herramientas.",
-          "Si incluyes tarjetas de lugares, no repitas la lista de nombres, categorías, direcciones, distancias ni tiempos en text. Usa una frase breve que responda a la intención, por ejemplo Aquí tienes opciones para comer. Añade un criterio o una limitación solo cuando ayude a elegir; cada lugar y sus tiempos se presentan en su tarjeta.",
+          "Si incluyes tarjetas de lugares, no repitas la lista de nombres, categorías, direcciones, distancias ni tiempos ni describas lo que trae cada tarjeta. En descubrimiento general basta una frase como Aquí tienes opciones para comer. En una pregunta puntual responde solo el dato solicitado; no añadas ese resumen general ni otros criterios.",
           "No pongas coordenadas ni códigos inventados en la salida estructurada.",
-          "open_center solo sirve para centros publicados.",
-          "start_route solo propone una ruta; nunca inicia navegación ni afirma que ya empezó. El móvil pedirá confirmación.",
+          "No incluyas botones adicionales para abrir lugares o preparar rutas en el chat; la tarjeta abre los detalles y allí está Cómo llegar. Nunca afirmes que la navegación ya empezó.",
           approximateLocation
             ? "Hay una ubicación aproximada disponible para búsquedas cercanas y paradas de transporte; úsala solo mediante las herramientas correspondientes."
             : "No hay ubicación disponible. Para consultas cercanas o paradas, pide activar ubicación o una localidad; no supongas dónde está el visitante.",
@@ -776,6 +784,7 @@ export class AiAgentService {
                   `Ficha pública de ${center.name}`,
                 );
                 await attachTravelTimes([ref]);
+                detailedCenterRefs.add(ref);
                 return {
                   found: true,
                   ref,
@@ -1090,9 +1099,14 @@ export class AiAgentService {
         }
         throw error;
       }
-      const answer = sanitizeAgentResponse(modelOutput, entities, [
-        ...trustedSources.values(),
-      ]);
+      const answer = sanitizeAgentResponse(
+        modelOutput,
+        entities,
+        [...trustedSources.values()],
+        detailedCenterRefs.size === 1
+          ? detailedCenterRefs.values().next().value
+          : undefined,
+      );
       if (needsCurrentLocation) return missingLocationAnswer();
       if (forceGeneralCatalogTool) {
         return finishAnswer(
@@ -1160,7 +1174,7 @@ export function hasTravelTimeIntent(message: string): boolean {
     /\bentre .+? y \S/.test(normalized) ||
     /\bfrom (?!here\b|my\b).+? to \S/.test(normalized);
   const explicitTravelTime =
-    /\b((a|en) cuantos? minutos?|tiempo (de viaje|de llegada|para llegar)|como (llego|llegar)|how many minutes|travel time)\b/.test(
+    /\b((a|en) cuantos? minutos?|tiempo (de viaje|de llegada|para llegar)|how many minutes|travel time)\b/.test(
       normalized,
     );
   const timeQuestion =
@@ -1196,6 +1210,13 @@ export function hasGeneralDiscoveryIntent(message: string): boolean {
     /\b(lugares? turisticos?|atractivos? turisticos?|sitios? turisticos?|tourist attractions?|places to visit)\b/.test(
       normalized,
     ) && !/\b(near|cerca|plan|itinerario|recorrido)\b/.test(normalized)
+  );
+}
+
+/** A question about a place needs its own lookup rather than a forced general list. */
+export function hasPlaceDetailIntent(message: string): boolean {
+  return /\b(cuentame|hablame|describeme|describe|historia|informacion (de|sobre)|detalles? (de|sobre)|precio|cuesta|costo|entrada|tarifa|horarios?|abre|cierra|abierto|como (llego|llegar)|(llegar|ir) (a|al)|cuanto (tiempo )?(se |me )?(tarda|tardo|demora|demoro)|distancia|tell me|about|history|price|cost|entrance|admission|opening hours|directions|how (do i get|to get)|how long)\b/.test(
+    normalizeIntent(message),
   );
 }
 

@@ -14,7 +14,8 @@ export function AgentActionList({
   onRequestLocation: () => void;
   requestingLocation: boolean;
 }>) {
-  if (!actions.some((action) => action.type === "request_location")) return null;
+  if (!actions.some((action) => action.type === "request_location"))
+    return null;
 
   return (
     <TourismActionButton

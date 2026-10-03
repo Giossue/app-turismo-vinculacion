@@ -129,7 +129,7 @@ export function buildAgentHistory(
       return;
     }
     const question = toHistoryContent(message.text);
-    const reply = toHistoryContent(answer.text);
+    const reply = toAssistantHistoryContent(answer);
     if (!question || !reply) return;
     history.push(
       { role: "user", content: question },
@@ -166,7 +166,7 @@ export function shouldShareAgentLocation(message: string): boolean {
     /\bentre .+? y \S/.test(normalized) ||
     /\bfrom (?!here\b|my\b).+? to \S/.test(normalized);
   const explicitTravelTime =
-    /\b((a|en) cuantos? minutos?|tiempo (de viaje|de llegada|para llegar)|como (llego|llegar)|how many minutes|travel time)\b/.test(
+    /\b((a|en) cuantos? minutos?|tiempo (de viaje|de llegada|para llegar)|how many minutes|travel time)\b/.test(
       normalized,
     );
   const timeQuestion =
@@ -185,4 +185,27 @@ export function shouldShareAgentLocation(message: string): boolean {
 
 function toHistoryContent(text: string): string {
   return text.trim().slice(0, AGENT_MESSAGE_MAX_LENGTH);
+}
+
+/** Cards supply the ordered place references that the visible reply omits. */
+function toAssistantHistoryContent(message: AgentMessage): string {
+  if (!message.cards?.length) return toHistoryContent(message.text);
+  const places = message.cards.map((card, index) => {
+    const name = card.name.replace(/\s+/g, " ").trim();
+    const code =
+      card.type === "center"
+        ? ` (code: ${card.code.replace(/\s+/g, " ").trim()})`
+        : "";
+    return `${index + 1}. ${card.type}: ${name}${code}`;
+  });
+  const context = `Lugares mostrados (en orden):\n${places.join("\n")}`.slice(
+    0,
+    AGENT_MESSAGE_MAX_LENGTH,
+  );
+  const availableTextLength = Math.max(
+    0,
+    AGENT_MESSAGE_MAX_LENGTH - context.length - 2,
+  );
+  const text = message.text.trim().slice(0, availableTextLength).trimEnd();
+  return text ? `${text}\n\n${context}` : context;
 }

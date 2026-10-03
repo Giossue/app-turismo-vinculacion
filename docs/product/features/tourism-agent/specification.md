@@ -17,6 +17,13 @@ revisión sobre sus propios borradores, sin delegar la publicación.
   o preguntas por costumbre. Si necesita un dato, hace una sola pregunta concreta.
   Con tarjetas no repite su lista en el texto; la recomendación, la falta de resultados
   o el fallo de consulta se expresa de forma directa, sin inventar hechos.
+- Una respuesta sobre un lugar contesta lo preguntado y adjunta su tarjeta:
+  «Cómo llegar a X» indica «Pulsa Ver y luego Cómo llegar» con tarjeta de X;
+  precio de entrada de X responde solo ese precio (o «No tengo el precio de la entrada»)
+  con tarjeta de X; «Cuéntame sobre X» responde sobre X y adjunta su tarjeta.
+  Para precios, horarios u otros detalles de un centro se consulta el detalle público;
+  la búsqueda general no aporta esos datos. No añade otros lugares ni describe qué
+  muestra la tarjeta. El chat no ofrece botones separados de abrir, preparar o iniciar ruta.
 - Cada chat admite hasta veinte mensajes del usuario. El saludo y las respuestas del
   agente no cuentan. Al alcanzar veinte, se bloquean preguntas nuevas por texto o voz,
   se muestra el contador y se ofrece «Nuevo chat». Reintentar una respuesta fallida o
@@ -54,6 +61,14 @@ revisión sobre sus propios borradores, sin delegar la publicación.
   de coordenadas. Un fallo de un modo no oculta las estimaciones válidas de los demás.
   Una respuesta anterior sin tiempos sigue siendo válida y no genera minutos inventados.
 - Las tarjetas abren fichas públicas. Una ruta es propuesta y siempre pide confirmación.
+- «Cómo llego/llegar a X» busca el destino sin requerir GPS; «Ver» abre sus detalles y
+  «Cómo llegar» lleva al flujo de ruta existente. Cercanía y tiempos desde el visitante
+  sí necesitan posición; cuando falta, «Usar mi ubicación» es el único control adicional.
+- Los nombres, orden y códigos públicos de los lugares mostrados se incorporan al
+  contexto interno del siguiente turno para preguntas como «la entrada del primero».
+  No alteran el texto visible ni la voz. El destino se consulta nuevamente antes de
+  afirmar hechos; no se reenvían coordenadas, contactos ni direcciones de cards como
+  contexto y se mantienen los límites de mensajes y contenido del contrato.
 - La función de planes e itinerarios está retirada: no hay consulta rápida, tarjetas,
   guardado ni edición. Ante una petición de plan, el agente informa que no está disponible
   y ofrece búsqueda de lugares o una ruta a un destino.

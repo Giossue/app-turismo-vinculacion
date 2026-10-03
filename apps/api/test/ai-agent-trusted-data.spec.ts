@@ -146,7 +146,9 @@ describe("agent cards instead of separate model actions", () => {
   });
 
   it("caps the combined card list at six", () => {
-    const places = Array.from({ length: 7 }, (_, index) => center(`GUA-${index}`));
+    const places = Array.from({ length: 7 }, (_, index) =>
+      center(`GUA-${index}`),
+    );
     const answer = sanitizeAgentResponse(
       {
         text: "Puedes visitar estos lugares.",
@@ -156,6 +158,68 @@ describe("agent cards instead of separate model actions", () => {
       new Map(places.map((place) => [place.ref, place])),
     );
     expect(answer.cards).toEqual(places.slice(0, 6).map(({ card }) => card));
+    expect(answer.actions).toEqual([]);
+  });
+
+  it("keeps a focused answer and restores the sole trusted entity when references are omitted", () => {
+    const place = center("GUA-001");
+    const answer = sanitizeAgentResponse(
+      { text: "La entrada cuesta $2.", cards: [], actions: [] },
+      new Map([[place.ref, place]]),
+    );
+    expect(answer.text).toBe("La entrada cuesta $2.");
+    expect(answer.cards).toEqual([place.card]);
+    expect(answer.actions).toEqual([]);
+  });
+
+  it("uses the detailed lookup reference without including other search candidates", () => {
+    const first = center("GUA-001");
+    const detailed = center("GUA-002");
+    const answer = sanitizeAgentResponse(
+      { text: "La entrada cuesta $2.", cards: [], actions: [] },
+      new Map([
+        [first.ref, first],
+        [detailed.ref, detailed],
+      ]),
+      [],
+      detailed.ref,
+    );
+    expect(answer.text).toBe("La entrada cuesta $2.");
+    expect(answer.cards).toEqual([detailed.card]);
+    expect(answer.sources).toEqual([detailed.source]);
+    expect(answer.actions).toEqual([]);
+  });
+
+  it.each([undefined, "center:inventado"])(
+    "does not choose among multiple entities without a valid detail reference %s",
+    (fallbackRef) => {
+      const first = center("GUA-001");
+      const second = center("GUA-002");
+      const answer = sanitizeAgentResponse(
+        { text: "No tengo el precio de entrada.", cards: [], actions: [] },
+        new Map([
+          [first.ref, first],
+          [second.ref, second],
+        ]),
+        [],
+        fallbackRef,
+      );
+      expect(answer.cards).toEqual([]);
+      expect(answer.actions).toEqual([]);
+    },
+  );
+
+  it("does not replace an illegitimate model selection with the sole entity", () => {
+    const place = center("GUA-001");
+    const answer = sanitizeAgentResponse(
+      {
+        text: "No encontré ese lugar.",
+        cards: [],
+        actions: [{ type: "open_center", ref: "center:inventado" }],
+      },
+      new Map([[place.ref, place]]),
+    );
+    expect(answer.cards).toEqual([]);
     expect(answer.actions).toEqual([]);
   });
 });

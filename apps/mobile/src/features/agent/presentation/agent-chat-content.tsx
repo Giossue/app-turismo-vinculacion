@@ -32,13 +32,11 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
-import type { RouteMode } from "@/features/routing/domain/routing";
 import type { useAgentConversation } from "../application/use-agent-conversation";
 import {
   AGENT_MESSAGE_MAX_LENGTH,
   AGENT_MAX_USER_MESSAGES,
   type AgentCard,
-  type AgentRouteDestination,
 } from "../domain/agent";
 import {
   agentStarterPrompts,
@@ -53,13 +51,9 @@ import { useAgentVoiceInput } from "./agent-voice-input";
 export function AgentChatContent({
   conversation,
   onOpenCard,
-  onOpenCenter,
-  onStartRoute,
 }: Readonly<{
   conversation: ReturnType<typeof useAgentConversation>;
   onOpenCard: (card: AgentCard) => void;
-  onOpenCenter: (code: string) => void;
-  onStartRoute: (destination: AgentRouteDestination, mode: RouteMode) => void;
 }>) {
   const colors = useTurismoPalette();
   const { fontScale, height, width } = useWindowDimensions();
@@ -176,14 +170,10 @@ export function AgentChatContent({
               <AgentMessageBubble
                 key={message.id}
                 message={message}
-                onChangePendingRoute={conversation.setPendingRouteAction}
                 onOpenCard={onOpenCard}
-                onOpenCenter={onOpenCenter}
                 onRequestLocation={() =>
                   void conversation.requestLocationForMessage(message.id)
                 }
-                onStartRoute={onStartRoute}
-                pendingRouteAction={conversation.pendingRouteAction}
                 requestingLocation={conversation.requestingLocation}
               />
             ))}
