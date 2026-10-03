@@ -20,6 +20,8 @@ export const queryKeys = {
   publishedCenter: ["public-center"],
   // Los centros en línea nunca se mezclan con los manifiestos offline.
   publishedCenters: ["public-centers", "remote-authoritative-v1"],
+  // Visible map areas stay in memory; their boxes must never be persisted.
+  publishedMapCenters: ["public-map-centers"],
   savedCenters: ["saved-centers", "account-v2"],
 } as const satisfies Record<string, QueryKey>;
 

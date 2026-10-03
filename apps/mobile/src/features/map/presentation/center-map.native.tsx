@@ -4,14 +4,17 @@ import {
   type CircleLayerSpecification,
   type FilterSpecification,
   GeoJSONSource,
+  type GeoJSONSourceRef,
   Images,
   Layer,
   Map as MapLibreMap,
   type MapRef,
   type PressEventWithFeatures,
+  type SymbolLayerSpecification,
   VectorSource,
+  type VectorSourceRef,
 } from "@maplibre/maplibre-react-native";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type NativeSyntheticEvent,
   StyleSheet,
@@ -20,9 +23,9 @@ import {
 } from "react-native";
 
 import { tourismSheetOpenRatio } from "@/core/ui/tourism-bottom-sheet";
+import { getDistanceMeters, offsetCoordinate } from "@/core/geo/distance";
 import { useTurismoMapPalette, useTurismoTheme } from "@/core/ui/theme-context";
 import {
-  establishmentTileDetailZoom,
   establishmentTileLayer,
   establishmentTileMaxZoom,
   getEstablishmentTilesUrl,
@@ -33,15 +36,28 @@ import {
   establishmentPinImageExpression,
   establishmentPinImages,
 } from "@/features/establishments/presentation/establishment-pins";
+import { getEstablishmentKey } from "@/features/establishments/domain/establishment";
+import { basemapPalettes } from "../data/basemap-palette";
+import {
+  getCenterHierarchyRank,
+  getCenterMapPriority,
+  mapPlaceZoom,
+} from "../domain/map-place-priority";
 import {
   getMapFeatureCoordinate,
   getNearbyMapFeatureSelections,
+  nearbyMapFeatureRadiusMeters,
   type MapFeatureSelection,
 } from "../domain/map-feature-selection";
 import type { CenterMapProps, CenterMapViewport } from "./center-map.types";
 import { MapAttributionButton } from "./map-attribution-button";
 import { MapLoadingOverlay } from "./map-loading-overlay";
 import { isSameMapViewport, parseMapViewport } from "./map-viewport";
+import {
+  getMapNameLayout,
+  hasMapLabelGlyphs,
+  mapPinLayout,
+} from "./map-symbol-layout";
 import { useBasemapStyle } from "./use-basemap-style";
 import { useMapLifecycle } from "./use-map-lifecycle";
 import { UserLocationLayers } from "./user-location-layers";
@@ -49,7 +65,12 @@ import { turismoMapLayerStyle, turismoSpacing } from "@/core/ui/tokens";
 
 type CenterFeatureCollection = GeoJSON.FeatureCollection<
   GeoJSON.Point,
-  Readonly<{ code: string }>
+  Readonly<{
+    code: string;
+    name: string;
+    hierarchyRank: number;
+    priority: number;
+  }>
 >;
 type PendingLocationFocus = Readonly<{
   target: [number, number];
@@ -70,15 +91,12 @@ const maxZoom = 19;
 const focusZoom = 15;
 const focusCameraDurationMs = 300;
 const resetNorthDurationMs = 240;
-/** Below this zoom every pin collapses to a small colored dot. */
-const pinMinZoom = establishmentTileDetailZoom;
-const pinIconSize = 0.42;
 const dotRadius = 3;
 /** Establishment dots grow with the registry count of their cell. */
 const establishmentDotRadius = [
   "interpolate",
   ["linear"],
-  ["get", "count"],
+  ["coalesce", ["get", "count"], 1],
   1,
   3.5,
   100,
@@ -93,6 +111,8 @@ const noPadding = { bottom: 0, left: 0, right: 0, top: 0 };
 const layerIds = {
   centerDots: "tourism-center-dots",
   centerIcons: "tourism-center-icons",
+  centerClusters: "tourism-center-clusters",
+  centerClusterNames: "tourism-center-cluster-names",
   establishmentDots: "tourism-establishment-dots",
   establishmentPins: "tourism-establishment-pins",
 } as const;
@@ -103,11 +123,11 @@ const mapImages = {
   "tourism-center-monument-light": require("../../../../assets/images/tourism-center-monument-light.png"),
 };
 
-const pinLayout = {
-  "icon-allow-overlap": true,
-  "icon-anchor": "bottom",
-  "icon-ignore-placement": true,
-} as const;
+const unclusteredFilter = [
+  "!",
+  ["has", "point_count"],
+] satisfies FilterSpecification;
+const clusterFilter = ["has", "point_count"] satisfies FilterSpecification;
 
 /** True when `camera` rests on `target` at the focus zoom. */
 function isCameraAtTarget(
@@ -152,6 +172,7 @@ export function CenterMap({
   focusCoordinate = null,
   focusCoordinateKey,
   focusSelection = null,
+  selectedFeature = null,
   onBearingChange,
   onViewportChange,
   onCenterPress,
@@ -163,6 +184,18 @@ export function CenterMap({
 }: CenterMapProps) {
   const cameraRef = useRef<CameraRef>(null);
   const mapRef = useRef<MapRef>(null);
+  const centersSourceRef = useRef<GeoJSONSourceRef>(null);
+  const localSourceRef = useRef<GeoJSONSourceRef>(null);
+  const establishmentsSourceRef = useRef<VectorSourceRef>(null);
+  const featurePressKeyRef = useRef(0);
+  const selectedFeatureRef = useRef(selectedFeature);
+  useEffect(() => {
+    selectedFeatureRef.current = selectedFeature;
+  }, [selectedFeature]);
+  const [viewportCenter, setViewportCenter] = useState({
+    latitude: initialViewState.center[1],
+    longitude: initialViewState.center[0],
+  });
   const pendingLocationFocusRef = useRef<PendingLocationFocus | null>(null);
   const focusedLocationKeyRef = useRef<number | undefined>(undefined);
   const fittedInitialBoundsRef = useRef(false);
@@ -189,6 +222,14 @@ export function CenterMap({
   const colors = useTurismoMapPalette();
   const onlineStyle = useBasemapStyle(scheme, mapStyleOverride === undefined);
   const mapStyle = mapStyleOverride ?? onlineStyle;
+  const hasGlyphs = hasMapLabelGlyphs(mapStyle);
+  const labelPalette = basemapPalettes[scheme];
+  const labelPaint = hasGlyphs ? {
+    "text-color": labelPalette.text,
+    "text-halo-color": labelPalette.textHalo,
+    "text-halo-width": 1.5,
+    "text-halo-blur": 0.5,
+  } : undefined;
   const {
     isActive,
     markFailed,
@@ -213,28 +254,74 @@ export function CenterMap({
   const establishmentVisibility = establishmentLayer.visible
     ? "visible"
     : "none";
+  const establishmentGroupFilter = establishmentLayer.group
+    ? ([
+        "==",
+        ["get", "group"],
+        establishmentLayer.group,
+      ] satisfies FilterSpecification)
+    : undefined;
   const establishmentFilter: FilterSpecification | undefined =
-    establishmentLayer.group
-      ? ["==", ["get", "group"], establishmentLayer.group]
-      : undefined;
+    selectedFeature?.kind === "establishment"
+      ? [
+          "all",
+          ...(establishmentGroupFilter ? [establishmentGroupFilter] : []),
+          [
+            "!",
+            [
+              "all",
+              ["==", ["get", "name"], selectedFeature.establishment.name],
+              [
+                "==",
+                ["get", "latitude"],
+                selectedFeature.establishment.latitude,
+              ],
+              [
+                "==",
+                ["get", "longitude"],
+                selectedFeature.establishment.longitude,
+              ],
+            ],
+          ],
+        ]
+      : establishmentGroupFilter;
   const centersByCode = useMemo(
-    () => new Map(centers.map((center) => [center.code, center])),
-    [centers],
+    () =>
+      new Map(
+        [
+          ...centers,
+          ...(selectedFeature?.kind === "center"
+            ? [selectedFeature.center]
+            : []),
+        ].map((center) => [center.code, center]),
+      ),
+    [centers, selectedFeature],
   );
   const centerFeatures = useMemo<CenterFeatureCollection>(
     () => ({
       type: "FeatureCollection",
-      features: centers.map((center) => ({
-        type: "Feature",
-        id: center.code,
-        properties: { code: center.code },
-        geometry: {
-          type: "Point",
-          coordinates: [center.longitude, center.latitude],
-        },
-      })),
+      features: centers
+        .filter(
+          (center) =>
+            selectedFeature?.kind !== "center" ||
+            center.code !== selectedFeature.center.code,
+        )
+        .map((center) => ({
+          type: "Feature",
+          id: center.code,
+          properties: {
+            code: center.code,
+            name: center.name,
+            hierarchyRank: getCenterHierarchyRank(center),
+            priority: getCenterMapPriority(center, viewportCenter),
+          },
+          geometry: {
+            type: "Point",
+            coordinates: [center.longitude, center.latitude],
+          },
+        })),
     }),
-    [centers],
+    [centers, selectedFeature, viewportCenter],
   );
   const localFeatures = useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(
     () => ({
@@ -242,7 +329,13 @@ export function CenterMap({
       features: (localPlaces ?? []).map((place) => ({
         type: "Feature",
         id: place.key,
-        properties: { offlineKey: place.key, icon: place.icon },
+        properties: {
+          offlineKey: place.key,
+          icon: place.icon,
+          name: place.name,
+          isCenter: place.key.startsWith("center:"),
+          hierarchyRank: 0,
+        },
         geometry: {
           type: "Point",
           coordinates: [place.longitude, place.latitude],
@@ -250,6 +343,31 @@ export function CenterMap({
       })),
     }),
     [localPlaces],
+  );
+  const selectedFeatures = useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(
+    () => ({
+      type: "FeatureCollection",
+      features: selectedFeature
+        ? [
+            {
+              type: "Feature",
+              properties:
+                selectedFeature.kind === "center"
+                  ? {
+                      code: selectedFeature.center.code,
+                      name: selectedFeature.center.name,
+                      isCenter: true,
+                    }
+                  : { ...selectedFeature.establishment, isCenter: false },
+              geometry: {
+                type: "Point",
+                coordinates: getMapFeatureCoordinate(selectedFeature),
+              },
+            },
+          ]
+        : [],
+    }),
+    [selectedFeature],
   );
   const localRouteFeature = useMemo<
     GeoJSON.FeatureCollection<GeoJSON.LineString>
@@ -278,7 +396,22 @@ export function CenterMap({
   // La ficha se abre enseguida, mientras la cámara se mueve: no se espera a
   // que MapLibre termine el enfoque. El pin queda centrado en la parte visible
   // del mapa, encima de la sheet abierta (padding inferior).
-  const { height: windowHeight } = useWindowDimensions();
+  const { height: windowHeight, fontScale } = useWindowDimensions();
+  const centerNameLayout = getMapNameLayout("center", hasGlyphs, fontScale);
+  const establishmentNameLayout = getMapNameLayout(
+    "establishment",
+    hasGlyphs,
+    fontScale,
+  );
+  const selectedNameLayout = getMapNameLayout("selected", hasGlyphs, fontScale);
+  const clusterNameLayout: SymbolLayerSpecification["layout"] | undefined =
+    hasGlyphs
+      ? {
+          "text-field": ["to-string", ["get", "point_count_abbreviated"]],
+          "text-font": ["Noto Sans Regular"],
+          "text-size": 11 * fontScale,
+        }
+      : undefined;
   const focusSelections = useCallback(
     (selections: readonly MapFeatureSelection[], target: [number, number]) => {
       deliverSelections(selections, selectionCallbacksRef.current);
@@ -299,8 +432,12 @@ export function CenterMap({
   );
 
   const handleFeaturePress = useCallback(
-    (event: NativeSyntheticEvent<PressEventWithFeatures>) => {
+    (
+      event: NativeSyntheticEvent<PressEventWithFeatures>,
+      clusterSource?: GeoJSONSourceRef | null,
+    ) => {
       if (!isActive()) return;
+      const pressKey = ++featurePressKeyRef.current;
       pendingLocationFocusRef.current = null;
       onLocationFocusChange?.(false);
 
@@ -311,6 +448,29 @@ export function CenterMap({
       const features = Array.isArray(event?.nativeEvent?.features)
         ? event.nativeEvent.features
         : [];
+      const cluster = features.find(
+        (feature) =>
+          typeof feature.properties?.cluster_id === "number" &&
+          feature.geometry?.type === "Point",
+      );
+      if (cluster?.geometry.type === "Point" && clusterSource) {
+        const [longitude, latitude] = cluster.geometry.coordinates;
+        if (longitude === undefined || latitude === undefined) return;
+        const expandCluster = (zoom: number) => {
+          if (!isActive() || featurePressKeyRef.current !== pressKey) return;
+          cameraRef.current?.easeTo({
+            center: [longitude, latitude],
+            duration: focusCameraDurationMs,
+            padding: noPadding,
+            zoom: Math.min(maxZoom, Math.max(mapPlaceZoom.centerIcon, zoom)),
+          });
+        };
+        void clusterSource
+          .getClusterExpansionZoom(cluster.properties?.cluster_id)
+          .then(expandCluster)
+          .catch(() => expandCluster(mapPlaceZoom.centerIcon));
+        return;
+      }
       const localKeys = [
         ...new Set(
           features.flatMap((feature) =>
@@ -328,13 +488,24 @@ export function CenterMap({
       if (typeof localKey === "string") {
         const place = localPlaces?.find((item) => item.key === localKey);
         if (place) {
+          const nearbyKeys = (localPlaces ?? [])
+            .filter(
+              (item) =>
+                getDistanceMeters(place, item) <= nearbyMapFeatureRadiusMeters,
+            )
+            .map((item) => item.key);
           cameraRef.current?.easeTo({
             center: [place.longitude, place.latitude],
             duration: focusCameraDurationMs,
             padding: noPadding,
             zoom: focusZoom,
           });
-          onLocalPlacePress?.(localKey);
+          if (nearbyKeys.length > 1 && onLocalPlacesPress)
+            onLocalPlacesPress([
+              localKey,
+              ...nearbyKeys.filter((key) => key !== localKey),
+            ]);
+          else onLocalPlacePress?.(localKey);
         }
         return;
       }
@@ -359,7 +530,7 @@ export function CenterMap({
           center: [longitude, latitude],
           duration: focusCameraDurationMs,
           padding: noPadding,
-          zoom: establishmentTileDetailZoom + 1,
+          zoom: mapPlaceZoom.establishmentIcon,
         });
         return;
       }
@@ -372,10 +543,84 @@ export function CenterMap({
         ),
       );
       focusSelections(selections, getMapFeatureCoordinate(anchor));
+
+      // Open immediately, then recover nearby points hidden by native collision.
+      // The query only reads loaded MVT tiles and never makes a registry request.
+      if (
+        !establishmentLayer.visible ||
+        localPlaces !== undefined ||
+        selections.length !== 1
+      )
+        return;
+      const [longitude, latitude] = getMapFeatureCoordinate(anchor);
+      const coordinate = { latitude, longitude };
+      const queryFilter: FilterSpecification = [
+        "all",
+        ...(establishmentGroupFilter ? [establishmentGroupFilter] : []),
+        [
+          ">=",
+          ["get", "latitude"],
+          offsetCoordinate(coordinate, nearbyMapFeatureRadiusMeters, 180)
+            .latitude,
+        ],
+        [
+          "<=",
+          ["get", "latitude"],
+          offsetCoordinate(coordinate, nearbyMapFeatureRadiusMeters, 0)
+            .latitude,
+        ],
+        [
+          ">=",
+          ["get", "longitude"],
+          offsetCoordinate(coordinate, nearbyMapFeatureRadiusMeters, 270)
+            .longitude,
+        ],
+        [
+          "<=",
+          ["get", "longitude"],
+          offsetCoordinate(coordinate, nearbyMapFeatureRadiusMeters, 90)
+            .longitude,
+        ],
+      ];
+      void establishmentsSourceRef.current
+        ?.querySourceFeatures({
+          sourceLayer: establishmentTileLayer,
+          filter: queryFilter,
+        })
+        .then((loaded) => {
+          if (!isActive() || featurePressKeyRef.current !== pressKey) return;
+          const current = selectedFeatureRef.current;
+          const stillSelected =
+            current?.kind === "center" && anchor.kind === "center"
+              ? current.center.code === anchor.center.code
+              : current?.kind === "establishment" &&
+                anchor.kind === "establishment" &&
+                getEstablishmentKey(current.establishment) ===
+                  getEstablishmentKey(anchor.establishment);
+          if (!stillSelected) return;
+          const nearby = getNearbyMapFeatureSelections(anchor, centers, [
+            ...pressed.flatMap((selection) =>
+              selection.kind === "establishment"
+                ? [selection.establishment]
+                : [],
+            ),
+            ...loaded.flatMap((feature) => {
+              const establishment = parseEstablishmentTileFeature(
+                feature.properties,
+              );
+              return establishment ? [establishment] : [];
+            }),
+          ]);
+          if (nearby.length > selections.length)
+            deliverSelections(nearby, selectionCallbacksRef.current);
+        })
+        .catch(() => undefined);
     },
     [
       centersByCode,
       centers,
+      establishmentLayer,
+      establishmentGroupFilter,
       focusSelections,
       isActive,
       localPlaces,
@@ -402,6 +647,7 @@ export function CenterMap({
 
   useEffect(() => {
     if (!focusSelection || !nativeReady) return;
+    featurePressKeyRef.current += 1;
     focusSelections([focusSelection], getMapFeatureCoordinate(focusSelection));
   }, [focusSelection, focusSelections, nativeReady]);
 
@@ -505,7 +751,9 @@ export function CenterMap({
         onDidFailLoadingMap={markFailed}
         onDidFinishLoadingMap={markReady}
         onDidFinishLoadingStyle={markReady}
-        onRegionWillChange={() => {
+        onRegionWillChange={(event) => {
+          if (event.nativeEvent.userInteraction)
+            featurePressKeyRef.current += 1;
           viewportMovingRef.current = true;
           viewportRequestKeyRef.current += 1;
         }}
@@ -514,6 +762,7 @@ export function CenterMap({
         }}
         onRegionDidChange={(event) => {
           const { center, userInteraction, zoom } = event.nativeEvent;
+          setViewportCenter({ longitude: center[0], latitude: center[1] });
           viewportMovingRef.current = false;
           viewportRequestKeyRef.current += 1;
           publishViewport(center, event.nativeEvent.bounds);
@@ -567,48 +816,51 @@ export function CenterMap({
             />
           </GeoJSONSource>
         ) : null}
-        <GeoJSONSource
-          data={centerFeatures}
-          hitbox={featureHitbox}
-          id="tourism-centers-source"
-          onPress={handleFeaturePress}
-        >
-          <Layer
-            id={layerIds.centerDots}
-            maxzoom={pinMinZoom}
-            paint={{
-              "circle-color": colors.primary,
-              "circle-radius": dotRadius,
-            }}
-            type="circle"
-          />
-          <Layer
-            id={layerIds.centerIcons}
-            layout={{
-              ...pinLayout,
-              "icon-image":
-                scheme === "dark"
-                  ? "tourism-center-monument-dark"
-                  : "tourism-center-monument-light",
-              "icon-size": pinIconSize,
-            }}
-            minzoom={pinMinZoom}
-            type="symbol"
-          />
-        </GeoJSONSource>
         {localPlaces !== undefined ? (
           <GeoJSONSource
             data={localFeatures}
             cluster
-            clusterMaxZoom={pinMinZoom - 1}
+            clusterMaxZoom={mapPlaceZoom.centerIcon - 1}
             hitbox={featureHitbox}
             id="tourism-offline-places-source"
-            onPress={handleFeaturePress}
+            onPress={(event) =>
+              handleFeaturePress(event, localSourceRef.current)
+            }
+            ref={localSourceRef}
           >
+            <Layer
+              id="tourism-offline-place-clusters"
+              filter={clusterFilter}
+              type="circle"
+              paint={{
+                "circle-color": colors.primary,
+                "circle-radius": [
+                  "step",
+                  ["get", "point_count"],
+                  13,
+                  10,
+                  17,
+                  50,
+                  21,
+                ],
+                "circle-stroke-color": colors.surface,
+                "circle-stroke-width": 1,
+              }}
+            />
+            {clusterNameLayout ? (
+              <Layer
+                id="tourism-offline-place-cluster-names"
+                filter={clusterFilter}
+                type="symbol"
+                layout={clusterNameLayout}
+                paint={{ "text-color": colors.surface }}
+              />
+            ) : null}
             <Layer
               id="tourism-offline-place-dots"
               type="circle"
-              maxzoom={pinMinZoom}
+              filter={["all", unclusteredFilter, ["!", ["get", "isCenter"]]]}
+              maxzoom={mapPlaceZoom.establishmentIcon}
               paint={{
                 "circle-color": colors.primary,
                 "circle-radius": 5,
@@ -617,14 +869,41 @@ export function CenterMap({
               }}
             />
             <Layer
+              id="tourism-offline-center-dots"
+              filter={["all", unclusteredFilter, ["get", "isCenter"]]}
+              type="circle"
+              maxzoom={mapPlaceZoom.centerIcon}
+              paint={{
+                "circle-color": colors.primary,
+                "circle-radius": dotRadius,
+              }}
+            />
+            <Layer
               id="tourism-offline-place-pins"
               type="symbol"
-              minzoom={pinMinZoom}
+              filter={["all", unclusteredFilter, ["!", ["get", "isCenter"]]]}
+              minzoom={mapPlaceZoom.establishmentIcon}
               layout={{
-                ...pinLayout,
+                ...mapPinLayout,
+                ...establishmentNameLayout,
                 "icon-image": establishmentPinImageExpression,
-                "icon-size": pinIconSize,
               }}
+              paint={labelPaint}
+            />
+            <Layer
+              id="tourism-offline-center-pins"
+              filter={["all", unclusteredFilter, ["get", "isCenter"]]}
+              type="symbol"
+              minzoom={mapPlaceZoom.centerIcon}
+              layout={{
+                ...mapPinLayout,
+                ...centerNameLayout,
+                "icon-image":
+                  scheme === "dark"
+                    ? "tourism-center-monument-dark"
+                    : "tourism-center-monument-light",
+              }}
+              paint={labelPaint}
             />
           </GeoJSONSource>
         ) : (
@@ -633,18 +912,20 @@ export function CenterMap({
             id="tourism-establishments-source"
             maxzoom={establishmentTileMaxZoom}
             onPress={handleFeaturePress}
+            ref={establishmentsSourceRef}
             tiles={establishmentTiles}
           >
             <Layer
               filter={establishmentFilter}
               id={layerIds.establishmentPins}
               layout={{
-                ...pinLayout,
+                ...mapPinLayout,
+                ...establishmentNameLayout,
                 "icon-image": establishmentPinImageExpression,
-                "icon-size": pinIconSize,
                 visibility: establishmentVisibility,
               }}
-              minzoom={pinMinZoom}
+              minzoom={mapPlaceZoom.establishmentIcon}
+              paint={labelPaint}
               source-layer={establishmentTileLayer}
               type="symbol"
             />
@@ -652,7 +933,7 @@ export function CenterMap({
               filter={establishmentFilter}
               id={layerIds.establishmentDots}
               layout={{ visibility: establishmentVisibility }}
-              maxzoom={pinMinZoom}
+              maxzoom={mapPlaceZoom.establishmentIcon}
               paint={{
                 "circle-color": establishmentPinColorExpression,
                 "circle-opacity": turismoMapLayerStyle.establishmentDotOpacity,
@@ -665,6 +946,97 @@ export function CenterMap({
             />
           </VectorSource>
         )}
+        <GeoJSONSource
+          data={centerFeatures}
+          cluster
+          clusterMaxZoom={mapPlaceZoom.centerIcon - 1}
+          hitbox={featureHitbox}
+          id="tourism-centers-source"
+          onPress={(event) =>
+            handleFeaturePress(event, centersSourceRef.current)
+          }
+          ref={centersSourceRef}
+        >
+          <Layer
+            id={layerIds.centerClusters}
+            filter={clusterFilter}
+            paint={{
+              "circle-color": colors.primary,
+              "circle-radius": [
+                "step",
+                ["get", "point_count"],
+                13,
+                10,
+                17,
+                50,
+                21,
+              ],
+              "circle-stroke-color": colors.surface,
+              "circle-stroke-width": 1,
+            }}
+            type="circle"
+          />
+          {clusterNameLayout ? (
+            <Layer
+              id={layerIds.centerClusterNames}
+              filter={clusterFilter}
+              layout={clusterNameLayout}
+              paint={{ "text-color": colors.surface }}
+              type="symbol"
+            />
+          ) : null}
+          <Layer
+            id={layerIds.centerDots}
+            filter={unclusteredFilter}
+            maxzoom={mapPlaceZoom.centerIcon}
+            paint={{
+              "circle-color": colors.primary,
+              "circle-radius": dotRadius,
+            }}
+            type="circle"
+          />
+          <Layer
+            id={layerIds.centerIcons}
+            filter={unclusteredFilter}
+            layout={{
+              ...mapPinLayout,
+              ...centerNameLayout,
+              "symbol-sort-key": ["get", "priority"],
+              "icon-image":
+                scheme === "dark"
+                  ? "tourism-center-monument-dark"
+                  : "tourism-center-monument-light",
+            }}
+            minzoom={mapPlaceZoom.centerIcon}
+            paint={labelPaint}
+            type="symbol"
+          />
+        </GeoJSONSource>
+        <GeoJSONSource
+          data={selectedFeatures}
+          hitbox={featureHitbox}
+          id="tourism-current-selection-source"
+          onPress={handleFeaturePress}
+        >
+          <Layer
+            id="tourism-current-selection-pin"
+            type="symbol"
+            layout={{
+              ...mapPinLayout,
+              ...selectedNameLayout,
+              "icon-allow-overlap": true,
+              "icon-image": [
+                "case",
+                ["get", "isCenter"],
+                scheme === "dark"
+                  ? "tourism-center-monument-dark"
+                  : "tourism-center-monument-light",
+                establishmentPinImageExpression,
+              ],
+            }}
+            paint={labelPaint}
+          />
+        </GeoJSONSource>
         <UserLocationLayers
           coordinate={userLocation}
           dotRadius={7}

@@ -91,7 +91,11 @@ estables durante zoom y paneo. Los clusters pueden tener su propia capa visual s
 La selección de un centro debe mantener el código seleccionado en el estado de pantalla y
 abrir la ficha enseguida, mientras la cámara se mueve al zoom predeterminado; la cámara
 centra el pin en la parte visible del mapa, encima de la ficha (padding inferior). Los pines no cambian
-de tamaño ni de icono al seleccionarse: no hay capa ni estilo de pin seleccionado.
+de tamaño, color ni de icono al seleccionarse. Una fuente de selección puede garantizar
+que el pin y su nombre permanezcan visibles, excluyendo su duplicado de las capas generales.
+Las capas generales resuelven las colisiones en MapLibre; los nombres son opcionales
+para no ocultar un icono solo porque su texto no cabe. Usar la fuente publicada
+`Noto Sans Regular`, halo de tema y `fontScale`; no añadir texto sin glifos válidos.
 Los catastros llegan como teselas vectoriales (`VectorSource` sobre
 `GET /establishments/tiles/{z}/{x}/{y}`), nunca como una lista JSON por viewport: MapLibre
 pide, cachea y descarta las teselas, y los chips filtran con el `filter` de la capa sin

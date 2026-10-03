@@ -20,8 +20,11 @@ una hoja inferior de resultados. Explorar y buscar no solicitan permiso de ubica
 
 ## Flujo principal
 
-1. La aplicación pide `GET /api/v1/centers` a través de un repositorio y dibuja en MapLibre
-   los centros públicos confirmados. Los catastros se muestran mediante teselas vectoriales.
+1. Cuando el mapa informa su área inicial o termina un movimiento, la aplicación pide
+   `GET /api/v1/centers` con el bbox real y completa las páginas de hasta 100 elementos
+   mediante `offset` y `meta.total`. No carga una lista nacional arbitraria de 50
+   atractivos. Las solicitudes obsoletas se cancelan y se conserva la respuesta anterior
+   mientras llega la nueva. Los catastros se muestran mediante teselas vectoriales.
 2. «Buscar aquí» ofrece un solo campo y los filtros «Todo», «Atractivos», «Servicios» y
    «Lugares». Permite buscar nombres o actividades como «cafeterías» y «hoteles».
    «Lugares» incluye referencias geográficas remotas y POIs/recorridos publicados de
@@ -83,10 +86,28 @@ una hoja inferior de resultados. Explorar y buscar no solicitan permiso de ubica
 - Una respuesta remota vacía produce un mapa sin pines; no se generan atractivos de ejemplo
   ni se usan centros offline como sustituto de la capa de centros de Explorar. La lista de
   búsqueda puede mostrar coincidencias descargadas identificadas como tales.
-- Las consultas de búsqueda que contienen ubicación o viewport viven solo en memoria;
+- Las consultas de búsqueda y de pines que contienen ubicación o viewport viven solo en memoria;
   no se persisten sus claves ni coordenadas. Las búsquedas recientes locales guardan
   únicamente texto y se pueden borrar. No se guarda un historial de posiciones.
 - La URL del backend se inyecta por variable pública `EXPO_PUBLIC_API_URL`, sin secretos.
+
+## Aparición de pines y nombres
+
+- A escalas amplias, los atractivos cercanos se agrupan en el motor nativo. Tocar una
+  agrupación acerca la cámara hasta separar sus lugares.
+- Los iconos individuales de atractivos aparecen desde zoom 12; sus nombres desde 13.
+  Las jerarquías institucionales III/IV permiten mostrar el nombre desde 12. El catastro
+  mantiene sus puntos agregados antes de 13, muestra iconos desde 14 y nombres desde 15.
+- La colocación nativa reserva espacio y omite pines o nombres que no caben sin taparse.
+  La jerarquía real de los atractivos y el centro de la vista determinan su prioridad;
+  no se inventa popularidad. Las etiquetas pueden cambiar de lado según el espacio.
+- Un nombre que no cabe no obliga a ocultar el icono. Los nombres usan la fuente publicada
+  del mapa, tamaño adaptado y halo de contraste en temas claro y oscuro. Sin glifos
+  disponibles, se conservan los pines y la interacción sin texto.
+- El lugar seleccionado conserva su pin y nombre visibles, también si se eligió desde
+  una búsqueda fuera del conjunto cargado. Conserva su imagen, color y tamaño habituales.
+- El visor de ciudad descargada usa los nombres de su manifiesto y las mismas reglas de
+  colocación; sus datos no sustituyen los pines remotos de Explorar.
 
 ## Fuera de alcance
 

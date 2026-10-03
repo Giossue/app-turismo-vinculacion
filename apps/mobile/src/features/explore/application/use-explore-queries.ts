@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { queryKeys } from "@/core/api/query-keys";
 import type { GeoCoordinate } from "@/core/geo/types";
 import { useDiscoveryCatalog } from "@/features/centers/application/use-discovery-catalog";
-import { usePublishedCenters } from "@/features/centers/application/use-published-centers";
+import { usePublishedMapCenters } from "@/features/centers/application/use-published-map-centers";
 import type { DiscoveryFilterValues } from "@/features/centers/presentation/discovery-filters";
 import { useNearbyEstablishments } from "@/features/establishments/application/use-nearby-establishments";
 import { useStoredOfflineCities } from "@/features/offline/application/use-stored-offline-cities";
@@ -43,7 +43,10 @@ export function useExploreQueries({
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<DiscoveryFilterValues>({});
   const [mapFilter, setMapFilter] = useState<ExploreMapFilter>(null);
-  const centersQuery = usePublishedCenters(filters);
+  const centersQuery = usePublishedMapCenters(
+    viewport?.bounds ?? null,
+    filters,
+  );
   const catalog = useDiscoveryCatalog();
   const stored = useStoredOfflineCities();
   const normalizedQuery = (query ?? submittedQuery ?? "").trim();
@@ -139,6 +142,9 @@ export function useExploreQueries({
       if (categoryCode !== undefined) return;
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.publishedCenters }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.publishedMapCenters,
+        }),
         queryClient.invalidateQueries({ queryKey: queryKeys.discoveryCatalog }),
       ]);
     },

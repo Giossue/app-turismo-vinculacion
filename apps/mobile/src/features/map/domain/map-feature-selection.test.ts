@@ -82,4 +82,13 @@ describe("getNearbyMapFeatureSelections", () => {
       [anchor],
     );
   });
+
+  it("deduplica los puntos que vienen de teselas vecinas y conserva el ancla fuera de la nueva respuesta", () => {
+    const hotel = establishment("Hotel", center.latitude);
+    const anchor: MapFeatureSelection = { kind: "center", center };
+    expect(
+      getNearbyMapFeatureSelections(anchor, [], [hotel, { ...hotel }]),
+    ).toHaveLength(2);
+    expect(getNearbyMapFeatureSelections(anchor, [], [hotel])[0]).toBe(anchor);
+  });
 });

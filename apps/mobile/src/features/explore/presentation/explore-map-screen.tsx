@@ -199,6 +199,18 @@ export function ExploreMapScreen() {
             focusSelection={
               current.kind === "focusing" ? current.selection : null
             }
+            selectedFeature={
+              current.kind === "center" && selectedCenter
+                ? { kind: "center", center: selectedCenter }
+                : current.kind === "establishment"
+                  ? {
+                      kind: "establishment",
+                      establishment: current.establishment,
+                    }
+                  : current.kind === "focusing"
+                    ? current.selection
+                    : null
+            }
             onBearingChange={bearingStore.setBearing}
             onCenterPress={(center) => {
               if (current.kind !== "focusing") setSelectedFromSearch(false);

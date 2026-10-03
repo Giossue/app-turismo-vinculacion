@@ -16,7 +16,7 @@ export type MapFeatureSelection = Readonly<
     }
 >;
 
-const nearbyMapFeatureRadiusMeters = 50;
+export const nearbyMapFeatureRadiusMeters = 50;
 
 /** `[longitude, latitude]` of the selected feature, as MapLibre expects. */
 export function getMapFeatureCoordinate(
@@ -35,15 +35,31 @@ export function getNearbyMapFeatureSelections(
 ): readonly MapFeatureSelection[] {
   const [longitude, latitude] = getMapFeatureCoordinate(anchor);
   const anchorCoordinate = { latitude, longitude };
+  const uniqueCenters = new Map(centers.map((center) => [center.code, center]));
+  const uniqueEstablishments = new Map(
+    establishments.map((establishment) => [
+      getEstablishmentKey(establishment),
+      establishment,
+    ]),
+  );
+  // Native source queries can repeat a point at tile boundaries; the selected
+  // snapshot must also survive a viewport response that no longer includes it.
+  if (anchor.kind === "center")
+    uniqueCenters.set(anchor.center.code, anchor.center);
+  else
+    uniqueEstablishments.set(
+      getEstablishmentKey(anchor.establishment),
+      anchor.establishment,
+    );
   const candidates: {
     distanceMeters: number;
     selection: MapFeatureSelection;
   }[] = [
-    ...centers.map((center) => ({
+    ...[...uniqueCenters.values()].map((center) => ({
       distanceMeters: getDistanceMeters(anchorCoordinate, center),
       selection: { kind: "center" as const, center },
     })),
-    ...establishments.map((establishment) => ({
+    ...[...uniqueEstablishments.values()].map((establishment) => ({
       distanceMeters: getDistanceMeters(anchorCoordinate, establishment),
       selection: { kind: "establishment" as const, establishment },
     })),

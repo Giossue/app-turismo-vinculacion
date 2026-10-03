@@ -172,5 +172,11 @@ describe("query persistence policy", () => {
     expect(
       isPersistedQueryKey([...queryKeys.nearbyEstablishments, "hotel"]),
     ).toBe(false);
+    expect(
+      isPersistedQueryKey([
+        ...queryKeys.publishedMapCenters,
+        { west: -79.02, south: -1.62, east: -78.98, north: -1.58 },
+      ]),
+    ).toBe(false);
   });
 });

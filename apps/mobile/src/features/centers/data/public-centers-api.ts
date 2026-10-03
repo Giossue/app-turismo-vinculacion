@@ -1,7 +1,15 @@
 import { z } from "zod";
 
 import { getApiUrl } from "@/core/api/api-url";
-import { acceptJsonHeaders, requestJson, type Fetcher } from "@/core/api/http";
+import {
+  acceptJsonHeaders,
+  ApiError,
+  requestJson,
+  type ApiRequestOptions,
+  type Fetcher,
+} from "@/core/api/http";
+import type { GeoBounds } from "@/core/geo/types";
+import { uniqueByCode } from "../domain/unique-by-code";
 import type {
   CenterFilters,
   DiscoveryCatalog,
@@ -68,6 +76,13 @@ const catalogSchema = z.object({
   }),
 });
 const listSchema = z.object({ data: z.array(publicCenterSchema) });
+const mapPageSchema = listSchema.extend({
+  meta: z.object({
+    total: z.number().int().nonnegative(),
+    limit: z.number().int().min(1).max(100),
+    offset: z.number().int().nonnegative(),
+  }),
+});
 const detailResponseSchema = z.object({ data: detailSchema });
 
 export async function getPublishedCenters(
@@ -75,6 +90,70 @@ export async function getPublishedCenters(
   fetcher: Fetcher = fetch,
   apiUrl = getApiUrl(),
 ): Promise<readonly PublicCenter[]> {
+  const query = buildCenterQuery(filters);
+  const payload = await requestJson(
+    `${apiUrl}/centers${query.size ? `?${query}` : ""}`,
+    listSchema,
+    {
+      errorMessage: "No fue posible cargar los atractivos turísticos.",
+      fetcher,
+      init: { headers: acceptJsonHeaders },
+      invalidMessage: "La respuesta turística no tiene el formato esperado.",
+    },
+  );
+  return payload.data;
+}
+
+/** Completes the visible area's catalog without a silent 50/100-place cap. */
+export async function getPublishedMapCenters(
+  filters: CenterFilters & Readonly<{ bounds: GeoBounds }>,
+  { apiUrl = getApiUrl(), fetcher = fetch, signal }: ApiRequestOptions = {},
+): Promise<readonly PublicCenter[]> {
+  const query = buildCenterQuery(filters);
+  query.set("limit", "100");
+  const centers: PublicCenter[] = [];
+  const seenCodes = new Set<string>();
+  let offset = 0;
+  while (true) {
+    assertNotAborted(signal);
+    query.set("offset", String(offset));
+    const page = await requestJson(
+      `${apiUrl}/centers?${query}`,
+      mapPageSchema,
+      {
+        errorMessage: "No fue posible cargar los atractivos de esta zona.",
+        invalidMessage: "La respuesta turística no tiene el formato esperado.",
+        fetcher,
+        init: { headers: acceptJsonHeaders, signal },
+      },
+    );
+    assertNotAborted(signal);
+    const newCodes = page.data.filter((center) => !seenCodes.has(center.code));
+    if (
+      page.meta.offset !== offset ||
+      page.data.length > page.meta.limit ||
+      (page.data.length === 0 && offset < page.meta.total) ||
+      (page.data.length > 0 && newCodes.length === 0)
+    ) {
+      throw new ApiError(
+        "No fue posible completar los atractivos de esta zona.",
+      );
+    }
+    for (const center of page.data) seenCodes.add(center.code);
+    centers.push(...page.data);
+    offset += page.data.length;
+    if (offset >= page.meta.total) return uniqueByCode(centers);
+  }
+}
+
+function assertNotAborted(signal?: AbortSignal): void {
+  if (!signal?.aborted) return;
+  const error = new Error("La consulta fue cancelada.");
+  error.name = "AbortError";
+  throw error;
+}
+
+function buildCenterQuery(filters: CenterFilters): URLSearchParams {
   const query = new URLSearchParams();
   if (filters.text) query.set("q", filters.text);
   if (filters.categoryCode) query.set("categoryCode", filters.categoryCode);
@@ -90,17 +169,7 @@ export async function getPublishedCenters(
     query.set("east", String(filters.bounds.east));
     query.set("north", String(filters.bounds.north));
   }
-  const payload = await requestJson(
-    `${apiUrl}/centers${query.size ? `?${query}` : ""}`,
-    listSchema,
-    {
-      errorMessage: "No fue posible cargar los atractivos turísticos.",
-      fetcher,
-      init: { headers: acceptJsonHeaders },
-      invalidMessage: "La respuesta turística no tiene el formato esperado.",
-    },
-  );
-  return payload.data;
+  return query;
 }
 
 export async function getPublishedCenter(

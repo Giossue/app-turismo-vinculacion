@@ -204,12 +204,19 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   el mapa hasta ver sus pines. Cada punto lleva su `group` y los chips lo filtran en la capa,
   sin nuevas peticiones. La ruta tiene su propio límite de peticiones (3000/min) porque un
   paneo pide varias teselas a la vez.
-- Respuestas compactas para marcadores; ficha completa bajo demanda.
+- Los atractivos de Explorar se consultan por el bbox inicial y al terminar los gestos;
+  `GET /centers` mantiene páginas de hasta 100 elementos y añade `offset`/`meta.offset`
+  para completar el total de la zona sin truncar el mapa. La API mantiene orden estable
+  por relevancia, nombre y código, y los filtros de publicación. Esta paginación por
+  offset conserva compatibilidad con la lista pública; las teselas para atractivos
+  continúan siendo una opción de escala futura. La ficha completa llega bajo demanda.
 - Cancelar consultas obsoletas al mover el mapa.
 - Cachear catálogos/mapas públicos con política de invalidación por publicación.
-- El cliente persiste la caché de consultas públicas durante 24 horas y evita repetir la
+- El cliente persiste la caché de catálogos y consultas públicas sin ubicación durante 24 horas y evita repetir la
   petición al volver a una pestaña mientras el dato siga fresco; una revalidación puede
   ocurrir al recuperar conectividad o mediante una acción explícita.
+  Los pines por bbox usan el prefijo `public-map-centers`, con frescura y retención en
+  memoria de cinco minutos; sus claves y coordenadas nunca se persisten.
 - El estilo propio se cachea en memoria por combinación de tema y modo (`streets` o
   `navigation`), se deduplican solicitudes concurrentes y se muestran eventos de carga de
   MapLibre para evitar el destello negro durante el cambio de estilo.
@@ -219,10 +226,10 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   geográficos. Seleccionar un centro o catastro propio abre su ficha o detalle; seleccionar
   una calle, ciudad u otra referencia geográfica solo centra el mapa y no crea una ficha.
 - En móvil, los centros públicos se renderizan como un `GeoJSONSource` nativo con
-  `SymbolLayer`; MapLibre mantiene el conjunto de features y el clustering fuera del
+  `Layer` de tipo `symbol`; MapLibre mantiene el conjunto de features y el clustering fuera del
   árbol React mientras el usuario hace zoom o panea. Los pines individuales usan un
   recurso de icono estático, sin una vista React ni un círculo de fondo. Los clusters sí
-  usan una capa separada con conteo y se expanden mediante `getClusterExpansionZoom`.
+  usan una capa separada con conteo hasta zoom 11 y se expanden mediante `getClusterExpansionZoom`.
   Los establecimientos activos del catastro llegan desde las teselas
   `GET /api/v1/establishments/tiles/:z/:x/:y` en una `VectorSource` separada; reciben el pin Osmic y el color fijo
   que el sistema asigna a su clasificación/tipo de establecimiento, además de la etiqueta
@@ -239,7 +246,17 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 - La selección es estado de la pantalla: el toque presenta la ficha enseguida y, al mismo
   tiempo, la cámara centra el atractivo con el zoom de detalle predeterminado en la parte
   visible del mapa, encima de la ficha. El pin seleccionado se ve
-  igual que el resto: no se agranda ni cambia de icono.
+  igual que el resto: no se agranda ni cambia de icono. Una fuente de selección separada
+  conserva el pin y su nombre visibles, excluyendo su duplicado de las capas generales.
+- Los iconos de atractivos aparecen desde zoom 12 y sus nombres desde 13; las jerarquías
+  III/IV pueden rotularse desde 12. Servicios muestran iconos desde 14 y nombres desde 15.
+  La prioridad de atractivos usa su jerarquía publicada y la distancia al centro de vista,
+  sin GPS ni valoraciones supuestas. El motor decide qué símbolos caben en pantalla;
+  se desactiva la superposición en las capas generales y el texto es opcional para que
+  una etiqueta descartada no suprima su icono. Las etiquetas usan anclas adaptables,
+  `Noto Sans Regular`, tamaño que respeta `fontScale` y halo de tema. Solo se añaden
+  cuando el estilo tiene glifos válidos; los iconos permanecen disponibles en el estilo
+  degradado sin fuentes. El visor local aplica estas reglas a los nombres descargados.
 - Al abrir la pantalla principal no se solicita la ubicación: `while in use` se pide al tocar
   "mi ubicación" o activar una función de ruta que la necesita; buscar y filtrar no
   solicitan ese permiso. Si la

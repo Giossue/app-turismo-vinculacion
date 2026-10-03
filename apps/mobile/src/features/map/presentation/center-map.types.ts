@@ -49,6 +49,8 @@ export type CenterMapProps = Readonly<{
   /** Eases to the user's position whenever this key changes. */
   focusLocationKey?: number;
   focusSelection?: MapFeatureSelection | null;
+  /** Current sheet selection; stays visible without changing its pin image or size. */
+  selectedFeature?: MapFeatureSelection | null;
   /** Called on every camera frame; keep it cheap (see `MapCompass`). */
   onBearingChange?: (bearing: number) => void;
   /** Reports the initial visible area and the final area after camera moves. */
