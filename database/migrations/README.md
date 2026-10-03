@@ -262,3 +262,13 @@ que la versión automática de los mapas sin conexión también suba al cambiar 
 versión de ruta. Es aditiva e idempotente y no requiere backfill; aplicarla antes de
 desplegar la API que la consulta. Al aplicarla, la columna nueva toma la fecha actual, así
 que cada ciudad ofrece una actualización una sola vez.
+
+La migración `20261005_establishment_favorites_media.sql` crea `favoritos_establecimientos`
+(usuario y establecimiento únicos, con borrado en cascada) y
+`archivos_establecimiento_turistico`, con los metadatos, el orden, el estado
+`PENDIENTE`/`PUBLICADO`/`ELIMINADO` y el trigger `fn_set_updated_at` de las fotografías de
+cada establecimiento. No usa el catálogo de tipos de archivo porque solo admite
+fotografías. También amplía `auditoria_catalogos_accion_check` con `AGREGAR_MULTIMEDIA`,
+`ELIMINAR_MULTIMEDIA` y `PUBLICAR_MULTIMEDIA`. Es aditiva e idempotente y no requiere
+backfill; aplicarla antes de desplegar la API que la consulta.
+

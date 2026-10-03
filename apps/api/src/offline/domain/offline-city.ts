@@ -33,6 +33,7 @@ export type OfflineCityManifest = Readonly<{
 }>;
 
 export type OfflineManifestEstablishment = Readonly<{
+  id: number;
   name: string;
   activity: string;
   classification: string | null;

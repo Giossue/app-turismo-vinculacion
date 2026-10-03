@@ -76,14 +76,49 @@ PATCH /api/v1/admin/establishments/:id/review
 POST  /api/v1/admin/establishments/:id/deactivate
 POST  /api/v1/admin/establishments/:id/reactivate
 DELETE /api/v1/admin/establishments/:id
+GET   /api/v1/admin/establishments/:id/media
+POST  /api/v1/admin/establishments/:id/media
+DELETE /api/v1/admin/establishments/:id/media/:mediaId
 GET   /api/v1/establishments/nearby
 GET   /api/v1/establishments/tiles/:z/:x/:y
+GET   /api/v1/establishments/:id
+GET   /api/v1/media/establishments/:mediaId
+GET   /api/v1/favorites/establishments
+PUT   /api/v1/favorites/establishments/:id
+DELETE /api/v1/favorites/establishments/:id
 ```
 
 La captura y consulta privada requieren `AGENTE_TURISTICO` o `ADMINISTRADOR`; la solicitud
 de revisión también admite ambos roles y la ruta `/review` requiere `ADMINISTRADOR`. La
 consulta pública devuelve `items`,
 `requestedLocalityName`, `effectiveLocality` y `fallbackApplied`.
+
+Cada catastro público expone su `id` numérico en `nearby`, en las propiedades de los puntos
+de las teselas de detalle y en el manifiesto offline; el móvil lo usa para abrir la ficha y
+guardar favoritos. `GET /establishments/:id` devuelve la misma forma pública más
+`photos: [{ id, url, description }]`, solo para catastros activos, publicados y no
+eliminados, y solo con fotografías publicadas.
+
+## Fotografías por establecimiento
+
+Las fotografías pertenecen a un establecimiento concreto (`archivos_establecimiento_turistico`),
+no a su actividad, clasificación ni categoría. El portal las carga como multipart con un
+único archivo y los campos opcionales `description` (hasta 2000 caracteres) y
+`sourceAuthor` (hasta 250). Se aceptan JPEG, PNG o WebP con firma binaria válida, hasta
+`MEDIA_MAX_IMAGE_BYTES`; el binario se guarda en el proveedor configurado y PostgreSQL solo
+conserva metadatos y la clave opaca. El administrador publica de inmediato; el agente solo
+opera sobre sus catastros en borrador o rechazados y su fotografía queda pendiente hasta que
+se aprueba el catastro. Altas, eliminaciones lógicas y publicaciones se auditan en
+`auditoria_catalogos` (`ESTABLISHMENT`). La imagen pública se sirve en
+`/api/v1/media/establishments/:mediaId`.
+
+## Favoritos de establecimientos
+
+`favoritos_establecimientos` guarda los catastros favoritos de la cuenta con la misma
+autenticación que los centros (`TURISTA` o `ADMINISTRADOR`). La lista devuelve la forma
+pública con `photoUrl` (primera fotografía publicada o `null`) y omite los catastros que
+dejaron de estar publicados. `PUT` es idempotente y `DELETE` responde `{ removed }`.
+Requiere `20261005_establishment_favorites_media.sql`.
 
 ## Eliminación administrativa
 

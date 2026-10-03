@@ -6,7 +6,7 @@ import { ESTABLISHMENT_MAP_GROUPS } from "./establishment-groups";
  * descarga los que entran en pantalla.
  *
  * - Desde `ESTABLISHMENT_TILE_DETAIL_ZOOM` cada catastro es un punto con los
- *   datos que necesita la ficha.
+ *   datos que necesita la ficha, incluido su `id` para abrirla o guardarla.
  * - Por debajo se agregan por celda (`count`), así una tesela alejada pesa lo
  *   mismo con 76 que con 100.000 registros.
  *
@@ -67,6 +67,7 @@ export function buildEstablishmentTileQuery({
   );
   const points = `
     SELECT ${mercator} AS location,
+           e.id,
            e.nombre_comercial AS name,
            COALESCE(category_catalog.nombre, e.categoria) AS category,
            CASE
@@ -97,7 +98,7 @@ export function buildEstablishmentTileQuery({
   const features =
     z >= ESTABLISHMENT_TILE_DETAIL_ZOOM
       ? `SELECT ST_AsMVTGeom(location, tile.envelope, ${tileExtent}, ${tileBuffer}, true) AS geom,
-                name, category, "categoryLabel", latitude, longitude, approximate, icon, "group"
+                id, name, category, "categoryLabel", latitude, longitude, approximate, icon, "group"
            FROM points, tile`
       : `SELECT ST_AsMVTGeom(ST_Centroid(ST_Collect(location)), tile.envelope, ${tileExtent}, ${tileBuffer}, true) AS geom,
                 icon, "group", COUNT(*)::integer AS count

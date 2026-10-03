@@ -11,19 +11,13 @@ import { createHash, randomUUID } from "node:crypto";
 import type { DataSource, EntityManager } from "typeorm";
 
 import { MediaStorageService } from "./media-storage.service";
-
-const MEDIA_TYPES = new Map([
-  ["image/jpeg", { kind: "image", extension: ".jpg" }],
-  ["image/png", { kind: "image", extension: ".png" }],
-  ["image/webp", { kind: "image", extension: ".webp" }],
-  ["video/mp4", { kind: "video", extension: ".mp4" }],
-  ["video/webm", { kind: "video", extension: ".webm" }],
-  ["audio/mpeg", { kind: "audio", extension: ".mp3" }],
-  ["audio/mp4", { kind: "audio", extension: ".m4a" }],
-  ["audio/wav", { kind: "audio", extension: ".wav" }],
-  ["audio/ogg", { kind: "audio", extension: ".ogg" }],
-  ["application/pdf", { kind: "document", extension: ".pdf" }],
-]);
+import {
+  assertImageSize,
+  assertUploadSize,
+  hasMediaSignature,
+  MEDIA_TYPES,
+  mediaMetadata,
+} from "./media-validation";
 
 const MEDIA_CATALOG_CODES = new Set(["FOTOGRAFIA", "VIDEO", "AUDIO"]);
 const DOCUMENT_CATALOG_CODES = new Set(["MAPA", "PLAN_CONTINGENCIA", "OTRO"]);
@@ -116,12 +110,7 @@ export class MediaService {
     const maxUploadBytes = this.config.getOrThrow<number>(
       "MEDIA_MAX_UPLOAD_BYTES",
     );
-    const maxBytes = maxUploadBytes;
-    if (input.buffer.length === 0 || input.buffer.length > maxBytes) {
-      throw new BadRequestException(
-        `El archivo debe pesar entre 1 byte y ${Math.floor(maxBytes / (1024 * 1024))} MB.`,
-      );
-    }
+    assertUploadSize(input.buffer, maxUploadBytes);
     const mimeType = input.mimeType.trim().toLowerCase();
     const definition = MEDIA_TYPES.get(mimeType);
     const typeCode = input.typeCode ?? defaultTypeCode(definition?.kind);
@@ -137,24 +126,10 @@ export class MediaService {
           "Los anexos también pueden ser PDF.",
       );
     }
-    if (definition.kind === "image" && input.buffer.length > maxImageBytes) {
-      throw new BadRequestException(
-        `La imagen debe pesar como máximo ${Math.floor(maxImageBytes / (1024 * 1024))} MB.`,
-      );
+    if (definition.kind === "image") {
+      assertImageSize(input.buffer, maxImageBytes);
     }
-    const originalName = sanitizeOriginalName(input.originalName);
-    const description = input.description?.trim() || null;
-    const sourceAuthor = input.sourceAuthor?.trim() || null;
-    if (description && description.length > 2000) {
-      throw new BadRequestException(
-        "La descripción del archivo es demasiado larga.",
-      );
-    }
-    if (sourceAuthor && sourceAuthor.length > 250) {
-      throw new BadRequestException(
-        "La fuente o autor del archivo es demasiado larga.",
-      );
-    }
+    const { originalName, description, sourceAuthor } = mediaMetadata(input);
     const prepared = await this.dataSource.transaction(async (manager) => {
       const center = await this.center(manager, code, actorId, isAdmin);
       const typeRows = (await manager.query(
@@ -358,11 +333,6 @@ export class MediaService {
   }
 }
 
-function sanitizeOriginalName(value: string): string {
-  const normalized = value.replace(/[\\/\u0000-\u001f\u007f]/g, "_").trim();
-  return normalized.slice(0, 255) || "fotografia";
-}
-
 function defaultTypeCode(kind: string | undefined): CenterFileTypeCode | null {
   if (kind === "image") return "FOTOGRAFIA";
   if (kind === "video") return "VIDEO";
@@ -382,41 +352,4 @@ function isAllowedType(typeCode: CenterFileTypeCode, kind: string): boolean {
     DOCUMENT_CATALOG_CODES.has(typeCode) &&
     (kind === "document" || kind === "image")
   );
-}
-
-function hasMediaSignature(buffer: Buffer, mimeType: string): boolean {
-  if (mimeType === "image/jpeg")
-    return buffer.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]));
-  if (mimeType === "image/png")
-    return buffer
-      .subarray(0, 8)
-      .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
-  if (mimeType === "image/webp") {
-    return (
-      buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
-      buffer.subarray(8, 12).toString("ascii") === "WEBP"
-    );
-  }
-  if (mimeType === "video/mp4" || mimeType === "audio/mp4") {
-    return buffer.subarray(4, 8).toString("ascii") === "ftyp";
-  }
-  if (mimeType === "video/webm") {
-    return buffer.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]));
-  }
-  if (mimeType === "audio/mpeg") {
-    return (
-      buffer.subarray(0, 3).toString("ascii") === "ID3" ||
-      (buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0)
-    );
-  }
-  if (mimeType === "audio/wav") {
-    return (
-      buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
-      buffer.subarray(8, 12).toString("ascii") === "WAVE"
-    );
-  }
-  if (mimeType === "application/pdf") {
-    return buffer.subarray(0, 5).toString("ascii") === "%PDF-";
-  }
-  return buffer.subarray(0, 4).toString("ascii") === "OggS";
 }

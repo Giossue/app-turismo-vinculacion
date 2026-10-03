@@ -54,6 +54,7 @@ const routeRow = {
 };
 
 const establishment = {
+  id: 4,
   name: "Restaurante público",
   activity: "ALIMENTOS Y BEBIDAS",
   classification: "RESTAURANTE",
@@ -135,12 +136,13 @@ describe("offline city public snapshot", () => {
   it("keeps review/private data outside the public snapshot and requires active/published sources", async () => {
     const { query, repository } = makeRepository({
       establishments: [
-        { ...establishment, id: "4", ruc: "PRIVATE" } as typeof establishment,
+        { ...establishment, ruc: "PRIVATE" } as typeof establishment,
       ],
     });
     const manifest = await repository.getManifest("bolivar-guaranda-guaranda");
 
-    expect(manifest?.establishments[0]).not.toHaveProperty("id");
+    // El id público permite abrir la ficha y guardar el favorito sin conexión.
+    expect(manifest?.establishments[0]).toHaveProperty("id", 4);
     expect(manifest?.establishments[0]).not.toHaveProperty("ruc");
     const establishmentSql = query.mock.calls[4]?.[0] as string;
     expect(establishmentSql).toContain("e.activo = TRUE");

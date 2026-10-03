@@ -184,4 +184,9 @@ export class PublicEstablishmentsController {
   async nearby(@Query() query: PublicEstablishmentsQueryDto) {
     return { data: await this.establishments.nearby(query) };
   }
+
+  @Get(":id")
+  async find(@Param("id") id: string) {
+    return { data: await this.establishments.findPublic(id) };
+  }
 }

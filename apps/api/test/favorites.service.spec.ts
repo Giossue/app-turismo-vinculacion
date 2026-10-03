@@ -77,4 +77,61 @@ describe("FavoritesService", () => {
     expect(query.mock.calls[1]?.[0]).toContain("ON CONFLICT");
     expect(query.mock.calls[1]?.[1]).toEqual([17, "41"]);
   });
+
+  it("lists favorite establishments with the first published photo", async () => {
+    const query = vi.fn().mockResolvedValue([
+      {
+        id: "12",
+        nombreComercial: "Hostal Central",
+        localityName: "Guaranda",
+        actividad: "ALOJAMIENTO",
+        clasificacion: "HOSTAL",
+        categoria: "1 Estrella",
+        categoryLabel: "HOSTAL · 1 Estrella",
+        direccion: null,
+        telefono: null,
+        latitude: "-1.6",
+        longitude: "-79",
+        photoId: "5",
+      },
+    ]);
+    const service = new FavoritesService({ query } as never);
+
+    await expect(service.listEstablishments(17)).resolves.toEqual([
+      expect.objectContaining({
+        id: 12,
+        nombreComercial: "Hostal Central",
+        latitude: -1.6,
+        photoUrl: "/api/v1/media/establishments/5",
+      }),
+    ]);
+    const [sql, params] = query.mock.calls[0] ?? [];
+    expect(sql).toContain("FROM favoritos_establecimientos f");
+    expect(sql).toContain("e.estado_revision = 'PUBLICADO'");
+    expect(params).toEqual([17]);
+  });
+
+  it("saves only published establishments idempotently", async () => {
+    const query = vi.fn().mockResolvedValue([]);
+    const service = new FavoritesService({ query } as never);
+
+    await expect(service.addEstablishment(17, "12")).rejects.toThrow(
+      "ya no está disponible",
+    );
+    expect(query.mock.calls[0]?.[0]).toContain("ON CONFLICT");
+    expect(query.mock.calls[0]?.[1]).toEqual([17, 12]);
+  });
+
+  it("removes an establishment favorite and validates the id", async () => {
+    const query = vi.fn().mockResolvedValue([{ id: "1" }]);
+    const service = new FavoritesService({ query } as never);
+
+    await expect(service.removeEstablishment(17, "12")).resolves.toEqual({
+      removed: true,
+    });
+    await expect(service.addEstablishment(17, "0")).rejects.toThrow(
+      "identificador",
+    );
+    expect(query).toHaveBeenCalledTimes(1);
+  });
 });

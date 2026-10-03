@@ -318,6 +318,7 @@ function mapEstablishment(
   row: OfflineManifestEstablishment,
 ): OfflineManifestEstablishment {
   return {
+    id: Number(row.id),
     name: row.name,
     activity: row.activity,
     classification: row.classification,

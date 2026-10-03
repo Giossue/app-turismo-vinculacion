@@ -43,7 +43,8 @@ export function buildOfflineEstablishmentQuery(
         ST_MakeEnvelope($2, $3, $4, $5, 4326)
       )::geography AS geometry
     )
-    SELECT e.nombre_comercial AS name,
+    SELECT e.id::integer AS id,
+           e.nombre_comercial AS name,
            COALESCE(activity_catalog.nombre, e.actividad) AS activity,
            COALESCE(classification_catalog.nombre, e.clasificacion) AS classification,
            COALESCE(category_catalog.nombre, e.categoria) AS category,

@@ -112,7 +112,8 @@ sus categorías en el mapa móvil; las categorías exponen su sistema semántico
 configuración visual propia.
 El editor también carga fotografías como multipart hacia `/admin/centers/:code/media`; la
 API guarda el binario en el proveedor configurado, registra metadatos en PostgreSQL y solo
-expone una imagen cuando la ficha se publica.
+expone una imagen cuando la ficha se publica. Las fotografías de cada catastro usan
+`/admin/establishments/:id/media` con las mismas reglas de almacenamiento.
 
 ## Eliminación administrativa
 

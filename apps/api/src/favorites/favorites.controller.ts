@@ -37,4 +37,28 @@ export class FavoritesController {
   ) {
     return { data: await this.favorites.removeCenter(user.id, code) };
   }
+
+  @Get("establishments")
+  @Roles("TURISTA", "ADMINISTRADOR")
+  async listEstablishments(@CurrentUser() user: AuthenticatedUser) {
+    return { data: await this.favorites.listEstablishments(user.id) };
+  }
+
+  @Put("establishments/:id")
+  @Roles("TURISTA", "ADMINISTRADOR")
+  async addEstablishment(
+    @Param("id") id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return { data: await this.favorites.addEstablishment(user.id, id) };
+  }
+
+  @Delete("establishments/:id")
+  @Roles("TURISTA", "ADMINISTRADOR")
+  async removeEstablishment(
+    @Param("id") id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return { data: await this.favorites.removeEstablishment(user.id, id) };
+  }
 }

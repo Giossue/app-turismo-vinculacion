@@ -19,6 +19,14 @@ import type {
   ReviewEstablishmentDto,
   SaveEstablishmentDto,
 } from "./establishments.dto";
+import {
+  establishmentPhotoUrl,
+  publicEstablishmentCondition,
+  publicEstablishmentJoin,
+  publicEstablishmentSelect,
+  toPublicEstablishment,
+  type PublicEstablishmentRow,
+} from "./public-establishment";
 
 type EstablishmentRow = {
   id: string;
@@ -170,39 +178,6 @@ const establishmentJoin = `
       ON category_catalog.id = e.categoria_catalogo_id
     LEFT JOIN usuarios requested_user
       ON requested_user.id = e.solicitado_por`;
-
-const publicEstablishmentSelect = `
-  SELECT e.nombre_comercial AS "nombreComercial",
-         l.nombre AS "localityName",
-         COALESCE(activity_catalog.nombre, e.actividad) AS actividad,
-         COALESCE(classification_catalog.nombre, e.clasificacion) AS clasificacion,
-         COALESCE(category_catalog.nombre, e.categoria) AS categoria,
-         CASE
-           WHEN COALESCE(category_catalog.nombre, e.categoria) IS NULL THEN NULL
-           ELSE CONCAT_WS(' · ',
-             COALESCE(classification_catalog.nombre, e.clasificacion),
-             COALESCE(category_catalog.nombre, e.categoria)
-           )
-         END AS "categoryLabel",
-         e.direccion,
-         e.telefono,
-         e.latitud AS latitude,
-         e.longitud AS longitude`;
-
-type PublicEstablishmentRow = Pick<
-  EstablishmentRow,
-  | "nombreComercial"
-  | "localityName"
-  | "actividad"
-  | "clasificacion"
-  | "categoria"
-  | "categoryLabel"
-  | "direccion"
-  | "telefono"
-  | "latitude"
-  | "longitude"
-  | "distanceMeters"
->;
 
 @Injectable()
 export class EstablishmentsService {
@@ -493,6 +468,9 @@ export class EstablishmentsService {
           approved,
         ],
       );
+      if (approved) {
+        await this.publishPendingPhotos(manager, numericId, actorId);
+      }
       const saved = await this.findWithManager(manager, numericId);
       await this.audit(
         manager,
@@ -763,6 +741,39 @@ export class EstablishmentsService {
     );
 
     return rows.map((row) => this.toPublicItem(row));
+  }
+
+  /** Ficha pública de un catastro publicado con sus fotografías publicadas. */
+  async findPublic(id: string) {
+    const numericId = this.parseId(id);
+    const rows = await this.dataSource.query<PublicEstablishmentRow[]>(
+      `${publicEstablishmentSelect}
+         FROM establecimientos_turisticos e
+         ${publicEstablishmentJoin}
+        WHERE e.id = $1
+          AND ${publicEstablishmentCondition}
+        LIMIT 1`,
+      [numericId],
+    );
+    const row = rows[0];
+    if (!row) throw new NotFoundException("No se encontró el establecimiento.");
+    const photos = await this.dataSource.query<
+      Array<{ id: string; description: string | null }>
+    >(
+      `SELECT a.id, a.descripcion AS description
+         FROM archivos_establecimiento_turistico a
+        WHERE a.establecimiento_id = $1 AND a.estado = 'PUBLICADO'
+        ORDER BY a.orden NULLS LAST, a.created_at, a.id`,
+      [numericId],
+    );
+    return {
+      ...toPublicEstablishment(row),
+      photos: photos.map((photo) => ({
+        id: Number(photo.id),
+        url: establishmentPhotoUrl(photo.id),
+        description: photo.description,
+      })),
+    };
   }
 
   private async findWithManager(
@@ -1294,6 +1305,32 @@ export class EstablishmentsService {
     };
   }
 
+  /** Las fotografías propuestas por un agente se publican al aprobar el catastro. */
+  private async publishPendingPhotos(
+    manager: EntityManager,
+    establishmentId: number,
+    actorId: number,
+  ) {
+    const rows = (await manager.query(
+      `UPDATE archivos_establecimiento_turistico
+          SET estado = 'PUBLICADO', updated_at = CURRENT_TIMESTAMP
+        WHERE establecimiento_id = $1 AND estado = 'PENDIENTE'
+        RETURNING id`,
+      [establishmentId],
+    )) as Array<{ id: string }>;
+    if (!rows.length) return;
+    await manager.query(
+      `INSERT INTO auditoria_catalogos
+        (usuario_id, catalogo_codigo, registro_id, accion, datos_anteriores, datos_nuevos)
+       VALUES ($1, 'ESTABLISHMENT', $2, 'PUBLICAR_MULTIMEDIA', '{}'::jsonb, $3::jsonb)`,
+      [
+        actorId,
+        establishmentId,
+        JSON.stringify({ mediaIds: rows.map((row) => Number(row.id)) }),
+      ],
+    );
+  }
+
   private async audit(
     manager: EntityManager,
     establishmentId: number,
@@ -1386,19 +1423,7 @@ export class EstablishmentsService {
   }
 
   private toPublicItem(row: PublicEstablishmentRow) {
-    return {
-      nombreComercial: row.nombreComercial,
-      actividad: row.actividad,
-      clasificacion: row.clasificacion,
-      categoria: row.categoria,
-      categoriaEtiqueta: row.categoryLabel,
-      direccion: row.direccion,
-      telefono: row.telefono,
-      latitude: this.toNullableNumber(row.latitude),
-      longitude: this.toNullableNumber(row.longitude),
-      distanceMeters: this.toNullableNumber(row.distanceMeters),
-      localityName: row.localityName,
-    };
+    return toPublicEstablishment(row);
   }
 
   private toNullableNumber(

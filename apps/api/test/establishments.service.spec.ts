@@ -71,7 +71,7 @@ describe("EstablishmentsService", () => {
 
     await service.tile({ z: 13, x: 0, y: 0 });
     const [sql] = query.mock.calls[0] ?? [];
-    expect(sql).toContain('name, category, "categoryLabel", latitude');
+    expect(sql).toContain('id, name, category, "categoryLabel", latitude');
     expect(sql).not.toContain("COUNT(*)");
   });
 
@@ -301,6 +301,7 @@ describe("EstablishmentsService", () => {
     ).resolves.toEqual({
       items: [
         {
+          id: 8,
           nombreComercial: "Comedor de prueba",
           actividad: "Alimentación",
           clasificacion: "Restaurante",
@@ -721,5 +722,67 @@ describe("EstablishmentsService", () => {
       expect.stringContaining("a.catalogo_codigo = 'ESTABLISHMENT'"),
       [8],
     );
+  });
+
+  it("returns a published catastro with its published photos by id", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          id: "8",
+          nombreComercial: "Comedor de prueba",
+          localityName: "Guaranda",
+          actividad: "Alimentación",
+          clasificacion: "Restaurante",
+          categoria: "Tercera",
+          categoryLabel: "Restaurante · Tercera",
+          direccion: "Calle principal",
+          telefono: "032999999",
+          latitude: "-1.59",
+          longitude: "-79.01",
+        },
+      ])
+      .mockResolvedValueOnce([{ id: "31", description: "Fachada" }]);
+    const service = new EstablishmentsService({ query } as never);
+
+    await expect(service.findPublic("8")).resolves.toEqual({
+      id: 8,
+      nombreComercial: "Comedor de prueba",
+      actividad: "Alimentación",
+      clasificacion: "Restaurante",
+      categoria: "Tercera",
+      categoriaEtiqueta: "Restaurante · Tercera",
+      direccion: "Calle principal",
+      telefono: "032999999",
+      latitude: -1.59,
+      longitude: -79.01,
+      distanceMeters: null,
+      localityName: "Guaranda",
+      photos: [
+        {
+          id: 31,
+          url: "/api/v1/media/establishments/31",
+          description: "Fachada",
+        },
+      ],
+    });
+    expect(query.mock.calls[0]?.[0]).toContain(
+      "e.estado_revision = 'PUBLICADO'",
+    );
+    expect(query.mock.calls[0]?.[0]).toContain("e.eliminado_at IS NULL");
+    expect(query.mock.calls[1]?.[0]).toContain("a.estado = 'PUBLICADO'");
+  });
+
+  it("hides unpublished catastros and rejects invalid ids", async () => {
+    const query = vi.fn().mockResolvedValue([]);
+    const service = new EstablishmentsService({ query } as never);
+
+    await expect(service.findPublic("8")).rejects.toThrow(
+      "No se encontró el establecimiento.",
+    );
+    await expect(service.findPublic("abc")).rejects.toThrow(
+      "identificador del establecimiento",
+    );
+    expect(query).toHaveBeenCalledTimes(1);
   });
 });

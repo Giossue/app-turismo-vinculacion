@@ -115,6 +115,7 @@ export const offlineManifestResponseSchema: SchemaObject = {
           items: {
             type: "object",
             required: [
+              "id",
               "name",
               "activity",
               "classification",
@@ -130,6 +131,7 @@ export const offlineManifestResponseSchema: SchemaObject = {
               "group",
             ],
             properties: {
+              id: { type: "integer", minimum: 1 },
               name: string,
               activity: string,
               classification: nullableString,

@@ -7,8 +7,32 @@ import { InjectDataSource } from "@nestjs/typeorm";
 import type { DataSource } from "typeorm";
 
 import type { PublicCenter } from "../centers/domain/public-center";
+import {
+  establishmentPhotoUrl,
+  publicEstablishmentCondition,
+  publicEstablishmentJoin,
+  publicEstablishmentSelect,
+  toPublicEstablishment,
+  type PublicEstablishment,
+  type PublicEstablishmentRow,
+} from "../establishments/public-establishment";
 
 type FavoriteCenterRow = Record<string, string | number | null>;
+
+type FavoriteEstablishmentRow = PublicEstablishmentRow & {
+  photoId: string | null;
+};
+
+export type FavoriteEstablishment = PublicEstablishment &
+  Readonly<{ photoUrl: string | null }>;
+
+/** Primera fotografía publicada del catastro, en el orden definido por el panel. */
+const firstPhotoSelect = `,
+         (SELECT a.id
+            FROM archivos_establecimiento_turistico a
+           WHERE a.establecimiento_id = e.id AND a.estado = 'PUBLICADO'
+           ORDER BY a.orden NULLS LAST, a.created_at, a.id
+           LIMIT 1) AS "photoId"`;
 
 const publicCenterFields = `
   c.codigo_atractivo AS code,
@@ -115,6 +139,75 @@ export class FavoritesService {
     return { removed: rows.length > 0 };
   }
 
+  async listEstablishments(
+    userId: number,
+  ): Promise<readonly FavoriteEstablishment[]> {
+    const rows = await this.dataSource.query<FavoriteEstablishmentRow[]>(
+      `${publicEstablishmentSelect}${firstPhotoSelect}
+         FROM favoritos_establecimientos f
+         JOIN establecimientos_turisticos e ON e.id = f.establecimiento_id
+         ${publicEstablishmentJoin}
+        WHERE f.usuario_id = $1
+          AND ${publicEstablishmentCondition}
+        ORDER BY f.created_at DESC, f.id DESC`,
+      [userId],
+    );
+    return rows.map(toFavoriteEstablishment);
+  }
+
+  async addEstablishment(
+    userId: number,
+    id: string,
+  ): Promise<FavoriteEstablishment> {
+    const establishmentId = this.parseEstablishmentId(id);
+    const rows = await this.dataSource.query<FavoriteEstablishmentRow[]>(
+      `WITH saved AS (
+         INSERT INTO favoritos_establecimientos (usuario_id, establecimiento_id)
+         SELECT $1, e.id
+           FROM establecimientos_turisticos e
+           ${publicEstablishmentJoin}
+          WHERE e.id = $2
+            AND ${publicEstablishmentCondition}
+         ON CONFLICT (usuario_id, establecimiento_id) DO NOTHING
+       )
+       ${publicEstablishmentSelect}${firstPhotoSelect}
+         FROM establecimientos_turisticos e
+         ${publicEstablishmentJoin}
+        WHERE e.id = $2
+          AND ${publicEstablishmentCondition}
+        LIMIT 1`,
+      [userId, establishmentId],
+    );
+    if (!rows[0]) {
+      throw new NotFoundException("El establecimiento ya no está disponible.");
+    }
+    return toFavoriteEstablishment(rows[0]);
+  }
+
+  async removeEstablishment(
+    userId: number,
+    id: string,
+  ): Promise<Readonly<{ removed: boolean }>> {
+    const establishmentId = this.parseEstablishmentId(id);
+    const rows = await this.dataSource.query<{ id: string }[]>(
+      `DELETE FROM favoritos_establecimientos
+        WHERE usuario_id = $1 AND establecimiento_id = $2
+        RETURNING id`,
+      [userId, establishmentId],
+    );
+    return { removed: rows.length > 0 };
+  }
+
+  private parseEstablishmentId(value: string): number {
+    const id = Number(value);
+    if (!Number.isSafeInteger(id) || id < 1) {
+      throw new BadRequestException(
+        "El identificador del establecimiento no es válido.",
+      );
+    }
+    return id;
+  }
+
   private normalizeCode(code: string): string {
     const normalized = code.trim();
     if (!normalized || normalized.length > 100) {
@@ -142,6 +235,15 @@ function toPublicCenter(row: FavoriteCenterRow): PublicCenter {
     cantonCode: required(row, "canton_code"),
     parishCode: required(row, "parish_code"),
     hierarchyCode: nullable(row, "hierarchy_code"),
+  };
+}
+
+function toFavoriteEstablishment(
+  row: FavoriteEstablishmentRow,
+): FavoriteEstablishment {
+  return {
+    ...toPublicEstablishment(row),
+    photoUrl: row.photoId === null ? null : establishmentPhotoUrl(row.photoId),
   };
 }
 
