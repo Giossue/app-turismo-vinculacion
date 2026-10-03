@@ -1,3 +1,4 @@
+import { File } from "expo-file-system";
 import { z } from "zod";
 
 import { getApiUrl } from "@/core/api/api-url";
@@ -6,12 +7,18 @@ import type { AuthorizedFetcher } from "@/features/auth/data/auth-api";
 
 type Upload = Readonly<{ uri: string; mimeType: string; name: string }>;
 
+/**
+ * Expo's `fetch` rejects React Native's `{ uri, name, type }` parts
+ * ("Unsupported FormDataPart implementation"); it reads any part that
+ * exposes `bytes()`, so the recording is attached that way.
+ */
 function fileForm(upload: Upload): FormData {
+  const file = new File(upload.uri);
   const form = new FormData();
   form.append("file", {
-    uri: upload.uri,
     name: upload.name,
     type: upload.mimeType,
+    bytes: () => file.bytes(),
   } as unknown as Blob);
   return form;
 }
