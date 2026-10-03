@@ -396,9 +396,13 @@ solo viven en memoria. Al cerrar sesión se eliminan de la caché todas las clav
 siguiente cambio sin los datos de la cuenta. Si la API no responde, la ficha de un
 atractivo usa la copia offline solo ante errores de conexión o del servidor; un 404 se
 muestra como tal.
-El mapa en línea revalida los centros publicados al montar. Los centros confirmados en caché
-permanecen visibles mientras se ejecuta una revalidación en segundo plano; una respuesta vacía
-los reemplaza al completarse y la caché nunca sustituye la fuente remota PostgreSQL. Los
+El mapa en línea espera el bbox real antes de pedir sus atractivos y completa las páginas
+de hasta 100 elementos. Sus consultas usan `public-map-centers`, con cinco minutos de
+frescura y retención en memoria; ese prefijo no pertenece a la lista persistible. Se cancelan
+peticiones obsoletas al cambiar el área y se conservan los pines anteriores durante la carga.
+Si la nueva área falla, la pantalla mantiene el último resultado exitoso de los mismos filtros,
+con error y reintento visibles. Una respuesta vacía válida los reemplaza al completarse y
+la caché nunca sustituye la fuente remota PostgreSQL. Los
 manifiestos guardados no sustituyen la capa remota de centros de Explorar. También
 aportan coincidencias identificadas a la búsqueda; seleccionarlas abre el visor explícito
 de mapas sin conexión.

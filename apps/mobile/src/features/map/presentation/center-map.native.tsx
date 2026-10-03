@@ -224,12 +224,14 @@ export function CenterMap({
   const mapStyle = mapStyleOverride ?? onlineStyle;
   const hasGlyphs = hasMapLabelGlyphs(mapStyle);
   const labelPalette = basemapPalettes[scheme];
-  const labelPaint = hasGlyphs ? {
-    "text-color": labelPalette.text,
-    "text-halo-color": labelPalette.textHalo,
-    "text-halo-width": 1.5,
-    "text-halo-blur": 0.5,
-  } : undefined;
+  const labelPaint = hasGlyphs
+    ? {
+        "text-color": labelPalette.text,
+        "text-halo-color": labelPalette.textHalo,
+        "text-halo-width": 1.5,
+        "text-halo-blur": 0.5,
+      }
+    : undefined;
   const {
     isActive,
     markFailed,
@@ -333,8 +335,6 @@ export function CenterMap({
           offlineKey: place.key,
           icon: place.icon,
           name: place.name,
-          isCenter: place.key.startsWith("center:"),
-          hierarchyRank: 0,
         },
         geometry: {
           type: "Point",
@@ -456,19 +456,23 @@ export function CenterMap({
       if (cluster?.geometry.type === "Point" && clusterSource) {
         const [longitude, latitude] = cluster.geometry.coordinates;
         if (longitude === undefined || latitude === undefined) return;
+        const minimumZoom =
+          clusterSource === localSourceRef.current
+            ? mapPlaceZoom.establishmentIcon
+            : mapPlaceZoom.centerIcon;
         const expandCluster = (zoom: number) => {
           if (!isActive() || featurePressKeyRef.current !== pressKey) return;
           cameraRef.current?.easeTo({
             center: [longitude, latitude],
             duration: focusCameraDurationMs,
             padding: noPadding,
-            zoom: Math.min(maxZoom, Math.max(mapPlaceZoom.centerIcon, zoom)),
+            zoom: Math.min(maxZoom, Math.max(minimumZoom, zoom)),
           });
         };
         void clusterSource
           .getClusterExpansionZoom(cluster.properties?.cluster_id)
           .then(expandCluster)
-          .catch(() => expandCluster(mapPlaceZoom.centerIcon));
+          .catch(() => expandCluster(minimumZoom));
         return;
       }
       const localKeys = [
@@ -820,7 +824,7 @@ export function CenterMap({
           <GeoJSONSource
             data={localFeatures}
             cluster
-            clusterMaxZoom={mapPlaceZoom.centerIcon - 1}
+            clusterMaxZoom={mapPlaceZoom.establishmentIcon - 1}
             hitbox={featureHitbox}
             id="tourism-offline-places-source"
             onPress={(event) =>
@@ -859,7 +863,7 @@ export function CenterMap({
             <Layer
               id="tourism-offline-place-dots"
               type="circle"
-              filter={["all", unclusteredFilter, ["!", ["get", "isCenter"]]]}
+              filter={unclusteredFilter}
               maxzoom={mapPlaceZoom.establishmentIcon}
               paint={{
                 "circle-color": colors.primary,
@@ -869,39 +873,14 @@ export function CenterMap({
               }}
             />
             <Layer
-              id="tourism-offline-center-dots"
-              filter={["all", unclusteredFilter, ["get", "isCenter"]]}
-              type="circle"
-              maxzoom={mapPlaceZoom.centerIcon}
-              paint={{
-                "circle-color": colors.primary,
-                "circle-radius": dotRadius,
-              }}
-            />
-            <Layer
               id="tourism-offline-place-pins"
               type="symbol"
-              filter={["all", unclusteredFilter, ["!", ["get", "isCenter"]]]}
+              filter={unclusteredFilter}
               minzoom={mapPlaceZoom.establishmentIcon}
               layout={{
                 ...mapPinLayout,
                 ...establishmentNameLayout,
                 "icon-image": establishmentPinImageExpression,
-              }}
-              paint={labelPaint}
-            />
-            <Layer
-              id="tourism-offline-center-pins"
-              filter={["all", unclusteredFilter, ["get", "isCenter"]]}
-              type="symbol"
-              minzoom={mapPlaceZoom.centerIcon}
-              layout={{
-                ...mapPinLayout,
-                ...centerNameLayout,
-                "icon-image":
-                  scheme === "dark"
-                    ? "tourism-center-monument-dark"
-                    : "tourism-center-monument-light",
               }}
               paint={labelPaint}
             />
