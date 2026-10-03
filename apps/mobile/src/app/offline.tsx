@@ -1,9 +1,8 @@
 import { useRouter } from "expo-router";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, Text } from "react-native";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismStateView } from "@/core/ui/tourism-state";
-import { TourismActionButton } from "@/core/ui/tourism-controls";
 import { turismoSpacing, turismoTypography } from "@/core/ui/tokens";
 import { AuthGate } from "@/features/auth/presentation/auth-gate";
 import { useOfflineCities } from "@/features/offline/application/use-offline-cities";
@@ -37,8 +36,9 @@ function OfflineCityList() {
     storedQuery.manifests,
   );
   const stored = cities.filter((city) => storedQuery.data?.includes(city.slug));
+  // Ciudades sin lugares publicados no se pueden descargar: no se listan.
   const available = cities.filter(
-    (city) => !storedQuery.data?.includes(city.slug),
+    (city) => city.package && !storedQuery.data?.includes(city.slug),
   );
   const busy = downloads.size > 0 || removal.isPending;
   const error = downloadError ?? removal.error;
@@ -46,6 +46,12 @@ function OfflineCityList() {
   return (
     <ScrollView
       contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          onRefresh={() => void citiesQuery.refetch()}
+          refreshing={citiesQuery.isRefetching}
+        />
+      }
       showsVerticalScrollIndicator={false}
     >
       {error ? (
@@ -68,14 +74,11 @@ function OfflineCityList() {
         />
       ) : null}
 
-      <Text style={[styles.heading, { color: colors.text }]}>
-        Mapas descargados
-      </Text>
-      <Text style={[styles.caption, { color: colors.textMuted }]}>
-        Cada mapa de ciudad incluye calles, centros, puntos de interés y
-        recorridos de transporte publicados. Puedes consultarlo y buscar lugares
-        sin internet.
-      </Text>
+      {stored.length ? (
+        <Text style={[styles.heading, { color: colors.text }]}>
+          Mapas descargados
+        </Text>
+      ) : null}
       {stored.map((city) => (
         <OfflineCityCard
           city={city}
@@ -97,26 +100,9 @@ function OfflineCityList() {
           )}
         />
       ))}
-      {!stored.length && !storedQuery.isPending && !storedQuery.error ? (
-        <TourismStateView
-          layout="inline"
-          message="Descarga el mapa de una ciudad antes de quedarte sin internet."
-          variant="empty"
-        />
-      ) : null}
-
-      <View style={styles.catalogHeader}>
-        <Text style={[styles.heading, { color: colors.text }]}>
-          Descargar otro mapa
-        </Text>
-        <TourismActionButton
-          disabled={citiesQuery.isFetching}
-          icon="refresh"
-          label="Actualizar catálogo"
-          mode="ghost"
-          onPress={() => void citiesQuery.refetch()}
-        />
-      </View>
+      <Text style={[styles.heading, { color: colors.text }]}>
+        {stored.length ? "Descargar otro mapa" : "Ciudades disponibles"}
+      </Text>
       {citiesQuery.isPending && !available.length ? (
         <TourismStateView
           layout="inline"
@@ -162,6 +148,4 @@ const styles = StyleSheet.create({
   },
   errorText: { ...turismoTypography.caption },
   heading: { ...turismoTypography.heading },
-  caption: { ...turismoTypography.bodySmall },
-  catalogHeader: { gap: turismoSpacing.xs },
 });
