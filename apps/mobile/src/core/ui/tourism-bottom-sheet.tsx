@@ -132,7 +132,17 @@ export function TourismBottomSheetHost({
     duration: sheetAnimationDurationMs,
   });
   const isOpen = entry !== null;
+  // A close requested by the host (the owner already unmounted its sheet)
+  // must not notify whichever sheet replaces it before the animation ends.
+  const closingProgrammaticallyRef = useRef(false);
   const closeVisible = () => entryRef.current?.onClose();
+  const handleSheetClose = () => {
+    if (closingProgrammaticallyRef.current) {
+      closingProgrammaticallyRef.current = false;
+      return;
+    }
+    closeVisible();
+  };
 
   if (entry !== null && shown !== entry) setShown(entry);
 
@@ -141,6 +151,7 @@ export function TourismBottomSheetHost({
   });
 
   useEffect(() => {
+    closingProgrammaticallyRef.current = !isOpen;
     if (isOpen) sheetRef.current?.snapToIndex(0);
     else sheetRef.current?.close();
   }, [isOpen]);
@@ -159,7 +170,7 @@ export function TourismBottomSheetHost({
             if (index === -1 && entryRef.current === null) setShown(null);
           }}
           // Deslizar hacia abajo cierra la sheet visible como su botón.
-          onClose={closeVisible}
+          onClose={handleSheetClose}
           ref={sheetRef}
           snapPoints={tourismFlexibleSheetSnapPoints}
           topInset={topInset}

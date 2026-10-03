@@ -170,7 +170,26 @@ interface CenterListRow {
   total: string;
 }
 
+// Legacy rejection remains editable while existing installations are migrated.
 const EDITABLE_DRAFT_STATES = new Set(["BORRADOR", "RECHAZADO"]);
+
+function centerReviewStatus(code: string, publishedAt?: string | null) {
+  if (code === "PUBLICADO" || (code === "INACTIVO" && publishedAt)) {
+    return { code: "PUBLICADO", name: "Publicado" } as const;
+  }
+  if (code === "EN_REVISION" || code === "APROBADO") {
+    return { code: "EN_REVISION", name: "En revisión" } as const;
+  }
+  return { code: "BORRADOR", name: "Borrador" } as const;
+}
+
+function centerReviewStateSql(code: string, publishedAt = "NULL"): string {
+  return `CASE
+    WHEN ${code} IN ('EN_REVISION', 'APROBADO') THEN 'EN_REVISION'
+    WHEN ${code} = 'PUBLICADO' OR (${code} = 'INACTIVO' AND ${publishedAt} IS NOT NULL) THEN 'PUBLICADO'
+    ELSE 'BORRADOR'
+  END`;
+}
 const SECTION_RESPONSE_VALUES = new Set([
   "SI",
   "NO",
@@ -1835,10 +1854,14 @@ export class AdminCentersService {
       conditions.push(`inventory.responsible_id = $${values.length}`);
     }
     if (query.status === "REVIEW_QUEUE") {
-      conditions.push("inventory.status_code IN ('EN_REVISION', 'APROBADO')");
+      conditions.push("inventory.status_code = 'EN_REVISION'");
     } else if (query.status) {
       values.push(query.status);
       conditions.push(`inventory.status_code = $${values.length}`);
+    }
+    if (query.active !== undefined) {
+      values.push(query.active);
+      conditions.push(`inventory.active = $${values.length}`);
     }
     if (query.q) {
       values.push(`%${query.q}%`);
@@ -1852,17 +1875,12 @@ export class AdminCentersService {
       `WITH inventory AS (
          SELECT TRIM(c.codigo_atractivo) AS code,
                 c.nombre AS name,
+                ${centerReviewStateSql("COALESCE(NULLIF(bd.state_code, 'PUBLICADO'), er.codigo)", "c.publicado_at")} AS status_code,
                 CASE
-                  WHEN c.activo = FALSE THEN 'INACTIVO'
-                  WHEN bd.state_code IS NOT NULL AND bd.state_code <> 'PUBLICADO' THEN bd.state_code
-                  ELSE er.codigo
-                END AS status_code,
-                CASE
-                  WHEN c.activo = FALSE THEN 'Inactivo'
                   WHEN bd.state_name IS NOT NULL AND bd.state_code <> 'PUBLICADO' THEN bd.state_name
                   ELSE er.nombre
                 END AS status_name,
-                er.codigo AS base_status_code,
+                ${centerReviewStateSql("er.codigo", "c.publicado_at")} AS base_status_code,
                 c.updated_at AS "updatedAt",
                 rp.fecha_solicitud AS "submittedAt",
                 u.nombre AS "requestedBy",
@@ -1912,8 +1930,8 @@ export class AdminCentersService {
       items: rows.map((row) => ({
         code: row.code,
         name: row.name,
-        status: { code: row.statusCode, name: row.statusName },
-        baseStatus: row.baseStatusCode,
+        status: centerReviewStatus(row.statusCode),
+        baseStatus: centerReviewStatus(row.baseStatusCode).code,
         updatedAt: row.updatedAt,
         submittedAt: row.submittedAt,
         requestedBy: row.requestedBy,
@@ -1931,16 +1949,7 @@ export class AdminCentersService {
   async summary() {
     const rows = (await this.dataSource.query(
       `WITH inventory AS (
-         SELECT CASE
-                  WHEN c.activo = FALSE THEN 'INACTIVO'
-                  WHEN bstate.codigo IS NOT NULL AND bstate.codigo <> 'PUBLICADO' THEN bstate.codigo
-                  ELSE er.codigo
-                END AS code,
-                CASE
-                  WHEN c.activo = FALSE THEN 'Inactivo'
-                  WHEN bstate.nombre IS NOT NULL AND bstate.codigo <> 'PUBLICADO' THEN bstate.nombre
-                  ELSE er.nombre
-                END AS name,
+         SELECT ${centerReviewStateSql("COALESCE(NULLIF(bstate.codigo, 'PUBLICADO'), er.codigo)", "c.publicado_at")} AS code,
                 c.activo AS active
            FROM centros_turisticos c
            JOIN estados_resenia er ON er.id = c.estado_resenia_id
@@ -1948,16 +1957,16 @@ export class AdminCentersService {
            LEFT JOIN estados_resenia bstate ON bstate.id = b.estado_resenia_id
           WHERE c.eliminado_at IS NULL
        )
-       SELECT code, name, COUNT(*)::int AS total,
+       SELECT code, COUNT(*)::int AS total,
               COUNT(*) FILTER (WHERE active = TRUE)::int AS active
          FROM inventory
-        GROUP BY code, name
+        GROUP BY code
         ORDER BY code`,
     )) as { code: string; name: string; total: number; active: number }[];
 
     const byStatus = rows.map((row) => ({
       code: row.code,
-      name: row.name,
+      name: centerReviewStatus(row.code).name,
       total: Number(row.total),
       active: Number(row.active),
     }));
@@ -2962,7 +2971,7 @@ export class AdminCentersService {
       const draftState = currentDraft?.stateCode ?? center.statusCode;
       if (!isAdmin && !EDITABLE_DRAFT_STATES.has(draftState)) {
         throw new ConflictException(
-          "Solo puedes editar tus fichas en borrador o rechazadas.",
+          "Solo puedes editar tus fichas en borrador.",
         );
       }
       if (
@@ -2970,7 +2979,7 @@ export class AdminCentersService {
         draftState !== "PUBLICADO"
       ) {
         throw new ConflictException(
-          "La ficha no se puede editar mientras está en revisión o aprobada.",
+          "La ficha no se puede editar mientras está en revisión.",
         );
       }
       if (
@@ -3080,6 +3089,10 @@ export class AdminCentersService {
   }
 
   async review(code: string, actorId: number, input: ReviewCenterDto) {
+    const observation = input.observation?.trim() || null;
+    if (input.action === "REJECT" && !observation) {
+      throw new ConflictException("Indica el motivo del rechazo.");
+    }
     return this.dataSource.transaction(async (manager) => {
       const center = await this.lockCenter(manager, code);
       const revision = await this.latestRevision(
@@ -3088,37 +3101,62 @@ export class AdminCentersService {
         "EN_REVISION",
       );
       const draft = await this.getDraft(manager, center.id);
-      if (!revision || !draft) {
+      if (!revision || !draft || draft.stateCode !== "EN_REVISION") {
         throw new ConflictException(
           "La ficha ya no está en revisión; actualiza la lista antes de operar.",
         );
       }
-      const targetCode = input.action === "APPROVE" ? "APROBADO" : "RECHAZADO";
+      const approved = input.action === "APPROVE";
+      const targetCode = approved ? "PUBLICADO" : "BORRADOR";
+      let complete: CenterDraft | null = null;
+      if (approved) {
+        const base = this.mergeDraftWithPublished(
+          await this.readPublishedDraft(manager, center),
+          revision.data,
+        );
+        complete = this.requireComplete(base);
+        await this.validateReferences(manager, complete, true, center.id, base);
+        await this.applyDraft(manager, center, complete);
+      }
       const target = await this.stateId(manager, targetCode);
       await manager.query(
         `UPDATE revisiones_publicacion
             SET revisado_por = $2, estado_resenia_id = $3,
                 observacion = $4, fecha_revision = CURRENT_TIMESTAMP
           WHERE id = $1`,
-        [revision.id, actorId, target.id, input.observation ?? null],
+        [revision.id, actorId, target.id, observation],
       );
       await manager.query(
         `UPDATE borradores_centros_turisticos
-            SET estado_resenia_id = $2, version = version + 1, actualizado_por = $3
+            SET estado_resenia_id = $2, version = version + 1, actualizado_por = $3,
+                datos = COALESCE($4::jsonb, datos)
           WHERE centro_turistico_id = $1`,
-        [center.id, target.id, actorId],
+        [center.id, target.id, actorId, complete ? JSON.stringify(complete) : null],
       );
-      if (center.statusCode !== "PUBLICADO") {
+      if (!approved && center.statusCode !== "PUBLICADO") {
         await this.setCenterState(manager, center.id, targetCode);
+      }
+      if (approved) {
+        await this.media?.publishPending(manager, center.id, actorId);
       }
       await this.audit(
         manager,
         center.id,
         actorId,
-        input.action === "APPROVE" ? "APROBAR" : "RECHAZAR",
+        approved ? "APROBAR" : "RECHAZAR",
         { estado: "EN_REVISION" },
-        { estado: targetCode, observacion: input.observation ?? null },
+        { estado: targetCode, observacion: observation },
       );
+      if (approved) {
+        await this.audit(
+          manager,
+          center.id,
+          actorId,
+          "PUBLICAR",
+          { estado: center.statusCode },
+          { estado: "PUBLICADO" },
+        );
+      }
       return this.findById(manager, center.id);
     });
   }
@@ -3127,62 +3165,32 @@ export class AdminCentersService {
     return this.dataSource.transaction(async (manager) => {
       const center = await this.lockCenter(manager, code);
       const draft = await this.getDraft(manager, center.id);
-      if (!draft || draft.stateCode !== "APROBADO") {
-        throw new ConflictException(
-          "Solo se pueden publicar fichas aprobadas.",
-        );
+      // Older clients may still follow approval with /publish. The approval
+      // already committed the publication, so this endpoint only acknowledges it.
+      if (center.statusCode === "PUBLICADO" && draft?.stateCode === "PUBLICADO") {
+        return this.findById(manager, center.id);
       }
-      const base = this.mergeDraftWithPublished(
-        await this.readPublishedDraft(manager, center),
-        draft.data,
+      void actorId;
+      throw new ConflictException(
+        "Aprueba la revisión para publicar la ficha.",
       );
-      const complete = this.requireComplete(base);
-      await this.validateReferences(manager, complete, true, center.id, base);
-      await this.applyDraft(manager, center, complete);
-      const published = await this.stateId(manager, "PUBLICADO");
-      await manager.query(
-        `UPDATE borradores_centros_turisticos SET estado_resenia_id = $2, version = version + 1, actualizado_por = $3 WHERE centro_turistico_id = $1`,
-        [center.id, published.id, actorId],
-      );
-      await manager.query(
-        `UPDATE revisiones_publicacion
-            SET revisado_por = $2, estado_resenia_id = $3,
-                fecha_revision = COALESCE(fecha_revision, CURRENT_TIMESTAMP)
-          WHERE id = (
-            SELECT id FROM revisiones_publicacion
-             WHERE centro_turistico_id = $1
-             ORDER BY fecha_solicitud DESC LIMIT 1
-          )`,
-        [center.id, actorId, published.id],
-      );
-      await this.media?.publishPending(manager, center.id, actorId);
-      await this.audit(
-        manager,
-        center.id,
-        actorId,
-        "PUBLICAR",
-        { estado: center.statusCode },
-        { estado: "PUBLICADO" },
-      );
-      return this.findById(manager, center.id);
     });
   }
 
   async deactivate(code: string, actorId: number) {
     return this.dataSource.transaction(async (manager) => {
       const center = await this.lockCenter(manager, code);
-      const inactive = await this.stateId(manager, "INACTIVO");
       await manager.query(
-        `UPDATE centros_turisticos SET activo = FALSE, estado_resenia_id = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
-        [center.id, inactive.id],
+        `UPDATE centros_turisticos SET activo = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+        [center.id],
       );
       await this.audit(
         manager,
         center.id,
         actorId,
         "DESACTIVAR",
-        { estado: center.statusCode },
-        { estado: "INACTIVO" },
+        { activo: center.active },
+        { activo: false },
       );
       return this.findById(manager, center.id);
     });
@@ -3191,19 +3199,17 @@ export class AdminCentersService {
   async reactivate(code: string, actorId: number) {
     return this.dataSource.transaction(async (manager) => {
       const center = await this.lockCenter(manager, code);
-      const targetCode = center.publishedAt ? "PUBLICADO" : "BORRADOR";
-      const target = await this.stateId(manager, targetCode);
       await manager.query(
-        `UPDATE centros_turisticos SET activo = TRUE, estado_resenia_id = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
-        [center.id, target.id],
+        `UPDATE centros_turisticos SET activo = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+        [center.id],
       );
       await this.audit(
         manager,
         center.id,
         actorId,
         "REACTIVAR",
-        { estado: "INACTIVO" },
-        { estado: targetCode },
+        { activo: center.active },
+        { activo: true },
       );
       return this.findById(manager, center.id);
     });
@@ -3353,7 +3359,7 @@ export class AdminCentersService {
         draftState !== "PUBLICADO"
       ) {
         throw new ConflictException(
-          "La ficha no se puede editar mientras está en revisión o aprobada.",
+          "La ficha no se puede editar mientras está en revisión.",
         );
       }
       if (
@@ -3533,12 +3539,9 @@ export class AdminCentersService {
     const draft = await this.getDraft(manager, center.id);
     const revision = await this.latestRevision(manager, center.id);
     const hasPendingDraft = draft && draft.stateCode !== "PUBLICADO";
-    const effectiveStatus =
-      center.active === false
-        ? { code: "INACTIVO", name: "Inactivo" }
-        : hasPendingDraft
-          ? { code: draft.stateCode, name: draft.stateName }
-          : { code: center.statusCode, name: center.statusName };
+    const effectiveStatus = hasPendingDraft
+      ? centerReviewStatus(draft.stateCode)
+      : centerReviewStatus(center.statusCode, center.publishedAt);
     const published = await this.readPublishedDraft(manager, center);
     const effectiveDraft = hasPendingDraft
       ? this.mergeDraftWithPublished(published, draft.data)
@@ -3551,7 +3554,7 @@ export class AdminCentersService {
     return {
       code: center.code,
       status: effectiveStatus,
-      baseStatus: { code: center.statusCode, name: center.statusName },
+      baseStatus: centerReviewStatus(center.statusCode, center.publishedAt),
       active: center.active,
       publishedAt: center.publishedAt ?? null,
       version: draft?.version ?? 0,
@@ -3560,7 +3563,7 @@ export class AdminCentersService {
       retainedCatalogOptions,
       review: revision
         ? {
-            status: { code: revision.stateCode, name: revision.stateName },
+            status: centerReviewStatus(revision.stateCode),
             observation: revision.observation,
             requestedAt: revision.requestedAt,
             reviewedAt: revision.reviewedAt,
@@ -3837,7 +3840,7 @@ export class AdminCentersService {
               longitud = $12, altitud_msnm = $13, descripcion = $14,
               barrio_sector_comuna = $15, calle_principal = $16,
               numero_direccion = $17, calle_transversal = $18,
-              activo = TRUE, publicado_at = COALESCE(publicado_at, CURRENT_TIMESTAMP),
+              publicado_at = COALESCE(publicado_at, CURRENT_TIMESTAMP),
               updated_at = CURRENT_TIMESTAMP
         WHERE id = $1`,
       [

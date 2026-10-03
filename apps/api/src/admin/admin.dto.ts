@@ -35,10 +35,7 @@ export const ADMIN_ESTABLISHMENT_CATEGORY_SCHEMES = [
 export const REVIEWABLE_STATUSES = [
   "BORRADOR",
   "EN_REVISION",
-  "APROBADO",
-  "RECHAZADO",
   "PUBLICADO",
-  "INACTIVO",
 ] as const;
 
 export const ADMIN_CENTER_STATUS_FILTERS = [
@@ -92,6 +89,13 @@ export class AdminCentersQueryDto {
   @IsOptional()
   @IsIn(ADMIN_CENTER_STATUS_FILTERS)
   status?: (typeof ADMIN_CENTER_STATUS_FILTERS)[number];
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === "true" ? true : value === "false" ? false : value,
+  )
+  @IsBoolean()
+  active?: boolean;
 
   @IsOptional()
   @Type(() => Number)
