@@ -199,7 +199,7 @@ lo borra o desactiva; la API no promete un borrado automático por fecha.
 ## Voz
 
 `/ai/media/transcribe` acepta M4A/WAV/WebM de hasta 5 MB y usa el modelo
-`gpt-4o-mini-transcribe` con clave exclusiva del servidor. El audio solo se mantiene
+`gpt-transcribe` con clave exclusiva del servidor. El audio solo se mantiene
 en memoria para la petición y el cliente borra su copia temporal. La transcripción se
 presenta para revisión antes de enviar la pregunta. El agente no acepta imágenes:
 no existe una ruta de análisis de fotos en la API.

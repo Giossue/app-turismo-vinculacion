@@ -32,7 +32,7 @@ export class AgentMediaService {
         "La transcripción no está disponible.",
       );
     const form = new FormData();
-    form.set("model", "gpt-4o-mini-transcribe");
+    form.set("model", "gpt-transcribe");
     form.set(
       "file",
       new Blob([new Uint8Array(buffer)], { type: format.mime }),

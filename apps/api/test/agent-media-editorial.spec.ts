@@ -41,7 +41,7 @@ describe("agent media", () => {
       );
       expect(result.text).toBe("¿Dónde puedo comer?");
       const body = fetcher.mock.calls[0][1].body as FormData;
-      expect(body.get("model")).toBe("gpt-4o-mini-transcribe");
+      expect(body.get("model")).toBe("gpt-transcribe");
     } finally {
       vi.unstubAllGlobals();
     }
