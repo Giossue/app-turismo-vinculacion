@@ -52,7 +52,7 @@ describe("AdminCentersService workflow boundaries", () => {
     ).rejects.toThrow("ya no está en revisión");
   });
 
-  it("does not publish a draft that has not been approved", async () => {
+  it("does not let the legacy publish endpoint bypass approval", async () => {
     const draft = {
       id: "8",
       stateCode: "BORRADOR",
@@ -67,7 +67,7 @@ describe("AdminCentersService workflow boundaries", () => {
     const service = serviceWithManager(query);
 
     await expect(service.publish(center.code, 99)).rejects.toThrow(
-      "Solo se pueden publicar fichas aprobadas",
+      "Aprueba la revisión para publicar",
     );
   });
 

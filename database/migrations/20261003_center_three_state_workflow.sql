@@ -5,7 +5,7 @@ BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '30s';
 
-LOCK TABLE estados_resenia, centros_turisticos, borradores_centros_turisticos
+LOCK TABLE estados_resenia, centros_turisticos, borradores_centros_turisticos, revisiones_publicacion
     IN SHARE ROW EXCLUSIVE MODE;
 
 DO $$
@@ -73,6 +73,25 @@ BEGIN
 END;
 $$;
 
+-- Una aprobación anterior no publicó aún el snapshot. Crear una solicitud nueva
+-- permite completar la acción atómica sin modificar aquella decisión histórica.
+INSERT INTO revisiones_publicacion (
+    centro_turistico_id, solicitado_por, estado_resenia_id, datos_propuestos
+)
+SELECT b.centro_turistico_id, COALESCE(last_review.solicitado_por, b.actualizado_por),
+       pending.id, b.datos
+FROM borradores_centros_turisticos b
+JOIN estados_resenia previous ON previous.id = b.estado_resenia_id
+CROSS JOIN estados_resenia pending
+LEFT JOIN LATERAL (
+    SELECT r.solicitado_por
+    FROM revisiones_publicacion r
+    WHERE r.centro_turistico_id = b.centro_turistico_id
+    ORDER BY r.fecha_solicitud DESC, r.id DESC
+    LIMIT 1
+) last_review ON TRUE
+WHERE previous.codigo = 'APROBADO' AND pending.codigo = 'EN_REVISION';
+
 UPDATE centros_turisticos c
 SET estado_resenia_id = target.id,
     activo = CASE WHEN previous.codigo = 'INACTIVO' THEN FALSE ELSE c.activo END
@@ -80,7 +99,12 @@ FROM estados_resenia previous, estados_resenia target
 WHERE previous.id = c.estado_resenia_id
   AND previous.codigo IN ('APROBADO', 'RECHAZADO', 'INACTIVO')
   AND target.codigo = CASE previous.codigo
-      WHEN 'APROBADO' THEN 'EN_REVISION'
+      WHEN 'APROBADO' THEN CASE WHEN EXISTS (
+          SELECT 1 FROM borradores_centros_turisticos b
+          JOIN estados_resenia bstate ON bstate.id = b.estado_resenia_id
+          WHERE b.centro_turistico_id = c.id
+            AND bstate.codigo IN ('APROBADO', 'EN_REVISION')
+      ) THEN 'EN_REVISION' ELSE 'BORRADOR' END
       WHEN 'RECHAZADO' THEN 'BORRADOR'
       WHEN 'INACTIVO' THEN CASE WHEN c.publicado_at IS NOT NULL THEN 'PUBLICADO' ELSE 'BORRADOR' END
   END;

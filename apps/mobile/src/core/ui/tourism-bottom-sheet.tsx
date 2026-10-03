@@ -132,13 +132,16 @@ export function TourismBottomSheetHost({
     duration: sheetAnimationDurationMs,
   });
   const isOpen = entry !== null;
-  // A close requested by the host (the owner already unmounted its sheet)
-  // must not notify whichever sheet replaces it before the animation ends.
+  // When one sheet replaces another (list → ficha), the host briefly closes
+  // and reopens. The late `onClose` of that close belongs to the sheet that
+  // already left: it must not close the new one, which is reopened instead.
+  const sheetIndexRef = useRef(-1);
   const closingProgrammaticallyRef = useRef(false);
   const closeVisible = () => entryRef.current?.onClose();
   const handleSheetClose = () => {
     if (closingProgrammaticallyRef.current) {
       closingProgrammaticallyRef.current = false;
+      if (entryRef.current) sheetRef.current?.snapToIndex(0);
       return;
     }
     closeVisible();
@@ -151,9 +154,13 @@ export function TourismBottomSheetHost({
   });
 
   useEffect(() => {
-    closingProgrammaticallyRef.current = !isOpen;
-    if (isOpen) sheetRef.current?.snapToIndex(0);
-    else sheetRef.current?.close();
+    if (isOpen) {
+      sheetRef.current?.snapToIndex(0);
+    } else {
+      // Closing an already closed sheet emits no `onClose` to consume.
+      closingProgrammaticallyRef.current = sheetIndexRef.current !== -1;
+      sheetRef.current?.close();
+    }
   }, [isOpen]);
 
   return (
@@ -167,6 +174,7 @@ export function TourismBottomSheetHost({
           handleComponent={SheetHandle}
           index={-1}
           onChange={(index) => {
+            sheetIndexRef.current = index;
             if (index === -1 && entryRef.current === null) setShown(null);
           }}
           // Deslizar hacia abajo cierra la sheet visible como su botón.

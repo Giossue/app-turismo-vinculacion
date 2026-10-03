@@ -941,7 +941,7 @@ describe("AdminCentersService", () => {
     );
   });
 
-  it("uses the review queue filter for pending and approved fichas", async () => {
+  it("uses the review queue filter only for pending fichas", async () => {
     const dataSource = {
       query: vi.fn().mockResolvedValue([]),
     };
@@ -951,9 +951,7 @@ describe("AdminCentersService", () => {
       service.list({ status: "REVIEW_QUEUE", limit: 20, offset: 0 } as never),
     ).resolves.toMatchObject({ total: 0, items: [] });
     expect(dataSource.query).toHaveBeenCalledWith(
-      expect.stringContaining(
-        "inventory.status_code IN ('EN_REVISION', 'APROBADO')",
-      ),
+      expect.stringContaining("inventory.status_code = 'EN_REVISION'"),
       [20, 0],
     );
   });

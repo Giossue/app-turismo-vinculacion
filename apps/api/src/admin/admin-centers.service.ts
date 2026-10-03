@@ -3131,7 +3131,12 @@ export class AdminCentersService {
             SET estado_resenia_id = $2, version = version + 1, actualizado_por = $3,
                 datos = COALESCE($4::jsonb, datos)
           WHERE centro_turistico_id = $1`,
-        [center.id, target.id, actorId, complete ? JSON.stringify(complete) : null],
+        [
+          center.id,
+          target.id,
+          actorId,
+          complete ? JSON.stringify(complete) : null,
+        ],
       );
       if (!approved && center.statusCode !== "PUBLICADO") {
         await this.setCenterState(manager, center.id, targetCode);
@@ -3161,16 +3166,18 @@ export class AdminCentersService {
     });
   }
 
-  async publish(code: string, actorId: number) {
+  async publish(code: string, _actorId: number) {
     return this.dataSource.transaction(async (manager) => {
       const center = await this.lockCenter(manager, code);
       const draft = await this.getDraft(manager, center.id);
       // Older clients may still follow approval with /publish. The approval
       // already committed the publication, so this endpoint only acknowledges it.
-      if (center.statusCode === "PUBLICADO" && draft?.stateCode === "PUBLICADO") {
+      if (
+        center.statusCode === "PUBLICADO" &&
+        draft?.stateCode === "PUBLICADO"
+      ) {
         return this.findById(manager, center.id);
       }
-      void actorId;
       throw new ConflictException(
         "Aprueba la revisión para publicar la ficha.",
       );

@@ -11,7 +11,12 @@ import {
   Inject,
   UseGuards,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from "@nestjs/swagger";
 
 import { AdminCentersService } from "./admin-centers.service";
 import {
@@ -19,6 +24,7 @@ import {
   AdminCatalogCreateDto,
   AdminCatalogsQueryDto,
   AdminCatalogUpdateDto,
+  ADMIN_CENTER_STATUS_FILTERS,
   ADMIN_CENTER_SECTION_CODES,
   ReviewCenterDto,
   SaveAdminSectionDto,
@@ -39,6 +45,17 @@ export class AdminController {
   ) {}
 
   @Get("centers")
+  @ApiQuery({
+    name: "status",
+    required: false,
+    enum: [...ADMIN_CENTER_STATUS_FILTERS],
+  })
+  @ApiQuery({
+    name: "active",
+    required: false,
+    type: Boolean,
+    description: "Filtra la activación sin cambiar el estado de revisión.",
+  })
   @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
   async list(
     @Query() query: AdminCentersQueryDto,
@@ -219,6 +236,10 @@ export class AdminController {
   }
 
   @Patch("centers/:code/review")
+  @ApiOperation({
+    description:
+      "Aprobar publica la revisión y su multimedia en una transacción. Rechazar devuelve la propuesta a borrador y requiere un motivo.",
+  })
   @Roles("ADMINISTRADOR")
   async review(
     @Param("code") code: string,
@@ -229,6 +250,11 @@ export class AdminController {
   }
 
   @Post("centers/:code/publish")
+  @ApiOperation({
+    deprecated: true,
+    description:
+      "Compatibilidad: confirma una publicación ya completada al aprobar; no publica propuestas pendientes.",
+  })
   @Roles("ADMINISTRADOR")
   async publish(
     @Param("code") code: string,

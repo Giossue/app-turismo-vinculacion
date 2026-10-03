@@ -724,8 +724,9 @@ describe.skipIf(!isolatedSocket)(
           ).rejects.toMatchObject({ status: 409 });
 
         await centers.submitReview(center.code, administrator);
-        await centers.review(center.code, administrator, { action: "APPROVE" });
-        const published = await centers.publish(center.code, administrator);
+        const published = await centers.review(center.code, administrator, {
+          action: "APPROVE",
+        });
         expect(published.published).toMatchObject({
           activities: selected.activities,
           accessibility: selected.accessibility,
