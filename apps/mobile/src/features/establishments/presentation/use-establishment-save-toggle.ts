@@ -1,3 +1,4 @@
+import { showSaveToast } from "@/features/favorites/presentation/save-toast";
 import { useAuth } from "@/features/auth/application/auth-context";
 import {
   useSavedEstablishmentMutation,
@@ -32,10 +33,13 @@ export function useEstablishmentSaveToggle(
       onRequireAuth();
       return;
     }
-    mutation.mutate({
-      establishment: toSavedEstablishment({ ...establishment, id }, detail),
-      currentlySaved: saved,
-    });
+    mutation.mutate(
+      {
+        establishment: toSavedEstablishment({ ...establishment, id }, detail),
+        currentlySaved: saved,
+      },
+      { onSuccess: () => showSaveToast(saved) },
+    );
   };
 
   return {

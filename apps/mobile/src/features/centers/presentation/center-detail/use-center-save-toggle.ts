@@ -1,3 +1,4 @@
+import { showSaveToast } from "@/features/favorites/presentation/save-toast";
 import { useAuth } from "@/features/auth/application/auth-context";
 import {
   useSavedCenterMutation,
@@ -27,7 +28,10 @@ export function useCenterSaveToggle(
       onRequireAuth();
       return;
     }
-    mutation.mutate({ center, currentlySaved: saved });
+    mutation.mutate(
+      { center, currentlySaved: saved },
+      { onSuccess: () => showSaveToast(saved) },
+    );
   };
 
   return {

@@ -10,6 +10,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ONE_DAY_MS } from "@/core/api/query-keys";
 import { queryPersistOptions } from "@/core/api/query-persistence";
 import { useTurismoTheme, TurismoThemeProvider } from "@/core/ui/theme-context";
+import { TourismToastHost } from "@/core/ui/tourism-toast";
 import { TurismoPaperProvider } from "@/core/ui/turismo-paper-provider";
 import { getTurismoColors } from "@/core/ui/tokens";
 import { AuthProvider } from "@/features/auth/application/auth-context";
@@ -51,6 +52,7 @@ export default function RootLayout() {
         <BottomSheetModalProvider>
           <AppNavigation />
         </BottomSheetModalProvider>
+        <TourismToastHost />
       </AppProviders>
     </GestureHandlerRootView>
   );
