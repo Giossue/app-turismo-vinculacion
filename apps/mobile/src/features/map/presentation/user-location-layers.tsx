@@ -43,8 +43,13 @@ export function UserLocationLayers({
   );
 
   return (
-    <GeoJSONSource data={data} id={`${idPrefix}-source`}>
+    <GeoJSONSource
+      key={`${idPrefix}-source`}
+      data={data}
+      id={`${idPrefix}-source`}
+    >
       <Layer
+        key={`${idPrefix}-halo`}
         id={`${idPrefix}-halo`}
         paint={{
           "circle-color": colors.locationSoft,
@@ -53,6 +58,7 @@ export function UserLocationLayers({
         type="circle"
       />
       <Layer
+        key={`${idPrefix}-dot`}
         id={`${idPrefix}-dot`}
         paint={{
           "circle-color": colors.location,

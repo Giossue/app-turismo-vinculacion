@@ -802,17 +802,20 @@ export function CenterMap({
         touchRotate
       >
         <Camera
+          key="tourism-camera"
           initialViewState={startingView}
           maxZoom={maxZoom}
           ref={cameraRef}
         />
-        <Images images={mapImages} />
+        <Images key="tourism-pin-images" images={mapImages} />
         {localRoute ? (
           <GeoJSONSource
+            key="tourism-offline-route-source"
             data={localRouteFeature}
             id="tourism-offline-route-source"
           >
             <Layer
+              key="tourism-offline-route-line"
               id="tourism-offline-route-line"
               type="line"
               layout={{ "line-cap": "round", "line-join": "round" }}
@@ -822,6 +825,7 @@ export function CenterMap({
         ) : null}
         {localPlaces !== undefined ? (
           <GeoJSONSource
+            key="tourism-offline-places-source"
             data={localFeatures}
             cluster
             clusterMaxZoom={mapPlaceZoom.establishmentIcon - 1}
@@ -833,6 +837,7 @@ export function CenterMap({
             ref={localSourceRef}
           >
             <Layer
+              key="tourism-offline-place-clusters"
               id="tourism-offline-place-clusters"
               filter={clusterFilter}
               type="circle"
@@ -853,6 +858,7 @@ export function CenterMap({
             />
             {clusterNameLayout ? (
               <Layer
+                key="tourism-offline-place-cluster-names"
                 id="tourism-offline-place-cluster-names"
                 filter={clusterFilter}
                 type="symbol"
@@ -861,6 +867,7 @@ export function CenterMap({
               />
             ) : null}
             <Layer
+              key="tourism-offline-place-dots"
               id="tourism-offline-place-dots"
               type="circle"
               filter={unclusteredFilter}
@@ -873,6 +880,7 @@ export function CenterMap({
               }}
             />
             <Layer
+              key="tourism-offline-place-pins"
               id="tourism-offline-place-pins"
               type="symbol"
               filter={unclusteredFilter}
@@ -887,6 +895,7 @@ export function CenterMap({
           </GeoJSONSource>
         ) : (
           <VectorSource
+            key="tourism-establishments-source"
             hitbox={featureHitbox}
             id="tourism-establishments-source"
             maxzoom={establishmentTileMaxZoom}
@@ -895,6 +904,7 @@ export function CenterMap({
             tiles={establishmentTiles}
           >
             <Layer
+              key={layerIds.establishmentPins}
               filter={establishmentFilter}
               id={layerIds.establishmentPins}
               layout={{
@@ -909,6 +919,7 @@ export function CenterMap({
               type="symbol"
             />
             <Layer
+              key={layerIds.establishmentDots}
               filter={establishmentFilter}
               id={layerIds.establishmentDots}
               layout={{ visibility: establishmentVisibility }}
@@ -926,6 +937,7 @@ export function CenterMap({
           </VectorSource>
         )}
         <GeoJSONSource
+          key="tourism-centers-source"
           data={centerFeatures}
           cluster
           clusterMaxZoom={mapPlaceZoom.centerIcon - 1}
@@ -937,6 +949,7 @@ export function CenterMap({
           ref={centersSourceRef}
         >
           <Layer
+            key={layerIds.centerClusters}
             id={layerIds.centerClusters}
             filter={clusterFilter}
             paint={{
@@ -957,6 +970,7 @@ export function CenterMap({
           />
           {clusterNameLayout ? (
             <Layer
+              key={layerIds.centerClusterNames}
               id={layerIds.centerClusterNames}
               filter={clusterFilter}
               layout={clusterNameLayout}
@@ -965,6 +979,7 @@ export function CenterMap({
             />
           ) : null}
           <Layer
+            key={layerIds.centerDots}
             id={layerIds.centerDots}
             filter={unclusteredFilter}
             maxzoom={mapPlaceZoom.centerIcon}
@@ -975,6 +990,7 @@ export function CenterMap({
             type="circle"
           />
           <Layer
+            key={layerIds.centerIcons}
             id={layerIds.centerIcons}
             filter={unclusteredFilter}
             layout={{
@@ -992,12 +1008,14 @@ export function CenterMap({
           />
         </GeoJSONSource>
         <GeoJSONSource
+          key="tourism-current-selection-source"
           data={selectedFeatures}
           hitbox={featureHitbox}
           id="tourism-current-selection-source"
           onPress={handleFeaturePress}
         >
           <Layer
+            key="tourism-current-selection-pin"
             id="tourism-current-selection-pin"
             type="symbol"
             layout={{
@@ -1017,6 +1035,7 @@ export function CenterMap({
           />
         </GeoJSONSource>
         <UserLocationLayers
+          key="tourism-user-location"
           coordinate={userLocation}
           dotRadius={7}
           haloRadius={17}

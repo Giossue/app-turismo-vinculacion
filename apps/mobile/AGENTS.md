@@ -88,6 +88,9 @@ Los centros públicos estáticos deben renderizarse con `GeoJSONSource` y `Layer
 de MapLibre, dejando el clustering en el motor nativo. No crear un `Marker` o una vista
 React por cada centro: los iconos se registran con `Images` y las capas se mantienen
 estables durante zoom y paneo. Los clusters pueden tener su propia capa visual separada.
+Cada `Layer` y fuente debe tener una `key` de React estable que coincida con su `id`.
+MapLibre elimina hijos nulos antes de clonarlos: al añadir etiquetas condicionales,
+los hermanos sin clave pueden reutilizar otra capa y fallar con `id cannot be changed`.
 La selección de un centro debe mantener el código seleccionado en el estado de pantalla y
 abrir la ficha enseguida, mientras la cámara se mueve al zoom predeterminado; la cámara
 centra el pin en la parte visible del mapa, encima de la ficha (padding inferior). Los pines no cambian
@@ -96,6 +99,9 @@ que el pin y su nombre permanezcan visibles, excluyendo su duplicado de las capa
 Las capas generales resuelven las colisiones en MapLibre; los nombres son opcionales
 para no ocultar un icono solo porque su texto no cabe. Usar la fuente publicada
 `Noto Sans Regular`, halo de tema y `fontScale`; no añadir texto sin glifos válidos.
+Con MapLibre React Native 11, respetar los tipos del puente nativo además del style spec;
+el `icon-padding` numérico no es compatible con el setter Android instalado, por lo que
+se conserva el valor predeterminado del motor.
 Los catastros llegan como teselas vectoriales (`VectorSource` sobre
 `GET /establishments/tiles/{z}/{x}/{y}`), nunca como una lista JSON por viewport: MapLibre
 pide, cachea y descarta las teselas, y los chips filtran con el `filter` de la capa sin

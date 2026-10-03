@@ -257,6 +257,10 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   `Noto Sans Regular`, tamaño que respeta `fontScale` y halo de tema. Solo se añaden
   cuando el estilo tiene glifos válidos; los iconos permanecen disponibles en el estilo
   degradado sin fuentes. El visor local aplica estas reglas a los nombres descargados.
+  Cada capa y fuente mantiene una `key` de React igual a su `id`: el adaptador de
+  MapLibre elimina hijos nulos antes de clonarlos, y la llegada de glifos no debe
+  reutilizar una instancia para otra capa. El padding del icono conserva el valor
+  predeterminado nativo; el puente Android instalado no acepta el número del style spec.
 - Al abrir la pantalla principal no se solicita la ubicación: `while in use` se pide al tocar
   "mi ubicación" o activar una función de ruta que la necesita; buscar y filtrar no
   solicitan ese permiso. Si la

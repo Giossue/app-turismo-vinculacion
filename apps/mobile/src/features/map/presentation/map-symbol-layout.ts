@@ -21,7 +21,6 @@ export const mapPinLayout: SymbolLayout = {
   "icon-allow-overlap": false,
   "icon-anchor": "bottom",
   "icon-ignore-placement": false,
-  "icon-padding": 4,
   "icon-size": 0.42,
   "symbol-z-order": "source",
 };
@@ -60,7 +59,9 @@ export function getMapNameLayout(
     "text-size": 12 * fontScale,
     "text-max-width": 10,
     "text-line-height": 1.15,
-    "text-variable-anchor": ["left", "right", "top", "bottom"],
+    // A text bottom anchor places the label above the point, over the pin.
+    // Side anchors and a text top anchor leave the icon clear.
+    "text-variable-anchor": ["left", "right", "top"],
     "text-radial-offset": 1.25,
     "text-justify": "auto",
     "text-padding": 3,

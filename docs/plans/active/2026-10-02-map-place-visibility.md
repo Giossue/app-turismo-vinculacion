@@ -1,7 +1,7 @@
 # Plan: aparición progresiva de lugares y nombres en el mapa
 
 Fecha: 2026-10-02
-Estado: en implementación
+Estado: implementado; verificado en Android
 
 ## Resultado acordado
 
@@ -49,3 +49,33 @@ decisión de escala futura, sin impedir completar ahora todos los resultados de 
 - Revisión de implementación y prueba visual nativa cuando el entorno lo permita, con
   límites de evidencia registrados.
 - Sincronizar especificación, arquitectura, reglas locales y este plan con el resultado.
+
+## Resultado y evidencia
+
+- API: 21 pruebas focalizadas, tipos, lint y build correctos. El contrato de paginación
+  sigue siendo compatible con los consumidores anteriores.
+- Móvil: tipos y lint correctos; suite completa de 313 pruebas en 57 archivos. Tras los
+  ajustes de compatibilidad nativa se repitieron tipos, lint de los archivos afectados
+  y 21 pruebas relacionadas en cuatro archivos, con resultado correcto.
+- Android físico: arranque desde cero, carga de 137 atractivos en páginas de 100 y 37,
+  nombres de atractivos y restaurantes según zoom, elección entre lugares cercanos y
+  selección con el mismo pin. Un fallo HTTP 503 conserva los pines anteriores y ofrece
+  reintentar.
+- El arranque detectó dos incompatibilidades: `icon-padding` numérico provoca un fallo
+  de conversión en el puente Android de MapLibre 11.3.10; se usa el valor nativo por
+  defecto. Al aparecer las etiquetas condicionales, las capas sin `key` podían
+  reutilizarse con otro `id`; todas las fuentes y capas tienen ahora una clave estable.
+- Se ajustaron las anclas de texto para que el nombre no se coloque sobre la cabeza de
+  su propio pin. Las capturas finales muestran etiquetas legibles y selección estable.
+
+La comprobación nativa usó datos inventados y servidores temporales locales; no certifica
+la cobertura del catálogo real. Evidencia de la sesión en
+`/tmp/turismo-map-place-visibility-20261002/`. iOS no estuvo disponible para una prueba
+visual nativa; las comprobaciones automatizadas cubren la lógica compartida.
+La sesión confirmó el tema oscuro y los niveles de detalle con nombres; el cambio al
+tema claro y el toque para expandir clusters quedan pendientes de comprobación manual
+nativa. Los gestos ADB no dieron evidencia fiable de esos dos escenarios.
+
+Al cerrar la sesión se detuvieron los servidores temporales y se restauró el Metro
+original de desarrollo en el puerto 8081. La app arrancó de nuevo con su catálogo
+habitual y sin errores de identidad de capas ni fallos del puente nativo en el log.
