@@ -394,9 +394,6 @@ function RouteScene() {
         </TourismPressable>
       </SafeAreaView>
       <RoutePreviewPanel
-        backgroundTrackingAvailable
-        backgroundTrackingBusy={false}
-        backgroundTrackingEnabled={false}
         destinationName="Restaurante de prueba con un nombre largo"
         expanded={expanded}
         isCalculating={false}
@@ -404,7 +401,6 @@ function RouteScene() {
         locationRequesting={false}
         mode={mode}
         navigationNotice={notice}
-        onBackgroundTrackingChange={() => undefined}
         onCalculateRoute={() => setNotice("Ruta de prueba calculada")}
         onClose={() => setNotice("QA Ruta cerrada")}
         onExpandedChange={setExpanded}

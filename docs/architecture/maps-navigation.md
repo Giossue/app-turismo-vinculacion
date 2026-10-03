@@ -115,12 +115,11 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   OSRM genérico.
 - La navegación activa requiere una sesión turística autenticada y se inicia explícitamente
   desde una ruta calculada. La vista previa de la ruta permanece disponible como invitado. En primer plano
-  usa `Location.watchPositionAsync` para actualizar el mapa de inmediato. «Iniciar navegación»
-  solo sigue la posición mientras la app está abierta y no presenta un diálogo previo.
-  La vista previa ofrece por separado «Seguir al salir de la app», desactivado por defecto y
-  con una explicación visible junto al interruptor. Solo al activarlo se solicitan los
-  permisos del sistema para ubicación en segundo plano y notificaciones; rechazar alguno
-  deja el interruptor apagado y no inicia la ruta. Con la opción activada,
+  usa `Location.watchPositionAsync` para actualizar el mapa de inmediato. Al pulsar
+  «Iniciar navegación» se solicitan los permisos del sistema para ubicación en segundo plano
+  y notificaciones, sin un interruptor previo. Si se conceden, la ruta también se sigue al
+  salir de la app; si se rechaza alguno, la navegación se inicia solo en primer plano. Con
+  los permisos concedidos,
   `expo-location` mantiene una tarea de ubicación en segundo plano con el servicio
   foreground de Android. La tarea conserva únicamente la última posición en almacenamiento
   local; al volver a la app se espera una lectura fresca antes de reanudar indicaciones.

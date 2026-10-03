@@ -23,13 +23,13 @@ el estado editorial.
 
 ## Trabajo
 
-- [ ] Implementar aprobación/publicación atómica y devolución con motivo.
-- [ ] Separar estado de activación en API, filtros y panel.
-- [ ] Crear migración idempotente, conservar códigos e históricos, desacoplar trigger.
-- [ ] Probar migración sobre PostgreSQL/PostGIS vacío y con estados antiguos.
-- [ ] Verificar transacciones, permisos, rollback, correcciones y reactivación.
-- [ ] Actualizar especificación, criterios, contratos y procedimiento de despliegue.
-- [ ] Verificar API y panel; revisar diff y compatibilidad.
+- [x] Implementar aprobación/publicación atómica y devolución con motivo.
+- [x] Separar estado de activación en API, filtros y panel.
+- [x] Crear migración idempotente, conservar códigos e históricos, desacoplar trigger.
+- [x] Probar migración sobre PostgreSQL/PostGIS vacío y con estados antiguos.
+- [x] Verificar transacciones, permisos, rollback, correcciones y reactivación.
+- [x] Actualizar especificación, criterios, contratos y procedimiento de despliegue.
+- [x] Verificar API y panel; revisar diff y compatibilidad.
 - [ ] Aplicar en remota únicamente con API/panel compatibles y respaldo verificado.
 
 ## Despliegue y reversión
@@ -45,6 +45,24 @@ deshacen automáticamente: se conserva auditoría y se resuelve mediante operaci
 
 ## Verificación
 
-Pendiente. Remota inspeccionada en sólo lectura: quince centros activos, catorce borradores,
-una aprobación sin publicar, cero publicados; únicamente centros/borradores/revisiones
-referencian `estados_resenia`.
+- API: 136 pruebas focales en seis archivos, TypeScript, ESLint y build aprobados.
+- Panel: `bun run verify` completo (formato, ESLint, TypeScript y Next producción)
+  y 36 pruebas focales aprobadas; tres estados y activación independiente en URL/contrato.
+- `bash scripts/verify-center-workflow.sh`: esquema vacío y repetición; esquema anterior
+  con cinco centros de estados antiguos; preparación y siete casos de integración.
+  Conserva IDs, códigos de 17 caracteres, snapshots, revisiones y auditoría; crea una
+  solicitud nueva para aprobados con borrador y deja editables los aprobados sin borrador.
+- PostgreSQL/PostGIS: snapshot congelado, publicación/media/auditoría atómicas, rollback
+  por fallo de multimedia, devolución con motivo, edición/reenvío y publicación anterior,
+  visibilidad independiente, aprobación desactivada, propiedad y dos decisiones concurrentes.
+- La concurrencia reveló un bloqueo con joins que podía devolver 404 al segundo revisor;
+  se cambió a bloqueo de la fila por ID y lectura fresca, y se verificó un único commit/409.
+- `bash scripts/verify-admin-deletion.sh`: veinte casos aprobados y repetición de la
+  migración; activar un registro eliminado sigue siendo rechazado por la restricción.
+- Remota inspeccionada sólo en lectura: quince centros activos, catorce borradores,
+  una aprobación sin publicar, cero publicados. La API remota aún no tiene el nuevo contrato
+  OpenAPI; no se ejecutó la migración ni se desplegó desde esta tarea.
+
+La implementación está preparada; queda actualización coordinada remota. Las reglas locales
+exigen solicitud explícita para hacer push. El plan permanece activo hasta aplicar y verificar
+el despliegue y la migración compatibles. No se realizó QA de navegador ni sesión real.

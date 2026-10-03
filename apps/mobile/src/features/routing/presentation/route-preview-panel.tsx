@@ -12,7 +12,6 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { Switch } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
@@ -56,9 +55,6 @@ const estimatedCompactContentHeight =
   turismoMetrics.controlLg * 3 + turismoSpacing.xxl + turismoSpacing.lg;
 
 export type RoutePreviewPanelProps = Readonly<{
-  backgroundTrackingAvailable: boolean;
-  backgroundTrackingBusy: boolean;
-  backgroundTrackingEnabled: boolean;
   destinationName: string;
   expanded: boolean;
   isCalculating: boolean;
@@ -66,7 +62,6 @@ export type RoutePreviewPanelProps = Readonly<{
   locationRequesting: boolean;
   mode: RouteMode;
   navigationNotice: string | null;
-  onBackgroundTrackingChange: (enabled: boolean) => void;
   onCalculateRoute: () => void;
   onClose: () => void;
   onExpandedChange: (expanded: boolean) => void;
@@ -87,9 +82,6 @@ export type RoutePreviewPanelProps = Readonly<{
  * up expands it.
  */
 export function RoutePreviewPanel({
-  backgroundTrackingAvailable,
-  backgroundTrackingBusy,
-  backgroundTrackingEnabled,
   destinationName,
   expanded,
   isCalculating,
@@ -97,7 +89,6 @@ export function RoutePreviewPanel({
   locationRequesting,
   mode,
   navigationNotice,
-  onBackgroundTrackingChange,
   onCalculateRoute,
   onClose,
   onExpandedChange,
@@ -236,28 +227,6 @@ export function RoutePreviewPanel({
               onPress={onCalculateRoute}
             />
           ) : null}
-          {route && backgroundTrackingAvailable ? (
-            <View style={styles.backgroundOption}>
-              <View style={styles.backgroundCopy}>
-                <Text style={[styles.backgroundTitle, { color: colors.text }]}>
-                  Seguir al salir de la app
-                </Text>
-                <Text
-                  style={[styles.backgroundHint, { color: colors.textMuted }]}
-                >
-                  Usa tu ubicación solo durante esta ruta y se detiene al
-                  cerrarla. Puede pedir permisos del sistema.
-                </Text>
-              </View>
-              <Switch
-                accessibilityHint="Activa el seguimiento en segundo plano solo para esta ruta"
-                accessibilityLabel="Seguir la ruta al salir de la app"
-                disabled={backgroundTrackingBusy || startingNavigation}
-                onValueChange={onBackgroundTrackingChange}
-                value={backgroundTrackingEnabled}
-              />
-            </View>
-          ) : null}
           {route && !isCalculating ? <RouteSteps route={route} /> : null}
         </ScrollView>
         {loading ? null : (
@@ -370,13 +339,4 @@ const styles = StyleSheet.create({
     paddingTop: turismoSpacing.xs,
   },
   compactMessage: { ...turismoTypography.caption },
-  backgroundOption: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-    minHeight: turismoMetrics.touchTarget,
-  },
-  backgroundCopy: { flex: 1, gap: turismoSpacing.xxs },
-  backgroundTitle: { ...turismoTypography.label },
-  backgroundHint: { ...turismoTypography.caption },
 });
