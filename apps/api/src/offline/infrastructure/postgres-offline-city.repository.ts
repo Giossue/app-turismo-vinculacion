@@ -176,19 +176,69 @@ export class PostgresOfflineCityRepository implements OfflineCityRepository {
   }
 }
 
+/**
+ * A city is downloadable as soon as it has published content: no manual
+ * package is needed. The version is the last change (in seconds) to any of
+ * its content rows, including unpublishing or logical deletion, which also
+ * touch `updated_at`; it only grows, so the app can offer the update. A
+ * manual `paquetes_offline_ciudad` row remains optional to set zoom levels.
+ */
 function cityQuery(): string {
   return `SELECT l.id::text AS id, l.nombre AS name, c.nombre AS canton,
     p.nombre AS province, l.latitud AS latitude, l.longitud AS longitude,
-    paquete.version AS package_version,
+    CASE
+      WHEN paquete.id IS NOT NULL OR centers.published OR pois.published
+        OR establishments.published
+      THEN COALESCE(
+        FLOOR(EXTRACT(EPOCH FROM content.changed_at))::integer,
+        paquete.version
+      )
+    END AS package_version,
     paquete.checksum_sha256 AS package_checksum,
     paquete.zoom_min AS package_zoom_min,
     paquete.zoom_max AS package_zoom_max,
-    paquete.publicado_at AS package_published_at
+    COALESCE(content.changed_at, paquete.publicado_at) AS package_published_at
   FROM localidades l
   JOIN cantones c ON c.id = l.canton_id
   JOIN provincias p ON p.id = c.provincia_id
   LEFT JOIN paquetes_offline_ciudad paquete
     ON paquete.localidad_id = l.id AND paquete.estado = 'PUBLICADO'
+  CROSS JOIN LATERAL (
+    SELECT MAX(ct.updated_at) AS changed_at,
+      COALESCE(BOOL_OR(ct.activo AND z.activo AND er.codigo = 'PUBLICADO'), FALSE)
+        AS published
+      FROM centros_turisticos ct
+      JOIN zonas_turisticas z ON z.id = ct.zona_turistica_id
+      JOIN estados_resenia er ON er.id = ct.estado_resenia_id
+     WHERE z.localidad_id = l.id
+  ) centers
+  CROSS JOIN LATERAL (
+    SELECT MAX(pi.updated_at) AS changed_at,
+      COALESCE(BOOL_OR(pi.activo AND z.activo), FALSE) AS published
+      FROM puntos_interes pi
+      JOIN zonas_turisticas z ON z.id = pi.zona_turistica_id
+     WHERE z.localidad_id = l.id
+  ) pois
+  CROSS JOIN LATERAL (
+    SELECT MAX(e.updated_at) AS changed_at,
+      COALESCE(BOOL_OR(e.activo AND e.estado_revision = 'PUBLICADO'
+        AND e.ubicacion IS NOT NULL), FALSE) AS published
+      FROM establecimientos_turisticos e
+     WHERE e.localidad_id = l.id
+  ) establishments
+  CROSS JOIN LATERAL (
+    SELECT MAX(rt.updated_at) AS changed_at
+      FROM rutas_transporte rt
+      JOIN centro_rutas_transporte crt ON crt.ruta_transporte_id = rt.id
+      JOIN centros_turisticos ct ON ct.id = crt.centro_turistico_id
+      JOIN zonas_turisticas z ON z.id = ct.zona_turistica_id
+     WHERE z.localidad_id = l.id
+  ) routes
+  CROSS JOIN LATERAL (
+    SELECT GREATEST(centers.changed_at, pois.changed_at,
+      establishments.changed_at, routes.changed_at, paquete.publicado_at)
+      AS changed_at
+  ) content
   WHERE l.activo AND l.tipo_localidad = 'CIUDAD'
     AND c.activo AND p.activo
   ORDER BY p.nombre, c.nombre, l.nombre`;

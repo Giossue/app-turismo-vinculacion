@@ -102,7 +102,7 @@ export function OfflineCityCard({
         />
       ) : (
         <Text style={[styles.caption, { color: colors.textFaint }]}>
-          El paquete institucional aún no está publicado.
+          Esta ciudad aún no tiene lugares publicados para descargar.
         </Text>
       )}
       {stored && onRemove ? (

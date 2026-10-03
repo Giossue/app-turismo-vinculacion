@@ -16,9 +16,9 @@
 - [x] El panel de ruta identifica el modo mediante pestañas sin título repetido ni
       leyenda «Ruta más rápida».
 - [x] Un fallo de recálculo online conserva la ruta y ofrece reintento manual.
-- [ ] Descargar un paquete institucional publicado y reabrir el visor en modo avión en
+- [ ] Descargar una ciudad con contenido publicado y reabrir el visor en modo avión en
       Android/iOS reales, incluido reinicio, zoom y cambio de tema.
-- [ ] Descargar un mapa provincial completo con límite oficial y paquete publicado.
+- [ ] Descargar un mapa provincial completo con límite oficial y contenido publicado.
 
 Los criterios marcados se refieren al código y sus pruebas automatizadas. La comprobación
-en dispositivos y la publicación de un primer paquete se registran por separado.
+en dispositivos y la primera descarga real se registran por separado.

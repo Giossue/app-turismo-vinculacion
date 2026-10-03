@@ -84,9 +84,12 @@ La actualización de código no publica ciudades automáticamente. Para activar 
 2. Comprobar `GET /api/v1/offline/map-style`: devuelve el JSON GL v8 directamente, URLs
    absolutas y `Noto Sans Regular`. La API limita tamaño, tiempo y redirecciones del proveedor.
 3. Revisar los límites oficiales o las coordenadas de la localidad y el contenido público.
-   Publicar los metadatos de `paquetes_offline_ciudad` mediante el procedimiento institucional
-   autorizado, con versión y niveles de zoom. No se debe usar un seeder de demostración
-   ni publicar centros o recorridos incompletos para llenar el paquete.
+   Una ciudad se ofrece para descargar automáticamente en cuanto tiene un centro turístico,
+   punto de interés o establecimiento publicado; no hace falta publicar un paquete. Su versión
+   es el último cambio (`updated_at`) de ese contenido, incluidas despublicaciones y bajas
+   lógicas, por lo que la app ofrece la actualización sola. Una fila de
+   `paquetes_offline_ciudad` publicada solo es necesaria para fijar otros niveles de zoom
+   (por defecto 8–17). No se debe usar un seeder de demostración para llenar una ciudad.
 4. Verificar `/offline/cities` y el manifiesto de esa ciudad; confirmar cobertura, recuentos
    y ausencia de datos privados. No considerar una descarga vacía como contenido completo.
 5. Actualizar el móvil, descargar con internet, cerrar/reabrir en modo avión y probar mapa,

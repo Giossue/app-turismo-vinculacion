@@ -439,7 +439,10 @@ localmente y monta fuentes GeoJSON en vez de la capa MVT remota. No mezcla datos
 con la capa de centros de Explorar en línea. La búsqueda de Explorar puede leer esos
 manifiestos y conducir al mismo visor local. El catálogo descargado abre aun sin catálogo remoto.
 
-Solo las ciudades con un paquete institucional PUBLICADO son descargables. Sus límites
+Una ciudad es descargable en cuanto tiene un centro, punto de interés o establecimiento
+publicado; la API calcula sola la versión a partir del último cambio de ese contenido. En
+Explorar, si la API no responde, el mapa usa el estilo y los lugares de las ciudades
+descargadas y vuelve al contenido en línea cuando la API responde de nuevo. Sus límites
 oficiales tienen prioridad; sin ellos, una caja acotada alrededor de sus coordenadas define
 la cobertura. Sin ninguna de esas referencias la descarga falla. Actualizar crea un paquete
 nuevo, guarda su manifiesto y después borra los anteriores: una descarga fallida conserva

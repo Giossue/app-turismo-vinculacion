@@ -212,7 +212,22 @@ describe("offline city public snapshot", () => {
     expect(routes[0]).not.toHaveProperty("id");
   });
 
-  it("does not load unpublished packages or unknown city slugs", async () => {
+  it("makes a city downloadable from its published content, without a manual package", async () => {
+    const query = vi.fn().mockResolvedValue([cityRow]);
+    const repository = new PostgresOfflineCityRepository({ query } as never);
+    await repository.listCities();
+    const sql = String(query.mock.calls[0]?.[0]);
+    expect(sql).toContain(
+      "WHEN paquete.id IS NOT NULL OR centers.published OR pois.published",
+    );
+    expect(sql).toContain("e.estado_revision = 'PUBLICADO'");
+    expect(sql).toContain("er.codigo = 'PUBLICADO'");
+    // Any change, including unpublishing, raises the version.
+    expect(sql).toContain("FLOOR(EXTRACT(EPOCH FROM content.changed_at))");
+    expect(sql).toContain("MAX(e.updated_at)");
+  });
+
+  it("does not load cities without content or unknown city slugs", async () => {
     const query = vi
       .fn()
       .mockResolvedValue([{ ...cityRow, package_version: null }]);
