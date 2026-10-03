@@ -255,3 +255,10 @@ La migración `20260924_establishment_pins_by_taxonomy.sql` corrige los pines de
 `20260922_osmic_establishment_pins.sql` no es idempotente y, al repetirse, dejó todas las
 clasificaciones en `shop-supermarket`. La nueva deriva el icono de la actividad y la
 clasificación, así que puede ejecutarse más de una vez.
+
+La migración `20261004_offline_change_tracking.sql` añade `updated_at`, con su trigger
+`fn_set_updated_at`, a `zonas_turisticas` y `rutas_transporte_versiones`. La API la usa para
+que la versión automática de los mapas sin conexión también suba al cambiar una zona o una
+versión de ruta. Es aditiva e idempotente y no requiere backfill; aplicarla antes de
+desplegar la API que la consulta. Al aplicarla, la columna nueva toma la fecha actual, así
+que cada ciudad ofrece una actualización una sola vez.

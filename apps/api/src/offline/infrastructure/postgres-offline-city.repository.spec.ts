@@ -225,6 +225,8 @@ describe("offline city public snapshot", () => {
     // Any change, including unpublishing, raises the version.
     expect(sql).toContain("FLOOR(EXTRACT(EPOCH FROM content.changed_at))");
     expect(sql).toContain("MAX(e.updated_at)");
+    expect(sql).toContain("MAX(z.updated_at)");
+    expect(sql).toContain("MAX(version.updated_at)");
   });
 
   it("does not load cities without content or unknown city slugs", async () => {

@@ -34,6 +34,9 @@ contenidos, además de componentes reutilizables con tokens centralizados.
   sin borde por fila; el popover agrupa las opciones y Eliminar abre una confirmación.
 - Comparación clara entre publicado y propuesto durante revisión.
 - Toda mutación comunica pendiente, éxito y error.
+- La sesión, el resumen, las tablas y el contenido de fichas/diálogos comparten un único
+  indicador circular de carga. El mismo componente se usa compacto dentro de los botones;
+  las tablas mantienen su barra de herramientas y paginación durante la carga.
 - En los formularios de fichas y catastros, la ubicación se captura con un modal MapLibre:
   el operador hace clic para seleccionar el punto y el formulario recibe solo latitud y
   longitud. No se reemplazan ni se rellenan automáticamente los campos descriptivos de

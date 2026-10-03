@@ -179,7 +179,8 @@ export class PostgresOfflineCityRepository implements OfflineCityRepository {
 /**
  * A city is downloadable as soon as it has published content: no manual
  * package is needed. The version is the last change (in seconds) to any of
- * its content rows, including unpublishing or logical deletion, which also
+ * its zones, centers, points of interest, establishments or transport routes
+ * and their versions, including unpublishing or logical deletion, which also
  * touch `updated_at`; it only grows, so the app can offer the update. A
  * manual `paquetes_offline_ciudad` row remains optional to set zoom levels.
  */
@@ -204,6 +205,11 @@ function cityQuery(): string {
   LEFT JOIN paquetes_offline_ciudad paquete
     ON paquete.localidad_id = l.id AND paquete.estado = 'PUBLICADO'
   CROSS JOIN LATERAL (
+    SELECT MAX(z.updated_at) AS changed_at
+      FROM zonas_turisticas z
+     WHERE z.localidad_id = l.id
+  ) zones
+  CROSS JOIN LATERAL (
     SELECT MAX(ct.updated_at) AS changed_at,
       COALESCE(BOOL_OR(ct.activo AND z.activo AND er.codigo = 'PUBLICADO'), FALSE)
         AS published
@@ -227,15 +233,17 @@ function cityQuery(): string {
      WHERE e.localidad_id = l.id
   ) establishments
   CROSS JOIN LATERAL (
-    SELECT MAX(rt.updated_at) AS changed_at
+    SELECT GREATEST(MAX(rt.updated_at), MAX(version.updated_at)) AS changed_at
       FROM rutas_transporte rt
+      LEFT JOIN rutas_transporte_versiones version
+        ON version.ruta_transporte_id = rt.id
       JOIN centro_rutas_transporte crt ON crt.ruta_transporte_id = rt.id
       JOIN centros_turisticos ct ON ct.id = crt.centro_turistico_id
       JOIN zonas_turisticas z ON z.id = ct.zona_turistica_id
      WHERE z.localidad_id = l.id
   ) routes
   CROSS JOIN LATERAL (
-    SELECT GREATEST(centers.changed_at, pois.changed_at,
+    SELECT GREATEST(zones.changed_at, centers.changed_at, pois.changed_at,
       establishments.changed_at, routes.changed_at, paquete.publicado_at)
       AS changed_at
   ) content

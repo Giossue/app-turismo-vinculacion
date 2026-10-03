@@ -86,8 +86,10 @@ La actualización de código no publica ciudades automáticamente. Para activar 
 3. Revisar los límites oficiales o las coordenadas de la localidad y el contenido público.
    Una ciudad se ofrece para descargar automáticamente en cuanto tiene un centro turístico,
    punto de interés o establecimiento publicado; no hace falta publicar un paquete. Su versión
-   es el último cambio (`updated_at`) de ese contenido, incluidas despublicaciones y bajas
-   lógicas, por lo que la app ofrece la actualización sola. Una fila de
+   es el último cambio (`updated_at`) de ese contenido, de sus zonas turísticas y de las
+   rutas de transporte y sus versiones, incluidas despublicaciones y bajas lógicas, por lo
+   que la app ofrece la actualización sola. Requiere `20261004_offline_change_tracking.sql`.
+   No borrar filas a mano: un borrado físico no cambia la versión; usar la baja lógica. Una fila de
    `paquetes_offline_ciudad` publicada solo es necesaria para fijar otros niveles de zoom
    (por defecto 8–17). No se debe usar un seeder de demostración para llenar una ciudad.
 4. Verificar `/offline/cities` y el manifiesto de esa ciudad; confirmar cobertura, recuentos
