@@ -39,8 +39,8 @@ export function TourismSheetHandle({
   /** Reserve the short landscape viewport for editing; Back restores the handle. */
   hideForLandscapeKeyboard?: boolean;
   /**
-   * Baja y mete la X, lejos de la esquina redondeada, sin mover la barra
-   * (mismo margen que la X del menú).
+   * Mete la X hacia dentro, lejos de la esquina redondeada, sin sacarla de la
+   * altura de la barra.
    */
   insetClose?: boolean;
   /** Acción opcional a la izquierda, a la misma altura que el cierre. */
@@ -130,8 +130,5 @@ const styles = StyleSheet.create({
   pressed: { opacity: turismoOpacity.pressed },
   close: { position: "absolute", right: turismoSpacing.sm },
   leadingAction: { position: "absolute", left: turismoSpacing.sm },
-  closeInset: {
-    right: turismoSpacing.sm + turismoSpacing.xs,
-    top: turismoSpacing.sm,
-  },
+  closeInset: { right: turismoSpacing.sm + turismoSpacing.xs },
 });
