@@ -18,38 +18,26 @@ import {
   parseAgentText,
   plainAgentText,
 } from "../domain/agent-text";
-import { AgentActionList, type AgentRouteHandlers } from "./agent-action-list";
+import { AgentActionList } from "./agent-action-list";
 import { AgentResultCard, getAgentCardKey } from "./agent-result-card";
 
-/** A user question or an agent answer with its cards and distinct actions. */
+/** A user question or an agent answer with cards and optional location access. */
 export function AgentMessageBubble({
   message,
   onOpenCard,
-  onOpenCenter,
   onRequestLocation,
   requestingLocation,
-  ...routeHandlers
-}: Readonly<
-  AgentRouteHandlers & {
-    message: AgentMessage;
-    onOpenCard: (card: AgentCard) => void;
-    onOpenCenter: (code: string) => void;
-    onRequestLocation: () => void;
-    requestingLocation: boolean;
-  }
->) {
+}: Readonly<{
+  message: AgentMessage;
+  onOpenCard: (card: AgentCard) => void;
+  onRequestLocation: () => void;
+  requestingLocation: boolean;
+}>) {
   const colors = useTurismoPalette();
   const fromUser = message.role === "user";
   const visibleText = fromUser
     ? message.text
     : getAgentVisibleText(message.text, message.cards ?? []);
-  const visibleActions = message.actions?.filter(
-    (action) =>
-      action.type !== "open_center" ||
-      !message.cards?.some(
-        (card) => card.type === "center" && card.code === action.code,
-      ),
-  );
   const [speaking, setSpeaking] = useState(false);
   const speakingRef = useRef(false);
 
@@ -158,13 +146,11 @@ export function AgentMessageBubble({
             onOpenCard={onOpenCard}
           />
         ))}
-        {visibleActions?.length ? (
+        {!fromUser && message.actions?.length ? (
           <AgentActionList
-            actions={visibleActions}
-            onOpenCenter={onOpenCenter}
+            actions={message.actions}
             onRequestLocation={onRequestLocation}
             requestingLocation={requestingLocation}
-            {...routeHandlers}
           />
         ) : null}
       </View>

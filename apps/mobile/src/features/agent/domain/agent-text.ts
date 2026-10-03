@@ -59,7 +59,7 @@ export function getAgentVisibleText(
     .join("\n")
     .replace(/\n(?:[ \t]*\n){2,}/g, "\n\n")
     .trim();
-  return visible || "Toca una tarjeta para ver su ficha.";
+  return visible || "Aquí tienes algunas opciones.";
 }
 
 function normalizePlaceName(value: string): string {

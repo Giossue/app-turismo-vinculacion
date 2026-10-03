@@ -140,8 +140,8 @@ describe("AiAgentService calculateRoadRoute tool", () => {
         });
 
         return {
-          text: "Ruta vial verificada.",
-          cards: [{ ref }],
+          text: "Pulsa Ver y luego Cómo llegar.",
+          cards: [],
           actions: [{ type: "start_route", mode: "foot", ref }],
         };
       })();
@@ -180,19 +180,16 @@ describe("AiAgentService calculateRoadRoute tool", () => {
       type: "routing",
       label: "Cálculo de ruta vial",
     });
-    expect(response.actions).toEqual([
+    expect(response.cards).toMatchObject([
       {
-        type: "start_route",
-        destination: {
-          type: "center",
-          code: "GUA-001",
-          name: "Centro Cultural Indio Guaranga",
-          latitude: -1.594,
-          longitude: -79,
-        },
-        mode: "foot",
-        requiresConfirmation: true,
+        type: "center",
+        code: "GUA-001",
+        name: center.name,
+        latitude: center.latitude,
+        longitude: center.longitude,
       },
     ]);
+    expect(response.actions).toEqual([]);
+    expect(response.text).toBe("Pulsa Ver y luego Cómo llegar.");
   });
 });

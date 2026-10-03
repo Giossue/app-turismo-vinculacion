@@ -233,20 +233,7 @@ describe("AiAgentService", () => {
       trusted,
     );
 
-    expect(sanitized.cards).toHaveLength(1);
-    expect(sanitized.actions).toEqual([
-      {
-        type: "start_route",
-        destination: {
-          type: "center",
-          code: "GUA-001",
-          name: "Centro publicado",
-          latitude: -1.59,
-          longitude: -79,
-        },
-        mode: "foot",
-        requiresConfirmation: true,
-      },
-    ]);
+    expect(sanitized.cards).toEqual([trusted.get("center:GUA-001")?.card]);
+    expect(sanitized.actions).toEqual([]);
   });
 });

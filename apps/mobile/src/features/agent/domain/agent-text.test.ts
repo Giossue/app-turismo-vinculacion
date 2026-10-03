@@ -55,6 +55,6 @@ describe("agent text", () => {
       getAgentVisibleText("• PLAZA LUNA – Alojamiento.", [
         { name: "PLAZA LUNA" },
       ]),
-    ).toBe("Toca una tarjeta para ver su ficha.");
+    ).toBe("Aquí tienes algunas opciones.");
   });
 });

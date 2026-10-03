@@ -1,186 +1,35 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet } from "react-native";
 
-import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismActionButton } from "@/core/ui/tourism-controls";
-import {
-  turismoRadii,
-  turismoSpacing,
-  turismoTypography,
-} from "@/core/ui/tokens";
-import type { RouteMode } from "@/features/routing/domain/routing";
-import {
-  isSameRouteAction,
-  type AgentAction,
-  type AgentRouteDestination,
-  type StartRouteAction,
-} from "../domain/agent";
+import { turismoSpacing } from "@/core/ui/tokens";
+import type { AgentAction } from "../domain/agent";
 
-export type AgentRouteHandlers = Readonly<{
-  onChangePendingRoute: (action: StartRouteAction | null) => void;
-  onStartRoute: (destination: AgentRouteDestination, mode: RouteMode) => void;
-  pendingRouteAction: StartRouteAction | null;
-}>;
-
-/**
- * Actions proposed by the agent. A route is only a proposal: it opens
- * after the tourist confirms it.
- */
+/** Location is the only extra control in the chat; places open from cards. */
 export function AgentActionList({
   actions,
-  onChangePendingRoute,
-  onOpenCenter,
   onRequestLocation,
-  onStartRoute,
-  pendingRouteAction,
   requestingLocation,
-}: Readonly<
-  AgentRouteHandlers & {
-    actions: readonly AgentAction[];
-    onOpenCenter: (code: string) => void;
-    onRequestLocation: () => void;
-    requestingLocation: boolean;
-  }
->) {
-  return (
-    <>
-      {actions.map((action) => (
-        <AgentActionItem
-          action={action}
-          key={
-            action.type === "request_location"
-              ? "request-location"
-              : action.type === "open_center"
-                ? `open-${action.code}`
-                : `route-${action.destination.name}-${action.mode}`
-          }
-          onChangePendingRoute={onChangePendingRoute}
-          onOpenCenter={onOpenCenter}
-          onRequestLocation={onRequestLocation}
-          onStartRoute={onStartRoute}
-          pendingRouteAction={pendingRouteAction}
-          requestingLocation={requestingLocation}
-        />
-      ))}
-    </>
-  );
-}
-
-function AgentActionItem({
-  action,
-  onChangePendingRoute,
-  onOpenCenter,
-  onRequestLocation,
-  onStartRoute,
-  pendingRouteAction,
-  requestingLocation,
-}: Readonly<
-  AgentRouteHandlers & {
-    action: AgentAction;
-    onOpenCenter: (code: string) => void;
-    onRequestLocation: () => void;
-    requestingLocation: boolean;
-  }
->) {
-  if (action.type === "open_center") {
-    return (
-      <TourismActionButton
-        accessibilityLabel="Ver detalles del centro recomendado"
-        compact
-        label="Ver"
-        onPress={() => onOpenCenter(action.code)}
-        style={styles.action}
-      />
-    );
-  }
-  if (action.type === "request_location") {
-    return (
-      <TourismActionButton
-        accessibilityLabel="Usar mi ubicación para repetir la consulta cercana"
-        compact
-        disabled={requestingLocation}
-        icon="locate"
-        label="Usar mi ubicación"
-        loading={requestingLocation}
-        onPress={onRequestLocation}
-        style={styles.action}
-      />
-    );
-  }
-  const pending =
-    pendingRouteAction !== null &&
-    isSameRouteAction(pendingRouteAction, action);
-  return (
-    <View>
-      <TourismActionButton
-        accessibilityLabel={`Preparar ruta a ${action.destination.name}`}
-        compact
-        label="Preparar ruta"
-        onPress={() => onChangePendingRoute(action)}
-        style={styles.action}
-      />
-      {pending ? (
-        <AgentRouteConfirmation
-          destinationName={action.destination.name}
-          onCancel={() => onChangePendingRoute(null)}
-          onConfirm={() => {
-            onChangePendingRoute(null);
-            onStartRoute(action.destination, action.mode);
-          }}
-        />
-      ) : null}
-    </View>
-  );
-}
-
-function AgentRouteConfirmation({
-  destinationName,
-  onCancel,
-  onConfirm,
 }: Readonly<{
-  destinationName: string;
-  onCancel: () => void;
-  onConfirm: () => void;
+  actions: readonly AgentAction[];
+  onRequestLocation: () => void;
+  requestingLocation: boolean;
 }>) {
-  const colors = useTurismoPalette();
+  if (!actions.some((action) => action.type === "request_location")) return null;
+
   return (
-    <View
-      accessibilityLiveRegion="polite"
-      style={[styles.confirmation, { backgroundColor: colors.surfaceMuted }]}
-    >
-      <Text style={[styles.confirmationText, { color: colors.text }]}>
-        ¿Quieres preparar una ruta a {destinationName}?
-      </Text>
-      <View style={styles.confirmationActions}>
-        <TourismActionButton
-          accessibilityLabel="Cancelar preparación de ruta"
-          compact
-          label="Cancelar"
-          mode="ghost"
-          onPress={onCancel}
-        />
-        <TourismActionButton
-          accessibilityLabel="Confirmar preparación de ruta"
-          compact
-          label="Confirmar"
-          onPress={onConfirm}
-        />
-      </View>
-    </View>
+    <TourismActionButton
+      accessibilityLabel="Usar mi ubicación para repetir la pregunta"
+      compact
+      disabled={requestingLocation}
+      icon="locate"
+      label="Usar mi ubicación"
+      loading={requestingLocation}
+      onPress={onRequestLocation}
+      style={styles.action}
+    />
   );
 }
 
 const styles = StyleSheet.create({
   action: { marginTop: turismoSpacing.xs },
-  confirmation: {
-    borderRadius: turismoRadii.sm,
-    gap: turismoSpacing.sm,
-    marginTop: turismoSpacing.xs,
-    padding: turismoSpacing.sm,
-  },
-  confirmationText: { ...turismoTypography.caption },
-  confirmationActions: {
-    flexDirection: "row",
-    gap: turismoSpacing.xs,
-    justifyContent: "flex-end",
-  },
 });

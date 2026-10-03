@@ -87,7 +87,6 @@ export function sanitizeAgentResponse(
   sources: AgentSource[];
 } {
   const cards: AgentCard[] = [];
-  const actions: AgentAction[] = [];
   const sources: AgentSource[] = [];
   const seenCardRefs = new Set<string>();
   const seenSources = new Set<string>();
@@ -99,39 +98,36 @@ export function sanitizeAgentResponse(
     sources.push(source);
   };
 
-  for (const requestedCard of output.cards) {
-    if (seenCardRefs.has(requestedCard.ref)) continue;
-    const entity = entities.get(requestedCard.ref);
-    if (!entity) continue;
-    seenCardRefs.add(requestedCard.ref);
+  const addCard = (ref: string) => {
+    if (seenCardRefs.has(ref) || cards.length >= 6) return;
+    const entity = entities.get(ref);
+    if (!entity) return;
+    seenCardRefs.add(ref);
     cards.push(entity.card);
     addSource(entity.source);
+  };
+
+  for (const requestedCard of output.cards) {
+    addCard(requestedCard.ref);
   }
 
   for (const requestedAction of output.actions) {
     const entity = entities.get(requestedAction.ref);
     if (!entity) continue;
-    addSource(entity.source);
-
     if (requestedAction.type === "open_center") {
       if (entity.card.type !== "center") continue;
-      actions.push({ type: "open_center", code: entity.card.code });
+    } else if (requestedAction.type === "start_route") {
+      if (!entity.destination) continue;
+    } else {
       continue;
     }
-
-    if (!entity.destination) continue;
-    actions.push({
-      type: "start_route",
-      destination: entity.destination,
-      mode: requestedAction.mode,
-      requiresConfirmation: true,
-    });
+    addCard(requestedAction.ref);
   }
 
   trustedSources.forEach(addSource);
 
   return {
-    actions,
+    actions: [],
     cards,
     sources,
     text: output.text,
