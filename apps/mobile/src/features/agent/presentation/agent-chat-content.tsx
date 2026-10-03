@@ -10,7 +10,6 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { Menu } from "react-native-paper";
 import Animated, {
   useAnimatedKeyboard,
   useAnimatedStyle,
@@ -18,7 +17,6 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
-import { TurismoIcon } from "@/core/ui/turismo-icons";
 import { TourismOptionRow } from "@/core/ui/tourism-option-row";
 import {
   TourismActionButton,
@@ -27,7 +25,6 @@ import {
 } from "@/core/ui/tourism-controls";
 import {
   turismoMetrics,
-  turismoIconSizes,
   turismoRadii,
   turismoSpacing,
   turismoTypography,
@@ -45,6 +42,8 @@ import {
 } from "../domain/agent-conversation";
 import { AgentMessageBubble } from "./agent-message-bubble";
 import { AgentThinkingIndicator } from "./agent-thinking-indicator";
+import { confirmNewAgentChat } from "./confirm-new-agent-chat";
+import { AgentVoiceListening } from "./agent-voice-listening";
 import { useAgentVoiceInput } from "./agent-voice-input";
 
 /** Conversation and composer of the agent sheet. */
@@ -57,9 +56,7 @@ export function AgentChatContent({
 }>) {
   const colors = useTurismoPalette();
   const { fontScale, height, width } = useWindowDimensions();
-  const [composerContentHeight, setComposerContentHeight] = useState<number>(
-    turismoMetrics.controlMd,
-  );
+  const [composerContentHeight, setComposerContentHeight] = useState(0);
   const [keyboardHeight, setKeyboardHeight] = useState(
     () => Keyboard.metrics()?.height ?? 0,
   );
@@ -75,17 +72,17 @@ export function AgentChatContent({
       hidden.remove();
     };
   }, []);
-  const composerMinHeight = Math.max(
-    turismoMetrics.controlMd,
-    turismoTypography.body.lineHeight * fontScale + turismoSpacing.xs * 2,
-  );
+  // El campo mide solo su texto (sin relleno vertical); su contenedor tiene
+  // la altura de los botones y lo centra, así una línea queda alineada con
+  // ellos y varias líneas crecen hacia arriba.
+  const composerLineHeight = turismoTypography.body.lineHeight * fontScale;
   const composerMaxHeight = Math.max(
-    composerMinHeight,
+    composerLineHeight,
     Math.min(height * 0.25, (height - keyboardHeight) * 0.3),
   );
   const composerHeight = Math.min(
     composerMaxHeight,
-    Math.max(composerMinHeight, composerContentHeight),
+    Math.max(composerLineHeight, composerContentHeight),
   );
   const compactKeyboard = width > height && keyboardHeight > 0;
   const [mediaStatus, setMediaStatus] = useState<{
@@ -93,7 +90,6 @@ export function AgentChatContent({
     error: boolean;
   } | null>(null);
   const [voiceBusy, setVoiceBusy] = useState(false);
-  const [mediaMenuOpen, setMediaMenuOpen] = useState(false);
   const onMediaStatus = (value: string | null, error = false) =>
     setMediaStatus(value ? { text: value, error } : null);
   const voice = useAgentVoiceInput({
@@ -102,16 +98,15 @@ export function AgentChatContent({
       conversation.sending ||
       conversation.requestingLocation,
     onStatus: onMediaStatus,
-    onTranscript: conversation.setDraft,
+    // Como un asistente de voz: lo dicho se envía al terminar de hablar.
+    onTranscript: (text) => void conversation.send(text),
     onWorkingChange: setVoiceBusy,
   });
-  const mediaMenuDisabled =
-    conversation.limitReached ||
-    conversation.sending ||
-    conversation.requestingLocation ||
-    voice.processing ||
-    (voiceBusy && !voice.recording);
-  const mediaMenuVisible = mediaMenuOpen && !mediaMenuDisabled;
+  const canUseVoice =
+    !conversation.limitReached &&
+    !conversation.sending &&
+    !conversation.requestingLocation &&
+    !voiceBusy;
   const messagesScrollRef = useRef<ScrollView>(null);
   const canSend =
     Boolean(conversation.draft.trim()) &&
@@ -120,14 +115,16 @@ export function AgentChatContent({
     !conversation.requestingLocation &&
     !voiceBusy;
   const canRetry = Boolean(getRetryableAgentTurn(conversation.messages));
+  const voiceRecording = voice.recording;
+  const cancelVoice = voice.cancel;
   useEffect(() => {
-    if (!mediaMenuVisible) return;
+    if (!voiceRecording) return;
     const back = BackHandler.addEventListener("hardwareBackPress", () => {
-      setMediaMenuOpen(false);
+      void cancelVoice();
       return true;
     });
     return () => back.remove();
-  }, [mediaMenuVisible]);
+  }, [voiceRecording, cancelVoice]);
   // Con edge-to-edge Android ya no redimensiona la ventana: el chat reserva
   // abajo el alto del teclado (menos el área segura que ya pinta la sheet),
   // fotograma a fotograma, y el compositor sube con él.
@@ -139,7 +136,6 @@ export function AgentChatContent({
 
   const sendDraft = () => {
     if (!canSend) return;
-    setMediaMenuOpen(false);
     setMediaStatus(null);
     conversation.setDraft("");
     void conversation.send(conversation.draft);
@@ -220,11 +216,12 @@ export function AgentChatContent({
           </Text>
           <TourismActionButton
             label="Nuevo chat"
-            onPress={() => {
-              setMediaMenuOpen(false);
-              setMediaStatus(null);
-              conversation.newConversation();
-            }}
+            onPress={() =>
+              confirmNewAgentChat(conversation.userMessageCount, () => {
+                setMediaStatus(null);
+                conversation.newConversation();
+              })
+            }
           />
         </View>
       ) : null}
@@ -253,112 +250,90 @@ export function AgentChatContent({
           compactKeyboard && styles.compactKeyboardComposer,
         ]}
       >
-        <Menu
-          anchor={
+        {voice.recording ? (
+          <>
             <TourismIconAction
-              accessibilityLabel={
-                voice.recording ? "Opciones de grabación" : "Opciones de voz"
-              }
-              disabled={mediaMenuDisabled}
-              icon="plus"
-              onPress={() => setMediaMenuOpen((current) => !current)}
-              selected={mediaMenuVisible || voice.recording}
+              accessibilityLabel="Cancelar grabación"
+              icon="close"
+              onPress={() => void voice.cancel()}
               variant="ghost"
             />
-          }
-          anchorPosition="top"
-          contentStyle={[
-            styles.mediaMenu,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-          ]}
-          onDismiss={() => setMediaMenuOpen(false)}
-          overlayAccessibilityLabel="Cerrar opciones de voz"
-          style={styles.mediaMenuPosition}
-          visible={mediaMenuVisible}
-        >
-          <Menu.Item
-            accessibilityLabel={
-              voice.recording
-                ? "Detener y transcribir grabación"
-                : "Grabar pregunta por voz"
-            }
-            leadingIcon={({ color }) => (
-              <TurismoIcon
-                color={color}
-                name="microphone"
-                size={turismoIconSizes.md}
+            <View style={styles.composerField}>
+              <AgentVoiceListening
+                elapsedMs={voice.elapsedMs}
+                level={voice.level}
+              />
+            </View>
+            <TourismIconAction
+              accessibilityLabel="Terminar y enviar pregunta"
+              icon="send"
+              onPress={() => void voice.finish()}
+              selected
+            />
+          </>
+        ) : (
+          <>
+            {/* TextInput normal: la sheet no se desplaza con el teclado, el
+            espacio lo reserva `keyboardStyle`. */}
+            <View style={styles.composerField}>
+              <TextInput
+                accessibilityLabel="Escribe una consulta al agente"
+                disableFullscreenUI
+                editable={
+                  !conversation.limitReached &&
+                  !conversation.sending &&
+                  !conversation.requestingLocation &&
+                  !voice.processing
+                }
+                maxLength={AGENT_MESSAGE_MAX_LENGTH}
+                multiline
+                onChangeText={conversation.setDraft}
+                onContentSizeChange={(event) =>
+                  setComposerContentHeight(event.nativeEvent.contentSize.height)
+                }
+                placeholder={
+                  conversation.limitReached
+                    ? "Inicia un nuevo chat"
+                    : voice.processing
+                      ? "Transcribiendo…"
+                      : conversation.sending
+                        ? "Consultando…"
+                        : "Pregunta algo…"
+                }
+                placeholderTextColor={colors.textFaint}
+                style={[
+                  styles.composerInput,
+                  { color: colors.text, height: composerHeight },
+                ]}
+                value={conversation.draft}
+              />
+            </View>
+            {conversation.sending ? (
+              <TourismIconAction
+                accessibilityLabel="Detener respuesta"
+                icon="close"
+                onPress={conversation.cancel}
+              />
+            ) : conversation.draft.trim() ? (
+              <TourismIconAction
+                accessibilityLabel="Enviar mensaje"
+                disabled={!canSend}
+                icon="send"
+                onPress={sendDraft}
+                selected={canSend}
+              />
+            ) : (
+              <TourismIconAction
+                accessibilityLabel="Preguntar por voz"
+                disabled={!canUseVoice}
+                icon="microphone"
+                onPress={() => {
+                  Keyboard.dismiss();
+                  void voice.begin();
+                }}
               />
             )}
-            onPress={() => {
-              setMediaMenuOpen(false);
-              if (voice.recording) void voice.finish();
-              else void voice.begin();
-            }}
-            title={voice.recording ? "Detener y transcribir" : "Voz"}
-          />
-          {voice.recording ? (
-            <Menu.Item
-              accessibilityLabel="Cancelar grabación"
-              leadingIcon={({ color }) => (
-                <TurismoIcon
-                  color={color}
-                  name="close"
-                  size={turismoIconSizes.md}
-                />
-              )}
-              onPress={() => {
-                setMediaMenuOpen(false);
-                void voice.cancel();
-              }}
-              title="Cancelar grabación"
-            />
-          ) : null}
-        </Menu>
-        {/* TextInput normal: la sheet no se desplaza con el teclado, el
-            espacio lo reserva `keyboardStyle`. */}
-        <TextInput
-          accessibilityLabel="Escribe una consulta al agente"
-          disableFullscreenUI
-          editable={
-            !conversation.limitReached &&
-            !conversation.sending &&
-            !conversation.requestingLocation
-          }
-          maxLength={AGENT_MESSAGE_MAX_LENGTH}
-          multiline
-          onChangeText={conversation.setDraft}
-          onContentSizeChange={(event) =>
-            setComposerContentHeight(event.nativeEvent.contentSize.height)
-          }
-          onFocus={() => setMediaMenuOpen(false)}
-          placeholder={
-            conversation.limitReached
-              ? "Inicia un nuevo chat"
-              : conversation.sending
-                ? "Consultando…"
-                : "Pregunta algo…"
-          }
-          placeholderTextColor={colors.textFaint}
-          style={[
-            styles.composerInput,
-            { color: colors.text, height: composerHeight },
-          ]}
-          value={conversation.draft}
-        />
-        {conversation.sending ? (
-          <TourismIconAction
-            accessibilityLabel="Detener respuesta"
-            icon="close"
-            onPress={conversation.cancel}
-          />
-        ) : (
-          <TourismIconAction
-            accessibilityLabel="Enviar mensaje"
-            disabled={!canSend}
-            icon="send"
-            onPress={sendDraft}
-            selected={canSend}
-          />
+          </>
         )}
       </TourismSurface>
     </Animated.View>
@@ -403,19 +378,17 @@ const styles = StyleSheet.create({
     marginBottom: turismoSpacing.sm,
     padding: turismoSpacing.xs,
   },
-  mediaMenu: {
-    borderRadius: turismoRadii.md,
-    borderWidth: turismoMetrics.borderWidth,
-    minWidth: 204,
-  },
-  mediaMenuPosition: {
-    marginTop: -(turismoMetrics.controlMd + turismoSpacing.sm),
+  composerField: {
+    flex: 1,
+    justifyContent: "center",
+    minHeight: turismoMetrics.controlMd,
+    paddingVertical: turismoSpacing.xs,
   },
   composerInput: {
     ...turismoTypography.body,
-    flex: 1,
+    includeFontPadding: false,
     paddingHorizontal: turismoSpacing.sm,
-    paddingVertical: turismoSpacing.xs,
+    paddingVertical: 0,
     textAlignVertical: "top",
   },
 });
