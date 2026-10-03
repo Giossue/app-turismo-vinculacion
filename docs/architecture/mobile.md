@@ -153,7 +153,10 @@ centraliza safe areas, encabezado, ancho máximo de contenido y márgenes horizo
 pantallas principales viven en un `Tabs` de Expo Router con una barra inferior propia
 (`TourismTabBar`): `Explorar` (mapa), `Guardados` (`src/app/(tabs)/saved.tsx`) y `Menú`,
 que no es una pantalla sino la acción que abre la hoja de menú. Las pestañas se cambian con
-`replace`; sin sesión, `Guardados` pasa por el login y vuelve a la pestaña. El mapa ocupa
+`replace`; sin sesión, `Guardados` pasa por el login y vuelve a la pestaña. `Guardados`
+lista centros (abren `/centers/[code]`) y establecimientos del catastro, en secciones
+cuando hay de ambos; un establecimiento vuelve a Explorar con `replace('/?establishmentId=…')`,
+que enfoca el pin y abre su ficha, y el parámetro se limpia después. El mapa ocupa
 todo el espacio sobre la barra y sus acciones efímeras no crean entradas de navegación. `Cómo llegar` (`src/app/route.tsx`) es
 la otra excepción de mapa a pantalla completa: MapLibre ocupa toda la pantalla y el panel de
 vista previa o el modo de navegación activa se dibujan encima con los mismos tokens y
@@ -238,7 +241,12 @@ Antes de crear una utilidad o un componente nuevo, reutilizar estos módulos del
   de los DTO de la API y el recorte de espacios en un único lugar) y `useAuthForm`; las
   pantallas protegidas usan `AuthGate` (o `useRequireAuth`), que muestra la carga mientras
   se restaura la sesión y redirige de forma declarativa a `buildLoginHref(returnTo)`.
-  `features/favorites/presentation/SavedCenterErrorSnackbar` informa de un guardado fallido.
+  `features/favorites/presentation/SavedCenterErrorSnackbar` informa de un guardado fallido
+  de centros o establecimientos. La ficha de establecimiento usa el `id` del catastro (tiles
+  de zoom ≥13, cercanos y manifiestos offline) para cargar `GET /establishments/:id`
+  (fotografías con `CenterPhotos`) y guardar; sin conexión oculta las fotografías sin
+  mostrar error. `getEstablishmentKey` prefiere ese `id` y, si falta, usa nombre y
+  coordenadas.
 - Mapas: `features/map/data/basemap-style.ts` (estilo autoalojado, paleta y respaldo),
   `use-basemap-style`, `use-map-lifecycle`, `MapLoadingOverlay` y `UserLocationLayers`
   (`features/map/presentation`), compartidos por el mapa de Explorar y el de rutas. Los pines
@@ -265,7 +273,8 @@ Antes de crear una utilidad o un componente nuevo, reutilizar estos módulos del
 - Expo SecureStore: refresh token y material sensible mínimo (el perfil público de la
   sesión —id, nombre, correo y roles— para restaurarla sin conexión).
 - SQLite/AsyncStorage: catálogos descargados y borradores solo cuando se especifique su
-  política de retención. Los guardados viven en la cuenta (`favoritos_centros`), no en el
+  política de retención. Los guardados viven en la cuenta (`favoritos_centros` y
+  `favoritos_establecimientos`), no en el
   dispositivo.
 - Nunca guardar claves maestras de proveedores.
 
@@ -290,7 +299,7 @@ vuelve con `back()` para conservar su destino. Los errores de cada formulario vi
 propio formulario. Una cuenta nueva se crea con rol `TURISTA` mediante
 `/auth/mobile/register`; el género es obligatorio y usa las opciones `Masculino` o
 `Femenino`, mientras que la fecha de nacimiento se elige con el calendario nativo. Los
-guardados se sincronizan con `favoritos_centros`; un favorito no autenticado no se asigna a un `usuario_id` ficticio.
+guardados se sincronizan con `favoritos_centros` y `favoritos_establecimientos`; un favorito no autenticado no se asigna a un `usuario_id` ficticio.
 El resumen local de guardados de versiones anteriores se importa una sola vez a la primera
 cuenta que inicia sesión en el dispositivo y después se borra, para que otra cuenta no lo
 herede; solo se conservan, para reintentar, los lugares que no se pudieron subir por falta
