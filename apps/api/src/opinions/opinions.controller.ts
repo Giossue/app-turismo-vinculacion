@@ -16,6 +16,7 @@ import { AuthGuard } from "../auth/auth.guard";
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { RolesGuard } from "../auth/roles.guard";
 import {
+  AdminOpinionsQueryDto,
   OpinionContentDto,
   OpinionsQueryDto,
   ReviewOpinionDto,
@@ -81,9 +82,14 @@ export class AdminOpinionsController {
 
   @Get()
   @Roles("ADMINISTRADOR")
-  async list(@Query() query: OpinionsQueryDto) {
+  async list(@Query() query: AdminOpinionsQueryDto) {
     return {
-      data: await this.opinions.listAdmin(query.limit, query.offset),
+      data: await this.opinions.listAdmin(query.limit, query.offset, {
+        q: query.q,
+        status: query.status,
+        targetType: query.targetType,
+        rating: query.rating,
+      }),
     };
   }
 

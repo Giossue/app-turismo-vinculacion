@@ -7,7 +7,7 @@ export const mapPlaceZoom = {
   centerIcon: 14,
   centerName: 14,
   establishmentIcon: 14,
-  establishmentName: 15,
+  establishmentName: 14,
 } as const;
 
 const hierarchyRanks: Readonly<Record<string, number>> = {

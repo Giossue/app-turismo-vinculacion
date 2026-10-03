@@ -12,9 +12,7 @@ const center = { ...focus, hierarchyCode: null, hierarchy: null };
 describe("map place priority", () => {
   it("reveals attractions with services and their names first", () => {
     expect(mapPlaceZoom.centerIcon).toBe(mapPlaceZoom.establishmentIcon);
-    expect(mapPlaceZoom.centerName).toBeLessThan(
-      mapPlaceZoom.establishmentName,
-    );
+    expect(mapPlaceZoom.centerName).toBe(mapPlaceZoom.establishmentName);
     expect(mapPlaceZoom.centerIcon).toBeLessThanOrEqual(
       mapPlaceZoom.centerName,
     );

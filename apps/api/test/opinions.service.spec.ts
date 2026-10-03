@@ -183,6 +183,33 @@ describe("OpinionsService", () => {
     );
   });
 
+  it("filters the admin queue with numbered parameters in both queries", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ total: 0 }]);
+    const service = new OpinionsService({
+      query,
+      transaction: vi.fn(),
+    } as never);
+
+    await service.listAdmin(20, 40, {
+      q: " playa ",
+      status: "PENDIENTE",
+      targetType: "CENTRO",
+      rating: 4,
+    });
+
+    const [pageSql, pageValues] = query.mock.calls[0] as [string, unknown[]];
+    const [countSql, countValues] = query.mock.calls[1] as [string, unknown[]];
+    expect(pageValues).toEqual([20, 40, "%playa%", "PENDIENTE", "CENTRO", 4]);
+    expect(pageSql).toContain("author_name ILIKE $3");
+    expect(pageSql).toContain("proposed_rating = $6");
+    expect(countValues).toEqual(["%playa%", "PENDIENTE", "CENTRO", 4]);
+    expect(countSql).toContain("author_name ILIKE $1");
+    expect(countSql).toContain("proposed_rating = $4");
+  });
+
   it("returns every opinion version and its moderation history for administrators", async () => {
     const query = vi.fn().mockResolvedValue([
       {

@@ -8,7 +8,11 @@ import { InjectDataSource } from "@nestjs/typeorm";
 import { randomUUID } from "node:crypto";
 import type { DataSource, EntityManager } from "typeorm";
 
-import type { OpinionContentDto, OpinionReviewAction } from "./opinions.dto";
+import type {
+  AdminOpinionFilters,
+  OpinionContentDto,
+  OpinionReviewAction,
+} from "./opinions.dto";
 
 type SqlClient = Pick<DataSource, "query"> | Pick<EntityManager, "query">;
 type SqlRow = Record<string, unknown>;
@@ -367,10 +371,13 @@ export class OpinionsService {
     }
   }
 
-  async listAdmin(limit: number, offset: number): Promise<AdminOpinionPage> {
-    const [rows, countRows] = await Promise.all([
-      this.dataSource.query<SqlRow[]>(
-        `SELECT COALESCE(pending_v.codigo_publico, published_v.codigo_publico)::text AS review_code,
+  async listAdmin(
+    limit: number,
+    offset: number,
+    filters: AdminOpinionFilters = {},
+  ): Promise<AdminOpinionPage> {
+    const listed = `WITH listed AS (
+        SELECT COALESCE(pending_v.codigo_publico, published_v.codigo_publico)::text AS review_code,
                 CASE WHEN pending_v.id IS NOT NULL THEN 'PENDIENTE' ELSE 'APROBADA' END AS status,
                 CASE WHEN pending_v.id IS NOT NULL
                      THEN pending_v.numero_version
@@ -403,7 +410,8 @@ export class OpinionsService {
                 published_v.calificacion AS current_rating,
                 published_v.comentario AS current_comment,
                 published_v.numero_version AS current_version,
-                published_v.created_at AS current_submitted_at
+                published_v.created_at AS current_submitted_at,
+                CASE WHEN pending_v.id IS NOT NULL THEN pending_v.id ELSE published_v.id END AS sort_id
            FROM opiniones o
            JOIN usuarios u ON u.id = o.usuario_id
            LEFT JOIN centros_turisticos c ON c.id = o.centro_turistico_id
@@ -422,32 +430,46 @@ export class OpinionsService {
           WHERE o.estado_moderacion IN ('PENDIENTE', 'APROBADA')
             AND o.eliminado_at IS NULL
             AND (pending_v.id IS NOT NULL OR published_v.id IS NOT NULL)
-          ORDER BY CASE WHEN pending_v.id IS NOT NULL THEN 0 ELSE 1 END,
-                   CASE WHEN pending_v.id IS NOT NULL
-                        THEN pending_v.created_at
-                        ELSE published_v.created_at
-                   END ASC,
-                   CASE WHEN pending_v.id IS NOT NULL THEN pending_v.id ELSE published_v.id END ASC
+      )`;
+    // Los filtros se numeran desde `first` para reutilizarlos en ambas consultas.
+    const filterSql = (first: number) => {
+      const values: unknown[] = [];
+      const conditions: string[] = [];
+      const param = (value: unknown) => `$${first + values.push(value) - 1}`;
+      const q = filters.q?.trim();
+      if (q) {
+        const pattern = param(`%${q}%`);
+        conditions.push(
+          `(author_name ILIKE ${pattern} OR target_name ILIKE ${pattern} OR proposed_comment ILIKE ${pattern})`,
+        );
+      }
+      if (filters.status) conditions.push(`status = ${param(filters.status)}`);
+      if (filters.targetType)
+        conditions.push(`target_type = ${param(filters.targetType)}`);
+      if (filters.rating)
+        conditions.push(`proposed_rating = ${param(filters.rating)}`);
+      return {
+        where: conditions.length ? `WHERE ${conditions.join(" AND ")}` : "",
+        values,
+      };
+    };
+    const page = filterSql(3);
+    const count = filterSql(1);
+    const [rows, countRows] = await Promise.all([
+      this.dataSource.query<SqlRow[]>(
+        `${listed}
+         SELECT * FROM listed
+          ${page.where}
+          ORDER BY CASE WHEN status = 'PENDIENTE' THEN 0 ELSE 1 END,
+                   submitted_at ASC,
+                   sort_id ASC
           LIMIT $1 OFFSET $2`,
-        [limit, offset],
+        [limit, offset, ...page.values],
       ),
       this.dataSource.query<SqlRow[]>(
-        `SELECT COUNT(*)::int AS total
-           FROM opiniones o
-           LEFT JOIN opinion_versiones published_v
-             ON published_v.id = o.version_publicada_id
-            AND published_v.estado_moderacion = 'APROBADA'
-          WHERE o.estado_moderacion IN ('PENDIENTE', 'APROBADA')
-            AND o.eliminado_at IS NULL
-            AND (
-              published_v.id IS NOT NULL
-              OR EXISTS (
-                SELECT 1
-                  FROM opinion_versiones pending_v
-                 WHERE pending_v.opinion_id = o.id
-                   AND pending_v.estado_moderacion = 'PENDIENTE'
-              )
-            )`,
+        `${listed}
+         SELECT COUNT(*)::int AS total FROM listed ${count.where}`,
+        count.values,
       ),
     ]);
 
