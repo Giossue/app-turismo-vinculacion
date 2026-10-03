@@ -1,30 +1,17 @@
-import { useEffect, useState, type ReactNode } from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+import BottomSheet, {
+  BottomSheetScrollView,
+  useBottomSheetTimingConfigs,
+} from "@gorhom/bottom-sheet";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { scheduleOnRN } from "react-native-worklets";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismActionButton } from "@/core/ui/tourism-controls";
-import {
-  TourismGlassFill,
-  turismoGlassBorderWidth,
-} from "@/core/ui/tourism-glass";
+import { turismoGlassBorderWidth } from "@/core/ui/tourism-glass";
 import { TourismSheetHandle } from "@/core/ui/tourism-sheet-handle";
 import {
   turismoMetrics,
-  turismoPanelSpring,
   turismoRadii,
   turismoSpacing,
   turismoTypography,
@@ -41,13 +28,8 @@ import {
   RouteSteps,
 } from "./route-preview-sections";
 
-const panelSpring = turismoPanelSpring;
-/** Share of the drag travel after which releasing expands the panel. */
-const panelExpandThreshold = 0.34;
-/** Upward fling speed (dp/s) that expands the panel regardless of travel. */
-const panelExpandVelocity = 650;
-/** Vertical travel before the drag takes over from taps. */
-const panelDragActivationOffset = turismoSpacing.xs;
+/** Same timing as the map sheets of Explore. */
+const panelAnimationDurationMs = 250;
 /** The expanded panel leaves part of the route visible above it. */
 const panelMaxHeightRatio = 0.72;
 /** Used until the collapsed content is measured the first time. */
@@ -76,10 +58,9 @@ export type RoutePreviewPanelProps = Readonly<{
 }>;
 
 /**
- * Inline route preview over the map. Expanded, it shows mode, overview,
- * notices and steps; collapsed, a summary and the primary action. The
- * height follows `expanded` with a spring, and dragging the collapsed panel
- * up expands it.
+ * Route preview sheet over the map. Expanded, it shows mode, overview,
+ * notices and steps; collapsed, a summary and the primary action. Like the
+ * map sheets, it follows the finger between both heights.
  */
 export function RoutePreviewPanel({
   destinationName,
@@ -117,8 +98,15 @@ export function RoutePreviewPanel({
   const compactContentOverflows =
     measuredCompactHeight !== null && measuredCompactHeight > expandedHeight;
   const restingHeight = expanded ? expandedHeight : compactHeight;
-  const panelHeight = useSharedValue(restingHeight);
-  const dragStartHeight = useSharedValue(restingHeight);
+  const sheetRef = useRef<BottomSheet>(null);
+  const animationConfigs = useBottomSheetTimingConfigs({
+    duration: panelAnimationDurationMs,
+  });
+  const snapPoints =
+    compactHeight < expandedHeight
+      ? [compactHeight, expandedHeight]
+      : [expandedHeight];
+  const expandedIndex = snapPoints.length - 1;
   const modeOption = getRouteModeOption(mode);
   const bottomPadding = Math.max(insets.bottom, turismoSpacing.sm);
   const loading =
@@ -127,43 +115,13 @@ export function RoutePreviewPanel({
       (locationRequesting ||
         (!routeError && !locationMessage && !navigationNotice)));
 
-  // Expanding, collapsing, rotating or measuring new content all animate the
-  // mounted panel to its new resting height.
   useEffect(() => {
-    panelHeight.set(withSpring(restingHeight, panelSpring));
-  }, [panelHeight, restingHeight]);
+    sheetRef.current?.snapToIndex(expanded ? expandedIndex : 0);
+  }, [expanded, expandedIndex]);
 
   useEffect(() => {
     onHeightChange?.(restingHeight);
   }, [onHeightChange, restingHeight]);
-
-  const panGesture = Gesture.Pan()
-    .activeOffsetY([-panelDragActivationOffset, panelDragActivationOffset])
-    .enabled(!expanded && !compactContentOverflows)
-    .onBegin(() => {
-      dragStartHeight.set(panelHeight.get());
-    })
-    .onUpdate((event) => {
-      const nextHeight = dragStartHeight.get() - event.translationY;
-      panelHeight.set(
-        Math.max(compactHeight, Math.min(expandedHeight, nextHeight)),
-      );
-    })
-    .onEnd((event) => {
-      const travel = expandedHeight - compactHeight;
-      const progress =
-        travel <= 0 ? 0 : (panelHeight.get() - compactHeight) / travel;
-      const shouldExpand =
-        progress >= panelExpandThreshold ||
-        event.velocityY < -panelExpandVelocity;
-      panelHeight.set(
-        withSpring(shouldExpand ? expandedHeight : compactHeight, panelSpring),
-      );
-      scheduleOnRN(onExpandedChange, shouldExpand);
-    });
-  const panelAnimatedStyle = useAnimatedStyle(() => ({
-    height: panelHeight.get(),
-  }));
 
   const handle = (
     <View style={styles.handle}>
@@ -208,7 +166,7 @@ export function RoutePreviewPanel({
     content = (
       <>
         {handle}
-        <ScrollView
+        <BottomSheetScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           style={styles.scroll}
@@ -228,7 +186,7 @@ export function RoutePreviewPanel({
             />
           ) : null}
           {route && !isCalculating ? <RouteSteps route={route} /> : null}
-        </ScrollView>
+        </BottomSheetScrollView>
         {loading ? null : (
           <View
             style={[
@@ -248,7 +206,7 @@ export function RoutePreviewPanel({
     content = (
       <>
         {handle}
-        <ScrollView
+        <BottomSheetScrollView
           contentContainerStyle={[
             styles.compactContent,
             { paddingBottom: bottomPadding },
@@ -280,26 +238,33 @@ export function RoutePreviewPanel({
               {navigationNotice}
             </Text>
           ) : null}
-        </ScrollView>
+        </BottomSheetScrollView>
       </>
     );
   }
 
   return (
-    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-      <GestureDetector gesture={panGesture}>
-        <Animated.View
-          style={[
-            styles.surface,
-            { borderColor: colors.border },
-            panelAnimatedStyle,
-          ]}
-        >
-          <TourismGlassFill material="regular" />
-          {content}
-        </Animated.View>
-      </GestureDetector>
-    </View>
+    <BottomSheet
+      animationConfigs={animationConfigs}
+      backgroundStyle={[
+        styles.surface,
+        { backgroundColor: colors.surface, borderColor: colors.border },
+      ]}
+      enableContentPanningGesture
+      enableDynamicSizing={false}
+      enableHandlePanningGesture
+      enableOverDrag={false}
+      enablePanDownToClose={false}
+      handleComponent={null}
+      index={expanded ? expandedIndex : 0}
+      onChange={(index) => {
+        if (index >= 0) onExpandedChange(index === expandedIndex && index > 0);
+      }}
+      ref={sheetRef}
+      snapPoints={snapPoints}
+    >
+      <View style={styles.body}>{content}</View>
+    </BottomSheet>
   );
 }
 
@@ -308,13 +273,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: turismoRadii.lg,
     borderTopRightRadius: turismoRadii.lg,
     borderWidth: turismoGlassBorderWidth,
-    bottom: 0,
-    // Sin `elevation`: en Android su sombra se vería a través del vidrio.
-    left: 0,
-    overflow: "hidden",
-    position: "absolute",
-    right: 0,
   },
+  body: { flex: 1 },
   handle: {
     paddingHorizontal: turismoSpacing.md,
   },

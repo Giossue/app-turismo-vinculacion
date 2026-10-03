@@ -358,6 +358,7 @@ function RouteScreenContent({
       backdrop={
         <RouteMap
           attributionBottom={mapBottomInset + turismoSpacing.xxs}
+          bottomInset={mapBottomInset}
           currentLocation={
             navigationActive ? navigationSession.currentLocation : null
           }

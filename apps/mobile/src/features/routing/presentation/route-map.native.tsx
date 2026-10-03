@@ -49,6 +49,7 @@ const routeMapImages = {
 
 export function RouteMap({
   attributionBottom,
+  bottomInset = 0,
   currentLocation = null,
   destination,
   following = false,
@@ -129,21 +130,33 @@ export function RouteMap({
     () => getRouteBounds(route, origin, destination),
     [destination, origin, route],
   );
-  const initialViewState = useMemo(
-    () => ({ bounds, padding: routeBoundsPadding }),
-    [bounds],
+  // The route fits in the area left visible above the preview panel.
+  const padding = useMemo(
+    () => ({
+      ...routeBoundsPadding,
+      bottom: routeBoundsPadding.bottom + bottomInset,
+    }),
+    [bottomInset],
   );
+  const [initialViewState] = useState(() => ({ bounds, padding }));
+  // After a map gesture, resizing the panel no longer moves the camera; a
+  // new route or the end of navigation fits it again.
+  const userMovedRef = useRef(false);
 
   useEffect(() => {
-    if (!nativeReady || navigationActive) return;
+    userMovedRef.current = false;
+  }, [bounds, nativeReady, navigationActive]);
+
+  useEffect(() => {
+    if (!nativeReady || navigationActive || userMovedRef.current) return;
     // Overview: north up and flat, also right after navigation stops.
     cameraRef.current?.fitBounds(bounds, {
       bearing: 0,
       duration: fitBoundsDurationMs,
-      padding: routeBoundsPadding,
+      padding,
       pitch: 0,
     });
-  }, [bounds, nativeReady, navigationActive]);
+  }, [bounds, nativeReady, navigationActive, padding]);
 
   const handleHeading = useEffectEvent(
     ({ magHeading, trueHeading }: Location.LocationHeadingObject) => {
@@ -239,6 +252,7 @@ export function RouteMap({
           if (!event.nativeEvent.userInteraction) return;
           // Every gesture pauses following again (and restarts its resume).
           if (navigationActive) onFollowingChange?.(false);
+          else userMovedRef.current = true;
           onUserInteraction?.();
         }}
         ref={mapRef}

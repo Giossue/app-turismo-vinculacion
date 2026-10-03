@@ -5,6 +5,8 @@ import type { CalculatedRoute } from "../domain/routing";
 export type RouteMapProps = Readonly<{
   /** Distance from the bottom edge to the attribution control, above panels. */
   attributionBottom?: number;
+  /** Height covered by the panel at the bottom; the route fits above it. */
+  bottomInset?: number;
   /** Position drawn as the navigation arrow while navigating. */
   currentLocation?: GeoCoordinate | null;
   destination: GeoCoordinate;
