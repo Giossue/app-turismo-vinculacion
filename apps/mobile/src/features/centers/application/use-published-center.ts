@@ -21,7 +21,8 @@ export function usePublishedCenter(code: string) {
       }
     },
     enabled: Boolean(code),
-    refetchOnMount: false,
+    // The saved copy shows at once; opening it after a minute refreshes it so
+    // admin changes reach the sheet without reinstalling.
     staleTime: 60_000,
     retry: 1,
   });

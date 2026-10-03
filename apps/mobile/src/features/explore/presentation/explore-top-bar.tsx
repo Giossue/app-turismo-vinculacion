@@ -1,4 +1,4 @@
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
@@ -96,17 +96,6 @@ export function ExploreTopBar({
             </Text>
           </View>
         ) : null}
-        {refreshing ? (
-          <View
-            accessibilityLabel="Actualizando lugares turísticos"
-            accessibilityRole="progressbar"
-            accessible
-            pointerEvents="none"
-            style={styles.refreshing}
-          >
-            <ActivityIndicator color={colors.primaryStrong} size="small" />
-          </View>
-        ) : null}
       </View>
     </SafeAreaView>
   );
@@ -125,7 +114,6 @@ const styles = StyleSheet.create({
     gap: turismoSpacing.xs,
   },
   field: { flex: 1 },
-  refreshing: { alignSelf: "center" },
   offline: {
     alignSelf: "center",
     borderRadius: turismoRadii.pill,
