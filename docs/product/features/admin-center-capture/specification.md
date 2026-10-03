@@ -14,8 +14,9 @@ en una sola acción.
   activos, validadas contra la categoría del atractivo.
 - Borrador versionado, envío a revisión y aprobación/publicación atómica. Los estados
   actuales son `BORRADOR`, `EN_REVISION` y `PUBLICADO`; la cola muestra sólo pendientes.
-- Devolución a `BORRADOR` con motivo obligatorio, desactivación/reactivación independiente
-  del estado y auditoría de todas las decisiones.
+- Devolución a `BORRADOR` con motivo obligatorio y auditoría de todas las decisiones.
+- El panel de centros muestra sólo los tres estados editoriales; la activación interna
+  no se expone como columna, filtro, control del editor ni dato de resumen.
 - Multimedia institucional con descripción y fuente/autor. El panel valida fotos JPEG/PNG/WebP,
   video MP4/WebM y audio MP3/M4A/WAV/OGG, aplica límites de tamaño y mantiene los archivos
   pendientes hasta la publicación.
@@ -143,8 +144,10 @@ o devolver para corregir.
 `BORRADOR` y puede reenviarse. La versión pública previa permanece intacta.
 Activar/desactivar cambia únicamente `activo`, sin retirar la aprobación ni cambiar el
 estado editorial. Aprobar una ficha desactivada conserva esa desactivación.
-El inventario filtra estado y activación por separado; la cola incluye únicamente
-`EN_REVISION`. El panel no ofrece una acción posterior «Publicar».
+La activación se conserva como capacidad interna de la API y no se muestra en el panel
+de centros. El inventario filtra por estado y búsqueda; los enlaces antiguos con `active`
+descartan ese criterio. La cola incluye únicamente `EN_REVISION` y el panel no ofrece
+una acción posterior «Publicar».
 
 La migración `20261003_center_three_state_workflow.sql` conserva los códigos antiguos
 desactivados para el historial. Convierte `APROBADO` a una nueva solicitud `EN_REVISION`

@@ -11,9 +11,11 @@
 - Dos decisiones simultáneas no publican ni devuelven la misma propuesta dos veces.
 - Editar una ficha publicada mantiene visible la versión anterior hasta la publicación.
 - Si el borrador no contiene una sección, el editor conserva allí la información publicada no reemplazada; los valores propuestos del borrador prevalecen cuando existen.
-- Desactivar oculta la ficha del catálogo público sin cambiar su estado editorial;
+- En la API, desactivar oculta la ficha del catálogo público sin cambiar su estado editorial;
   reactivar conserva ese estado y su historial. Aprobar no reactiva una ficha desactivada.
-- Inventario y filtros muestran tres estados; activación se administra por separado.
+- Inventario y filtros muestran tres estados. La activación no se presenta en tabla,
+  filtros, editor, resumen de ficha ni resumen general de centros.
+- Los enlaces antiguos con `active` descartan ese filtro sin perder estado, búsqueda ni página.
 - La cola incluye sólo `EN_REVISION`; aprobar/publicar o devolver retira la propuesta de la cola.
 - El panel permite seleccionar actividades compatibles con la categoría del atractivo.
 - El panel permite registrar condiciones de accesibilidad y facilidades.
