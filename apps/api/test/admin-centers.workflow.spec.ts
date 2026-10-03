@@ -77,6 +77,7 @@ function workflowFixture(
   };
   const query = vi.fn(async (sql: string, values: unknown[] = []) => {
     if (sql.includes("FOR UPDATE OF c")) return [current];
+    if (sql.includes("FROM centros_turisticos c")) return [current];
     if (sql.includes("FROM borradores_centros_turisticos b")) return [draft];
     if (sql.includes("FROM revisiones_publicacion r")) return [revision];
     if (sql.includes("FROM estados_resenia WHERE codigo")) {
@@ -383,6 +384,7 @@ describe("AdminCentersService workflow boundaries", () => {
   it("does not approve a center when there is no pending revision", async () => {
     const query = vi
       .fn()
+      .mockResolvedValueOnce([{ id: center.id }])
       .mockResolvedValueOnce([center])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
@@ -403,6 +405,7 @@ describe("AdminCentersService workflow boundaries", () => {
     };
     const query = vi
       .fn()
+      .mockResolvedValueOnce([{ id: center.id }])
       .mockResolvedValueOnce([center])
       .mockResolvedValueOnce([draft]);
     const service = serviceWithManager(query);
@@ -424,6 +427,7 @@ describe("AdminCentersService workflow boundaries", () => {
       };
       const query = vi
         .fn()
+        .mockResolvedValueOnce([{ id: center.id }])
         .mockResolvedValueOnce([center])
         .mockResolvedValueOnce([draft]);
       const service = serviceWithManager(query);
@@ -435,7 +439,7 @@ describe("AdminCentersService workflow boundaries", () => {
               content: {},
             }),
       ).rejects.toThrow("no se puede editar");
-      expect(query).toHaveBeenCalledTimes(2);
+      expect(query).toHaveBeenCalledTimes(3);
     },
   );
 
@@ -444,6 +448,7 @@ describe("AdminCentersService workflow boundaries", () => {
     async (operation) => {
       const query = vi
         .fn()
+        .mockResolvedValueOnce([{ id: center.id }])
         .mockResolvedValueOnce([center])
         .mockResolvedValueOnce([
           {
@@ -466,7 +471,7 @@ describe("AdminCentersService workflow boundaries", () => {
               content: {},
             }),
       ).rejects.toThrow("La ficha cambió mientras la editabas");
-      expect(query).toHaveBeenCalledTimes(2);
+      expect(query).toHaveBeenCalledTimes(3);
     },
   );
 });

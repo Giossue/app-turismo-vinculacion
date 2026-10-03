@@ -49,6 +49,30 @@ El usuario `node` solo necesita escritura en `/app/.data/media`; evitar un `chow
 recursivo de `/app` porque vuelve a procesar todas las dependencias de producción
 en una capa adicional durante cada construcción.
 
+## Cambiar el flujo editorial de centros
+
+Para `20261003_center_three_state_workflow.sql`, preparar API y panel del flujo de tres
+estados antes de tocar la base remota. Durante la actualización, pausar las mutaciones
+de fichas y respaldar `estados_resenia`, `centros_turisticos`,
+`borradores_centros_turisticos`, `revisiones_publicacion` y la definición de
+`fn_preparar_centro_turistico`. Verificar el destino por `current_database()`,
+`current_user` e `inet_server_addr()`; las credenciales no se copian ni se versionan.
+
+Con la API compatible desplegada, ejecutar únicamente esa migración, desplegar el panel
+y reanudar operaciones después de comprobar los tres estados activos, el filtro de
+activación y las decisiones de revisión. No ejecutar el runner local, seeds ni otras
+migraciones históricas sobre producción. El endpoint público sigue exigiendo
+`activo=true` y `PUBLICADO`; la migración no publica centros.
+
+Verificación local previa: `bash scripts/verify-center-workflow.sh` crea y elimina su
+propio cluster PostgreSQL/PostGIS con socket privado. Prueba esquema vacío y previo,
+idempotencia, códigos, historial, publicación/devolución atómicas, fallo de multimedia,
+activación y decisiones concurrentes sin usar credenciales de despliegue.
+
+La reversión exige el respaldo y una nueva pausa de mutaciones: restituir trigger y
+estados anteriores sólo para registros no modificados desde la conversión. No revertir
+automáticamente las publicaciones nuevas ni borrar su auditoría.
+
 ## Activar mapas sin conexión
 
 La actualización de código no publica ciudades automáticamente. Para activar una ciudad:

@@ -334,12 +334,14 @@ describe.skipIf(!isolatedSocket)(
         () => centers.reactivate(center.code, administrator),
       ])
         await expect(operation()).rejects.toMatchObject({ status: 404 });
-      // The existing state trigger corrects a bare activation request back to
-      // false. A simultaneous state change must still fail the new CHECK.
-      await source.query(
-        "UPDATE centros_turisticos SET activo = TRUE WHERE id = $1",
-        [center.id],
-      );
+      // Activation is independent of editorial state; logical deletion is
+      // still enforced by its CHECK even for a bare activation request.
+      await expect(
+        source.query(
+          "UPDATE centros_turisticos SET activo = TRUE WHERE id = $1",
+          [center.id],
+        ),
+      ).rejects.toMatchObject({ driverError: { code: "23514" } });
       expect(
         (
           await one<{ activo: boolean }>(

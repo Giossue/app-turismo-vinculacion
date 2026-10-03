@@ -3167,6 +3167,8 @@ export class AdminCentersService {
   }
 
   async publish(code: string, _actorId: number) {
+    // Keep the legacy service signature; acknowledging a retry adds no audit.
+    void _actorId;
     return this.dataSource.transaction(async (manager) => {
       const center = await this.lockCenter(manager, code);
       const draft = await this.getDraft(manager, center.id);
@@ -3757,10 +3759,17 @@ export class AdminCentersService {
     manager: EntityManager,
     code: string,
   ): Promise<CenterRow> {
-    const rows = (await manager.query(
-      this.centerSelect() +
-        " WHERE TRIM(c.codigo_atractivo) = TRIM($1) AND c.eliminado_at IS NULL FOR UPDATE OF c",
+    // Lock only the center row. A concurrent review can change its state FK
+    // while we wait; joining that state in the locking query can hide the row.
+    const locked = (await manager.query(
+      "SELECT c.id FROM centros_turisticos c WHERE TRIM(c.codigo_atractivo) = TRIM($1) AND c.eliminado_at IS NULL FOR UPDATE OF c",
       [code],
+    )) as Array<{ id: string }>;
+    if (!locked[0])
+      throw new NotFoundException("No se encontró la ficha turística.");
+    const rows = (await manager.query(
+      this.centerSelect() + " WHERE c.id = $1 AND c.eliminado_at IS NULL",
+      [locked[0].id],
     )) as CenterRow[];
     if (!rows[0])
       throw new NotFoundException("No se encontró la ficha turística.");

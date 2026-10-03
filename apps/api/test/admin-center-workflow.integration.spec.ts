@@ -54,9 +54,10 @@ describe.skipIf(!isolatedSocket)(
         latitude: -1.59263,
         longitude: -79.00098,
         description: "Descripción inicial verificada",
-    });
-    if (!created.code) throw new Error("The fixture has no institutional code.");
-    expect(created.code).toHaveLength(17);
+      });
+      if (!created.code)
+        throw new Error("The fixture has no institutional code.");
+      expect(created.code).toHaveLength(17);
       const row = await one<{ id: string }>(
         "SELECT id FROM centros_turisticos WHERE TRIM(codigo_atractivo) = $1",
         [created.code],
@@ -167,6 +168,7 @@ describe.skipIf(!isolatedSocket)(
         );
         for (const [label, state, wasPublished] of [
           ["approved", "APROBADO", false],
+          ["approved-without-draft", "APROBADO", false],
           ["rejected", "RECHAZADO", false],
           ["inactive-public", "INACTIVO", true],
           ["inactive-draft", "INACTIVO", false],
@@ -205,6 +207,12 @@ describe.skipIf(!isolatedSocket)(
               state,
             ],
           );
+          if (label === "approved-without-draft") {
+            await source.query(
+              "DELETE FROM borradores_centros_turisticos WHERE centro_turistico_id = $1",
+              [center.id],
+            );
+          }
           const before = await snapshot(center.id);
           await source.query(
             "INSERT INTO center_workflow_qa_before VALUES ($1, $2, $3, $4::jsonb)",
@@ -223,37 +231,43 @@ describe.skipIf(!isolatedSocket)(
             code: string;
             snapshot: {
               center: Row;
-              draft: Row;
+              draft: Row | null;
               revisions: Row[];
               audit: Row[];
             };
           }>
         >("SELECT * FROM center_workflow_qa_before ORDER BY label");
-        expect(fixtures).toHaveLength(4);
+        expect(fixtures).toHaveLength(5);
         for (const fixture of fixtures) {
           const current = await one<{
             id: string;
             code: string;
             state: string;
             active: boolean;
-            draftId: string;
-            draftState: string;
-            data: Row;
-            version: number;
+            draftId: string | null;
+            draftState: string | null;
+            data: Row | null;
+            version: number | null;
           }>(
             `SELECT c.id, TRIM(c.codigo_atractivo) AS code, s.codigo AS state, c.activo AS active,
            b.id AS "draftId", bs.codigo AS "draftState", b.datos AS data, b.version
            FROM centros_turisticos c JOIN estados_resenia s ON s.id = c.estado_resenia_id
-           JOIN borradores_centros_turisticos b ON b.centro_turistico_id = c.id
-           JOIN estados_resenia bs ON bs.id = b.estado_resenia_id WHERE c.id = $1`,
+           LEFT JOIN borradores_centros_turisticos b ON b.centro_turistico_id = c.id
+           LEFT JOIN estados_resenia bs ON bs.id = b.estado_resenia_id WHERE c.id = $1`,
             [fixture.center_id],
           );
           expect(current.id).toBe(fixture.center_id);
           expect(current.code).toBe(fixture.code);
           expect(current.code).toHaveLength(17);
-          expect(Number(current.draftId)).toBe(fixture.snapshot.draft.id);
-          expect(current.version).toBe(fixture.snapshot.draft.version);
-          expect(current.data).toEqual(fixture.snapshot.draft.datos);
+          const originalDraft = fixture.snapshot.draft;
+          if (originalDraft) {
+            expect(Number(current.draftId)).toBe(originalDraft.id);
+            expect(current.version).toBe(originalDraft.version);
+            expect(current.data).toEqual(originalDraft.datos);
+          } else {
+            expect(current.draftId).toBeNull();
+            expect(current.data).toBeNull();
+          }
           const historical = await source.query<Row[]>(
             `SELECT to_jsonb(r) AS row FROM revisiones_publicacion r
            WHERE r.centro_turistico_id = $1 AND r.fecha_revision IS NOT NULL ORDER BY r.id`,
@@ -276,6 +290,8 @@ describe.skipIf(!isolatedSocket)(
           );
           expect(current.active).toBe(!fixture.label.startsWith("inactive"));
           if (fixture.label === "approved") {
+            if (!originalDraft)
+              throw new Error("Approved fixture lacks its draft.");
             const pending = await one<{
               data: Row;
               requester: string;
@@ -287,10 +303,17 @@ describe.skipIf(!isolatedSocket)(
               [fixture.center_id],
             );
             expect(pending.state).toBe("EN_REVISION");
-            expect(pending.data).toEqual(fixture.snapshot.draft.datos);
+            expect(pending.data).toEqual(originalDraft.datos);
             expect(Number(pending.requester)).toBe(
               fixture.snapshot.revisions[0].solicitado_por,
             );
+          } else if (fixture.label === "approved-without-draft") {
+            expect(
+              await one(
+                "SELECT COUNT(*)::int AS total FROM revisiones_publicacion WHERE centro_turistico_id = $1 AND fecha_revision IS NULL",
+                [fixture.center_id],
+              ),
+            ).toEqual({ total: 0 });
           }
         }
         const beforeRepeat = await source.query<Row[]>(
@@ -401,7 +424,7 @@ describe.skipIf(!isolatedSocket)(
             await media.publishPending(manager, id, actor);
             throw new Error("Injected failure after media publication");
           },
-      } as unknown as MediaService;
+        } as unknown as MediaService;
         const failing = new AdminCentersService(source, failingMedia);
         await expect(
           failing.review(center.code, administrator, { action: "APPROVE" }),

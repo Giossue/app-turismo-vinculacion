@@ -18,7 +18,7 @@ cleanup_workflow_cluster() {
     pg_ctl -D "$workflow_temp/data" -m fast -w -t 15 stop >>"$workflow_log" 2>&1 || true
   fi
   if [[ ${1:-0} != 0 ]]; then
-    cat "$workflow_log" >&2
+    tail -n 80 "$workflow_log" >&2
   fi
   rm -rf -- "$workflow_temp"
 }
@@ -29,7 +29,9 @@ pg_ctl -D "$workflow_temp/data" -l "$workflow_temp/postgres.log" \
   -o "-F -k $workflow_temp -h '' -p 55493" -w -t 15 start >>"$workflow_log" 2>&1
 
 unset PGSERVICE PGHOSTADDR PGOPTIONS
-export PGPASSFILE=/dev/null PGSERVICEFILE=/dev/null PGPASSWORD=
+: > "$workflow_temp/no-passwords"
+chmod 600 "$workflow_temp/no-passwords"
+export PGPASSFILE="$workflow_temp/no-passwords" PGSERVICEFILE=/dev/null PGPASSWORD=
 export PGHOST="$workflow_temp" PGPORT=55493 PGUSER=center_workflow_test
 cd "$workflow_repo"
 workflow_target=$(psql -X -At -v ON_ERROR_STOP=1 -d postgres \
