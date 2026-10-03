@@ -94,7 +94,8 @@ const maxZoom = 19;
 const focusZoom = 15;
 const focusCameraDurationMs = 300;
 const resetNorthDurationMs = 240;
-const dotRadius = 3;
+/** A bit larger than a registry dot: centers are the main attractions. */
+const dotRadius = 5.5;
 /** Establishment dots grow with the registry count of their cell. */
 const establishmentDotRadius = [
   "interpolate",
@@ -1067,6 +1068,8 @@ export function CenterMap({
             paint={{
               "circle-color": colors.primary,
               "circle-radius": dotRadius,
+              "circle-stroke-color": colors.surface,
+              "circle-stroke-width": 1,
             }}
             type="circle"
           />

@@ -10,10 +10,8 @@ const focus = { latitude: -1.59263, longitude: -79.00098 };
 const center = { ...focus, hierarchyCode: null, hierarchy: null };
 
 describe("map place priority", () => {
-  it("reveals attractions and their names before services", () => {
-    expect(mapPlaceZoom.centerIcon).toBeLessThan(
-      mapPlaceZoom.establishmentIcon,
-    );
+  it("reveals attractions with services and their names first", () => {
+    expect(mapPlaceZoom.centerIcon).toBe(mapPlaceZoom.establishmentIcon);
     expect(mapPlaceZoom.centerName).toBeLessThan(
       mapPlaceZoom.establishmentName,
     );

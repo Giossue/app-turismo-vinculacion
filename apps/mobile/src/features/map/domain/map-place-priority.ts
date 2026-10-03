@@ -2,8 +2,10 @@ import type { GeoCoordinate } from "@/core/geo/types";
 import type { PublicCenter } from "@/features/centers/domain/public-center";
 
 export const mapPlaceZoom = {
-  centerIcon: 12,
-  centerName: 13,
+  // Centers turn into pins at the same zoom as the registry, so no pin stands
+  // alone among dots when the map is zoomed out.
+  centerIcon: 14,
+  centerName: 14,
   establishmentIcon: 14,
   establishmentName: 15,
 } as const;
