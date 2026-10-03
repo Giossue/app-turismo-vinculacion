@@ -5,6 +5,8 @@ import type {
 
 import { mapPlaceZoom } from "../domain/map-place-priority";
 
+const pinOverlapZoom = 16;
+
 type SymbolLayout = NonNullable<SymbolLayerSpecification["layout"]>;
 
 /** Native mobile renderers require a valid glyph template to draw map text. */
@@ -18,7 +20,9 @@ export function hasMapLabelGlyphs(style: StyleSpecification): boolean {
 }
 
 export const mapPinLayout: SymbolLayout = {
-  "icon-allow-overlap": false,
+  // Desde el zoom de calle los pines dejan de ocultarse entre sí: así no
+  // parpadean al cargar zonas y los que comparten sitio siguen visibles.
+  "icon-allow-overlap": ["step", ["zoom"], false, pinOverlapZoom, true],
   "icon-anchor": "bottom",
   "icon-ignore-placement": false,
   "icon-size": 0.42,

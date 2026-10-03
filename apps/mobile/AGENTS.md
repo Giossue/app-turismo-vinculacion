@@ -26,8 +26,11 @@ Las pantallas secundarias deben montarse dentro de `TourismScreenFrame` para com
 area, encabezado, ancho máximo y márgenes. `Explorar` y `Cómo llegar` (`route.tsx`) son las
 excepciones de mapa a pantalla completa y reutilizan los mismos tokens. Las pantallas
 principales (`Explorar` y `Guardados`) comparten la barra inferior `TourismTabBar`, cuya
-acción `Menú` abre la hoja de menú de `TourismMenuProvider` (cabecera de perfil, entradas y
-«Cerrar sesión» al final).
+acción `Menú` abre la hoja de menú de `TourismMenuProvider` (cabecera de perfil y entradas).
+La cabecera conserva nombre, correo e iniciales; tocar ese bloque
+cierra el menú antes de abrir `/profile`. Esa pantalla usa `AuthGate` con
+`returnTo="/profile"` y reúne nombre, correo y «Cerrar sesión»; el menú no muestra la
+acción de salida.
 
 Los controles que flotan sobre el mapa (buscador, chips, botones y barra inferior) y los
 paneles de ruta usan fondos y bordes del tema con `TourismGlassFill` de

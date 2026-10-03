@@ -82,6 +82,7 @@ function AppNavigation() {
         <Stack.Screen name="offline" />
         <Stack.Screen name="offline-city" />
         <Stack.Screen name="settings" />
+        <Stack.Screen name="profile" />
         <Stack.Screen name="login" />
       </Stack>
     </>

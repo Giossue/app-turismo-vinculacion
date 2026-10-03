@@ -179,9 +179,10 @@ accesible completa «Iniciar navegación».
 La hoja de menú se abre desde la pestaña `Menú` de la barra inferior. Un
 `TourismMenuProvider` posee una única hoja para el shell principal: sube desde abajo con
 superficie sólida, `TourismSheetHandle`, una cabecera de perfil (`TourismMenuProfile`: avatar
-con iniciales, nombre y correo, que solo informa, o «Invitado» sin sesión, que lleva al login) y las entradas;
-«Cerrar sesión» cierra el grupo final solo con sesión iniciada. Las pantallas
-secundarias (ficha, ruta, mapas sin conexión y configuración) no muestran la barra:
+con iniciales, nombre y correo, o «Invitado» sin sesión) y las entradas. Tocar ese mismo
+bloque cierra la hoja antes de abrir `/profile` con `push`; el menú no contiene
+«Cerrar sesión». Las pantallas secundarias (perfil, ficha, ruta, mapas sin conexión y
+configuración) no muestran la barra:
 su encabezado ofrece `Volver`.
 
 Las decisiones de layout siguen las primitivas oficiales de React Native: dimensiones en
@@ -269,9 +270,11 @@ Antes de crear una utilidad o un componente nuevo, reutilizar estos módulos del
 - Nunca guardar claves maestras de proveedores.
 
 La app presenta una entrada única de identidad con `Iniciar sesión`, `Crear cuenta` y
-`Explorar como invitado`. No hay pantalla de cuenta: la cabecera de la hoja de menú muestra
-nombre y correo del turista autenticado (con «Cerrar sesión» al final) o, sin sesión, lleva a
-la entrada de autenticación. Mapa, fichas
+`Explorar como invitado`. La pantalla secundaria `/profile` usa `AuthGate` con
+`returnTo="/profile"`: muestra nombre y correo de la sesión y «Cerrar sesión»; un invitado
+va a la entrada de autenticación y vuelve a Perfil al iniciar sesión. Los datos provienen
+de la sesión local y siguen disponibles sin conexión si esta se restauró. La salida
+reutiliza `auth.logout`; `AuthGate` redirige al quedar la sesión anónima. Mapa, fichas
 públicas y la vista previa de rutas funcionan como invitado; iniciar navegación, descargar
 mapas sin conexión, guardar, abrir Guardados, el agente y futuras opiniones
 llevan a la autenticación. El access token vive en memoria y el
@@ -362,11 +365,11 @@ handler que cierra primero sus overlays y después retira exactamente una pantal
 raíz, el evento sale de la aplicación. El mapa es la única pestaña visible del shell
 principal; el agente es estado efímero de una sheet y no una pestaña. Las fichas y rutas se
 abren con `push` porque sí representan una pantalla que puede cerrarse. Las pantallas
-secundarias sin overlays (guardados, configuración) no registran back handler: el
+secundarias sin overlays (perfil, guardados, configuración) no registran back handler: el
 stack retira una pantalla. En la entrada de cuenta, Atrás cierra primero el formulario
 abierto. La hoja de menú vive en un `Modal` visible mientras el menú está abierto; la
 hoja es fija (sin arrastre; el scrim no la cierra, y su asa no lleva barra) y cualquier
-cierre (X, entrada, perfil sin sesión o Atrás) anima la hoja y solo al
+cierre (X, entrada, cabecera de perfil o Atrás) anima la hoja y solo al
 terminar oculta el modal y ejecuta la acción elegida.
 
 ## Búsqueda en vivo

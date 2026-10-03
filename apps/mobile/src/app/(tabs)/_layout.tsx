@@ -34,17 +34,17 @@ export default function TabsLayout() {
     router.push(auth.status === "anonymous" ? buildLoginHref(path) : path);
   };
 
-  // Con sesión la cabecera solo informa; sin sesión lleva al login.
   const profile: TourismMenuProfile = auth.user
     ? {
-        accessibilityLabel: `${auth.user.name}, ${auth.user.email}`,
+        accessibilityLabel: `Abrir perfil de ${auth.user.name}`,
         initials: buildInitials(auth.user.name),
+        onPress: () => openProtected("/profile"),
         subtitle: auth.user.email,
         title: auth.user.name,
       }
     : {
-        accessibilityLabel: "Iniciar sesión",
-        onPress: () => router.push(buildLoginHref("/")),
+        accessibilityLabel: "Iniciar sesión para abrir el perfil",
+        onPress: () => openProtected("/profile"),
         subtitle: "Inicia sesión o crea tu cuenta",
         title: "Invitado",
       };
@@ -60,17 +60,6 @@ export default function TabsLayout() {
       label: "Configuración",
       onPress: () => router.push("/settings"),
     },
-    ...(auth.status === "authenticated"
-      ? [
-          {
-            icon: "logOut",
-            label: "Cerrar sesión",
-            // Nunca falla; una pantalla protegida abierta redirige al login.
-            onPress: () => void auth.logout(),
-            startsGroup: true,
-          } as const,
-        ]
-      : []),
   ];
 
   return (

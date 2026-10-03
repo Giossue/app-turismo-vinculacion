@@ -54,6 +54,14 @@ una hoja inferior de resultados. Explorar y buscar no solicitan permiso de ubica
    reanuda al volver a ella. El botón “mi ubicación” permite reintentar o recentrar
    manualmente. Una posición antigua o una muestra imprecisa no se dibuja como actual.
 
+## Acceso a Perfil
+
+La cabecera de «Menú» conserva nombre, correo e iniciales; tocar ese mismo bloque cierra
+la hoja y abre Perfil. «Cerrar sesión» está en Perfil junto al nombre y correo, fuera
+del menú. Si la persona explora como invitada, tocar la cabecera abre la entrada de
+autenticación y vuelve a Perfil al iniciar sesión. Una sesión restaurada permite
+consultar sus datos sin conexión.
+
 ## Estados y excepciones
 
 - Carga: indicador semántico de progreso.

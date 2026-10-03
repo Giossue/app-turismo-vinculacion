@@ -36,7 +36,6 @@ import {
   establishmentPinImageExpression,
   establishmentPinImages,
 } from "@/features/establishments/presentation/establishment-pins";
-import { getEstablishmentKey } from "@/features/establishments/domain/establishment";
 import { basemapPalettes } from "../data/basemap-palette";
 import {
   getCenterHierarchyRank,
@@ -106,6 +105,8 @@ const establishmentDotRadius = [
   100,
   9,
 ] satisfies NonNullable<CircleLayerSpecification["paint"]>["circle-radius"];
+/** Clusters up to this size open the choices when all points share a spot. */
+const stackedClusterLimit = 50;
 const featureHitbox = { bottom: 22, left: 22, right: 22, top: 22 };
 const cameraTargetTolerance = 0.001;
 const cameraZoomTolerance = 0.15;
@@ -192,10 +193,6 @@ export function CenterMap({
   const localSourceRef = useRef<GeoJSONSourceRef>(null);
   const establishmentsSourceRef = useRef<VectorSourceRef>(null);
   const featurePressKeyRef = useRef(0);
-  const selectedFeatureRef = useRef(selectedFeature);
-  useEffect(() => {
-    selectedFeatureRef.current = selectedFeature;
-  }, [selectedFeature]);
   const [viewportCenter, setViewportCenter] = useState({
     latitude: initialViewState.center[1],
     longitude: initialViewState.center[0],
@@ -438,9 +435,8 @@ export function CenterMap({
           "text-size": 11 * fontScale,
         }
       : undefined;
-  const focusSelections = useCallback(
-    (selections: readonly MapFeatureSelection[], target: [number, number]) => {
-      deliverSelections(selections, selectionCallbacksRef.current);
+  const focusCamera = useCallback(
+    (target: [number, number]) => {
       cameraRef.current?.easeTo({
         center: target,
         duration: focusCameraDurationMs,
@@ -455,6 +451,13 @@ export function CenterMap({
       });
     },
     [selectionBottomInset, windowHeight],
+  );
+  const focusSelections = useCallback(
+    (selections: readonly MapFeatureSelection[], target: [number, number]) => {
+      deliverSelections(selections, selectionCallbacksRef.current);
+      focusCamera(target);
+    },
+    [focusCamera],
   );
 
   const handleFeaturePress = useCallback(
@@ -495,9 +498,61 @@ export function CenterMap({
             zoom: Math.min(maxZoom, Math.max(minimumZoom, zoom)),
           });
         };
+        const clusterId = cluster.properties?.cluster_id as number;
+        // Lugares en la misma coordenada no se separan al acercar: el pin de
+        // arriba taparía al resto. Se abre la lista en lugar de hacer zoom.
+        const openStackedLeaves = (leaves: GeoJSON.Feature[]) => {
+          const points = leaves.flatMap((leaf) => {
+            if (leaf.geometry?.type !== "Point") return [];
+            const [lng, lat] = leaf.geometry.coordinates;
+            return lng === undefined || lat === undefined
+              ? []
+              : [{ leaf, latitude: lat, longitude: lng }];
+          });
+          const [first] = points;
+          if (
+            !first ||
+            points.length !== leaves.length ||
+            points.some(
+              (point) =>
+                getDistanceMeters(first, point) > nearbyMapFeatureRadiusMeters,
+            )
+          )
+            return false;
+          if (clusterSource === localSourceRef.current) {
+            const keys = leaves.flatMap((leaf) =>
+              typeof leaf.properties?.offlineKey === "string"
+                ? [leaf.properties.offlineKey]
+                : [],
+            );
+            if (keys.length < 2 || !onLocalPlacesPress) return false;
+            focusCamera([first.longitude, first.latitude]);
+            onLocalPlacesPress(keys);
+            return true;
+          }
+          const stacked = leaves.flatMap<MapFeatureSelection>((leaf) => {
+            const code = leaf.properties?.code;
+            const center =
+              typeof code === "string" ? centersByCode.get(code) : undefined;
+            return center ? [{ kind: "center", center }] : [];
+          });
+          if (stacked.length < 2) return false;
+          focusSelections(stacked, [first.longitude, first.latitude]);
+          return true;
+        };
         void clusterSource
-          .getClusterExpansionZoom(cluster.properties?.cluster_id)
-          .then(expandCluster)
+          .getClusterLeaves(clusterId, stackedClusterLimit + 1, 0)
+          .then((leaves) => {
+            if (!isActive() || featurePressKeyRef.current !== pressKey) return;
+            if (
+              leaves.length <= stackedClusterLimit &&
+              openStackedLeaves(leaves)
+            )
+              return;
+            return clusterSource
+              .getClusterExpansionZoom(clusterId)
+              .then(expandCluster);
+          })
           .catch(() => expandCluster(minimumZoom));
         return;
       }
@@ -572,16 +627,19 @@ export function CenterMap({
           selection.kind === "establishment" ? [selection.establishment] : [],
         ),
       );
-      focusSelections(selections, getMapFeatureCoordinate(anchor));
-
-      // Open immediately, then recover nearby points hidden by native collision.
-      // The query only reads loaded MVT tiles and never makes a registry request.
+      // Points hidden by native collision are not in the press event. When
+      // only one was hit, read the loaded MVT tiles first so the ficha or the
+      // choices open once, instead of swapping the sheet afterwards. The query
+      // never makes a registry request.
       if (
         !establishmentLayer.visible ||
         localPlaces !== undefined ||
         selections.length !== 1
-      )
+      ) {
+        focusSelections(selections, getMapFeatureCoordinate(anchor));
         return;
+      }
+      focusCamera(getMapFeatureCoordinate(anchor));
       const [longitude, latitude] = getMapFeatureCoordinate(anchor);
       const coordinate = { latitude, longitude };
       const queryFilter: FilterSpecification = [
@@ -619,15 +677,6 @@ export function CenterMap({
         })
         .then((loaded) => {
           if (!isActive() || featurePressKeyRef.current !== pressKey) return;
-          const current = selectedFeatureRef.current;
-          const stillSelected =
-            current?.kind === "center" && anchor.kind === "center"
-              ? current.center.code === anchor.center.code
-              : current?.kind === "establishment" &&
-                anchor.kind === "establishment" &&
-                getEstablishmentKey(current.establishment) ===
-                  getEstablishmentKey(anchor.establishment);
-          if (!stillSelected) return;
           const nearby = getNearbyMapFeatureSelections(anchor, centers, [
             ...pressed.flatMap((selection) =>
               selection.kind === "establishment"
@@ -641,16 +690,22 @@ export function CenterMap({
               return establishment ? [establishment] : [];
             }),
           ]);
-          if (nearby.length > selections.length)
-            deliverSelections(nearby, selectionCallbacksRef.current);
+          deliverSelections(
+            nearby.length > selections.length ? nearby : selections,
+            selectionCallbacksRef.current,
+          );
         })
-        .catch(() => undefined);
+        .catch(() => {
+          if (!isActive() || featurePressKeyRef.current !== pressKey) return;
+          deliverSelections(selections, selectionCallbacksRef.current);
+        });
     },
     [
       centersByCode,
       centers,
       establishmentLayer,
       establishmentGroupFilter,
+      focusCamera,
       focusSelections,
       isActive,
       localPlaces,
@@ -1047,7 +1102,10 @@ export function CenterMap({
             layout={{
               ...mapPinLayout,
               ...selectedNameLayout,
+              // The selection must not hide the neighbours it was chosen from.
               "icon-allow-overlap": true,
+              "icon-ignore-placement": true,
+              "text-ignore-placement": true,
               "icon-image": [
                 "case",
                 ["get", "isCenter"],
