@@ -29,7 +29,9 @@ contenidos, además de componentes reutilizables con tokens centralizados.
 
 - Navegación visible de máximo dos niveles.
 - Formularios breves en diálogo; ficha de 14 secciones en páginas con progreso y guardado.
-- Tablas con filtros consistentes, paginación y acciones por permisos/estado.
+- Tablas con filtros consistentes, paginación y acciones por permisos/estado. Centros,
+  Catastro, Catálogos, Opiniones y las colas de revisión usan un único botón de tres puntos
+  sin borde por fila; el popover agrupa las opciones y Eliminar abre una confirmación.
 - Comparación clara entre publicado y propuesto durante revisión.
 - Toda mutación comunica pendiente, éxito y error.
 - En los formularios de fichas y catastros, la ubicación se captura con un modal MapLibre:
