@@ -3,7 +3,6 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { resolveMediaUrl } from "@/core/api/media-url";
 import { useTurismoPalette } from "@/core/ui/theme-context";
-import { TourismStateView } from "@/core/ui/tourism-state";
 import {
   turismoAspectRatios,
   turismoRadii,
@@ -22,26 +21,15 @@ type PlacePhoto = Readonly<{
  * photos are cached on disk so reopening a place does not download them again.
  */
 export function CenterPhotos({
-  emptyMessage = "Todavía no hay imágenes publicadas para este centro.",
   photos,
   variant,
 }: Readonly<{
-  emptyMessage?: string;
   photos: readonly PlacePhoto[];
   variant: "card" | "divided";
 }>) {
   const colors = useTurismoPalette();
-  if (!photos.length) {
-    return (
-      <TourismStateView
-        icon="mapPinned"
-        layout={variant === "card" ? "card" : "inline"}
-        message={emptyMessage}
-        title="Sin fotografías"
-        variant="empty"
-      />
-    );
-  }
+  // Without photos nothing is shown, not even an empty notice.
+  if (!photos.length) return null;
   return (
     <View style={styles.grid}>
       {photos.map((photo) => (

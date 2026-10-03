@@ -108,7 +108,6 @@ export function EstablishmentDetailSheet({
           />
         ) : detail ? (
           <CenterPhotos
-            emptyMessage="Todavía no hay imágenes publicadas para este establecimiento."
             photos={detail.photos}
             variant="divided"
           />
