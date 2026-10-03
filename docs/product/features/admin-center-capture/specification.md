@@ -153,6 +153,10 @@ de centros. El inventario filtra por estado y búsqueda; los enlaces antiguos co
 descartan ese criterio. La cola incluye únicamente `EN_REVISION` y el panel no ofrece
 una acción posterior «Publicar».
 
+En el inventario, el menú de una ficha `EN_REVISION` muestra únicamente «Ir a revisión»
+al administrador; el agente puede «Ver ficha» en solo lectura. No ofrece Editar ni Eliminar
+durante la revisión. `BORRADOR` y `PUBLICADO` conservan sus acciones habituales.
+
 La migración `20261003_center_three_state_workflow.sql` conserva los códigos antiguos
 desactivados para el historial. Convierte `APROBADO` a una nueva solicitud `EN_REVISION`
 con el snapshot del borrador, conservando la decisión anterior; `RECHAZADO` vuelve a

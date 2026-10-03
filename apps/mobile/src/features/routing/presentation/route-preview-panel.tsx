@@ -2,7 +2,7 @@ import BottomSheet, {
   BottomSheetScrollView,
   useBottomSheetTimingConfigs,
 } from "@gorhom/bottom-sheet";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -23,7 +23,6 @@ import {
   RouteLoading,
   RouteModeTabs,
   RouteNotice,
-  RouteOverview,
   RoutePrimaryAction,
   RouteSteps,
 } from "./route-preview-sections";
@@ -158,69 +157,34 @@ export function RoutePreviewPanel({
       />
     );
 
-  let content: ReactNode;
-  if (expanded) {
-    const notice =
-      navigationNotice ??
-      (loading ? null : (routeError ?? (route ? null : locationMessage)));
-    content = (
-      <>
-        {handle}
-        <BottomSheetScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          style={styles.scroll}
-        >
-          {title}
-          {savedRoute ? null : (
-            <RouteModeTabs mode={mode} onChange={onModeChange} />
-          )}
-          {loading ? <RouteLoading /> : <RouteOverview route={route} />}
-          {notice ? <RouteNotice message={notice} /> : null}
-          {route && routeError && !savedRoute && !isCalculating ? (
-            <TourismActionButton
-              icon="refresh"
-              label="Actualizar ruta"
-              mode="outlined"
-              onPress={onCalculateRoute}
-            />
-          ) : null}
-          {route && !isCalculating ? <RouteSteps route={route} /> : null}
-        </BottomSheetScrollView>
-        {loading ? null : (
-          <View
-            style={[
-              styles.footer,
-              {
-                borderTopColor: colors.border,
-                paddingBottom: bottomPadding,
-              },
-            ]}
-          >
-            {primaryAction(styles.fullWidthAction)}
-          </View>
-        )}
-      </>
-    );
-  } else {
-    content = (
-      <>
-        {handle}
-        <BottomSheetScrollView
-          contentContainerStyle={[
-            styles.compactContent,
-            { paddingBottom: bottomPadding },
-          ]}
-          onContentSizeChange={(_width, contentHeight) =>
+  const notice =
+    navigationNotice ??
+    (loading ? null : (routeError ?? (route ? null : locationMessage)));
+  // Everything stays mounted: the collapsed height only shows the summary and
+  // the action, and dragging up reveals the details already rendered below.
+  const content = (
+    <>
+      {handle}
+      <BottomSheetScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: bottomPadding },
+        ]}
+        scrollEnabled={expanded || compactContentOverflows}
+        showsVerticalScrollIndicator={false}
+        style={styles.scroll}
+      >
+        <View
+          onLayout={(event) =>
             setMeasuredCompactHeight(
-              contentHeight +
+              event.nativeEvent.layout.height +
+                turismoSpacing.xs +
+                bottomPadding +
                 turismoMetrics.touchTarget +
                 turismoGlassBorderWidth * 2,
             )
           }
-          scrollEnabled={compactContentOverflows}
-          showsVerticalScrollIndicator={false}
-          style={styles.scroll}
+          style={styles.compactContent}
         >
           {title}
           {loading ? (
@@ -232,16 +196,26 @@ export function RoutePreviewPanel({
               {routeError ?? locationMessage}
             </Text>
           ) : null}
-          {primaryAction()}
-          {savedRoute && navigationNotice ? (
-            <Text style={[styles.compactMessage, { color: colors.textMuted }]}>
-              {navigationNotice}
-            </Text>
-          ) : null}
-        </BottomSheetScrollView>
-      </>
-    );
-  }
+          {primaryAction(styles.fullWidthAction)}
+        </View>
+        {savedRoute ? null : (
+          <RouteModeTabs mode={mode} onChange={onModeChange} />
+        )}
+        {notice && notice !== routeError && notice !== locationMessage ? (
+          <RouteNotice message={notice} />
+        ) : null}
+        {route && routeError && !savedRoute && !isCalculating ? (
+          <TourismActionButton
+            icon="refresh"
+            label="Actualizar ruta"
+            mode="outlined"
+            onPress={onCalculateRoute}
+          />
+        ) : null}
+        {route && !isCalculating ? <RouteSteps route={route} /> : null}
+      </BottomSheetScrollView>
+    </>
+  );
 
   return (
     <BottomSheet
@@ -257,6 +231,12 @@ export function RoutePreviewPanel({
       enablePanDownToClose={false}
       handleComponent={null}
       index={expanded ? expandedIndex : 0}
+      // Switch content when the snap starts, not after it ends, so a drag
+      // does not show the expanded sheet with the compact content.
+      onAnimate={(fromIndex, toIndex) => {
+        if (toIndex >= 0 && toIndex !== fromIndex)
+          onExpandedChange(toIndex === expandedIndex && toIndex > 0);
+      }}
       onChange={(index) => {
         if (index >= 0) onExpandedChange(index === expandedIndex && index > 0);
       }}
@@ -283,20 +263,10 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: {
     gap: turismoSpacing.md,
-    paddingBottom: turismoSpacing.md,
-    paddingHorizontal: turismoSpacing.md,
-    paddingTop: turismoSpacing.xs,
-  },
-  footer: {
-    borderTopWidth: turismoMetrics.borderWidth,
     paddingHorizontal: turismoSpacing.md,
     paddingTop: turismoSpacing.xs,
   },
   fullWidthAction: { alignSelf: "stretch" },
-  compactContent: {
-    gap: turismoSpacing.sm,
-    paddingHorizontal: turismoSpacing.md,
-    paddingTop: turismoSpacing.xs,
-  },
+  compactContent: { gap: turismoSpacing.sm },
   compactMessage: { ...turismoTypography.caption },
 });

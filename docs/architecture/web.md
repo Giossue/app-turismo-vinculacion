@@ -39,6 +39,9 @@ contenidos, además de componentes reutilizables con tokens centralizados.
 - Tablas con filtros consistentes, paginación y acciones por permisos/estado. Centros,
   Catastro, Catálogos, Opiniones y las colas de revisión usan un único botón de tres puntos
   sin borde por fila; el popover agrupa las opciones y Eliminar abre una confirmación.
+- En el inventario de centros, una fila `EN_REVISION` ofrece sólo «Ir a revisión» al
+  administrador y «Ver ficha» de solo lectura al agente. `BORRADOR` y `PUBLICADO`
+  conservan sus acciones habituales.
 - Comparación clara entre publicado y propuesto durante revisión.
 - Toda mutación comunica pendiente, éxito y error.
 - La sesión, el resumen, las tablas y el contenido de fichas/diálogos comparten un único
