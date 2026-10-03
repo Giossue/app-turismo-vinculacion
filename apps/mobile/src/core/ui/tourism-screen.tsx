@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StyleSheet, View } from "react-native";
 
 import { TourismHeader } from "./tourism-navigation";
@@ -29,11 +29,21 @@ export function TourismScreenFrame({
   title: string;
 }>) {
   const colors = useTurismoPalette();
+  // Insets from JS are known on the first frame; the native SafeAreaView
+  // applies them a frame later, so the header briefly overlapped the status
+  // bar while a screen was entering.
+  const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView
-      edges={includeBottomInset ? ["top", "bottom"] : ["top"]}
-      style={[styles.safeArea, { backgroundColor: colors.background }]}
+    <View
+      style={[
+        styles.safeArea,
+        {
+          backgroundColor: colors.background,
+          paddingBottom: includeBottomInset ? insets.bottom : 0,
+          paddingTop: insets.top,
+        },
+      ]}
     >
       {showHeader ? (
         <View style={styles.headerWrap}>
@@ -45,7 +55,7 @@ export function TourismScreenFrame({
       >
         {children}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 

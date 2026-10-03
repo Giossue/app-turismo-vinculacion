@@ -16,7 +16,10 @@ type NavigationRow = {
 export class AdminNavigationService {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
-  async summary(actorId: number, isAdmin: boolean): Promise<AdminNavigationSummaryDto> {
+  async summary(
+    actorId: number,
+    isAdmin: boolean,
+  ): Promise<AdminNavigationSummaryDto> {
     const rows = await this.dataSource.query<NavigationRow[]>(
       `WITH scoped_centers AS (
          SELECT c.id, c.estado_resenia_id, c.publicado_at, c.eliminado_at,
@@ -131,10 +134,18 @@ export class AdminNavigationService {
       catalogs: empty(),
     };
     for (const row of rows) {
-      if (!isAdmin && row.section !== "centers" && row.section !== "establishments") continue;
+      if (
+        !isAdmin &&
+        row.section !== "centers" &&
+        row.section !== "establishments"
+      )
+        continue;
       summary[row.section] = {
         pending: Number(row.pending),
-        latestChange: row.latestChange === null ? null : new Date(row.latestChange).toISOString(),
+        latestChange:
+          row.latestChange === null
+            ? null
+            : new Date(row.latestChange).toISOString(),
       };
     }
     return summary;

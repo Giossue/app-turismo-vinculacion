@@ -1,4 +1,6 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Tabs, usePathname, useRouter } from "expo-router";
+import { useEffect } from "react";
 import { useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -18,6 +20,7 @@ import {
   type TourismMenuProfile,
 } from "@/core/ui/tourism-navigation";
 import { useAuth } from "@/features/auth/application/auth-context";
+import { offlineCitiesQueryOptions } from "@/features/offline/application/use-offline-cities";
 import {
   buildLoginHref,
   type LoginReturnPath,
@@ -27,6 +30,13 @@ export default function TabsLayout() {
   const router = useRouter();
   const auth = useAuth();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
+  const signedIn = auth.status === "authenticated";
+
+  // The offline maps catalog is ready before its screen opens from the menu.
+  useEffect(() => {
+    if (signedIn) void queryClient.prefetchQuery(offlineCitiesQueryOptions);
+  }, [queryClient, signedIn]);
 
   // While the session is still being restored the screen itself waits (its
   // `AuthGate`), so only a known anonymous visitor goes to the login first.

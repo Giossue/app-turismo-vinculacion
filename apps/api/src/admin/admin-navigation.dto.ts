@@ -1,7 +1,10 @@
 import { ApiProperty } from "@nestjs/swagger";
 
 export class AdminNavigationSignalDto {
-  @ApiProperty({ minimum: 0, description: "Registros que aún requieren trabajo." })
+  @ApiProperty({
+    minimum: 0,
+    description: "Registros que aún requieren trabajo.",
+  })
   pending!: number;
 
   @ApiProperty({ type: String, format: "date-time", nullable: true })
