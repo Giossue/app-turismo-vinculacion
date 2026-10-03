@@ -68,6 +68,14 @@ El módulo `admin` es la frontera de captura y publicación: acepta `AGENTE_TURI
 capturar sus propios borradores y `ADMINISTRADOR` para el ámbito global, revisión,
 publicación, catálogos y auditoría. El panel web nunca consulta PostgreSQL directamente.
 
+Los centros usan `BORRADOR`, `EN_REVISION` y `PUBLICADO`. `PATCH /admin/centers/:code/review`
+con `APPROVE` valida y publica el snapshot congelado en la misma transacción que multimedia,
+valoración y auditorías `APROBAR`/`PUBLICAR`; `REJECT` exige motivo y devuelve el borrador a
+`BORRADOR`. Las propuestas no alteran la versión pública anterior. `deactivate` y
+`reactivate` cambian sólo `activo`; `GET /admin/centers` filtra estado y `active` por separado.
+La cola incluye únicamente `EN_REVISION`. El endpoint antiguo `publish` admite sólo la
+repetición de una publicación ya completada y no permite publicar una propuesta pendiente.
+
 El módulo `files` valida multimedia multipart (límite, MIME y firma), genera claves opacas,
 escribe en almacenamiento local de desarrollo o S3/MinIO, y conserva en PostgreSQL solo
 metadatos, checksum, estado y auditoría. La lectura pública exige simultáneamente archivo

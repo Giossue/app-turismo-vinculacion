@@ -74,9 +74,12 @@ los documentos y responsables no se publican sin archivo/tipo institucional vali
 Las facilidades seleccionadas conservan cantidad y observación por opción. El panel consulta
 `/admin/summary`, `/admin/centers`, `/admin/catalogs`,
 `/admin/centers/:code/valuation` y `/admin/centers/:code`; las
-mutaciones de borrador, revisión, aprobación, publicación, desactivación y reactivación
+mutaciones de borrador, revisión, aprobación/publicación, desactivación y reactivación
 se realizan exclusivamente mediante la API. Los borradores se mantienen aislados de la
-versión pública hasta publicar y cada mutación genera auditoría. Catastro consulta el
+versión pública hasta «Aprobar y publicar» y cada mutación genera auditoría. El inventario
+usa tres estados (`BORRADOR`, `EN_REVISION`, `PUBLICADO`) y un filtro de activación separado.
+«Devolver para corregir» exige motivo y devuelve a borrador; el editor administra
+Activar/Desactivar mediante un control independiente del guardado y la revisión. Catastro consulta el
 catálogo activo de localidades y mantiene sus establecimientos separados de las fichas de
 centros. La consulta pública de catastro aplica fallback por actividad a la localidad activa
 más cercana que tenga resultados y lo marca explícitamente. Los agentes operativos ven y

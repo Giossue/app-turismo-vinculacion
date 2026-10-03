@@ -7,3 +7,5 @@
 | 2026-09-18 | Aplicar el snapshot normalizado únicamente al publicar | Garantizar una transacción única para datos, código y auditoría. |
 | 2026-09-18 | Capturar actividades, accesibilidad y facilidades como relaciones normalizadas dentro del snapshot | El panel puede editar una propuesta completa sin exponer cambios hasta publicar; la API valida catálogos y categorías. |
 | 2026-09-18 | Implementar multimedia de fotos, video y audio con almacenamiento local/S3 y publicación explícita | El backend valida MIME/firma, PostgreSQL conserva metadatos y el objeto solo se expone junto con una ficha publicada; documentos y procesamiento avanzado quedan fuera. |
+| 2026-10-03 | Usar `BORRADOR`, `EN_REVISION` y `PUBLICADO`; aprobar/publicar en una acción atómica y devolver a borrador con motivo | Evitar una ficha aprobada todavía invisible sin perder validaciones, correcciones ni auditoría. |
+| 2026-10-03 | Separar activación del estado editorial y conservar estados antiguos sólo en el historial | Desactivar no pierde publicación ni propuestas; la migración reabre aprobaciones pendientes con una revisión nueva sin publicar por SQL. |

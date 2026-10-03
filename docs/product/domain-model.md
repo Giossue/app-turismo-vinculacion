@@ -27,9 +27,10 @@ ficha del centro.
 ### Ficha y revisión
 
 Un administrador prepara cambios en `borradores_centros_turisticos`. Una revisión conserva
-un snapshot de los datos propuestos sin modificar la versión pública. La aprobación cambia
-el estado de la propuesta y la publicación aplica el snapshot normalizado en una transacción
-junto con el código, valoración y auditoría.
+un snapshot de los datos propuestos sin modificar la versión pública. Una única decisión
+de aprobación/publicación aplica el snapshot normalizado en una transacción junto con el
+código, valoración, multimedia y auditoría. El flujo es `BORRADOR → EN_REVISION → PUBLICADO`;
+devolver con motivo vuelve a borrador. La activación controla la visibilidad por separado.
 
 ### Transporte
 

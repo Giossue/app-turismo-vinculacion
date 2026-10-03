@@ -3,12 +3,18 @@
 - Un administrador puede crear una ficha con los campos mínimos y obtiene un código
   institucional derivado por PostgreSQL.
 - Guardar cambios incrementa la versión del borrador y no cambia la ficha pública.
-- Enviar a revisión bloquea la edición hasta aprobar o rechazar.
-- Rechazar conserva la observación y permite corregir el borrador.
-- Aprobar habilita la acción de publicar y mantiene la ficha visible en la cola con estado aprobado; publicar actualiza la ficha pública y su fecha.
+- Enviar a revisión bloquea la edición hasta aprobar/publicar o devolver para corregir.
+- Devolver exige un motivo, conserva la observación y deja el borrador editable en `BORRADOR`.
+- «Aprobar y publicar» aplica el snapshot revisado, multimedia y valoración, actualiza la
+  fecha pública y registra aprobación/publicación en una sola transacción.
+- Un error de publicación revierte toda la decisión, conserva `EN_REVISION` y la versión pública anterior.
+- Dos decisiones simultáneas no publican ni devuelven la misma propuesta dos veces.
 - Editar una ficha publicada mantiene visible la versión anterior hasta la publicación.
 - Si el borrador no contiene una sección, el editor conserva allí la información publicada no reemplazada; los valores propuestos del borrador prevalecen cuando existen.
-- Desactivar oculta la ficha del catálogo público; reactivar conserva su historial.
+- Desactivar oculta la ficha del catálogo público sin cambiar su estado editorial;
+  reactivar conserva ese estado y su historial. Aprobar no reactiva una ficha desactivada.
+- Inventario y filtros muestran tres estados; activación se administra por separado.
+- La cola incluye sólo `EN_REVISION`; aprobar/publicar o devolver retira la propuesta de la cola.
 - El panel permite seleccionar actividades compatibles con la categoría del atractivo.
 - El panel permite registrar condiciones de accesibilidad y facilidades.
 - Publicar aplica esas relaciones junto con el núcleo y conserva la auditoría.

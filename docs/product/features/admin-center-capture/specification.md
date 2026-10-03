@@ -3,8 +3,8 @@
 ## Propósito
 
 Permitir que un `AGENTE_TURISTICO` cree y complete el núcleo de una ficha turística sin
-alterar el contenido publicado hasta que exista una revisión aprobada y una publicación
-explícita.
+alterar el contenido publicado hasta que un administrador apruebe y publique la revisión
+en una sola acción.
 
 ## Alcance actual
 
@@ -12,8 +12,10 @@ explícita.
 - Administración institucional, clima e ingreso/atención.
 - Actividades, condiciones de accesibilidad y facilidades seleccionadas desde catálogos
   activos, validadas contra la categoría del atractivo.
-- Borrador versionado, envío a revisión, aprobación, rechazo y publicación. La cola administrativa conserva visibles las fichas `EN_REVISION` y `APROBADO`; solo las pendientes admiten decisiones.
-- Desactivación/reactivación y auditoría.
+- Borrador versionado, envío a revisión y aprobación/publicación atómica. Los estados
+  actuales son `BORRADOR`, `EN_REVISION` y `PUBLICADO`; la cola muestra sólo pendientes.
+- Devolución a `BORRADOR` con motivo obligatorio, desactivación/reactivación independiente
+  del estado y auditoría de todas las decisiones.
 - Multimedia institucional con descripción y fuente/autor. El panel valida fotos JPEG/PNG/WebP,
   video MP4/WebM y audio MP3/M4A/WAV/OGG, aplica límites de tamaño y mantiene los archivos
   pendientes hasta la publicación.
@@ -120,14 +122,35 @@ la ficha. Importaciones y procesamiento avanzado quedan para una fase posterior.
 2. El turista solo recibe centros activos con estado `PUBLICADO`.
 3. Las ediciones de un centro publicado se almacenan como borrador aislado.
 4. Al consultar un borrador parcial, la versión publicada completa sirve como base de lectura y los valores presentes en el borrador la sobrescriben por sección.
-5. Una ficha no puede publicarse sin revisión aprobada.
-6. La publicación aplica el snapshot y registra auditoría en una transacción.
+5. «Aprobar y publicar» exige una revisión pendiente y aplica su snapshot congelado,
+   no cambios posteriores; valida relaciones, valoración y multimedia en la misma transacción.
+6. La aprobación, publicación y auditorías `APROBAR`/`PUBLICAR` son atómicas. Un fallo
+   mantiene la revisión pendiente y la versión pública anterior.
 7. Una fotografía pendiente no tiene URL pública utilizable; la URL solo se incluye cuando
    la ficha y el archivo están publicados.
 
 La cola de revisión abre la ficha completa en modo de solo lectura, incluyendo núcleo,
 secciones, valoración, multimedia y observaciones, antes de mostrar la decisión de aprobar
-o rechazar.
+o devolver para corregir.
+
+## Flujo editorial y visibilidad
+
+- `BORRADOR`: captura y correcciones; puede enviarse a revisión.
+- `EN_REVISION`: propuesta congelada; sólo el administrador decide.
+- `PUBLICADO`: versión disponible al turista cuando `activo=true`.
+
+«Devolver para corregir» exige un motivo y registra `RECHAZAR`; el borrador vuelve a
+`BORRADOR` y puede reenviarse. La versión pública previa permanece intacta.
+Activar/desactivar cambia únicamente `activo`, sin retirar la aprobación ni cambiar el
+estado editorial. Aprobar una ficha desactivada conserva esa desactivación.
+El inventario filtra estado y activación por separado; la cola incluye únicamente
+`EN_REVISION`. El panel no ofrece una acción posterior «Publicar».
+
+La migración `20261003_center_three_state_workflow.sql` conserva los códigos antiguos
+desactivados para el historial. Convierte `APROBADO` a una nueva solicitud `EN_REVISION`
+con el snapshot del borrador, conservando la decisión anterior; `RECHAZADO` vuelve a
+`BORRADOR`. Un centro `INACTIVO` conserva `activo=false` y recupera `PUBLICADO` si ya
+tenía fecha pública, o `BORRADOR`. No se publica contenido mediante la migración.
 
 ## Eliminación administrativa
 

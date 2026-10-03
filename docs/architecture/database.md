@@ -52,6 +52,15 @@ voluntario. La API debe desplegarse después de aplicar esta migración.
 
 ## Migraciones
 
+`20261003_center_three_state_workflow.sql` desacopla `activo` de `estado_resenia_id` en el
+trigger que prepara códigos institucionales. Los estados activos son `BORRADOR`,
+`EN_REVISION` y `PUBLICADO`; conserva las filas históricas de los códigos antiguos.
+Las aprobaciones sin publicar crean una solicitud nueva con el snapshot congelado y vuelven
+a revisión; los rechazos vuelven a borrador. Un inactivo recupera el estado de publicación
+anterior usando `publicado_at`, manteniendo `activo=false`. Las revisiones y auditorías
+previas no se reescriben, y ningún snapshot se publica por SQL. Es idempotente y requiere
+API compatible, respaldo y pausa de mutaciones para desplegarla.
+
 `20261002_seed_national_localities.sql` completa el catálogo de 1.046 referencias del INEC
 2026 (222 cabeceras y 824 parroquias rurales de 24 provincias), omitiendo las zonas
 del código provincial `90`. Los nombres provienen de la cabecera/parroquia oficial,

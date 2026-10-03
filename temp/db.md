@@ -633,11 +633,14 @@ nombre VARCHAR(80) NOT NULL UNIQUE
 
 activo BOOLEAN NOT NULL DEFAULT TRUE
 
-Valores iniciales: `BORRADOR`, `EN_REVISION`, `APROBADO`, `PUBLICADO`, `RECHAZADO` e `INACTIVO`.
+Valores activos: `BORRADOR`, `EN_REVISION` y `PUBLICADO`.
+`APROBADO`, `RECHAZADO` e `INACTIVO` se conservan desactivados para las referencias históricas.
 
 **Cardinalidad:** `estados_resenia 1:N centros_turisticos`.
 
-Una ficha nueva comienza en `BORRADOR`. Para publicarse debe pasar por `EN_REVISION`, `APROBADO` y `PUBLICADO`. Una ficha desactivada pasa a `INACTIVO`, pero conserva todos sus datos e historial.
+Una ficha nueva comienza en `BORRADOR`. Pasa por `EN_REVISION` y una aprobación/publicación
+atómica la lleva a `PUBLICADO`. Devolver con motivo la regresa a borrador.
+Desactivar cambia sólo `activo=false` y conserva el estado editorial, datos e historial.
 
 ## Observaciones de cada apartado
 
@@ -2567,7 +2570,9 @@ catálogos 1:N tablas operativas
 - Las FK de detalles exclusivos usan `ON DELETE CASCADE` como protección de integridad, aunque la aplicación no ofrece eliminación física de centros.
 - Las referencias opcionales, como `revisado_por`, usan `ON DELETE SET NULL`.
 - Los catálogos se desactivan con `activo = FALSE`; no se eliminan si ya fueron utilizados.
-- Los centros turísticos utilizan exclusivamente eliminación lógica: `activo = FALSE` y estado `INACTIVO`. Sus detalles, opiniones, archivos, resultados y auditoría se conservan.
+- Los centros turísticos utilizan exclusivamente eliminación lógica: `activo = FALSE` y
+  `eliminado_at` con fecha, conservando estado editorial, detalles y auditoría. La desactivación
+  reversible usa únicamente `activo = FALSE`.
 - Los usuarios también se desactivan mediante `activo = FALSE` para preservar la autoría y la auditoría.
 - Los campos “otro” conservan su especificación en `detalle_otro` o `especificacion`.
 - Una respuesta negativa también se almacena cuando la ficha necesita distinguir “No” de “sin información”.
@@ -2587,8 +2592,9 @@ catálogos 1:N tablas operativas
 
 - Una ficha en `BORRADOR` puede editarse libremente por usuarios autorizados.
 - El envío cambia el estado a `EN_REVISION` y crea una fila en `revisiones_publicacion`.
-- El revisor puede llevarla a `APROBADO` o `RECHAZADO`, dejando una observación y la fecha de revisión.
-- La publicación cambia el estado a `PUBLICADO`.
+- El revisor puede aprobar/publicar en una transacción o devolver a `BORRADOR` con motivo,
+  conservando la fecha y la decisión en auditoría.
+- La aprobación/publicación cambia el estado a `PUBLICADO` y aplica el snapshot congelado.
 - Los cambios críticos de una ficha publicada —ubicación, clasificación, valoración, descripción, archivos principales o información de seguridad— requieren una nueva revisión antes de hacerse visibles.
 - Los cambios críticos se guardan en `revisiones_publicacion.datos_propuestos`; la versión publicada continúa visible hasta su aprobación. Al aprobar, los cambios se aplican a las tablas normalizadas dentro de una sola transacción.
 - Cada transición y modificación relevante genera una fila inmutable en `auditoria_fichas`.
