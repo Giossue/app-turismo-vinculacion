@@ -204,11 +204,12 @@ export function useAgentVoiceInput({
           );
       }
     } catch (failure) {
+      console.warn("Agent voice transcription failed", failure);
       if (activeRef.current) {
         onStatus(
           failure instanceof ApiError
-            ? failure.message
-            : "No se pudo transcribir. Puedes escribir tu pregunta.",
+            ? `${failure.message}${failure.status ? ` (${failure.status})` : ` (${describeCause(failure.cause)})`}`
+            : `No se pudo transcribir (${describeCause(failure)}). Puedes escribir tu pregunta.`,
           true,
         );
       }
@@ -231,6 +232,12 @@ export function useAgentVoiceInput({
     processing,
     recording,
   };
+}
+
+/** Short technical hint so a failure can be located from a screenshot. */
+function describeCause(cause: unknown): string {
+  if (cause instanceof Error) return cause.message.slice(0, 120);
+  return cause === undefined ? "sin respuesta" : String(cause).slice(0, 120);
 }
 
 function erase(uri: string | null) {

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Controller,
   Inject,
+  Logger,
   Post,
   Req,
   UseGuards,
@@ -18,6 +19,8 @@ import {
   agentAudioMaxBytes,
 } from "../application/agent-media.service";
 
+const logger = new Logger("AgentMediaController");
+
 @ApiTags("ai-agent")
 @ApiBearerAuth()
 @UseGuards(AuthGuard, RolesGuard)
@@ -32,6 +35,9 @@ export class AgentMediaController {
   @RouteConfig({ rateLimit: { max: 8, timeWindow: "1 minute" } })
   async transcribe(@Req() request: FastifyRequest) {
     const file = await readFile(request, agentAudioMaxBytes);
+    logger.log(
+      `Transcription request: ${file.mimeType}, ${file.buffer.length} bytes`,
+    );
     return {
       data: await this.media.transcribeAudio(file.buffer, file.mimeType),
     };
@@ -44,7 +50,8 @@ async function readFile(request: FastifyRequest, maxBytes: number) {
     part = await request.file({
       limits: { fileSize: maxBytes, files: 1, fields: 0, parts: 1 },
     });
-  } catch {
+  } catch (error) {
+    logger.warn(`Transcription upload rejected: ${String(error)}`);
     throw new BadRequestException("El archivo supera el límite permitido.");
   }
   if (!part) throw new BadRequestException("Debes seleccionar un archivo.");
