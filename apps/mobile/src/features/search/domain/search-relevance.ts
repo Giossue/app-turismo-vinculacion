@@ -64,7 +64,7 @@ function isCloseWord(term: string, word: string): boolean {
   return true;
 }
 
-/** Text relevance comes first; distance only breaks equally relevant matches. */
+/** Text relevance of a place; see `searchScore` for the final order. */
 export function getSearchRelevance(
   query: string,
   title: string,
@@ -107,6 +107,19 @@ export function getSearchRelevance(
   return allTermsInTitle ? 300 : 200;
 }
 
+/** Same formula as the API: up to 150 points for nearby places, half at 5 km. */
+export function searchScore(
+  relevance: number,
+  distanceMeters: number | null | undefined,
+): number {
+  const proximity =
+    distanceMeters === null || distanceMeters === undefined
+      ? 0
+      : 150 / (1 + distanceMeters / 5_000);
+  // An exact name still wins over any nearby partial match.
+  return (relevance >= 600 ? 800 : relevance) + proximity;
+}
+
 export function rankSearchSuggestions(
   items: readonly SearchSuggestionItem[],
   query: string,
@@ -115,12 +128,14 @@ export function rankSearchSuggestions(
     .map((item, index) => ({
       item,
       index,
-      relevance:
+      score: searchScore(
         item.relevance ?? getSearchRelevance(query, item.title, item.subtitle),
+        item.distanceMeters,
+      ),
     }))
     .sort(
       (a, b) =>
-        b.relevance - a.relevance ||
+        b.score - a.score ||
         (a.item.distanceMeters ?? Infinity) -
           (b.item.distanceMeters ?? Infinity) ||
         a.index - b.index,

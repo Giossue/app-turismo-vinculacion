@@ -76,3 +76,27 @@ describe("search relevance", () => {
     expect(isValidSearchBounds([-79, -1, -78, -1])).toBe(false);
   });
 });
+
+describe("rankSearchSuggestions with distance", () => {
+  const item = (title: string, distanceMeters: number) =>
+    ({ id: title, title, subtitle: "", distanceMeters }) as never;
+
+  it("puts a close partial match before a far prefix match", () => {
+    const ranked = rankSearchSuggestions(
+      [item("Cascada lejana", 200_000), item("La cascada", 800)],
+      "cascada",
+    );
+    expect(ranked.map((result) => result.title)).toEqual([
+      "La cascada",
+      "Cascada lejana",
+    ]);
+  });
+
+  it("keeps an exact name first even when it is far", () => {
+    const ranked = rankSearchSuggestions(
+      [item("Cascada del valle", 100), item("Cascada", 300_000)],
+      "cascada",
+    );
+    expect(ranked[0]?.title).toBe("Cascada");
+  });
+});

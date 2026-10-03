@@ -85,3 +85,28 @@ export function withinBounds(
       latitude <= query.north!)
   );
 }
+
+/** Up to 150 points for nearby places; half at 5 km, almost none at 100 km. */
+const proximityMaxBonus = 150;
+const proximityHalfDistanceMeters = 5_000;
+/** An exact name still wins over any nearby partial match. */
+const exactNameScore = 800;
+
+export function proximityBonus(distanceMeters: number | null): number {
+  if (distanceMeters === null) return 0;
+  return proximityMaxBonus / (1 + distanceMeters / proximityHalfDistanceMeters);
+}
+
+/**
+ * Orders results like a map search: text relevance plus a proximity bonus,
+ * so a close place can beat a slightly better text match far away.
+ */
+export function searchScore(
+  relevance: number,
+  distanceMeters: number | null,
+): number {
+  return (
+    (relevance >= 600 ? exactNameScore : relevance) +
+    proximityBonus(distanceMeters)
+  );
+}

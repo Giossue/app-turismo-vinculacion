@@ -6,6 +6,7 @@ import type { PublicSearchQueryDto } from "./search.dto";
 import { PhotonClient } from "./infrastructure/photon.client";
 import {
   distanceFromOrigin,
+  searchScore,
   normalizeSearchText,
   searchTerms,
   textualRelevance,
@@ -161,11 +162,13 @@ export class SearchService {
       })),
     ];
 
-    // No source owns a fixed block of the list. Exactness wins over proximity;
-    // equally relevant matches are compared by their distance to the focus point.
+    // No source owns a fixed block of the list. An exact name always wins;
+    // otherwise proximity can lift a close place over a slightly better match.
+    const score = ({ item, relevance }: (typeof candidates)[number]) =>
+      searchScore(relevance, item.distanceMeters);
     candidates.sort(
       (left, right) =>
-        right.relevance - left.relevance ||
+        score(right) - score(left) ||
         (left.item.distanceMeters ?? Number.MAX_SAFE_INTEGER) -
           (right.item.distanceMeters ?? Number.MAX_SAFE_INTEGER),
     );
@@ -222,7 +225,8 @@ export class SearchService {
           AND c.latitud IS NOT NULL AND c.longitud IS NOT NULL
           AND ${boundsSql("c")}
           AND ${matchingSql("c.nombre", "CONCAT_WS(' ', c.descripcion, ca.nombre, ta.nombre, sa.nombre, pa.nombre, ct.nombre, p.nombre)")}
-        ORDER BY relevance DESC, "distanceMeters" ASC NULLS LAST,
+        ORDER BY ${scoreSql("c.nombre", "CONCAT_WS(' ', c.descripcion, ca.nombre, ta.nombre, sa.nombre, pa.nombre, ct.nombre, p.nombre)", "c")} DESC,
+                 "distanceMeters" ASC NULLS LAST,
                  c.nombre, c.codigo_atractivo
         LIMIT 48`,
       searchParameters(query, text, terms),
@@ -265,7 +269,8 @@ export class SearchService {
           AND e.latitud IS NOT NULL AND e.longitud IS NOT NULL
           AND ${boundsSql("e")}
           AND ${matchingSql("e.nombre_comercial", details)}
-        ORDER BY relevance DESC, "distanceMeters" ASC NULLS LAST,
+        ORDER BY ${scoreSql("e.nombre_comercial", details, "e")} DESC,
+                 "distanceMeters" ASC NULLS LAST,
                  e.nombre_comercial, e.id
         LIMIT 48`,
       searchParameters(query, text, terms),
@@ -307,6 +312,14 @@ function rankingSql(title: string, details: string): string {
       word_similarity($1, ${normalizedSearchSql(title)}),
       word_similarity($1, ${normalizedSearchSql(details)})))
   END`;
+}
+
+/** SQL twin of `searchScore`, so the 48-row prefetch keeps nearby matches. */
+function scoreSql(title: string, details: string, table: string): string {
+  const relevance = rankingSql(title, details);
+  const distance = distanceSql(table);
+  return `(CASE WHEN (${relevance}) >= 600 THEN 800 ELSE (${relevance}) END
+    + COALESCE(150.0 / (1 + (${distance}) / 5000.0), 0))`;
 }
 
 function distanceSql(table: string): string {
