@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import { isApiUnavailableError } from "@/core/api/http";
 import { queryKeys } from "@/core/api/query-keys";
 import type { GeoCoordinate } from "@/core/geo/types";
 import { useDiscoveryCatalog } from "@/features/centers/application/use-discovery-catalog";
@@ -22,6 +23,10 @@ import {
   toggleMapFilter,
   type ExploreMapFilter,
 } from "../domain/explore-map-filter";
+import { buildExploreOfflineMap } from "../domain/explore-offline-map";
+
+/** While offline, how often the map checks whether the API is back. */
+const offlineRetryMs = 30_000;
 
 /** Live search stays separate from the map catalog; typing never removes pins. */
 export function useExploreQueries({
@@ -103,6 +108,20 @@ export function useExploreQueries({
       onlineUnavailable,
     ],
   );
+  // Without the API, the map draws the downloaded cities instead.
+  const offlineMap = useMemo(
+    () =>
+      centersQuery.isError && isApiUnavailableError(centersQuery.error)
+        ? buildExploreOfflineMap(stored.manifests, mapFilter)
+        : null,
+    [centersQuery.isError, centersQuery.error, stored.manifests, mapFilter],
+  );
+  const refetchCenters = centersQuery.refetch;
+  useEffect(() => {
+    if (!offlineMap) return;
+    const timer = setInterval(() => void refetchCenters(), offlineRetryMs);
+    return () => clearInterval(timer);
+  }, [offlineMap, refetchCenters]);
   const centers = centersQuery.data ?? [];
   const isSearching =
     hasQuery && areaAvailable && (!currentQuery || publicSearch.isFetching);
@@ -114,7 +133,12 @@ export function useExploreQueries({
     mapFilter,
     changeMapFilter: (next: ExploreMapFilter) =>
       setMapFilter((current) => toggleMapFilter(current, next)),
-    mapCenters: mapFilter?.kind === "establishments" ? [] : centers,
+    mapCenters: offlineMap
+      ? offlineMap.centers
+      : mapFilter?.kind === "establishments"
+        ? []
+        : centers,
+    offlineMap,
     establishmentLayer: {
       visible: mapFilter?.kind !== "tourism",
       group: mapFilter?.kind === "establishments" ? mapFilter.group : undefined,

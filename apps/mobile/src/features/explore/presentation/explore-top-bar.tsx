@@ -1,9 +1,15 @@
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismIconAction } from "@/core/ui/tourism-controls";
-import { turismoMetrics, turismoSpacing } from "@/core/ui/tokens";
+import { TourismGlassFill } from "@/core/ui/tourism-glass";
+import {
+  turismoMetrics,
+  turismoRadii,
+  turismoSpacing,
+  turismoTypography,
+} from "@/core/ui/tokens";
 import {
   SearchModeChips,
   type SearchMode,
@@ -26,6 +32,7 @@ export function ExploreTopBar({
   landscape,
   mapFilter,
   mapError,
+  offline = false,
   onMapFilterChange,
   onModeChange,
   onMoreFilters,
@@ -37,6 +44,8 @@ export function ExploreTopBar({
   landscape: boolean;
   mapFilter: ExploreMapFilter;
   mapError: unknown;
+  /** The map shows only the downloaded cities because the API is unreachable. */
+  offline?: boolean;
   onMapFilterChange: (filter: ExploreMapFilter) => void;
   onModeChange: (mode: SearchMode) => void;
   onMoreFilters: () => void;
@@ -74,6 +83,19 @@ export function ExploreTopBar({
             onMore={onMoreFilters}
           />
         )}
+        {offline ? (
+          <View
+            accessibilityLiveRegion="polite"
+            accessibilityRole="alert"
+            pointerEvents="none"
+            style={styles.offline}
+          >
+            <TourismGlassFill />
+            <Text style={[styles.offlineText, { color: colors.text }]}>
+              Sin conexión: mostrando tus mapas descargados
+            </Text>
+          </View>
+        ) : null}
         {refreshing ? (
           <View
             accessibilityLabel="Actualizando lugares turísticos"
@@ -104,4 +126,12 @@ const styles = StyleSheet.create({
   },
   field: { flex: 1 },
   refreshing: { alignSelf: "center" },
+  offline: {
+    alignSelf: "center",
+    borderRadius: turismoRadii.pill,
+    overflow: "hidden",
+    paddingHorizontal: turismoSpacing.md,
+    paddingVertical: turismoSpacing.xs,
+  },
+  offlineText: { ...turismoTypography.caption },
 });

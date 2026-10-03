@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { useIsFocused, useRouter } from "expo-router";
 
-import { useTurismoPalette } from "@/core/ui/theme-context";
+import { useTurismoPalette, useTurismoTheme } from "@/core/ui/theme-context";
 import { useTourismMenu } from "@/core/ui/tourism-navigation";
 import { TourismGlassScope } from "@/core/ui/tourism-glass";
 import {
@@ -24,6 +24,7 @@ import {
   buildRouteHref,
   type RouteDestination,
 } from "@/features/routing/presentation/route-href";
+import type { MapFeatureSelection } from "@/features/map/domain/map-feature-selection";
 import type { PublicSearchResult } from "@/features/search/domain/search-result";
 import type {
   SearchScope,
@@ -49,6 +50,7 @@ import { ExploreTopBar } from "./explore-top-bar";
 export function ExploreMapScreen() {
   const router = useRouter();
   const colors = useTurismoPalette();
+  const { scheme } = useTurismoTheme();
   const auth = useAuth();
   const menu = useTourismMenu();
   const tabBarInset = useTourismTabBarInset();
@@ -76,6 +78,12 @@ export function ExploreMapScreen() {
     viewport,
   });
   const current = overlay.overlay;
+  const offlineMap = data.offlineMap;
+  const getOfflineSelections = (keys: readonly string[]) =>
+    keys.flatMap<MapFeatureSelection>((key) => {
+      const establishment = offlineMap?.establishments.get(key);
+      return establishment ? [{ kind: "establishment", establishment }] : [];
+    });
   useEffect(() => {
     if (current.kind !== "agent") cancelAgentResponse();
   }, [current.kind, cancelAgentResponse]);
@@ -211,6 +219,8 @@ export function ExploreMapScreen() {
                     ? current.selection
                     : null
             }
+            localPlaces={offlineMap?.places}
+            mapStyleOverride={offlineMap?.mapStyles?.[scheme]}
             onBearingChange={bearingStore.setBearing}
             onCenterPress={(center) => {
               if (current.kind !== "focusing") setSelectedFromSearch(false);
@@ -219,6 +229,16 @@ export function ExploreMapScreen() {
             onEstablishmentPress={(establishment) => {
               if (current.kind !== "focusing") setSelectedFromSearch(false);
               overlay.selectEstablishment(establishment);
+            }}
+            onLocalPlacePress={(key) => {
+              const [selection] = getOfflineSelections([key]);
+              if (selection?.kind !== "establishment") return;
+              if (current.kind !== "focusing") setSelectedFromSearch(false);
+              overlay.selectEstablishment(selection.establishment);
+            }}
+            onLocalPlacesPress={(keys) => {
+              setSelectedFromSearch(false);
+              overlay.showChoices(getOfflineSelections(keys));
             }}
             onLocationFocusChange={location.onLocationFocusChange}
             onOverlappingFeaturePress={(selections) => {
@@ -261,6 +281,7 @@ export function ExploreMapScreen() {
             mapFilter={data.mapFilter}
             mapError={data.mapError}
             onMapFilterChange={data.changeMapFilter}
+            offline={offlineMap !== null}
             onModeChange={search.changeMode}
             onMoreFilters={overlay.openMoreFilters}
             onRetryMap={data.retryMap}
