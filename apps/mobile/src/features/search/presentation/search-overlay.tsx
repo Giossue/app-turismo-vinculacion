@@ -7,6 +7,11 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  ReduceMotion,
+} from "react-native-reanimated";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
@@ -85,78 +90,88 @@ export function SearchOverlay({
   const compact =
     keyboardVisible && (width > height || fontScale >= 1.5 || height < 600);
   return (
-    <SafeAreaView
-      accessibilityViewIsModal
-      edges={overlayEdges}
-      style={[styles.overlay, { backgroundColor: colors.background }]}
+    <Animated.View
+      entering={overlayEntering}
+      exiting={overlayExiting}
+      style={StyleSheet.absoluteFill}
     >
-      <KeyboardAvoidingView
-        behavior="padding"
-        enabled={Platform.OS === "ios"}
-        style={styles.content}
+      <SafeAreaView
+        accessibilityViewIsModal
+        edges={overlayEdges}
+        style={[styles.overlay, { backgroundColor: colors.background }]}
       >
-        <View style={styles.header}>
-          <TourismIconAction
-            accessibilityLabel="Volver al mapa"
-            icon="arrowLeft"
-            onPress={onClose}
-            style={styles.back}
-            variant="ghost"
-          />
-          <View style={styles.field}>
-            <SearchModeField {...field} autoFocus />
-          </View>
-          {compact ? (
+        <KeyboardAvoidingView
+          behavior="padding"
+          enabled={Platform.OS === "ios"}
+          style={styles.content}
+        >
+          <View style={styles.header}>
             <TourismIconAction
-              accessibilityLabel="Filtros de búsqueda"
-              icon="sliders"
-              onPress={Keyboard.dismiss}
+              accessibilityLabel="Volver al mapa"
+              icon="arrowLeft"
+              onPress={onClose}
+              style={styles.back}
               variant="ghost"
             />
-          ) : null}
-        </View>
-        <SearchSuggestionsPanel
-          compact={compact}
-          controls={
-            !compact ? (
-              <View style={styles.filters}>
-                <SearchModeChips
-                  glass={false}
-                  mode={field.mode}
-                  onChange={onModeChange}
-                />
-                <View style={styles.scope}>
-                  <TourismChoiceChip
-                    label="Todo Ecuador"
-                    onPress={() => onScopeChange("country")}
-                    selected={scope === "country"}
+            <View style={styles.field}>
+              <SearchModeField {...field} autoFocus />
+            </View>
+            {compact ? (
+              <TourismIconAction
+                accessibilityLabel="Filtros de búsqueda"
+                icon="sliders"
+                onPress={Keyboard.dismiss}
+                variant="ghost"
+              />
+            ) : null}
+          </View>
+          <SearchSuggestionsPanel
+            compact={compact}
+            controls={
+              !compact ? (
+                <View style={styles.filters}>
+                  <SearchModeChips
+                    glass={false}
+                    mode={field.mode}
+                    onChange={onModeChange}
                   />
-                  <TourismChoiceChip
-                    disabled={!areaAvailable}
-                    label="En esta zona"
-                    onPress={() => onScopeChange("area")}
-                    selected={scope === "area"}
-                  />
+                  <View style={styles.scope}>
+                    <TourismChoiceChip
+                      label="Todo Ecuador"
+                      onPress={() => onScopeChange("country")}
+                      selected={scope === "country"}
+                    />
+                    <TourismChoiceChip
+                      disabled={!areaAvailable}
+                      label="En esta zona"
+                      onPress={() => onScopeChange("area")}
+                      selected={scope === "area"}
+                    />
+                  </View>
                 </View>
-              </View>
-            ) : null
-          }
-          history={history}
-          isSearching={isSearching}
-          items={items}
-          offlineCoverage={offlineCoverage}
-          onlineUnavailable={onlineUnavailable}
-          onClearHistory={onClearHistory}
-          onRecentPress={onRecentPress}
-          onRetry={onRetry}
-          onSuggestionPress={onSuggestionPress}
-          query={field.value}
-          searchError={searchError}
-        />
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+              ) : null
+            }
+            history={history}
+            isSearching={isSearching}
+            items={items}
+            offlineCoverage={offlineCoverage}
+            onlineUnavailable={onlineUnavailable}
+            onClearHistory={onClearHistory}
+            onRecentPress={onRecentPress}
+            onRetry={onRetry}
+            onSuggestionPress={onSuggestionPress}
+            query={field.value}
+            searchError={searchError}
+          />
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </Animated.View>
   );
 }
+
+// Fundido al abrir y cerrar la búsqueda, en vez de un cambio instantáneo.
+const overlayEntering = FadeIn.duration(200).reduceMotion(ReduceMotion.System);
+const overlayExiting = FadeOut.duration(150).reduceMotion(ReduceMotion.System);
 
 const styles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFill, paddingHorizontal: turismoSpacing.md },

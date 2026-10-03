@@ -1,10 +1,70 @@
+import "reflect-metadata";
+
+import { plainToInstance } from "class-transformer";
+import { validate } from "class-validator";
 import { describe, expect, it, vi } from "vitest";
 import type { ExecutionContext } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 
 import { AdminController } from "../src/admin/admin.controller";
-import { ADMIN_CENTER_SECTION_CODES } from "../src/admin/admin.dto";
+import {
+  ADMIN_CENTER_SECTION_CODES,
+  AdminCentersQueryDto,
+} from "../src/admin/admin.dto";
 import { RolesGuard } from "../src/auth/roles.guard";
+
+describe("Admin center review and activation contract", () => {
+  it.each([true, false, "true", "false"])(
+    "accepts a separate active=%s query without treating false as true",
+    async (active) => {
+      const query = plainToInstance(AdminCentersQueryDto, {
+        active,
+        status: "PUBLICADO",
+      });
+      expect(query.active).toBe(active === true || active === "true");
+      expect(await validate(query)).toEqual([]);
+    },
+  );
+
+  it.each(["all", "0", "1", "", 1])(
+    "rejects malformed active=%s",
+    async (active) => {
+      const errors = await validate(
+        plainToInstance(AdminCentersQueryDto, { active }),
+      );
+      expect(errors.map(({ property }) => property)).toContain("active");
+    },
+  );
+
+  it.each(["APROBADO", "RECHAZADO", "INACTIVO"])(
+    "rejects legacy editorial filter %s",
+    async (status) => {
+      const errors = await validate(
+        plainToInstance(AdminCentersQueryDto, { status }),
+      );
+      expect(errors.map(({ property }) => property)).toContain("status");
+    },
+  );
+
+  it.each(["review", "publish", "deactivate", "reactivate"] as const)(
+    "keeps %s restricted to administrators",
+    (method) => {
+      const guard = new RolesGuard(new Reflector());
+      const context = (roles: string[]) =>
+        ({
+          getHandler: () => AdminController.prototype[method],
+          getClass: () => AdminController,
+          switchToHttp: () => ({ getRequest: () => ({ user: { roles } }) }),
+        }) as unknown as ExecutionContext;
+      for (const roles of [[], ["AGENTE_TURISTICO"], ["TURISTA"]]) {
+        expect(() => guard.canActivate(context(roles))).toThrow(
+          "No tienes permisos",
+        );
+      }
+      expect(guard.canActivate(context(["ADMINISTRADOR"]))).toBe(true);
+    },
+  );
+});
 
 describe("AdminController section contract", () => {
   it("keeps audit section codes within the deployed column limit", () => {

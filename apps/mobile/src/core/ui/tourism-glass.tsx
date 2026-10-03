@@ -8,7 +8,7 @@ import { turismoHairline } from "./tourism-hairline";
 export const turismoGlassBorderWidth = turismoHairline;
 
 /** A nearly opaque theme surface keeps text readable over detailed maps. */
-const surfaceAlpha = "F2";
+const surfaceAlpha = "FA";
 const TourismGlassContext = createContext(false);
 
 /** Shares the visual treatment of floating map controls; no backdrop capture. */
@@ -81,7 +81,7 @@ export function TourismGlassFill({
             material === "regular"
               ? colors.surface
               : mapControl && scheme === "dark"
-                ? `${colors.surfaceStrong}D9`
+                ? `${colors.surfaceStrong}F2`
                 : `${colors.surface}${surfaceAlpha}`,
         },
       ]}

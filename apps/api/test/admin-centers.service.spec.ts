@@ -956,6 +956,66 @@ describe("AdminCentersService", () => {
     );
   });
 
+  it("filters activation independently of state and keeps the actor ownership boundary", async () => {
+    const dataSource = { query: vi.fn().mockResolvedValue([]) };
+    const service = new AdminCentersService(dataSource as never);
+    await service.list(
+      {
+        status: "EN_REVISION",
+        active: false,
+        q: "Centro",
+        limit: 20,
+        offset: 40,
+      } as never,
+      9,
+      false,
+    );
+    const [sql, values] = dataSource.query.mock.calls[0] as unknown as [
+      string,
+      unknown[],
+    ];
+    expect(sql).toContain("inventory.responsible_id = $1");
+    expect(sql).toContain("inventory.status_code = $2");
+    expect(sql).toContain("inventory.active = $3");
+    expect(sql).not.toContain("WHEN c.activo = FALSE THEN 'INACTIVO'");
+    expect(values).toEqual([9, "EN_REVISION", false, "%Centro%", 20, 40]);
+  });
+
+  it.each([
+    { stored: "APROBADO", expected: "EN_REVISION", name: "En revisión" },
+    { stored: "RECHAZADO", expected: "BORRADOR", name: "Borrador" },
+    { stored: "PUBLICADO", expected: "PUBLICADO", name: "Publicado" },
+  ])(
+    "returns only the three editorial states for $stored without overriding inactivity",
+    async ({ stored, expected, name }) => {
+      const dataSource = {
+        query: vi.fn().mockResolvedValue([
+          {
+            code: "EC-001",
+            name: "Centro",
+            statusCode: stored,
+            baseStatusCode: "PUBLICADO",
+            statusName: "Etiqueta histórica",
+            active: false,
+            total: "1",
+          },
+        ]),
+      };
+      const service = new AdminCentersService(dataSource as never);
+      await expect(
+        service.list({ limit: 20, offset: 0 } as never),
+      ).resolves.toMatchObject({
+        items: [
+          {
+            status: { code: expected, name },
+            baseStatus: "PUBLICADO",
+            active: false,
+          },
+        ],
+      });
+    },
+  );
+
   it("updates a technical catalog option and records the change", async () => {
     const managerQuery = vi
       .fn()

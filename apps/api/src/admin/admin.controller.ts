@@ -237,6 +237,7 @@ export class AdminController {
 
   @Patch("centers/:code/review")
   @ApiOperation({
+    summary: "Aprobar y publicar o devolver para corregir",
     description:
       "Aprobar publica la revisión y su multimedia en una transacción. Rechazar devuelve la propuesta a borrador y requiere un motivo.",
   })
