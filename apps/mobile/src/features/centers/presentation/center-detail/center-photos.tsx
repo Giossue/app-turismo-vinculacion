@@ -10,17 +10,24 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
-import type { PublicCenterDetail } from "../../domain/public-center";
+
+type PlacePhoto = Readonly<{
+  id: number;
+  url: string;
+  description: string | null;
+}>;
 
 /**
- * "Fotos" tab of a center. Remote photos are cached on disk so reopening a
- * center does not download them again.
+ * Photo grid of a center ("Fotos" tab) or a registry establishment. Remote
+ * photos are cached on disk so reopening a place does not download them again.
  */
 export function CenterPhotos({
+  emptyMessage = "Todavía no hay imágenes publicadas para este centro.",
   photos,
   variant,
 }: Readonly<{
-  photos: PublicCenterDetail["photos"];
+  emptyMessage?: string;
+  photos: readonly PlacePhoto[];
   variant: "card" | "divided";
 }>) {
   const colors = useTurismoPalette();
@@ -29,7 +36,7 @@ export function CenterPhotos({
       <TourismStateView
         icon="mapPinned"
         layout={variant === "card" ? "card" : "inline"}
-        message="Todavía no hay imágenes publicadas para este centro."
+        message={emptyMessage}
         title="Sin fotografías"
         variant="empty"
       />
@@ -43,7 +50,7 @@ export function CenterPhotos({
           style={[styles.tile, { backgroundColor: colors.surfaceMuted }]}
         >
           <Image
-            accessibilityLabel={photo.description ?? "Fotografía del atractivo"}
+            accessibilityLabel={photo.description ?? "Fotografía del lugar"}
             accessible
             cachePolicy="memory-disk"
             contentFit="cover"

@@ -87,4 +87,17 @@ describe("buildExploreOfflineMap", () => {
     expect(map.places).toHaveLength(3);
     expect(map.centers).toHaveLength(1);
   });
+
+  it("keeps the registry id so the sheet can load photos and save it", () => {
+    const withId = {
+      ...manifest,
+      establishments: [{ ...establishment("Café Uno", "cafes"), id: 42 }],
+    } as OfflineCityManifest;
+    const map = buildExploreOfflineMap([withId], null)!;
+    expect(map.places[0]!.key).toBe("establishment:id:42");
+    expect(map.establishments.get("establishment:id:42")).toMatchObject({
+      id: 42,
+      name: "Café Uno",
+    });
+  });
 });

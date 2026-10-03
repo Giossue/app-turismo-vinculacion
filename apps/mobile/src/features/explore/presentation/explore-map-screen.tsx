@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
-import { useIsFocused, useRouter } from "expo-router";
+import { useIsFocused, useLocalSearchParams, useRouter } from "expo-router";
 
 import { useTurismoPalette, useTurismoTheme } from "@/core/ui/theme-context";
 import { useTourismMenu } from "@/core/ui/tourism-navigation";
@@ -13,8 +13,11 @@ import { useAgentConversation } from "@/features/agent/application/use-agent-con
 import type { AgentRouteDestination } from "@/features/agent/domain/agent";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { buildLoginHref } from "@/features/auth/application/login-href";
+import { getEstablishmentKey } from "@/features/establishments/domain/establishment";
 import { EstablishmentDetailSheet } from "@/features/establishments/presentation/establishment-detail-sheet";
 import { defaultEstablishmentPin } from "@/features/establishments/presentation/establishment-pins";
+import { useSavedEstablishments } from "@/features/favorites/application/use-saved-establishments";
+import { savedEstablishmentToMap } from "@/features/favorites/domain/saved-establishment";
 import { CenterMap } from "@/features/map/presentation/center-map";
 import type { CenterMapViewport } from "@/features/map/presentation/center-map.types";
 import { createMapBearingStore } from "@/features/map/presentation/map-bearing-store";
@@ -84,6 +87,34 @@ export function ExploreMapScreen() {
       const establishment = offlineMap?.establishments.get(key);
       return establishment ? [{ kind: "establishment", establishment }] : [];
     });
+  // Guardados opens a saved establishment with `/?establishmentId=…`: the
+  // camera focuses it and then its sheet opens, like tapping its pin.
+  const params = useLocalSearchParams<{ establishmentId?: string }>();
+  const savedEstablishments = useSavedEstablishments();
+  // Handled while rendering (not in an effect) so the overlay changes in
+  // the same pass; the param is cleared afterwards so Back does not reopen it.
+  const [openedEstablishmentId, setOpenedEstablishmentId] = useState<
+    string | undefined
+  >();
+  const requestedEstablishmentId = params.establishmentId || undefined;
+  if (
+    requestedEstablishmentId !== openedEstablishmentId &&
+    (!requestedEstablishmentId || savedEstablishments.data)
+  ) {
+    setOpenedEstablishmentId(requestedEstablishmentId);
+    const saved = savedEstablishments.data?.find(
+      (item) => String(item.id) === requestedEstablishmentId,
+    );
+    const establishment =
+      saved && savedEstablishmentToMap(saved, defaultEstablishmentPin.key);
+    if (establishment) {
+      setSelectedFromSearch(false);
+      overlay.focusFeature({ kind: "establishment", establishment });
+    }
+  }
+  useEffect(() => {
+    if (openedEstablishmentId) router.setParams({ establishmentId: undefined });
+  }, [openedEstablishmentId, router]);
   useEffect(() => {
     if (current.kind !== "agent") cancelAgentResponse();
   }, [current.kind, cancelAgentResponse]);
@@ -329,8 +360,10 @@ export function ExploreMapScreen() {
           {focused && current.kind === "establishment" ? (
             <EstablishmentDetailSheet
               establishment={current.establishment}
+              key={getEstablishmentKey(current.establishment)}
               onClose={closeDetail}
               onOpenRoute={() => openRoute(current.establishment)}
+              onRequireAuth={openAuth}
             />
           ) : null}
         </>

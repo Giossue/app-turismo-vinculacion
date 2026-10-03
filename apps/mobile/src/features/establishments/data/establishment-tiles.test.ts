@@ -57,4 +57,17 @@ describe("parseEstablishmentTileFeature", () => {
     expect(parseEstablishmentTileFeature({ code: "C-1" })).toBeNull();
     expect(parseEstablishmentTileFeature(null)).toBeNull();
   });
+
+  it("keeps the registry id of detail features", () => {
+    expect(
+      parseEstablishmentTileFeature({
+        id: 42,
+        name: "Bar",
+        latitude: -1.5,
+        longitude: -79,
+        approximate: false,
+        icon: "eat-drink-cafe",
+      }),
+    ).toMatchObject({ id: 42, name: "Bar" });
+  });
 });

@@ -18,17 +18,20 @@ export const queryKeys = {
   ownOpinion: ["own-center-opinion"],
   publicSearch: ["public-search"],
   publishedCenter: ["public-center"],
+  publishedEstablishment: ["public-establishment"],
   // Los centros en línea nunca se mezclan con los manifiestos offline.
   publishedCenters: ["public-centers", "remote-authoritative-v1"],
   // Visible map areas stay in memory; their boxes must never be persisted.
   publishedMapCenters: ["public-map-centers"],
   savedCenters: ["saved-centers", "account-v2"],
+  savedEstablishments: ["saved-establishments", "account-v1"],
 } as const satisfies Record<string, QueryKey>;
 
 /** Data that belongs to the signed-in tourist; removed from the cache at logout. */
 export const userScopedQueryKeys: readonly QueryKey[] = [
   queryKeys.ownOpinion,
   queryKeys.savedCenters,
+  queryKeys.savedEstablishments,
 ];
 
 /**
@@ -44,7 +47,9 @@ const persistedQueryKeys: readonly QueryKey[] = [
   queryKeys.offlineCities,
   queryKeys.publishedCenter,
   queryKeys.publishedCenters,
+  queryKeys.publishedEstablishment,
   queryKeys.savedCenters,
+  queryKeys.savedEstablishments,
 ];
 
 const persistedRoots = new Set(persistedQueryKeys.map((key) => key[0]));
