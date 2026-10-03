@@ -30,7 +30,7 @@ el estado editorial.
 - [x] Verificar transacciones, permisos, rollback, correcciones y reactivación.
 - [x] Actualizar especificación, criterios, contratos y procedimiento de despliegue.
 - [x] Verificar API y panel; revisar diff y compatibilidad.
-- [ ] Aplicar en remota únicamente con API/panel compatibles y respaldo verificado.
+- [x] Aplicar en remota únicamente con API/panel compatibles y respaldo verificado.
 
 ## Despliegue y reversión
 
@@ -59,10 +59,27 @@ deshacen automáticamente: se conserva auditoría y se resuelve mediante operaci
   se cambió a bloqueo de la fila por ID y lectura fresca, y se verificó un único commit/409.
 - `bash scripts/verify-admin-deletion.sh`: veinte casos aprobados y repetición de la
   migración; activar un registro eliminado sigue siendo rechazado por la restricción.
-- Remota inspeccionada sólo en lectura: quince centros activos, catorce borradores,
-  una aprobación sin publicar, cero publicados. La API remota aún no tiene el nuevo contrato
-  OpenAPI; no se ejecutó la migración ni se desplegó desde esta tarea.
+- Remota actualizada el 3 de octubre de 2026 por solicitud explícita del usuario, después
+  de su push. El contrato nuevo de la API desplegada se verificó a las 18:27:29 UTC:
+  tres estados, filtro de activación y acción «Aprobar y publicar».
+- Conexión verificada a `turismo_vinculacion_app` como `turismo_vinculacion_app`, a través
+  de `187.127.6.234:8004`; servidor PostgreSQL real `172.18.0.17:5432`. Las credenciales
+  se resolvieron mediante libpq y no se mostraron ni copiaron.
+- Respaldo privado de las cuatro tablas afectadas y definición del trigger en
+  `~/.local/state/turismo/backups/center-flow-20261003T182859Z-3ozy80bk/`. El archivo
+  se restauró en PostgreSQL/PostGIS local aislado y se verificaron todos los registros
+  mediante hashes en UTC: seis estados, quince centros, un borrador y una revisión.
+- Se ejecutó `20261003_center_three_state_workflow.sql` en una única transacción con
+  bloqueos y comprobaciones del respaldo antes de modificar. Antes del commit se validó
+  que los IDs, códigos, contenido, versión del borrador e historial previo permanecían
+  iguales, que existía la nueva revisión pendiente y que la activación era independiente.
+- Verificación posterior: quince centros activos, catorce en `BORRADOR` y uno en
+  `EN_REVISION`; cero publicados. Un borrador en revisión, una revisión histórica
+  aprobada y una nueva pendiente. Sólo `BORRADOR`, `EN_REVISION` y `PUBLICADO` están
+  activos en el catálogo; los tres códigos anteriores permanecen inactivos por historial.
+- La API pública respondió correctamente con cero centros. La migración conserva la
+  Catedral en revisión y no publica su snapshot; requiere la decisión administrativa
+  «Aprobar y publicar» con las validaciones existentes.
 
-La implementación está preparada; queda actualización coordinada remota. Las reglas locales
-exigen solicitud explícita para hacer push. El plan permanece activo hasta aplicar y verificar
-el despliegue y la migración compatibles. No se realizó QA de navegador ni sesión real.
+Implementación y migración remota completadas. El usuario realizó el push; esta tarea no
+creó commits ni ejecutó push ni despliegues. No se realizó QA de navegador ni sesión real.
