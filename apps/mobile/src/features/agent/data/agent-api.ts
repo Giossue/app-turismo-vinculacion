@@ -109,6 +109,8 @@ export async function askTourismAgentStream(
       headers: {
         Accept: "text/event-stream",
         "Content-Type": "application/json",
+        // Older APIs ignore this header; older apps keep receiving their strict card shape.
+        "X-Turismo-Agent-Card-Locations": "1",
       },
       method: "POST",
       signal,

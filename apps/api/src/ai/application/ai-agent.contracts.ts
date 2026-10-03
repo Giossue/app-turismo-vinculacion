@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const AGENT_CARD_LOCATIONS_HEADER = "X-Turismo-Agent-Card-Locations";
+
 const referenceSchema = z.string().trim().min(1).max(96);
 const finiteCoordinate = z.number().finite();
 
@@ -98,6 +100,25 @@ const agentCenterCardSchema = z
     name: z.string().trim().min(1).max(180),
     summary: z.string().trim().min(1).max(500),
     category: z.string().trim().min(1).max(120),
+    address: z
+      .string()
+      .trim()
+      .max(500)
+      .nullable()
+      .optional()
+      .describe(
+        "Dirección pública; sólo con X-Turismo-Agent-Card-Locations: 1.",
+      ),
+    localityName: z
+      .string()
+      .trim()
+      .min(1)
+      .max(180)
+      .nullable()
+      .optional()
+      .describe(
+        "Nombre oficial del cantón; sólo con X-Turismo-Agent-Card-Locations: 1.",
+      ),
     latitude: finiteCoordinate.min(-90).max(90),
     longitude: finiteCoordinate.min(-180).max(180),
     distanceMeters: finiteCoordinate.min(0).nullable(),

@@ -601,7 +601,7 @@ describe("AiAgentService travel times", () => {
       );
 
       expect(answer.actions).toEqual([{ type: "request_location" }]);
-      expect(answer.text).toMatch(/ubicación actual/i);
+      expect(answer.text).toContain("Necesito tu ubicación");
       expect(answer.cards).toEqual([]);
       expect(estimateTravelTimes).not.toHaveBeenCalled();
       expect(onText).not.toHaveBeenCalled();

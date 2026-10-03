@@ -22,6 +22,14 @@ La integración expone `POST /api/v1/ai/chat` como JSON estructurado y
 móvil. La respuesta final contiene `text`, `cards`, `actions` y
 `sources`.
 
+El prompt usa voz de guía turístico y pide una a tres frases breves por defecto, con
+detalle adicional solo cuando la pregunta lo requiere. El texto visible responde sobre
+el destino sin narrar búsquedas, catastros, fichas, catálogos o procesos internos. Las
+fuentes y restricciones de publicación siguen en herramientas y contrato, fuera de esa
+narración. Los fallbacks deterministas y los mensajes locales de ubicación usan el mismo
+tono directo, diferenciando falta de resultados y error de consulta sin inventar hechos.
+No se eliminan palabras de la respuesta libre con regex ni se alteran nombres de lugares.
+
 Las herramientas allowlisted de esta unidad son `listPublishedCenters`,
 `searchPublishedEstablishments`, `searchPublishedCenters`,
 `getPublishedCenter`, `searchNearbyEstablishments`,
@@ -54,6 +62,17 @@ Las tarjetas se rehidratan desde ese resultado confiable: el modelo no aporta mi
 sobrescribe las estimaciones. La app indica que proceden de una ubicación aproximada y
 que son estimaciones; el proveedor no incluye tráfico en tiempo real. Consultar tiempos
 no inicia navegación ni registra una trayectoria.
+
+Las tarjetas de centros aceptan `address` y `localityName` opcionales y anulables. El cliente
+solicita estos campos con `X-Turismo-Agent-Card-Locations: 1`; sin esa capacidad la API
+conserva la forma anterior y no hace las consultas adicionales. El móvil nuevo también
+acepta respuestas sin esos campos de una API anterior, que ignora la cabecera. La capacidad
+no se envía al modelo ni al historial. Solo las
+tarjetas seleccionadas en la respuesta final se completan desde el detalle público y el
+catálogo de cantones, reutilizando datos ya consultados durante el turno. El nombre del
+cantón no se presenta como una ciudad inferida. Un dato ausente o un fallo de consulta no
+inventa una dirección ni elimina la tarjeta o sus tiempos. Estos campos se validan con el
+mismo contrato JSON/SSE y OpenAPI; no se aceptan datos de dirección escritos por el modelo.
 
 En una consulta de cercanía o tiempo de llegada sin coordenada, `requestLocationAccess` devuelve una
 intención `request_location` para el cliente móvil. El backend no puede abrir el
@@ -121,6 +140,8 @@ versiones publicadas y conservan referencia a entidad/versión.
 
 Cada afirmación factual debe vincularse a centro, POI, establecimiento, ruta o documento
 publicado. La respuesta distingue dato oficial, inferencia y ausencia de información.
+El contrato y el historial consentido mantienen esas referencias; el chat móvil omite el
+pie visible «Fuentes». Las tarjetas identifican el lugar y abren sus detalles públicos.
 
 ## Privacidad
 
@@ -169,7 +190,8 @@ en memoria para la petición y el cliente borra su copia temporal. La transcripc
 presenta para revisión antes de enviar la pregunta. El agente no acepta imágenes:
 no existe una ruta de análisis de fotos en la API.
 Los límites por ruta acotan llamadas al proveedor; el límite global adicional es por IP.
-La voz de salida lee el mismo texto que ve la persona y las fuentes permanecen visibles.
+La voz de salida lee el mismo texto que ve la persona; las fuentes se conservan en la
+respuesta estructurada sin un pie visible en el chat.
 
 ## Apoyo editorial
 

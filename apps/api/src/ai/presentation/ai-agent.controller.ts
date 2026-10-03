@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Headers,
   Inject,
   Post,
   Res,
@@ -10,6 +11,7 @@ import {
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiHeader,
   ApiOkResponse,
   ApiProduces,
   ApiServiceUnavailableResponse,
@@ -30,7 +32,18 @@ import {
   AiAgentService,
   agentChatSchema,
 } from "../application/ai-agent.service";
-import { agentResponseSchema } from "../application/ai-agent.contracts";
+import {
+  AGENT_CARD_LOCATIONS_HEADER,
+  agentResponseSchema,
+} from "../application/ai-agent.contracts";
+
+const cardLocationsHeaderDocumentation = {
+  name: AGENT_CARD_LOCATIONS_HEADER,
+  required: false,
+  description:
+    "Envía 1 si el cliente admite address/localityName opcionales en tarjetas de centros. Si se omite, conserva el formato anterior sin consultas adicionales de ubicación.",
+  schema: { type: "string" as const, enum: ["1"] },
+};
 
 @ApiTags("ai-agent")
 @ApiBearerAuth()
@@ -45,6 +58,7 @@ export class AiAgentController {
 
   @Post("chat")
   @RouteConfig({ rateLimit: { max: 30, timeWindow: "1 minute" } })
+  @ApiHeader(cardLocationsHeaderDocumentation)
   @ApiOkResponse({
     description:
       "Respuesta estructurada con texto, tarjetas, acciones propuestas y fuentes.",
@@ -58,7 +72,11 @@ export class AiAgentController {
   @ApiServiceUnavailableResponse({
     description: "El proveedor o el catálogo del agente no está disponible.",
   })
-  async chat(@Body() body: unknown, @CurrentUser() user: AuthenticatedUser) {
+  async chat(
+    @Body() body: unknown,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers(AGENT_CARD_LOCATIONS_HEADER) cardLocations?: string,
+  ) {
     const parsed = agentChatSchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException(
@@ -66,13 +84,16 @@ export class AiAgentController {
       );
     }
     const result = agentResponseSchema.parse(
-      await this.agent.generate(parsed.data),
+      await this.agent.generate(parsed.data, undefined, undefined, {
+        includeCenterLocations: cardLocations === "1",
+      }),
     );
     return this.withHistory(user.id, parsed.data, result);
   }
 
   @Post("chat/stream")
   @RouteConfig({ rateLimit: { max: 30, timeWindow: "1 minute" } })
+  @ApiHeader(cardLocationsHeaderDocumentation)
   @ApiProduces("text/event-stream")
   @ApiOkResponse({
     description:
@@ -88,6 +109,7 @@ export class AiAgentController {
     @Body() body: unknown,
     @CurrentUser() user: AuthenticatedUser,
     @Res() response: FastifyReply,
+    @Headers(AGENT_CARD_LOCATIONS_HEADER) cardLocations?: string,
   ): Promise<void> {
     const parsed = agentChatSchema.safeParse(body);
     if (!parsed.success) {
@@ -118,6 +140,7 @@ export class AiAgentController {
           writeSseEvent(response.raw, { type: "text-delta", text });
         },
         abortController.signal,
+        { includeCenterLocations: cardLocations === "1" },
       );
       if (abortController.signal.aborted) return;
       const finalResponse = await this.withHistory(

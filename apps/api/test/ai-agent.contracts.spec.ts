@@ -8,6 +8,48 @@ import {
 } from "../src/ai/application/ai-agent.contracts";
 
 describe("AI agent contracts", () => {
+  it("accepts published center locations and older cards without them", () => {
+    const card = {
+      type: "center",
+      code: "GUA-001",
+      name: "Centro publicado",
+      summary: "Descripción oficial",
+      category: "Manifestaciones culturales",
+      latitude: -1.59,
+      longitude: -79,
+      distanceMeters: null,
+    };
+    for (const location of [
+      {},
+      { address: "Calle Sucre", localityName: "Guaranda" },
+      { address: null, localityName: null },
+    ]) {
+      const response = {
+        text: "Lugar publicado",
+        cards: [{ ...card, ...location }],
+        actions: [],
+        sources: [],
+      };
+      expect(agentResponseSchema.parse(response)).toEqual(response);
+    }
+  });
+
+  it("does not let the model supply a center address or locality", () => {
+    expect(
+      agentModelResponseSchema.safeParse({
+        text: "Lugar publicado",
+        cards: [
+          {
+            ref: "center:GUA-001",
+            address: "Dirección inventada",
+            localityName: "Localidad inventada",
+          },
+        ],
+        actions: [],
+      }).success,
+    ).toBe(false);
+  });
+
   it("rejects the retired itinerary field in model and public responses", () => {
     const response = {
       text: "Lugares publicados",

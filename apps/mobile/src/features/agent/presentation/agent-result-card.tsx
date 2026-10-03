@@ -1,6 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { formatOptionalDistance } from "@/core/format/distance";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismPressable } from "@/core/ui/tourism-pressable";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
@@ -12,7 +11,6 @@ import {
 } from "@/core/ui/tokens";
 import type { AgentCard } from "../domain/agent";
 import {
-  AGENT_TRAVEL_TIMES_CAPTION,
   getAgentTravelTimeRows,
   getAgentTravelTimesAccessibilityLabel,
 } from "./agent-travel-times";
@@ -33,71 +31,68 @@ export function AgentResultCard({
   const travelTimesLabel = getAgentTravelTimesAccessibilityLabel(
     card.travelTimes,
   );
-  const details =
-    card.type === "center"
-      ? []
-      : [
-          [
-            card.type === "poi" ? card.category : null,
-            card.localityName,
-            formatOptionalDistance(card.distanceMeters),
-          ]
-            .filter(Boolean)
-            .join(" · "),
-          card.type === "establishment" ? card.address : null,
-          card.type === "establishment" ? card.phone : null,
-        ].filter((detail): detail is string => Boolean(detail));
+  const category = card.category?.trim() || "Sin categoría";
+  const location =
+    [
+      card.type !== "poi" ? card.address?.trim() : null,
+      card.localityName?.trim(),
+    ]
+      .filter(Boolean)
+      .join(" - ") || "Ubicación no disponible";
 
   const content = (
     <>
-      <Text style={[styles.title, { color: colors.text }]}>{card.name}</Text>
-      <Text style={[styles.caption, { color: colors.textMuted }]}>
-        {card.summary}
+      <Text numberOfLines={2} style={[styles.title, { color: colors.text }]}>
+        {card.name}
       </Text>
-      {details.map((detail) => (
-        <Text
-          key={detail}
-          style={[styles.caption, { color: colors.textMuted }]}
-        >
-          {detail}
-        </Text>
-      ))}
+      <Text
+        numberOfLines={1}
+        style={[styles.caption, { color: colors.textMuted }]}
+      >
+        {category}
+      </Text>
+      <Text
+        numberOfLines={2}
+        style={[styles.caption, { color: colors.textMuted }]}
+      >
+        {location}
+      </Text>
       {travelTimeRows.length > 0 && (
         <View style={styles.travelTimes}>
           <Text style={[styles.caption, { color: colors.textMuted }]}>
-            {AGENT_TRAVEL_TIMES_CAPTION}
+            Desde tu ubicación · aprox.
           </Text>
-          {travelTimeRows.map((row) => (
-            <View key={row.mode} style={styles.travelTimeRow}>
-              <TurismoIcon
-                color={colors.textMuted}
-                name={row.icon}
-                size={turismoIconSizes.sm}
-              />
-              <Text style={[styles.travelTimeLabel, { color: colors.text }]}>
-                {row.label}
-              </Text>
-              <Text style={[styles.travelTimeValue, { color: colors.text }]}>
-                {row.value}
-              </Text>
-            </View>
-          ))}
+          <View style={styles.travelTimeList}>
+            {travelTimeRows.map((row) => (
+              <View key={row.mode} style={styles.travelTimeItem}>
+                <TurismoIcon
+                  color={colors.textMuted}
+                  name={row.icon}
+                  size={turismoIconSizes.sm}
+                />
+                <Text style={[styles.travelTimeValue, { color: colors.text }]}>
+                  {row.value}
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
       )}
-      <Text style={[styles.link, { color: colors.primaryStrong }]}>
-        Ver ficha →
-      </Text>
+      <Text style={[styles.link, { color: colors.primaryStrong }]}>Ver</Text>
     </>
   );
 
   return (
     <TourismPressable
-      accessibilityHint="Abre la ficha sin cerrar el chat"
-      accessibilityLabel={
-        travelTimesLabel
-          ? `Ver ficha de ${card.name}. ${travelTimesLabel}`
-          : `Ver ficha de ${card.name}`
-      }
+      accessibilityHint="Abre los detalles sin cerrar el chat"
+      accessibilityLabel={[
+        `Ver ${card.name}`,
+        category,
+        location,
+        travelTimesLabel,
+      ]
+        .filter(Boolean)
+        .join(". ")}
       accessibilityRole="button"
       onPress={() => onOpenCard(card)}
       style={[styles.card, { backgroundColor: colors.primarySoft }]}
@@ -110,24 +105,30 @@ export function AgentResultCard({
 const styles = StyleSheet.create({
   card: {
     borderRadius: turismoRadii.md,
-    gap: turismoSpacing.xs,
+    gap: turismoSpacing.xxs,
     marginTop: turismoSpacing.xs,
     overflow: "hidden",
-    padding: turismoSpacing.md,
+    padding: turismoSpacing.sm,
   },
   title: { ...turismoTypography.label },
   caption: { ...turismoTypography.caption },
-  travelTimes: { gap: turismoSpacing.xs, marginTop: turismoSpacing.xs },
-  travelTimeRow: {
+  travelTimes: { gap: turismoSpacing.xxs, marginTop: turismoSpacing.xxs },
+  travelTimeList: {
+    columnGap: turismoSpacing.sm,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    rowGap: turismoSpacing.xxs,
+  },
+  travelTimeItem: {
     alignItems: "center",
     flexDirection: "row",
-    gap: turismoSpacing.xs,
-  },
-  travelTimeLabel: { ...turismoTypography.caption, flex: 1 },
-  travelTimeValue: {
-    ...turismoTypography.label,
     flexShrink: 1,
-    textAlign: "right",
+    gap: turismoSpacing.xxs,
+    maxWidth: "100%",
   },
-  link: { ...turismoTypography.caption, marginTop: turismoSpacing.xs },
+  travelTimeValue: {
+    ...turismoTypography.caption,
+    flexShrink: 1,
+  },
+  link: { ...turismoTypography.caption, marginTop: turismoSpacing.xxs },
 });

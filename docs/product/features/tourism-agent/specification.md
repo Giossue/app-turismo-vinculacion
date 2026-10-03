@@ -11,6 +11,12 @@ revisión sobre sus propios borradores, sin delegar la publicación.
 
 - La conversación textual admite español e inglés, texto parcial, detener, reintentar
   y comenzar de nuevo. Las preguntas de descubrimiento general funcionan sin GPS.
+- Habla como un guía turístico: natural, amable y práctico. Responde en una a tres frases
+  breves por defecto y amplía cuando se pide detalle o la pregunta lo requiere. No narra
+  consultas a catastros, fichas, catálogos ni procesos de la app, ni añade ofrecimientos
+  o preguntas por costumbre. Si necesita un dato, hace una sola pregunta concreta.
+  Con tarjetas no repite su lista en el texto; la recomendación, la falta de resultados
+  o el fallo de consulta se expresa de forma directa, sin inventar hechos.
 - Cada chat admite hasta veinte mensajes del usuario. El saludo y las respuestas del
   agente no cuentan. Al alcanzar veinte, se bloquean preguntas nuevas por texto o voz,
   se muestra el contador y se ofrece «Nuevo chat». Reintentar una respuesta fallida o
@@ -20,12 +26,22 @@ revisión sobre sus propios borradores, sin delegar la publicación.
   el cierre. El contador se ubica abajo a la derecha, justo encima del campo de mensaje.
 - Las consultas rápidas usan filas compactas: tipografía de 14 puntos, iconos pequeños
   y menor espaciado, con un objetivo táctil mínimo de 44 puntos.
-- El agente consulta el catálogo publicado antes de afirmar hechos turísticos; presenta
-  la entidad y fuente concreta, o comunica que no encontró un dato verificable.
+- El agente consulta el catálogo publicado antes de afirmar hechos turísticos y conserva
+  la fuente concreta en la respuesta validada, o comunica que no encontró un dato
+  verificable. El chat no muestra un pie «Fuentes».
+- Las tarjetas muestran solo nombre, categoría, dirección/localidad y «Ver». No repiten
+  descripción, teléfono ni distancia directa. La dirección usa «Lugar - Localidad» cuando
+  ambos datos existen; los centros completan estos campos desde su ficha pública y el
+  nombre de su cantón, sin inventar una ciudad. Si falta un dato se muestra el disponible;
+  sin ninguno se indica «Ubicación no disponible». «Ver» abre los detalles completos.
+  Una acción para abrir el mismo centro no repite el control de su tarjeta.
 - La ubicación aproximada solo se usa si la persona activa ubicación y la consulta
   requiere cercanía o cálculo desde su posición. Se puede buscar por localidad sin GPS.
-- Cuando hay ubicación, las tarjetas de lugares incluyen una lista con iconos y tiempos
-  estimados en carro, a pie y en bici, en ese orden. Los tiempos se calculan por la red
+- Cuando la consulta comparte ubicación para cercanía o llegada, las tarjetas de lugares
+  incluyen una fila adaptable con iconos y tiempos estimados en carro, a pie y en bici,
+  en ese orden. Una consulta general como «restaurantes en Guaranda» no comparte GPS ni
+  muestra tiempos, aunque el mapa ya tenga la posición. «Restaurantes cerca de mí» o
+  «¿Cuánto tardo en llegar?» sí requieren la ubicación. Los tiempos se calculan por la red
   vial de cada modo desde la ubicación aproximada del visitante, sin tráfico en tiempo
   real. La distancia directa sirve para buscar candidatos; no se convierte en minutos
   ni determina el tiempo mostrado. El orden de los lugares se conserva.

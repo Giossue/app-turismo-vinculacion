@@ -179,7 +179,7 @@ export function useAgentConversation() {
           upsertMessage(current, {
             id: answerId,
             role: "assistant",
-            text: "Para buscar lugares cerca de ti o calcular cuánto tardas en llegar, necesito una ubicación actual. Toca «Usar mi ubicación» para obtenerla y repetir la consulta.",
+            text: "Necesito tu ubicación para buscar cerca de ti o calcular tiempos. Toca «Usar mi ubicación».",
             actions: [{ type: "request_location" }],
           }),
         );
@@ -251,7 +251,7 @@ export function useAgentConversation() {
         return;
       if (!position) {
         setLocationFeedback(
-          "No pude obtener una ubicación precisa. Revisa el permiso y la señal GPS, y vuelve a intentarlo.",
+          "No pude obtener tu ubicación. Revisa los permisos y activa la ubicación del teléfono.",
         );
         return;
       }

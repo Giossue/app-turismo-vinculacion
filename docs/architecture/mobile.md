@@ -27,7 +27,16 @@ sheet nativa de conversación; `Cómo llegar` representa la ruta activa sin soli
 en la vista previa. La sheet del agente ofrece el chat actual; la función de planes
 e itinerarios se retiró.
 El agente turístico consulta la API autenticada y valida una respuesta estructurada con
-texto, tarjetas, acciones propuestas y fuentes. Todas las tarjetas abren una ficha en una
+texto, tarjetas, acciones propuestas y fuentes. Las tarjetas compactas muestran nombre,
+categoría, dirección/localidad y «Ver»; resumen, teléfono y distancia quedan en la ficha.
+Los centros aceptan `address` y `localityName` opcionales y anulables; respuestas antiguas
+siguen válidas. El cliente anuncia `X-Turismo-Agent-Card-Locations: 1` para recibirlos;
+sin esta cabecera la API mantiene respuestas compatibles con los móviles anteriores.
+La API aporta la dirección publicada y el nombre del cantón sin inferir
+una ciudad. El cliente combina los datos presentes con « - » y conserva su texto completo
+en la etiqueta accesible. No muestra el pie «Fuentes», aunque valida y conserva las
+referencias recibidas. Si una tarjeta ya abre un centro, se omite el `open_center` de ese
+mismo código para evitar repetir «Ver». Todas las tarjetas abren una ficha en una
 sheet apilada sobre el chat: Atrás o cerrar la ficha devuelve a la misma conversación sin
 navegar. Los centros cargan su ficha pública completa; catastro y POI muestran los campos
 públicos recibidos, y solo ofrecen ruta si hay coordenadas. Si el texto enumera lugares
@@ -49,13 +58,16 @@ actual. Esta retirada visual no elimina registros históricos del servidor.
 Las tarjetas del agente validan `travelTimes` cuando aparece: exactamente tres modos
 únicos (`car`, `foot`, `bicycle`), con duración y distancia finitas no negativas solo en
 estado `available`; `no_route` y `unavailable` no admiten métricas. Las respuestas sin ese
-campo siguen siendo compatibles. La lista visual presenta carro, a pie y bici con iconos
+campo siguen siendo compatibles. Una fila con ajuste de línea presenta carro, a pie y bici con iconos
 `TurismoIcon`, sin reordenar las tarjetas, y usa el formato compartido
 `formatDurationSeconds` (cero válido equivale a «<1 min»). Los estados restantes se muestran
-como «Sin ruta» o «No disponible», y la leyenda indica «Tiempos estimados desde tu
-ubicación aproximada». La etiqueta accesible del botón de la tarjeta incluye toda la lista
+como «Sin ruta» o «No disponible», y la leyenda visible indica «Desde tu ubicación · aprox.».
+La etiqueta accesible indica que son tiempos estimados desde la ubicación aproximada e
+incluye los nombres de los tres modos y toda la lista
 para evitar controles accesibles anidados. El móvil no calcula minutos ni envía solicitudes
-directas al proveedor vial. Consultar tiempos no inicia navegación.
+directas al proveedor vial. Consultar tiempos no inicia navegación. Solo adjunta la
+ubicación cuando el mensaje actual pide cercanía o tiempo/llegada desde la posición del
+visitante; una búsqueda general o por localidad no la comparte ni muestra tiempos.
 
 Cada chat admite veinte mensajes del usuario, incluidos los que tienen respuesta fallida
 o detenida. El contador se deriva de las burbujas del usuario, con una validación antes

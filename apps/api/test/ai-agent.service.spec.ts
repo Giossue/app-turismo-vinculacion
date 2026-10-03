@@ -114,7 +114,7 @@ describe("AiAgentService", () => {
         message: "Busca un mirador",
         history: [],
       }),
-    ).rejects.toThrow("El proveedor de IA no está configurado.");
+    ).rejects.toThrow("No puedo responder ahora. Inténtalo de nuevo.");
   });
 
   it("accepts an approximate location but rejects invalid or extra input", () => {

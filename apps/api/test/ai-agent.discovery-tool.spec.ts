@@ -43,6 +43,9 @@ const center: PublicCenter = {
   hierarchyCode: null,
 };
 
+const internalMethodLanguage =
+  /catálogo|catastro|ficha|publicad|verific|proveedor/i;
+
 type ToolExecutor = (input: Record<string, unknown>) => Promise<unknown>;
 type Options = {
   system: string;
@@ -53,6 +56,9 @@ type Options = {
 function service(
   items: PublicCenter[],
   publishedEstablishments: PublicEstablishmentSearchItem[] = [],
+  centerLocations: Partial<
+    Pick<PublicCenterRepository, "findPublishedByCode" | "getDiscoveryCatalog">
+  > = {},
 ) {
   const listPublished = vi
     .fn()
@@ -71,6 +77,7 @@ function service(
       parishes: [],
       hierarchies: [],
     }),
+    ...centerLocations,
   } as PublicCenterRepository;
   const establishments: PublicEstablishmentSearch = {
     browse,
@@ -114,34 +121,82 @@ function service(
 }
 
 describe("general tourism discovery", () => {
-  it("keeps destination search available after retiring itinerary tools", async () => {
-    const { agent, listPublished } = service([center]);
-    vi.mocked(streamText).mockImplementation((input) => {
-      const options = input as unknown as Options;
-      expect(options.tools).not.toHaveProperty("findItineraryCandidates");
-      expect(options.system).toContain(
-        "no generes un itinerario ni prometas guardarlo",
+  it.each([false, true])(
+    "keeps destination cards compatible with location capability %s",
+    async (includeCenterLocations) => {
+      const findPublishedByCode = vi.fn().mockResolvedValue({
+        ...center,
+        address: "Calle Sucre",
+        touristZone: "Zona central",
+        altitudeMeters: null,
+        admission: null,
+        activities: [],
+        accessibility: [],
+        facilities: [],
+        photos: [],
+      });
+      const getDiscoveryCatalog = vi.fn().mockResolvedValue({
+        categories: [],
+        types: [],
+        subtypes: [],
+        provinces: [],
+        cantons: [{ code: "0201", name: "Guaranda", provinceCode: "02" }],
+        parishes: [],
+        hierarchies: [],
+      });
+      const { agent, listPublished } = service([center], [], {
+        findPublishedByCode,
+        getDiscoveryCatalog,
+      });
+      vi.mocked(streamText).mockImplementation((input) => {
+        const options = input as unknown as Options;
+        expect(options.tools).not.toHaveProperty("findItineraryCandidates");
+        expect(options.system).toContain(
+          "no generes un itinerario ni prometas guardarlo",
+        );
+        return {
+          output: (async () => {
+            await options.tools.listPublishedCenters.execute?.({ limit: 6 });
+            return {
+              text: "Puedes visitar este lugar publicado.",
+              cards: [{ ref: `center:${center.code}` }],
+              actions: [],
+            };
+          })(),
+          partialOutputStream: (async function* () {})(),
+        } as never;
+      });
+      const answer = await agent.generate(
+        { message: "¿Qué lugares turísticos puedo visitar?", history: [] },
+        undefined,
+        undefined,
+        includeCenterLocations ? { includeCenterLocations: true } : undefined,
       );
-      return {
-        output: (async () => {
-          await options.tools.listPublishedCenters.execute?.({ limit: 6 });
-          return {
-            text: "Puedes visitar este lugar publicado.",
-            cards: [{ ref: `center:${center.code}` }],
-            actions: [],
-          };
-        })(),
-        partialOutputStream: (async function* () {})(),
-      } as never;
-    });
-    const answer = await agent.generate({
-      message: "¿Qué lugares turísticos puedo visitar?",
-      history: [],
-    });
-    expect(listPublished).toHaveBeenCalledWith({ limit: 6 });
-    expect(answer.cards).toMatchObject([{ code: center.code }]);
-    expect(answer).not.toHaveProperty("itinerary");
-  });
+      expect(listPublished).toHaveBeenCalledWith({ limit: 6 });
+      expect(answer.cards).toEqual([
+        {
+          type: "center",
+          code: center.code,
+          name: center.name,
+          summary: center.description,
+          category: center.category,
+          latitude: center.latitude,
+          longitude: center.longitude,
+          distanceMeters: null,
+          ...(includeCenterLocations
+            ? { address: "Calle Sucre", localityName: "Guaranda" }
+            : {}),
+        },
+      ]);
+      expect(findPublishedByCode).toHaveBeenCalledTimes(
+        includeCenterLocations ? 1 : 0,
+      );
+      expect(getDiscoveryCatalog).toHaveBeenCalledTimes(
+        includeCenterLocations ? 1 : 0,
+      );
+      expect(answer).not.toHaveProperty("itinerary");
+    },
+  );
 
   it("recognizes broad discovery without making GPS mandatory", () => {
     expect(
@@ -245,7 +300,46 @@ describe("general tourism discovery", () => {
       history: [],
     });
     expect(answer.cards).toEqual([]);
-    expect(answer.text).toMatch(/no hay lugares turísticos publicados/i);
+    expect(answer.text).toBe("No encontré lugares para esa búsqueda.");
+    expect(answer.actions).toEqual([]);
+    expect(answer.sources).toEqual([
+      { type: "center", label: "Catálogo de centros turísticos publicados" },
+    ]);
+  });
+
+  it("distinguishes a failed search from no matches without inventing places", async () => {
+    const { agent, listPublished } = service([center]);
+    listPublished.mockRejectedValueOnce(new Error("Search unavailable"));
+    vi.mocked(streamText).mockImplementation((input) => {
+      const options = input as unknown as Options;
+      return {
+        output: (async () => {
+          const failure = await options.tools.listPublishedCenters.execute?.({
+            limit: 6,
+          });
+          expect(failure).toMatchObject({ available: false });
+          expect((failure as { message: string }).message).not.toMatch(
+            internalMethodLanguage,
+          );
+          return {
+            text: "Puedes visitar un mirador.",
+            cards: [{ ref: `center:${center.code}` }],
+            actions: [],
+          };
+        })(),
+        partialOutputStream: (async function* () {})(),
+      } as never;
+    });
+
+    const answer = await agent.generate({
+      message: "¿Qué lugares turísticos puedo visitar?",
+      history: [],
+    });
+    expect(answer.text).toMatch(/^No pude buscar lugares/);
+    expect(answer.text).not.toMatch(internalMethodLanguage);
+    expect(answer.cards).toEqual([]);
+    expect(answer.actions).toEqual([]);
+    expect(answer.sources).toEqual([]);
   });
 
   it("keeps verified catalog results when structured model output fails", async () => {
@@ -266,7 +360,7 @@ describe("general tourism discovery", () => {
       history: [],
     });
     expect(answer.cards).toMatchObject([{ code: center.code }]);
-    expect(answer.text).toMatch(/lugares turísticos publicados/i);
+    expect(answer.text).toBe("Puedes visitar estos lugares.");
   });
 });
 
@@ -301,7 +395,7 @@ describe("nearby discovery location handoff", () => {
     );
 
     expect(answer.actions).toEqual([{ type: "request_location" }]);
-    expect(answer.text).toMatch(/ubicación actual/i);
+    expect(answer.text).toContain("Necesito tu ubicación");
     expect(streamedText).not.toHaveBeenCalled();
   });
 
@@ -398,5 +492,80 @@ describe("establishment discovery without GPS", () => {
       type: "establishment",
       label: "Catastro turístico público: Comedor de prueba (Guaranda)",
     });
+    expect(answer.text).toBe("Puedes comer en estos lugares.");
+  });
+
+  it.each([
+    {
+      kind: "food",
+      message: "¿Dónde puedo comer?",
+      label: "lugares para comer",
+    },
+    {
+      kind: "lodging",
+      message: "¿Dónde puedo hospedarme?",
+      label: "alojamientos",
+    },
+  ])("reports no matches for $kind without asking for GPS", async (query) => {
+    const { agent } = service([]);
+    vi.mocked(streamText).mockImplementation((input) => {
+      const options = input as unknown as Options;
+      return {
+        output: (async () => {
+          await options.tools.searchPublishedEstablishments.execute?.({
+            kind: query.kind,
+            limit: 6,
+          });
+          return {
+            text: "Puedes probar esta opción.",
+            cards: [{ ref: "establishment:inventado" }],
+            actions: [],
+          };
+        })(),
+        partialOutputStream: (async function* () {})(),
+      } as never;
+    });
+
+    const answer = await agent.generate({
+      message: query.message,
+      history: [],
+    });
+    expect(answer.text).toContain(`No encontré ${query.label}`);
+    expect(answer.text).not.toMatch(internalMethodLanguage);
+    expect(answer.cards).toEqual([]);
+    expect(answer.actions).toEqual([]);
+    expect(answer.sources).toEqual([
+      { type: "establishment", label: "Catastro turístico público" },
+    ]);
+  });
+
+  it("reports unavailable establishment search without inventing options", async () => {
+    const { agent, browse } = service([]);
+    browse.mockRejectedValueOnce(new Error("Search unavailable"));
+    vi.mocked(streamText).mockImplementation((input) => {
+      const options = input as unknown as Options;
+      return {
+        output: (async () => {
+          const failure =
+            await options.tools.searchPublishedEstablishments.execute?.({
+              kind: "food",
+              limit: 6,
+            });
+          expect(failure).toMatchObject({ available: false });
+          return { text: "Opciones disponibles", cards: [], actions: [] };
+        })(),
+        partialOutputStream: (async function* () {})(),
+      } as never;
+    });
+
+    const answer = await agent.generate({
+      message: "¿Dónde puedo comer?",
+      history: [],
+    });
+    expect(answer.text).toMatch(/^No pude buscar opciones/);
+    expect(answer.text).not.toMatch(internalMethodLanguage);
+    expect(answer.cards).toEqual([]);
+    expect(answer.actions).toEqual([]);
+    expect(answer.sources).toEqual([]);
   });
 });

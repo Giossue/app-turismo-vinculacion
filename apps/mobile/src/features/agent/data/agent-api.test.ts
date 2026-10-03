@@ -127,13 +127,25 @@ describe("askTourismAgentStream", () => {
   });
 
   it("reconstructs fragmented SSE events and forwards cumulative text", async () => {
+    const locatedCenter = {
+      type: "center",
+      code: "GUA-001",
+      name: "Centro cultural",
+      summary: "Descripción publicada",
+      category: "Manifestaciones culturales",
+      address: "Calle Sucre",
+      localityName: "Guaranda",
+      latitude: -1.59,
+      longitude: -79,
+      distanceMeters: null,
+    };
     const fetcher = vi.fn().mockResolvedValue(
       sseResponse([
         'data: {"type":"text-delta","text":"Ho',
         'la"}\n\n' +
           completeEvent({
             text: "Hola viajero.",
-            cards: [],
+            cards: [locatedCenter],
             actions: [],
             sources: [],
           }) +
@@ -157,7 +169,7 @@ describe("askTourismAgentStream", () => {
       ),
     ).resolves.toEqual({
       text: "Hola viajero.",
-      cards: [],
+      cards: [locatedCenter],
       actions: [],
       sources: [],
     });
@@ -172,6 +184,7 @@ describe("askTourismAgentStream", () => {
       headers: {
         Accept: "text/event-stream",
         "Content-Type": "application/json",
+        "X-Turismo-Agent-Card-Locations": "1",
       },
       method: "POST",
       signal: undefined,

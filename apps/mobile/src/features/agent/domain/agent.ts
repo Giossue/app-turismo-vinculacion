@@ -52,6 +52,8 @@ const agentCenterCardSchema = z
     name: z.string().min(1).max(180),
     summary: z.string().min(1).max(500),
     category: z.string().min(1).max(120),
+    address: z.string().max(500).nullable().optional(),
+    localityName: z.string().min(1).max(180).nullable().optional(),
     latitude: finiteCoordinate.min(-90).max(90),
     longitude: finiteCoordinate.min(-180).max(180),
     distanceMeters: finiteCoordinate.min(0).nullable(),

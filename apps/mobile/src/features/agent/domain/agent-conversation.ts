@@ -36,7 +36,8 @@ export function showsAgentStarterPrompts(
 }
 
 /** Shown when a failure has no user-safe message of its own. */
-export const agentFallbackErrorMessage = "No pudimos responder ahora.";
+export const agentFallbackErrorMessage =
+  "Ahora no puedo responder. Inténtalo de nuevo.";
 
 export function countAgentUserMessages(
   messages: readonly AgentMessage[],

@@ -25,6 +25,7 @@ import {
   type AgentSource,
 } from "./ai-agent.contracts";
 import {
+  enrichAgentCenterLocations,
   sanitizeAgentResponse,
   type TrustedAgentEntity,
 } from "../infrastructure/ai-agent-trusted-data";
@@ -134,8 +135,7 @@ export const getTravelTimesInputSchema = z
 
 const genericToolFailure = {
   available: false,
-  message:
-    "No se pudo verificar esta consulta en el catálogo público. No inventes resultados y comunícalo claramente.",
+  message: "No pude consultar esa información ahora. Inténtalo de nuevo.",
 } as const;
 
 export { agentChatSchema };
@@ -164,8 +164,22 @@ export class AiAgentService {
     input: AgentChatInput,
     onText?: (text: string) => Promise<void> | void,
     abortSignal?: AbortSignal,
+    options: Readonly<{ includeCenterLocations?: boolean }> = {},
   ): Promise<AgentResponse> {
     const entities = new Map<string, TrustedAgentEntity>();
+    const registeredCenters = new Map<
+      string,
+      PublicCenter | PublicCenterDetail
+    >();
+    const finishAnswer = (answer: AgentResponse) =>
+      options.includeCenterLocations === true
+        ? enrichAgentCenterLocations(
+            answer,
+            this.centers,
+            registeredCenters,
+            abortSignal,
+          )
+        : answer;
     const trustedSources = new Map<string, AgentSource>();
     const approximateLocation = input.location
       ? {
@@ -204,9 +218,9 @@ export class AiAgentService {
       sourceLabel: string,
       distanceMeters: number | null = null,
     ) => {
+      registeredCenters.set(center.code, center);
       const summary = truncate(
-        center.description?.trim() ||
-          `${center.type} turístico publicado en el catálogo institucional.`,
+        center.description?.trim() || `${center.type}.`,
         500,
       );
       entities.set(ref, {
@@ -269,7 +283,7 @@ export class AiAgentService {
       const category = item.categoria ?? item.clasificacion;
       const summary = truncate(
         [item.actividad, category].filter(Boolean).join(" · ") ||
-          "Establecimiento turístico del catastro público.",
+          "Establecimiento turístico.",
         500,
       );
       const hasCoordinates =
@@ -394,20 +408,23 @@ export class AiAgentService {
         abortSignal,
         model: this.model(),
         system: [
-          "Eres el agente turístico institucional de Turismo Vinculación.",
+          "Eres el guía turístico de Turismo Vinculación. Ayudas al visitante a elegir lugares, comer, hospedarse y llegar a su destino.",
           "Responde en español salvo que el visitante pida inglés.",
+          "Habla de forma natural, amable y práctica. Responde a la pregunta en una a tres frases breves por defecto; amplía solo si el visitante pide detalle o la respuesta lo necesita.",
+          "En text habla del lugar y de lo que le sirve al visitante, sin narrar cómo consultaste la información. No menciones catastro, fichas, catálogo, base de datos, herramientas, registros internos ni fuentes como explicación de tus recomendaciones. Evita frases como lo saqué del catastro, según la ficha o datos publicados. Las referencias de fuentes se conservan internamente, no se enumeran en text.",
+          "No añadas introducciones genéricas, explicaciones de la app, ofrecimientos repetidos ni una pregunta al final por costumbre. Pregunta solo si necesitas un dato para responder, con una sola pregunta concreta.",
           "Usa las herramientas para consultar únicamente centros publicados, puntos de interés activos, establecimientos activos y transporte registrado.",
-          "Descubrir lugares turísticos en general no requiere GPS. Para preguntas generales como qué lugares turísticos puedo visitar, usa listPublishedCenters y responde con los lugares publicados y sus fuentes; la ciudad o los intereses son filtros opcionales para afinar después.",
+          "Descubrir lugares turísticos en general no requiere GPS. Para preguntas generales como qué lugares turísticos puedo visitar, usa listPublishedCenters y presenta los lugares encontrados; la ciudad o los intereses son filtros opcionales, no una pregunta obligatoria.",
           "Para preguntas generales sobre dónde comer u hospedarse sin intención de cercanía, usa searchPublishedEstablishments. La ubicación y localidad son opcionales; sin ellas ofrece resultados publicados sin afirmar que están cerca. Si el visitante indica una localidad, úsala como filtro.",
           "Cuando el visitante diga cerca, cercano, cerca de mí, lo que haya alrededor o use una intención equivalente, y haya ubicación aproximada, debes usar searchNearbyPublishedPlaces antes de cualquier búsqueda textual. Esa herramienta combina centros, puntos de interés y establecimientos; no intentes buscar la frase cerca de mí como texto.",
           "Si una consulta cercana no tiene ubicación, usa requestLocationAccess. Esa herramienta solo propone una acción para que el móvil solicite o actualice la ubicación; no otorga permisos ni accede al GPS del teléfono.",
           "La función de planes e itinerarios está retirada. Si solicitan un plan de viaje o un recorrido de varias paradas, explica que no está disponible y ofrece buscar lugares o preparar una ruta a un destino; no generes un itinerario ni prometas guardarlo.",
-          "Para transporte usa getPublishedTransportForCenter o searchNearbyTransportStops cuando la pregunta lo requiera. Si no hay rutas, paradas u horarios publicados, dilo así; no inventes transporte, frecuencias, precios ni tiempos.",
+          "Para transporte usa getPublishedTransportForCenter o searchNearbyTransportStops cuando la pregunta lo requiera. Si faltan rutas, paradas u horarios, di brevemente qué información no tienes; no afirmes que no existen ni inventes transporte, frecuencias, precios o tiempos.",
           "Para calcular una ruta vial usa calculateRoadRoute después de obtener referencias confiables. Puede calcular desde la ubicación aproximada o entre dos lugares registrados; no le envíes coordenadas. Las métricas desde la ubicación son aproximadas y el móvil volverá a calcular la ruta antes de navegar.",
           "Las búsquedas con ubicación incluyen travelTimes por carro, a pie y bicicleta desde el visitante. Para consultar esos tiempos usa getTravelTimes con las referencias obtenidas; el origen se toma de la solicitud. Solo status available tiene tiempo y distancia por caminos verificados. No conviertas distanceMeters de cercanía en minutos ni inventes velocidades. Los tiempos son estimados sin tráfico en tiempo real; no_route significa sin ruta y unavailable significa que no se pudo verificar ese modo.",
-          "Si una herramienta no tiene datos o falla, dilo claramente y no rellenes el vacío con conocimiento externo.",
+          "Si una herramienta no tiene datos o falla, dilo con una frase natural como No encontré opciones con esa búsqueda o Ahora no puedo consultar esos lugares. No describas procesos internos ni rellenes el vacío con conocimiento externo.",
           "Para tarjetas y acciones usa solamente las referencias ref devueltas por las herramientas.",
-          "Si incluyes tarjetas de lugares, no repitas la lista de nombres, categorías, direcciones o distancias en text. Usa text para resumir el resultado, explicar criterios y señalar información no verificada; cada lugar se presenta en su tarjeta.",
+          "Si incluyes tarjetas de lugares, no repitas la lista de nombres, categorías, direcciones, distancias ni tiempos en text. Usa una frase breve que responda a la intención, por ejemplo Aquí tienes opciones para comer. Añade un criterio o una limitación solo cuando ayude a elegir; cada lugar y sus tiempos se presentan en su tarjeta.",
           "No pongas coordenadas ni códigos inventados en la salida estructurada.",
           "open_center solo sirve para centros publicados.",
           "start_route solo propone una ruta; nunca inicia navegación ni afirma que ya empezó. El móvil pedirá confirmación.",
@@ -476,7 +493,7 @@ export class AiAgentService {
                   available: true,
                   found: false,
                   message:
-                    "No encontré destinos confiables para calcular esos tiempos.",
+                    "No encontré esos destinos para calcular cuánto tardas en llegar.",
                 };
               }
               await attachTravelTimes(refs);
@@ -636,8 +653,7 @@ export class AiAgentService {
               if (!approximateLocation) {
                 return {
                   available: false,
-                  message:
-                    "No hay ubicación disponible. Pide permiso de ubicación o una localidad antes de recomendar lugares cercanos.",
+                  message: "Necesito tu ubicación para buscar cerca de ti.",
                 };
               }
 
@@ -737,8 +753,7 @@ export class AiAgentService {
                   source: sourceLabel,
                   ...(results.length === 0
                     ? {
-                        message:
-                          "No encontré lugares publicados dentro de este radio. Puedo buscar por ciudad, categoría o ampliar la distancia.",
+                        message: "No encontré lugares en esa zona.",
                       }
                     : {}),
                 };
@@ -813,7 +828,7 @@ export class AiAgentService {
                     ? {}
                     : {
                         message:
-                          "No hay rutas ni horarios de transporte publicados para este centro.",
+                          "No tengo información de rutas u horarios para este lugar.",
                       }),
                   source: source.label,
                 };
@@ -831,7 +846,7 @@ export class AiAgentService {
                 return {
                   available: false,
                   message:
-                    "No hay ubicación disponible. Pide permiso de ubicación antes de buscar paradas cercanas.",
+                    "Necesito tu ubicación para buscar paradas cercanas.",
                 };
               }
               try {
@@ -855,7 +870,7 @@ export class AiAgentService {
                   ...(results.length === 0
                     ? {
                         message:
-                          "No hay paradas de transporte publicadas dentro de este radio.",
+                          "No encontré paradas de transporte en esa zona.",
                       }
                     : {}),
                 };
@@ -874,8 +889,7 @@ export class AiAgentService {
                 return {
                   available: true,
                   found: false,
-                  message:
-                    "No encontré un destino confiable para calcular esta ruta.",
+                  message: "No encontré ese destino para calcular la ruta.",
                 };
               }
 
@@ -885,14 +899,14 @@ export class AiAgentService {
                   available: true,
                   found: false,
                   message:
-                    "No encontré un origen confiable para calcular esta ruta.",
+                    "No encontré el lugar de salida para calcular la ruta.",
                 };
               }
               if (!fromRef && !approximateLocation) {
                 return {
                   available: false,
                   message:
-                    "No hay ubicación disponible. Pide permiso de ubicación antes de calcular una ruta desde el visitante.",
+                    "Necesito tu ubicación para calcular una ruta desde donde estás.",
                 };
               }
 
@@ -915,8 +929,7 @@ export class AiAgentService {
                 return {
                   available: true,
                   found: false,
-                  message:
-                    "El origen y el destino son el mismo punto; no hay una ruta vial que calcular.",
+                  message: "La salida y el destino están en el mismo punto.",
                 };
               }
 
@@ -961,15 +974,14 @@ export class AiAgentService {
                   return {
                     available: true,
                     found: false,
-                    message:
-                      "No encontré una ruta vial posible entre esos lugares.",
+                    message: "No encontré una ruta entre esos lugares.",
                   };
                 }
                 if (error instanceof RouteProviderUnavailableError) {
                   return {
                     available: false,
                     message:
-                      "El servicio de rutas no está disponible ahora. No puedo verificar distancia ni duración.",
+                      "No pude calcular la ruta ahora. Inténtalo de nuevo.",
                   };
                 }
                 return genericToolFailure;
@@ -984,8 +996,7 @@ export class AiAgentService {
               if (!approximateLocation) {
                 return {
                   available: false,
-                  message:
-                    "No hay ubicación disponible. Pide permiso de ubicación o una localidad antes de recomendar cercanía.",
+                  message: "Necesito tu ubicación para buscar cerca de ti.",
                 };
               }
               try {
@@ -1053,17 +1064,19 @@ export class AiAgentService {
       } catch (error) {
         if (needsCurrentLocation) return missingLocationAnswer();
         const fallback: AgentResponse = {
-          text: "No pude verificar esta respuesta en este momento.",
+          text: "No pude responder ahora. Inténtalo de nuevo.",
           cards: [],
           actions: [],
           sources: [],
         };
         if (forceGeneralCatalogTool) {
-          return completeGeneralDiscoveryAnswer(
-            fallback,
-            generalCatalogRefs,
-            generalCatalogFailed,
-            entities,
+          return finishAnswer(
+            completeGeneralDiscoveryAnswer(
+              fallback,
+              generalCatalogRefs,
+              generalCatalogFailed,
+              entities,
+            ),
           );
         }
         if (forceEstablishmentKind) {
@@ -1082,28 +1095,32 @@ export class AiAgentService {
       ]);
       if (needsCurrentLocation) return missingLocationAnswer();
       if (forceGeneralCatalogTool) {
-        return completeGeneralDiscoveryAnswer(
-          answer,
-          generalCatalogRefs,
-          generalCatalogFailed,
-          entities,
+        return finishAnswer(
+          completeGeneralDiscoveryAnswer(
+            answer,
+            generalCatalogRefs,
+            generalCatalogFailed,
+            entities,
+          ),
         );
       }
       if (forceEstablishmentKind) {
-        return completeEstablishmentDiscoveryAnswer(
-          answer,
-          forceEstablishmentKind,
-          establishmentBrowseRefs,
-          establishmentBrowseFailed,
-          entities,
+        return finishAnswer(
+          completeEstablishmentDiscoveryAnswer(
+            answer,
+            forceEstablishmentKind,
+            establishmentBrowseRefs,
+            establishmentBrowseFailed,
+            entities,
+          ),
         );
       }
-      return answer;
+      return finishAnswer(answer);
     } catch (error) {
       if (needsCurrentLocation) return missingLocationAnswer();
       if (error instanceof ServiceUnavailableException) throw error;
       throw new ServiceUnavailableException(
-        "El agente no está disponible en este momento.",
+        "No puedo responder ahora. Inténtalo de nuevo.",
       );
     }
   }
@@ -1115,14 +1132,14 @@ export class AiAgentService {
       const apiKey = this.config.get<string>("OPENAI_API_KEY");
       if (!apiKey)
         throw new ServiceUnavailableException(
-          "El proveedor de IA no está configurado.",
+          "No puedo responder ahora. Inténtalo de nuevo.",
         );
       return createOpenAI({ apiKey })(modelId);
     }
     const apiKey = this.config.get<string>("ANTHROPIC_API_KEY");
     if (!apiKey)
       throw new ServiceUnavailableException(
-        "El proveedor de IA no está configurado.",
+        "No puedo responder ahora. Inténtalo de nuevo.",
       );
     return createAnthropic({ apiKey })(modelId);
   }
@@ -1166,7 +1183,7 @@ function unavailableTravelTimes(): TravelTimeEstimate[] {
 
 function missingLocationAnswer(): AgentResponse {
   return {
-    text: "Para buscar lugares cerca de ti o calcular cuánto tardas en llegar, necesito una ubicación actual. Toca «Usar mi ubicación» para obtenerla y repetir la consulta.",
+    text: "Necesito tu ubicación para buscar cerca de ti o calcular tiempos. Toca «Usar mi ubicación».",
     cards: [],
     actions: [{ type: "request_location" }],
     sources: [],
@@ -1244,7 +1261,7 @@ function completeGeneralDiscoveryAnswer(
 ): AgentResponse {
   if (failed || refs === null) {
     return {
-      text: "No pude verificar el catálogo turístico en este momento. Inténtalo de nuevo.",
+      text: "No pude buscar lugares ahora. Inténtalo de nuevo.",
       cards: [],
       actions: [],
       sources: [],
@@ -1252,7 +1269,7 @@ function completeGeneralDiscoveryAnswer(
   }
   if (refs.length === 0) {
     return {
-      text: "No hay lugares turísticos publicados en el catálogo por ahora.",
+      text: "No encontré lugares para esa búsqueda.",
       cards: [],
       actions: [],
       sources: [{ type: "center", label: publishedCentersSource }],
@@ -1262,7 +1279,7 @@ function completeGeneralDiscoveryAnswer(
     return answer;
   }
   return {
-    text: "Estos son algunos lugares turísticos publicados. Puedes abrir sus fichas para conocerlos; si me dices una ciudad o tus intereses, afino la recomendación.",
+    text: "Puedes visitar estos lugares.",
     cards: refs
       .slice(0, 6)
       .map((ref) => entities.get(ref)?.card)
@@ -1281,7 +1298,7 @@ function completeEstablishmentDiscoveryAnswer(
 ): AgentResponse {
   if (failed || refs === null) {
     return {
-      text: "No pude verificar el catastro turístico en este momento. Inténtalo de nuevo.",
+      text: "No pude buscar opciones ahora. Inténtalo de nuevo.",
       cards: [],
       actions: [],
       sources: [],
@@ -1290,7 +1307,7 @@ function completeEstablishmentDiscoveryAnswer(
   const label = kind === "food" ? "lugares para comer" : "alojamientos";
   if (refs.length === 0) {
     return {
-      text: `No encontré ${label} publicados con esos filtros. Puedes indicarme otra ciudad o categoría.`,
+      text: `No encontré ${label} para esa búsqueda.`,
       cards: [],
       actions: [],
       sources: [
@@ -1302,7 +1319,10 @@ function completeEstablishmentDiscoveryAnswer(
     return answer;
   }
   return {
-    text: `Estos son ${label} del catastro turístico publicado. Esta lista no está ordenada por cercanía; puedes decirme una ciudad o pedir resultados cerca de ti para afinarla.`,
+    text:
+      kind === "food"
+        ? "Puedes comer en estos lugares."
+        : "Puedes alojarte en estos lugares.",
     cards: refs
       .slice(0, 6)
       .map((ref) => entities.get(ref)?.card)

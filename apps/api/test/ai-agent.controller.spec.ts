@@ -23,10 +23,12 @@ describe("AiAgentController", () => {
     await expect(
       controller.chat({ message: "Hola", history: [] }, user),
     ).resolves.toEqual(response);
-    expect(agent.generate).toHaveBeenCalledWith({
-      message: "Hola",
-      history: [],
-    });
+    expect(agent.generate).toHaveBeenCalledWith(
+      { message: "Hola", history: [] },
+      undefined,
+      undefined,
+      { includeCenterLocations: false },
+    );
     expect(saved.recordTurn).toHaveBeenCalledWith(
       7,
       undefined,
@@ -34,6 +36,30 @@ describe("AiAgentController", () => {
       response,
     );
   });
+
+  it.each(["1", "0", "true"])(
+    "enables center locations only for JSON capability header 1, given %s",
+    async (cardLocations) => {
+      const agent = { generate: vi.fn().mockResolvedValue(response) };
+      const saved = history();
+      const controller = new AiAgentController(agent as never, saved as never);
+      await expect(
+        controller.chat({ message: "Hola", history: [] }, user, cardLocations),
+      ).resolves.toEqual(response);
+      expect(agent.generate).toHaveBeenCalledWith(
+        { message: "Hola", history: [] },
+        undefined,
+        undefined,
+        { includeCenterLocations: cardLocations === "1" },
+      );
+      expect(saved.recordTurn).toHaveBeenCalledWith(
+        7,
+        undefined,
+        "Hola",
+        response,
+      );
+    },
+  );
 
   it("rejects malformed chat input", async () => {
     const controller = new AiAgentController(
@@ -59,66 +85,71 @@ describe("AiAgentController", () => {
     });
   });
 
-  it("streams partial text and the final structured response", async () => {
-    const agent = {
-      generate: vi.fn(
-        async (_input: unknown, onText?: (text: string) => void) => {
-          onText?.("Hola");
-          return response;
-        },
-      ),
-    };
-    const chunks: string[] = [];
-    const events = new EventEmitter();
-    const raw = {
-      destroyed: false,
-      writableEnded: false,
-      once: events.once.bind(events),
-      off: events.off.bind(events),
-      writeHead: vi.fn(),
-      write: vi.fn((chunk: string) => {
-        chunks.push(chunk);
-        return true;
-      }),
-      end: vi.fn(() => {
-        raw.writableEnded = true;
-      }),
-    };
-    const reply = {
-      hijack: vi.fn(),
-      raw,
-    };
-    const controller = new AiAgentController(
-      agent as never,
-      history() as never,
-    );
+  it.each([undefined, "1", "0"])(
+    "streams text and response with capability header %s",
+    async (cardLocations) => {
+      const agent = {
+        generate: vi.fn(
+          async (_input: unknown, onText?: (text: string) => void) => {
+            onText?.("Hola");
+            return response;
+          },
+        ),
+      };
+      const chunks: string[] = [];
+      const events = new EventEmitter();
+      const raw = {
+        destroyed: false,
+        writableEnded: false,
+        once: events.once.bind(events),
+        off: events.off.bind(events),
+        writeHead: vi.fn(),
+        write: vi.fn((chunk: string) => {
+          chunks.push(chunk);
+          return true;
+        }),
+        end: vi.fn(() => {
+          raw.writableEnded = true;
+        }),
+      };
+      const reply = {
+        hijack: vi.fn(),
+        raw,
+      };
+      const controller = new AiAgentController(
+        agent as never,
+        history() as never,
+      );
 
-    await controller.chatStream(
-      { message: "Hola", history: [] },
-      user,
-      reply as never,
-    );
+      await controller.chatStream(
+        { message: "Hola", history: [] },
+        user,
+        reply as never,
+        cardLocations,
+      );
 
-    expect(reply.hijack).toHaveBeenCalledOnce();
-    expect(raw.writeHead).toHaveBeenCalledWith(
-      200,
-      expect.objectContaining({
-        "Content-Type": "text/event-stream; charset=utf-8",
-      }),
-    );
-    expect(chunks.join("")).toContain(
-      'data: {"type":"text-delta","text":"Hola"}',
-    );
-    expect(chunks.join("")).toContain('data: {"type":"complete","response":');
-    expect(chunks.join("")).toContain('"text":"Hola viajero."');
-    expect(chunks.join("")).toContain("data: [DONE]");
-    expect(raw.end).toHaveBeenCalledOnce();
-    expect(agent.generate).toHaveBeenCalledWith(
-      { message: "Hola", history: [] },
-      expect.any(Function),
-      expect.any(AbortSignal),
-    );
-  });
+      expect(reply.hijack).toHaveBeenCalledOnce();
+      expect(raw.writeHead).toHaveBeenCalledWith(
+        200,
+        expect.objectContaining({
+          "Content-Type": "text/event-stream; charset=utf-8",
+        }),
+      );
+      expect(chunks.join("")).toContain(
+        'data: {"type":"text-delta","text":"Hola"}',
+      );
+      expect(chunks.join("")).toContain('data: {"type":"complete","response":');
+      expect(chunks.join("")).toContain('"text":"Hola viajero."');
+      expect(chunks.join("")).toContain("data: [DONE]");
+      expect(raw.end).toHaveBeenCalledOnce();
+      expect(agent.generate).toHaveBeenCalledWith(
+        { message: "Hola", history: [] },
+        expect.any(Function),
+        expect.any(AbortSignal),
+        { includeCenterLocations: cardLocations === "1" },
+      );
+    },
+  );
 
   it("aborts generation when the SSE client disconnects", async () => {
     const events = new EventEmitter();
