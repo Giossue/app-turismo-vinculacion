@@ -6,6 +6,12 @@ import { getLocationAvailability } from "@/core/location/location-availability";
 import { useUserLocation } from "@/core/location/use-user-location";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { askTourismAgentStream } from "../data/agent-api";
+import {
+  closeInterruptedAnswer,
+  readStoredAgentConversation,
+  removeStoredAgentConversation,
+  writeStoredAgentConversation,
+} from "../data/agent-conversation-storage";
 import type { AgentMessage, AgentResponse } from "../domain/agent";
 import {
   agentFallbackErrorMessage,
@@ -19,7 +25,8 @@ import {
 
 /**
  * One chat with the tourism agent: the bubbles and the streaming answer.
- * Closing the chat (unmounting) aborts the answer in progress.
+ * Closing the chat (unmounting) aborts the answer in progress. The chat is
+ * saved per account so it survives app restarts and reloads.
  */
 export function useAgentConversation() {
   const auth = useAuth();
@@ -42,6 +49,10 @@ export function useAgentConversation() {
   const locationRequestRef = useRef(false);
   const locationRequestIdRef = useRef(0);
   const mountedRef = useRef(true);
+  /** Nothing is saved until the stored chat of this account was read. */
+  const [restoredUserId, setRestoredUserId] = useState<
+    number | undefined | null
+  >(null);
 
   useEffect(
     () => () => {
@@ -82,7 +93,7 @@ export function useAgentConversation() {
     }
   }, []);
 
-  const newConversation = useCallback(() => {
+  const resetConversation = useCallback(() => {
     locationRequestIdRef.current += 1;
     locationRequestRef.current = false;
     setRequestingLocation(false);
@@ -99,11 +110,51 @@ export function useAgentConversation() {
     setDraft("");
   }, []);
 
+  const newConversation = useCallback(() => {
+    resetConversation();
+    void removeStoredAgentConversation(userIdRef.current).catch(
+      () => undefined,
+    );
+  }, [resetConversation]);
+
+  // Restores the saved chat on mount and whenever the account changes.
   useEffect(() => {
-    if (userIdRef.current === auth.user?.id) return;
-    userIdRef.current = auth.user?.id;
-    newConversation();
-  }, [auth.user?.id, newConversation]);
+    const userId = auth.user?.id;
+    if (userIdRef.current !== userId) {
+      userIdRef.current = userId;
+      resetConversation();
+    }
+    let cancelled = false;
+    void readStoredAgentConversation(userId).then((stored) => {
+      if (cancelled || userIdRef.current !== userId) return;
+      // A question sent while reading wins over the saved chat.
+      if (stored && countAgentUserMessages(messagesRef.current) === 0) {
+        const restored = closeInterruptedAnswer(stored.messages);
+        messagesRef.current = restored;
+        conversationIdRef.current = stored.conversationId;
+        nextIdRef.current = Math.max(
+          nextIdRef.current,
+          highestMessageNumber(restored),
+        );
+        setMessages(restored);
+      }
+      setRestoredUserId(userId);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.user?.id, resetConversation]);
+
+  useEffect(() => {
+    if (restoredUserId === null || restoredUserId !== userIdRef.current) return;
+    if (countAgentUserMessages(messages) === 0) return;
+    // Skip each streamed fragment; the finished answer is saved once.
+    if (messages.some((message) => message.kind === "partial")) return;
+    void writeStoredAgentConversation(restoredUserId, {
+      conversationId: conversationIdRef.current,
+      messages,
+    }).catch(() => undefined);
+  }, [messages, restoredUserId]);
 
   const createId = (prefix: string) => {
     nextIdRef.current += 1;
@@ -284,6 +335,14 @@ export function useAgentConversation() {
     setDraft,
     userMessageCount: countAgentUserMessages(messages),
   };
+}
+
+/** Ids are `user-3`, `assistant-4`…; new ids must not repeat restored ones. */
+function highestMessageNumber(messages: readonly AgentMessage[]): number {
+  return messages.reduce((highest, message) => {
+    const number = Number(/-(\d+)$/.exec(message.id)?.[1]);
+    return Number.isFinite(number) ? Math.max(highest, number) : highest;
+  }, 0);
 }
 
 /** Replaces the bubble with the same id, or appends it. */

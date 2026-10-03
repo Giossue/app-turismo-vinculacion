@@ -167,6 +167,19 @@ export type StartRouteAction = Extract<AgentAction, { type: "start_route" }>;
  * exchange (the greeting, an error, an answer cut off mid-stream); they are
  * shown but never sent back to the agent as history.
  */
+/** Validates a chat bubble restored from local storage. */
+export const agentMessageSchema = z
+  .object({
+    id: z.string().min(1).max(64),
+    role: z.enum(["assistant", "user"]),
+    text: z.string().max(4_000),
+    kind: z.enum(["intro", "error", "partial"]).optional(),
+    cards: z.array(agentCardSchema).max(6).optional(),
+    actions: z.array(agentActionSchema).max(4).optional(),
+    sources: z.array(agentSourceSchema).max(24).optional(),
+  })
+  .strict();
+
 export type AgentMessage = Readonly<{
   id: string;
   role: "assistant" | "user";

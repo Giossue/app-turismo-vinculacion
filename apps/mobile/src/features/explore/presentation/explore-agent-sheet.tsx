@@ -12,6 +12,7 @@ import type {
   AgentCard,
   AgentRouteDestination,
 } from "@/features/agent/domain/agent";
+import { confirmNewAgentChat } from "@/features/agent/presentation/confirm-new-agent-chat";
 import type { useAgentConversation } from "@/features/agent/application/use-agent-conversation";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { AgentChatContent } from "@/features/agent/presentation/agent-chat-content";
@@ -85,7 +86,12 @@ function ExploreAgentSheetInner({
                 <TourismIconAction
                   accessibilityLabel="Nueva conversación"
                   icon="plus"
-                  onPress={conversation.newConversation}
+                  onPress={() =>
+                    confirmNewAgentChat(
+                      conversation.userMessageCount,
+                      conversation.newConversation,
+                    )
+                  }
                   variant="ghost"
                 />
               }
