@@ -9,6 +9,18 @@ import { AdminNavigationService } from "../src/admin/admin-navigation.service";
 import { RolesGuard } from "../src/auth/roles.guard";
 
 describe("admin navigation endpoint boundaries", () => {
+  it("keeps a complete empty response when the database supplies no rows", async () => {
+    const service = new AdminNavigationService({
+      query: vi.fn().mockResolvedValue([]),
+    } as never);
+    expect(await service.summary(7, true)).toEqual({
+      review: { pending: 0, latestChange: null },
+      opinions: { pending: 0, latestChange: null },
+      centers: { pending: 0, latestChange: null },
+      establishments: { pending: 0, latestChange: null },
+      catalogs: { pending: 0, latestChange: null },
+    });
+  });
   it.each([
     { roles: ["ADMINISTRADOR"], isAdmin: true },
     { roles: ["AGENTE_TURISTICO"], isAdmin: false },

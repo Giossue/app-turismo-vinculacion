@@ -17,6 +17,10 @@ en una sola acción.
 - Devolución a `BORRADOR` con motivo obligatorio y auditoría de todas las decisiones.
 - El panel de centros muestra sólo los tres estados editoriales; la activación interna
   no se expone como columna, filtro, control del editor ni dato de resumen.
+- La navegación muestra un punto rojo pequeño, sin contador, en las secciones con
+  novedades aún sin ver o trabajo pendiente. Abrir la sección quita el aviso de novedades;
+  los pendientes conservan el punto hasta resolverse. Los agentes reciben señales sólo
+  de sus centros y catastros. La fecha vista se recuerda por cuenta en ese navegador.
 - Multimedia institucional con descripción y fuente/autor. El panel valida fotos JPEG/PNG/WebP,
   video MP4/WebM y audio MP3/M4A/WAV/OGG, aplica límites de tamaño y mantiene los archivos
   pendientes hasta la publicación.

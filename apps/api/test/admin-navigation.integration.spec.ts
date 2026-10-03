@@ -208,7 +208,7 @@ describe.skipIf(!isolated)("navigation aggregates with PostgreSQL", () => {
   });
 
   it("scopes histories by record owner and preserves deletion timestamps without counting deleted rows", async () => {
-    const owned = await center("BORRADOR", 7);
+    const owned = await center("BORRADOR", 7, "BORRADOR");
     await center("BORRADOR", 8, undefined, { hour: 23 });
     await center("BORRADOR", null, undefined, { hour: 22 });
     const deleted = await center("EN_REVISION", 7, undefined, {

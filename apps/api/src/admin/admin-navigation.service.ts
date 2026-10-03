@@ -3,6 +3,7 @@ import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
 
 import type { AdminNavigationSummaryDto } from "./admin-navigation.dto";
+import { centerReviewStateSql } from "./center-review-state";
 
 type NavigationSection = keyof AdminNavigationSummaryDto;
 type NavigationRow = {
@@ -28,14 +29,7 @@ export class AdminNavigationService {
           WHERE $2::boolean OR c.responsable_usuario_id = $1::bigint
        ), center_inventory AS (
          SELECT c.id, c.eliminado_at,
-                CASE
-                  WHEN COALESCE(NULLIF(bs.codigo, 'PUBLICADO'), s.codigo)
-                       IN ('EN_REVISION', 'APROBADO') THEN 'EN_REVISION'
-                  WHEN COALESCE(NULLIF(bs.codigo, 'PUBLICADO'), s.codigo) = 'PUBLICADO'
-                       OR (COALESCE(NULLIF(bs.codigo, 'PUBLICADO'), s.codigo) = 'INACTIVO'
-                           AND c.publicado_at IS NOT NULL) THEN 'PUBLICADO'
-                  ELSE 'BORRADOR'
-                END AS state,
+                ${centerReviewStateSql("COALESCE(NULLIF(bs.codigo, 'PUBLICADO'), s.codigo)", "c.publicado_at")} AS state,
                 GREATEST(c.created_at, c.updated_at, c.eliminado_at, b.updated_at) AS changed_at
            FROM scoped_centers c
            JOIN estados_resenia s ON s.id = c.estado_resenia_id
@@ -89,11 +83,16 @@ export class AdminNavigationService {
           WHERE $2::boolean AND a.catalogo_codigo = 'ESTABLISHMENT'
             AND a.accion IN ('SOLICITAR_REVISION', 'APROBAR', 'RECHAZAR', 'ELIMINAR')
        ), opinion_changes AS (
-         SELECT GREATEST(o.created_at, o.updated_at, o.eliminado_at,
-                         v.created_at, v.revisado_at, m.created_at) AS changed_at
+         SELECT GREATEST(o.created_at, o.updated_at, o.eliminado_at) AS changed_at
            FROM opiniones o
-           LEFT JOIN opinion_versiones v ON v.opinion_id = o.id
-           LEFT JOIN moderaciones_opinion m ON m.opinion_id = o.id
+          WHERE $2::boolean
+         UNION ALL
+         SELECT GREATEST(v.created_at, v.revisado_at)
+           FROM opinion_versiones v JOIN opiniones o ON o.id = v.opinion_id
+          WHERE $2::boolean
+         UNION ALL
+         SELECT m.created_at
+           FROM moderaciones_opinion m JOIN opiniones o ON o.id = m.opinion_id
           WHERE $2::boolean
        )
        SELECT 'centers' AS section, pending,

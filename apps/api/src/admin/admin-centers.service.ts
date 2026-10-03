@@ -27,6 +27,7 @@ import type {
   SaveAdminCenterDto,
 } from "./admin.dto";
 import { ADMIN_CENTER_SECTION_CODES } from "./admin.dto";
+import { centerReviewStateSql } from "./center-review-state";
 import { MediaService } from "../files/media.service";
 import {
   buildXlsmValuationInput,
@@ -183,13 +184,6 @@ function centerReviewStatus(code: string, publishedAt?: string | null) {
   return { code: "BORRADOR", name: "Borrador" } as const;
 }
 
-function centerReviewStateSql(code: string, publishedAt = "NULL"): string {
-  return `CASE
-    WHEN ${code} IN ('EN_REVISION', 'APROBADO') THEN 'EN_REVISION'
-    WHEN ${code} = 'PUBLICADO' OR (${code} = 'INACTIVO' AND ${publishedAt} IS NOT NULL) THEN 'PUBLICADO'
-    ELSE 'BORRADOR'
-  END`;
-}
 const SECTION_RESPONSE_VALUES = new Set([
   "SI",
   "NO",

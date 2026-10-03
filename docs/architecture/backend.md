@@ -68,6 +68,17 @@ El módulo `admin` es la frontera de captura y publicación: acepta `AGENTE_TURI
 capturar sus propios borradores y `ADMINISTRADOR` para el ámbito global, revisión,
 publicación, catálogos y auditoría. El panel web nunca consulta PostgreSQL directamente.
 
+`GET /admin/navigation-summary` entrega `{ pending, latestChange }` por sección del
+sidebar, sin datos de registros ni estado de lectura. Revisión suma centros efectivos
+`EN_REVISION` y catastros `EN_REVISION`; Opiniones cuenta opiniones vivas con una versión
+pendiente; Centros cuenta estados efectivos `BORRADOR`/`EN_REVISION` y Catastro
+`BORRADOR`/`RECHAZADO`/`EN_REVISION`. Catálogos sólo entrega la última modificación auditada
+de sus cinco catálogos administrables y `pending=0`. Los registros eliminados no cuentan
+como pendientes, pero sus fechas históricas se conservan para detectar cambios.
+Administradores reciben todas las señales; agentes sólo las de sus propios centros y
+catastros, con las otras secciones vacías. El endpoint usa sesión y roles institucionales,
+una consulta agregada y `Cache-Control: private, no-store`; no requiere migración.
+
 Los centros usan `BORRADOR`, `EN_REVISION` y `PUBLICADO`. `PATCH /admin/centers/:code/review`
 con `APPROVE` valida y publica el snapshot congelado en la misma transacción que multimedia,
 valoración y auditorías `APROBAR`/`PUBLICAR`; `REJECT` exige motivo y devuelve el borrador a
