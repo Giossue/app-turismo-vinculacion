@@ -84,9 +84,9 @@ function AgentActionItem({
   if (action.type === "open_center") {
     return (
       <TourismActionButton
-        accessibilityLabel="Abrir ficha del centro recomendado"
+        accessibilityLabel="Ver detalles del centro recomendado"
         compact
-        label="Abrir ficha"
+        label="Ver"
         onPress={() => onOpenCenter(action.code)}
         style={styles.action}
       />

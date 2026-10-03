@@ -254,9 +254,14 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   sin GPS ni valoraciones supuestas. El motor decide qué símbolos caben en pantalla;
   se desactiva la superposición en las capas generales y el texto es opcional para que
   una etiqueta descartada no suprima su icono. Las etiquetas usan anclas adaptables,
-  `Noto Sans Regular`, tamaño que respeta `fontScale` y halo de tema. Solo se añaden
-  cuando el estilo tiene glifos válidos; los iconos permanecen disponibles en el estilo
-  degradado sin fuentes. El visor local aplica estas reglas a los nombres descargados.
+  `Noto Sans Regular`, tamaño que respeta `fontScale` y halo de tema. El texto toma el
+  color del pin que se dibuja: los atractivos usan `getTurismoColors(scheme).primary`
+  (`#166534` en claro y `#22c55e` en oscuro); los catastros y POIs usan el color local
+  resuelto por su clave de icono, con el mismo respaldo que la imagen si la clave no se
+  reconoce. Las capas generales, la selección y el visor local comparten esa regla.
+  Solo se añaden nombres cuando el estilo tiene glifos válidos; los iconos permanecen
+  disponibles en el estilo degradado sin fuentes. El visor local aplica estas reglas
+  a los nombres descargados.
   Cada capa y fuente mantiene una `key` de React igual a su `id`: el adaptador de
   MapLibre elimina hijos nulos antes de clonarlos, y la llegada de glifos no debe
   reutilizar una instancia para otra capa. El padding del icono conserva el valor

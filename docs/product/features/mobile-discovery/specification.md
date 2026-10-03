@@ -104,6 +104,10 @@ una hoja inferior de resultados. Explorar y buscar no solicitan permiso de ubica
 - Un nombre que no cabe no obliga a ocultar el icono. Los nombres usan la fuente publicada
   del mapa, tamaño adaptado y halo de contraste en temas claro y oscuro. Sin glifos
   disponibles, se conservan los pines y la interacción sin texto.
+- Cada nombre usa el color de su pin: los atractivos usan verde `#166534` en tema claro
+  y `#22c55e` en oscuro. Los servicios y puntos de interés usan el color local del icono
+  que se dibuja, incluido el icono de respaldo cuando la clave no se reconoce. La regla
+  se aplica también al lugar seleccionado y al visor de ciudad descargada.
 - El lugar seleccionado conserva su pin y nombre visibles, también si se eligió desde
   una búsqueda fuera del conjunto cargado. Conserva su imagen, color y tamaño habituales.
 - El visor de ciudad descargada usa los nombres de su manifiesto y las mismas reglas de

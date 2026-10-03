@@ -21,7 +21,7 @@ import {
 import { AgentActionList, type AgentRouteHandlers } from "./agent-action-list";
 import { AgentResultCard, getAgentCardKey } from "./agent-result-card";
 
-/** A user question or an agent answer with its cards, actions and sources. */
+/** A user question or an agent answer with its cards and distinct actions. */
 export function AgentMessageBubble({
   message,
   onOpenCard,
@@ -43,6 +43,13 @@ export function AgentMessageBubble({
   const visibleText = fromUser
     ? message.text
     : getAgentVisibleText(message.text, message.cards ?? []);
+  const visibleActions = message.actions?.filter(
+    (action) =>
+      action.type !== "open_center" ||
+      !message.cards?.some(
+        (card) => card.type === "center" && card.code === action.code,
+      ),
+  );
   const [speaking, setSpeaking] = useState(false);
   const speakingRef = useRef(false);
 
@@ -151,19 +158,14 @@ export function AgentMessageBubble({
             onOpenCard={onOpenCard}
           />
         ))}
-        {message.actions?.length ? (
+        {visibleActions?.length ? (
           <AgentActionList
-            actions={message.actions}
+            actions={visibleActions}
             onOpenCenter={onOpenCenter}
             onRequestLocation={onRequestLocation}
             requestingLocation={requestingLocation}
             {...routeHandlers}
           />
-        ) : null}
-        {message.sources?.length ? (
-          <Text style={[styles.sources, { color: colors.textFaint }]}>
-            Fuentes: {message.sources.map((source) => source.label).join(" · ")}
-          </Text>
         ) : null}
       </View>
     </View>
@@ -204,5 +206,4 @@ const styles = StyleSheet.create({
     top: 0,
     width: turismoMetrics.touchTarget,
   },
-  sources: { ...turismoTypography.caption, marginTop: turismoSpacing.xs },
 });

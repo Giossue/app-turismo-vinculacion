@@ -1,7 +1,8 @@
 # Plan: aparición progresiva de lugares y nombres en el mapa
 
 Fecha: 2026-10-02
-Estado: implementado; verificado en Android
+Estado: implementado; aparición progresiva verificada en Android; ajuste de color de
+nombres verificado con TypeScript y revisión del diff
 
 ## Resultado acordado
 
@@ -22,8 +23,11 @@ valoraciones o lugares.
 - Mostrar nombres de atractivos desde zoom 13 (jerarquías III/IV desde 12), servicios
   desde 15 y selección visible; resolver colisiones en el motor nativo con prioridad de
   jerarquía existente y anclas adaptables.
-- Reutilizar los nombres, colores, fuentes y halos del tema en mapa en línea y visor
+- Reutilizar los nombres, fuentes y halos del tema en mapa en línea y visor
   descargado. Sin una URL de glifos válida se conservan los pines sin etiquetas.
+- Usar en cada nombre el color real de su pin: verde `#166534` en claro y `#22c55e`
+  en oscuro para atractivos; el color local del icono y su respaldo para catastros y
+  POIs. Mantener la misma regla en selección y visor descargado.
 - Sin escrituras de datos, migraciones, nuevas dependencias ni despliegue de producción.
 
 ## Límites y fallos
@@ -79,3 +83,16 @@ nativa. Los gestos ADB no dieron evidencia fiable de esos dos escenarios.
 Al cerrar la sesión se detuvieron los servidores temporales y se restauró el Metro
 original de desarrollo en el puerto 8081. La app arrancó de nuevo con su catálogo
 habitual y sin errores de identidad de capas ni fallos del puente nativo en el log.
+
+### Ajuste posterior: color de los nombres
+
+Los nombres de los lugares siguen el color del pin que se muestra. Los atractivos
+usan `getTurismoColors(scheme).primary`, igual que sus recursos de imagen; los
+catastros y POIs resuelven el color mediante la clave del icono local y el mismo
+respaldo que su imagen. Esto incluye las capas en línea, la selección y los lugares
+descargados. Se conservan halo, `fontScale`, glifos, zoom y colocación.
+
+La evidencia Android anterior corresponde a la aparición progresiva y colocación
+de nombres. El ajuste de color pasó TypeScript y revisión del diff, conforme a la
+verificación proporcional de cambios visuales. No se repitió la comprobación nativa
+para este ajuste. Los colores de los pines y contratos de API se conservan.

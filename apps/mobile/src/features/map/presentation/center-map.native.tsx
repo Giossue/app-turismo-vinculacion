@@ -61,7 +61,11 @@ import {
 import { useBasemapStyle } from "./use-basemap-style";
 import { useMapLifecycle } from "./use-map-lifecycle";
 import { UserLocationLayers } from "./user-location-layers";
-import { turismoMapLayerStyle, turismoSpacing } from "@/core/ui/tokens";
+import {
+  getTurismoColors,
+  turismoMapLayerStyle,
+  turismoSpacing,
+} from "@/core/ui/tokens";
 
 type CenterFeatureCollection = GeoJSON.FeatureCollection<
   GeoJSON.Point,
@@ -224,12 +228,34 @@ export function CenterMap({
   const mapStyle = mapStyleOverride ?? onlineStyle;
   const hasGlyphs = hasMapLabelGlyphs(mapStyle);
   const labelPalette = basemapPalettes[scheme];
-  const labelPaint = hasGlyphs
+  // Los PNG de atractivos comparten el verde del tema general.
+  const centerPinColor = getTurismoColors(scheme).primary;
+  const labelHalo = {
+    "text-halo-color": labelPalette.textHalo,
+    "text-halo-width": 1.5,
+    "text-halo-blur": 0.5,
+  };
+  const centerLabelPaint: SymbolLayerSpecification["paint"] = hasGlyphs
     ? {
-        "text-color": labelPalette.text,
-        "text-halo-color": labelPalette.textHalo,
-        "text-halo-width": 1.5,
-        "text-halo-blur": 0.5,
+        ...labelHalo,
+        "text-color": centerPinColor,
+      }
+    : undefined;
+  const establishmentLabelPaint: SymbolLayerSpecification["paint"] = hasGlyphs
+    ? {
+        ...labelHalo,
+        "text-color": establishmentPinColorExpression,
+      }
+    : undefined;
+  const selectedLabelPaint: SymbolLayerSpecification["paint"] = hasGlyphs
+    ? {
+        ...labelHalo,
+        "text-color": [
+          "case",
+          ["get", "isCenter"],
+          centerPinColor,
+          establishmentPinColorExpression,
+        ],
       }
     : undefined;
   const {
@@ -890,7 +916,7 @@ export function CenterMap({
                 ...establishmentNameLayout,
                 "icon-image": establishmentPinImageExpression,
               }}
-              paint={labelPaint}
+              paint={establishmentLabelPaint}
             />
           </GeoJSONSource>
         ) : (
@@ -914,7 +940,7 @@ export function CenterMap({
                 visibility: establishmentVisibility,
               }}
               minzoom={mapPlaceZoom.establishmentIcon}
-              paint={labelPaint}
+              paint={establishmentLabelPaint}
               source-layer={establishmentTileLayer}
               type="symbol"
             />
@@ -1003,7 +1029,7 @@ export function CenterMap({
                   : "tourism-center-monument-light",
             }}
             minzoom={mapPlaceZoom.centerIcon}
-            paint={labelPaint}
+            paint={centerLabelPaint}
             type="symbol"
           />
         </GeoJSONSource>
@@ -1031,7 +1057,7 @@ export function CenterMap({
                 establishmentPinImageExpression,
               ],
             }}
-            paint={labelPaint}
+            paint={selectedLabelPaint}
           />
         </GeoJSONSource>
         <UserLocationLayers
