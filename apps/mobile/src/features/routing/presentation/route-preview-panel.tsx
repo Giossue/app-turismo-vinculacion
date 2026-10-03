@@ -114,8 +114,15 @@ export function RoutePreviewPanel({
       (locationRequesting ||
         (!routeError && !locationMessage && !navigationNotice)));
 
+  /** Index the sheet is at or already moving to, set by its own gestures. */
+  const sheetTargetIndex = useRef(expanded ? expandedIndex : 0);
+
   useEffect(() => {
-    sheetRef.current?.snapToIndex(expanded ? expandedIndex : 0);
+    const target = expanded ? expandedIndex : 0;
+    // A drag already animates the sheet; snapping again would restart it.
+    if (sheetTargetIndex.current === target) return;
+    sheetTargetIndex.current = target;
+    sheetRef.current?.snapToIndex(target);
   }, [expanded, expandedIndex]);
 
   useEffect(() => {
@@ -231,14 +238,13 @@ export function RoutePreviewPanel({
       enablePanDownToClose={false}
       handleComponent={null}
       index={expanded ? expandedIndex : 0}
-      // Switch content when the snap starts, not after it ends, so a drag
-      // does not show the expanded sheet with the compact content.
-      onAnimate={(fromIndex, toIndex) => {
-        if (toIndex >= 0 && toIndex !== fromIndex)
-          onExpandedChange(toIndex === expandedIndex && toIndex > 0);
+      onAnimate={(_fromIndex, toIndex) => {
+        if (toIndex >= 0) sheetTargetIndex.current = toIndex;
       }}
       onChange={(index) => {
-        if (index >= 0) onExpandedChange(index === expandedIndex && index > 0);
+        if (index < 0) return;
+        sheetTargetIndex.current = index;
+        onExpandedChange(index === expandedIndex && index > 0);
       }}
       ref={sheetRef}
       snapPoints={snapPoints}
