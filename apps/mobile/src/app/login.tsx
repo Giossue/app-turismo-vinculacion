@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
 } from "react-native";
@@ -82,7 +81,7 @@ export default function LoginScreen() {
       title={mode === "register" ? "Crear cuenta" : "Iniciar sesión"}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
         style={styles.flex}
       >
         <ScrollView
