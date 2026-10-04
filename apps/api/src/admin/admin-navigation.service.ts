@@ -65,34 +65,32 @@ export class AdminNavigationService {
            JOIN scoped_establishments e ON e.id = a.registro_id
           WHERE a.catalogo_codigo = 'ESTABLISHMENT'
        ), review_changes AS (
-         SELECT GREATEST(r.fecha_solicitud, r.fecha_revision) AS changed_at
+         -- Solo cuentan solicitudes nuevas; las decisiones y eliminaciones las
+         -- hace el propio revisor y no deben encender el aviso.
+         SELECT r.fecha_solicitud AS changed_at
            FROM revisiones_publicacion r
            JOIN scoped_centers c ON c.id = r.centro_turistico_id
           WHERE $2::boolean
          UNION ALL
          SELECT a.created_at FROM auditoria_fichas a
            JOIN scoped_centers c ON c.id = a.centro_turistico_id
-          WHERE $2::boolean
-            AND a.accion IN ('SOLICITAR_REVISION', 'APROBAR', 'RECHAZAR', 'PUBLICAR', 'ELIMINAR')
+          WHERE $2::boolean AND a.accion = 'SOLICITAR_REVISION'
          UNION ALL
-         SELECT GREATEST(fecha_solicitud, fecha_revision)
+         SELECT fecha_solicitud
            FROM scoped_establishments WHERE $2::boolean
          UNION ALL
          SELECT a.created_at FROM auditoria_catalogos a
            JOIN scoped_establishments e ON e.id = a.registro_id
           WHERE $2::boolean AND a.catalogo_codigo = 'ESTABLISHMENT'
-            AND a.accion IN ('SOLICITAR_REVISION', 'APROBAR', 'RECHAZAR', 'ELIMINAR')
+            AND a.accion = 'SOLICITAR_REVISION'
        ), opinion_changes AS (
-         SELECT GREATEST(o.created_at, o.updated_at, o.eliminado_at) AS changed_at
+         -- Solo opiniones o ediciones nuevas; moderar o eliminar no cuenta.
+         SELECT o.created_at AS changed_at
            FROM opiniones o
           WHERE $2::boolean
          UNION ALL
-         SELECT GREATEST(v.created_at, v.revisado_at)
+         SELECT v.created_at
            FROM opinion_versiones v JOIN opiniones o ON o.id = v.opinion_id
-          WHERE $2::boolean
-         UNION ALL
-         SELECT m.created_at
-           FROM moderaciones_opinion m JOIN opiniones o ON o.id = m.opinion_id
           WHERE $2::boolean
        )
        SELECT 'centers' AS section, pending,
