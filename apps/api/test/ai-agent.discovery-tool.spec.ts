@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("ai", async () => {
   const actual = await vi.importActual<typeof import("ai")>("ai");
-  return { ...actual, streamText: vi.fn() };
+  const { legacyStreamTextMock } = await import("./helpers/legacy-stream-text");
+  return { ...actual, streamText: legacyStreamTextMock() };
 });
 
 import { streamText } from "ai";
@@ -397,6 +398,36 @@ describe("nearby discovery location handoff", () => {
     expect(answer.actions).toEqual([{ type: "request_location" }]);
     expect(answer.text).toContain("Necesito tu ubicación");
     expect(streamedText).not.toHaveBeenCalled();
+  });
+
+  it("never asks the model for structured output and only shows cards through showPlaceCards", async () => {
+    const { agent } = service([center]);
+    vi.mocked(streamText).mockImplementation((input) => {
+      const options = input as unknown as Options & { output?: unknown };
+      expect(options.output).toBeUndefined();
+      expect(options.tools).toHaveProperty("showPlaceCards");
+      return {
+        output: (async () => {
+          await options.tools.listPublishedCenters.execute?.({ limit: 6 });
+          // The model cannot invent a card: an unknown ref is dropped.
+          await options.tools.showPlaceCards.execute?.({
+            refs: ["center:inventado"],
+          });
+          return {
+            text: "Puedes visitar este lugar publicado.",
+            cards: [],
+            actions: [],
+          };
+        })(),
+        partialOutputStream: (async function* () {})(),
+      } as never;
+    });
+    const answer = await agent.generate({
+      message: "¿Qué lugares turísticos puedo visitar?",
+      history: [],
+    });
+    expect(answer.cards).toHaveLength(1);
+    expect(answer.cards[0]).toMatchObject({ code: center.code });
   });
 
   it("uses nearby catalog when the current position is supplied", async () => {

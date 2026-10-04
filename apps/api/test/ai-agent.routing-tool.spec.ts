@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("ai", async () => {
   const actual = await vi.importActual<typeof import("ai")>("ai");
-  return { ...actual, streamText: vi.fn() };
+  const { legacyStreamTextMock } = await import("./helpers/legacy-stream-text");
+  return { ...actual, streamText: legacyStreamTextMock() };
 });
 
 import { streamText } from "ai";

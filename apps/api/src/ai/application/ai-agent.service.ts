@@ -9,7 +9,6 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import {
   streamText,
-  Output,
   stepCountIs,
   tool,
   type LanguageModel,
@@ -19,9 +18,9 @@ import { z } from "zod";
 
 import {
   agentChatSchema,
-  agentModelResponseSchema,
   agentTravelTimesSchema,
   type AgentChatInput,
+  type AgentModelResponse,
   type AgentResponse,
   type AgentSource,
 } from "./ai-agent.contracts";
@@ -134,6 +133,9 @@ export const getTravelTimesInputSchema = z
   })
   .strict();
 
+/** Cards are only ever attached through this tool, never written by the model. */
+export const showPlaceCardsInputSchema = getTravelTimesInputSchema;
+
 const genericToolFailure = {
   available: false,
   message: "No pude consultar esa información ahora. Inténtalo de nuevo.",
@@ -211,6 +213,7 @@ export class AiAgentService {
     let establishmentSequence = 0;
     let poiSequence = 0;
     const detailedCenterRefs = new Set<string>();
+    const shownCardRefs: string[] = [];
     const travelTimeCache = new Map<
       string,
       Promise<readonly TravelTimeEstimate[]>
@@ -438,6 +441,7 @@ export class AiAgentService {
           "- requestLocationAccess: consulta cercana sin ubicación. Solo propone una acción para que el móvil pida o actualice la ubicación; no otorga permisos ni accede al GPS.",
           "- getPublishedCenter: precio de entrada, horario u otros detalles de un centro. Resuelve primero el lugar; la búsqueda general no trae esos datos.",
           "- getPublishedTransportForCenter y searchNearbyTransportStops: preguntas de transporte. Si faltan rutas, paradas u horarios, di brevemente qué no tienes; no afirmes que no existen ni inventes transporte, frecuencias, precios o tiempos.",
+          "- showPlaceCards: muestra la tarjeta de los lugares que obtuviste con otras herramientas, pasando sus ref. Es la única forma de mostrar tarjetas; llámala después de consultar y antes de redactar la respuesta, solo con los lugares que responden a lo que pidió el visitante. No la llames si no hay lugar que mostrar.",
           "- getTravelTimes: tiempos por carro, a pie y bicicleta desde el visitante. Usa las referencias obtenidas; el origen se toma de la solicitud.",
           "- calculateRoadRoute: solo si preguntan explícitamente por distancia, tiempo o un trayecto entre lugares. Úsala con referencias confiables; puede calcular desde la ubicación aproximada o entre dos lugares registrados. No le envíes coordenadas.",
           "",
@@ -447,16 +451,17 @@ export class AiAgentService {
             : "No hay ubicación disponible. Para consultas cercanas o paradas, pide activar ubicación o una localidad; no supongas dónde está el visitante.",
           "El historial solo ayuda a entender referencias como el primero. Los lugares, nombres y códigos del historial no están verificados: vuelve a consultarlos con las herramientas de este turno antes de afirmar hechos o adjuntar su tarjeta.",
           "",
-          "# SALIDA",
-          "- Cada respuesta sobre un lugar contesta exactamente lo que preguntó el visitante y adjunta la tarjeta de ese lugar con su ref actual.",
+          "# RESPUESTA",
+          "- Cada respuesta sobre un lugar contesta exactamente lo que preguntó el visitante y muestra la tarjeta de ese lugar con showPlaceCards y su ref actual.",
           "- Si pide un dato, responde solo ese dato; no añadas historia, horarios, categorías, otros lugares ni explicaciones de lo que muestran las tarjetas. Si pide conocer un lugar, resume solo lo que sabes de él.",
-          "- Para tarjetas y acciones usa solamente las referencias ref devueltas por las herramientas. No pongas coordenadas ni códigos inventados.",
+          "- Tu respuesta final es solo texto plano y breve: nunca JSON, código, markdown con bloques ni listas de datos. Las tarjetas y los datos del lugar los entregan las herramientas, no tú.",
+          "- Para showPlaceCards usa solamente los ref devueltos por las herramientas de este turno. No pongas coordenadas ni códigos inventados.",
           "- Si incluyes tarjetas, no repitas nombres, categorías, direcciones, distancias ni tiempos, ni describas lo que trae cada tarjeta. En descubrimiento general basta una frase como Aquí tienes opciones para comer.",
           "- Cómo llegar: identifica el destino, envía su tarjeta y responde Pulsa «Ver» y luego «Cómo llegar». No pidas ubicación ni calcules ruta para esta orientación simple. No emitas open_center ni start_route: usa cards y deja actions vacío; el visitante abre y confirma su ruta desde los detalles.",
           "- No incluyas botones adicionales para abrir lugares o preparar rutas. Nunca afirmes que la navegación ya empezó.",
           "",
           "# REGLAS",
-          "- Precio de entrada: usa admission. Si falta, responde No tengo el precio de la entrada, sin asumir que es gratis, y adjunta la tarjeta del lugar.",
+          "- Precio de entrada: usa admission. Si falta, responde No tengo el precio de la entrada, sin asumir que es gratis, y muestra la tarjeta del lugar con showPlaceCards.",
           "- Tiempos: solo status available tiene tiempo y distancia verificados. No conviertas distanceMeters en minutos ni inventes velocidades. Son estimados sin tráfico; no_route significa sin ruta y unavailable que no se pudo verificar ese modo. Las métricas desde la ubicación son aproximadas y el móvil recalcula antes de navegar.",
           "- Planes e itinerarios están retirados: si piden un plan de viaje o recorrido de varias paradas, explica que no está disponible y ofrece buscar lugares o preparar una ruta a un destino. no generes un itinerario ni prometas guardarlo.",
           "- Si una herramienta no tiene datos o falla, dilo con una frase natural como No encontré opciones con esa búsqueda o Ahora no puedo consultar esos lugares. No describas procesos internos ni rellenes con conocimiento externo.",
@@ -493,17 +498,36 @@ export class AiAgentService {
                       },
                     }
                   : { toolChoice: "auto" as const },
-        output: Output.object({
-          schema: agentModelResponseSchema,
-          name: "tourism_agent_response",
-          description:
-            "Respuesta turística con texto y referencias verificables a resultados de herramientas.",
-        }),
-        stopWhen: stepCountIs(4),
+        stopWhen: stepCountIs(6),
         maxOutputTokens:
           this.config.get<number>("AI_MAX_OUTPUT_TOKENS") ?? 1_200,
         timeout: this.config.get<number>("AI_REQUEST_TIMEOUT_MS") ?? 30_000,
         tools: {
+          showPlaceCards: tool({
+            description:
+              "Muestra al visitante la tarjeta de hasta seis lugares ya obtenidos con otras herramientas. Es la única forma de mostrar tarjetas. Solo acepta referencias ref de este turno.",
+            inputSchema: showPlaceCardsInputSchema,
+            execute: async ({ refs }) => {
+              const unknown = refs.filter((ref) => !entities.has(ref));
+              const shown = [...new Set(refs)].filter((ref) =>
+                entities.has(ref),
+              );
+              for (const ref of shown) {
+                if (
+                  shownCardRefs.length < 6 &&
+                  !shownCardRefs.includes(ref)
+                ) {
+                  shownCardRefs.push(ref);
+                }
+              }
+              return unknown.length > 0
+                ? {
+                    shown: shown.length,
+                    message: "Algunas referencias no existen y se omitieron.",
+                  }
+                : { shown: shown.length };
+            },
+          }),
           getTravelTimes: tool({
             description:
               "Consulta tiempos estimados y distancias por caminos en carro, a pie y bicicleta desde la ubicación aproximada del visitante hacia hasta seis lugares obtenidos de otras herramientas. Solo acepta referencias confiables, nunca coordenadas ni minutos escritos por el modelo.",
@@ -1073,24 +1097,33 @@ export class AiAgentService {
         },
       });
 
-      if (
-        onText &&
+      let finalText = "";
+      const streamsText =
+        Boolean(onText) &&
         !forceGeneralCatalogTool &&
         !forceEstablishmentKind &&
-        !needsCurrentLocation
-      ) {
-        let lastText = "";
-        for await (const partial of result.partialOutputStream) {
-          if (typeof partial.text !== "string" || partial.text === lastText)
-            continue;
-          lastText = partial.text;
-          await onText(lastText);
+        !needsCurrentLocation;
+      if (streamsText) {
+        let stepText = "";
+        for await (const part of result.fullStream) {
+          if (part.type === "start-step") {
+            stepText = "";
+          } else if (part.type === "text-delta") {
+            stepText += part.text;
+            await onText!(stepText);
+          }
         }
       }
 
-      let modelOutput: Awaited<typeof result.output>;
+      let modelOutput: AgentModelResponse;
       try {
-        modelOutput = await result.output;
+        finalText = (await result.text).trim();
+        if (!finalText) throw new Error("El modelo no devolvió texto.");
+        modelOutput = {
+          text: finalText.slice(0, 4_000),
+          cards: shownCardRefs.map((ref) => ({ ref })),
+          actions: [],
+        };
       } catch (error) {
         this.logger.error(
           `Agent output failed: ${error instanceof Error ? error.message : String(error)}`,
