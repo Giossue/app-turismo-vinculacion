@@ -111,6 +111,27 @@ export class AdminCentersQueryDto {
   offset = 0;
 }
 
+export class AdminUsersQueryDto {
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
+  @MinLength(2)
+  q?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 20;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset = 0;
+}
+
 export class ReviewCenterDto {
   @IsIn(["APPROVE", "REJECT"])
   action!: "APPROVE" | "REJECT";

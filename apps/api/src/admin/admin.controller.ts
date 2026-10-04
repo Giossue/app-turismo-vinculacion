@@ -4,11 +4,13 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   Patch,
   Post,
   Query,
   Inject,
+  Optional,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -19,8 +21,10 @@ import {
 } from "@nestjs/swagger";
 
 import { AdminCentersService } from "./admin-centers.service";
+import { AdminUsersService } from "./admin-users.service";
 import {
   AdminCentersQueryDto,
+  AdminUsersQueryDto,
   AdminCatalogCreateDto,
   AdminCatalogsQueryDto,
   AdminCatalogUpdateDto,
@@ -42,7 +46,22 @@ import type { AuthenticatedUser } from "../auth/auth.types";
 export class AdminController {
   constructor(
     @Inject(AdminCentersService) private readonly centers: AdminCentersService,
+    @Optional()
+    @Inject(AdminUsersService)
+    private readonly users?: AdminUsersService,
   ) {}
+
+  @Get("users")
+  @Header("Cache-Control", "private, no-store")
+  @Roles("ADMINISTRADOR")
+  @ApiOperation({
+    summary: "Consulta cuentas registradas",
+    description:
+      "Lista nombre, correo, roles, estado y fecha de registro; solo para administradores.",
+  })
+  async usersList(@Query() query: AdminUsersQueryDto) {
+    return { data: await this.users!.list(query) };
+  }
 
   @Get("centers")
   @ApiQuery({

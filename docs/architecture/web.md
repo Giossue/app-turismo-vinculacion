@@ -105,6 +105,9 @@ registran en la tabla de auditoría existente con el discriminador `ESTABLISHMEN
 la taxonomía se consulta como actividad → clasificación → categoría y no reutiliza
 `categorias_atractivo`; la categoría conserva su sistema semántico y la importación nacional
 queda para una fase posterior.
+La sección Usuarios consulta cuentas registradas con búsqueda por nombre, correo o rol y
+paginación; solo administradores pueden acceder mediante `/admin/users`. Muestra nombre,
+correo, roles, estado y fecha de registro, sin exponer atributos de identidad ni credenciales.
 La sección Catálogos permite administrar las opciones técnicas mediante la API y muestra
 estados activos/inactivos sin conexión directa a PostgreSQL. Los tipos de establecimiento
 conservan un código de icono y un color hexadecimal asignado automáticamente por la API para representar
