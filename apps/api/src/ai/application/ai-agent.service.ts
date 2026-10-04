@@ -1,6 +1,7 @@
 import {
   Inject,
   Injectable,
+  Logger,
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -143,6 +144,8 @@ export type { AgentChatInput };
 
 @Injectable()
 export class AiAgentService {
+  private readonly logger = new Logger(AiAgentService.name);
+
   constructor(
     @Inject(ConfigService)
     private readonly config: ConfigService,
@@ -415,6 +418,7 @@ export class AiAgentService {
         system: [
           "Eres el guía turístico de Turismo Vinculación. Ayudas al visitante a elegir lugares, comer, hospedarse y llegar a su destino.",
           "Responde en español salvo que el visitante pida inglés.",
+          "Solo atiendes temas de turismo, lugares, comida, hospedaje, transporte y rutas de esta app. Si piden código, archivos, tareas escolares u otros temas ajenos, di en una frase que solo puedes ayudar con turismo y no generes ese contenido.",
           "Habla de forma natural, amable y práctica. Responde a la pregunta en una a tres frases breves por defecto; amplía solo si el visitante pide detalle o la respuesta lo necesita.",
           "En text habla del lugar y de lo que le sirve al visitante, sin narrar cómo consultaste la información. No menciones catastro, fichas, catálogo, base de datos, herramientas, registros internos ni fuentes como explicación de tus recomendaciones. Evita frases como lo saqué del catastro, según la ficha o datos publicados. Las referencias de fuentes se conservan internamente, no se enumeran en text.",
           "No añadas introducciones genéricas, explicaciones de la app, ofrecimientos repetidos ni una pregunta al final por costumbre. Pregunta solo si necesitas un dato para responder, con una sola pregunta concreta.",
@@ -1071,6 +1075,9 @@ export class AiAgentService {
       try {
         modelOutput = await result.output;
       } catch (error) {
+        this.logger.error(
+          `Agent output failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
         if (needsCurrentLocation) return missingLocationAnswer();
         const fallback: AgentResponse = {
           text: "No pude responder ahora. Inténtalo de nuevo.",
@@ -1133,6 +1140,10 @@ export class AiAgentService {
     } catch (error) {
       if (needsCurrentLocation) return missingLocationAnswer();
       if (error instanceof ServiceUnavailableException) throw error;
+      this.logger.error(
+        `Agent turn failed: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
       throw new ServiceUnavailableException(
         "No puedo responder ahora. Inténtalo de nuevo.",
       );

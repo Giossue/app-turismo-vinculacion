@@ -4,6 +4,7 @@ import {
   Controller,
   Headers,
   Inject,
+  Logger,
   Post,
   Res,
   UseGuards,
@@ -51,6 +52,8 @@ const cardLocationsHeaderDocumentation = {
 @Roles("TURISTA", "ADMINISTRADOR")
 @Controller("ai")
 export class AiAgentController {
+  private readonly logger = new Logger(AiAgentController.name);
+
   constructor(
     @Inject(AiAgentService) private readonly agent: AiAgentService,
     @Inject(AgentHistoryService) private readonly history: AgentHistoryService,
@@ -153,7 +156,11 @@ export class AiAgentController {
         response: finalResponse,
       });
       writeSseEvent(response.raw, "[DONE]");
-    } catch {
+    } catch (error) {
+      this.logger.error(
+        `Agent stream failed: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
       if (
         !abortController.signal.aborted &&
         !response.raw.destroyed &&
@@ -185,7 +192,10 @@ export class AiAgentController {
         response,
       );
       return conversationId ? { ...response, conversationId } : response;
-    } catch {
+    } catch (error) {
+      this.logger.warn(
+        `Agent history save failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return { ...response, historySaveError: true };
     }
   }
