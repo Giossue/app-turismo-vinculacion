@@ -36,7 +36,7 @@ export const publicCenterSchema = z.object({
   hierarchyCode: z.string().nullable(),
 });
 const detailSchema = publicCenterSchema.extend({
-  touristZone: z.string().min(1),
+  touristZone: z.string().min(1).nullable(),
   address: z.string().nullable(),
   altitudeMeters: z.number().int().nullable(),
   admission: z

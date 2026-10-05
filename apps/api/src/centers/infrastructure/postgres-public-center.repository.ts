@@ -236,7 +236,7 @@ function mapPublicCenter(row: CenterRow): PublicCenter {
 function mapPublicCenterDetail(row: DetailRow): PublicCenterDetail {
   return {
     ...mapPublicCenter(row),
-    touristZone: required(row, "tourist_zone"),
+    touristZone: typeof row.tourist_zone === "string" ? row.tourist_zone : null,
     address: row.address,
     altitudeMeters:
       row.altitude_meters === null ? null : Number(row.altitude_meters),

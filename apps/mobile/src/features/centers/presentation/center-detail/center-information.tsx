@@ -36,7 +36,9 @@ export function CenterInformation({
         title="Información del lugar"
         variant={variant}
       >
-        <TourismInfoRow label="Zona turística" value={detail.touristZone} />
+        {detail.touristZone ? (
+          <TourismInfoRow label="Zona turística" value={detail.touristZone} />
+        ) : null}
         <TourismInfoRow label="Categoría" value={detail.category} />
         <TourismInfoRow label="Tipo" value={detail.type} />
         {detail.subtype ? (

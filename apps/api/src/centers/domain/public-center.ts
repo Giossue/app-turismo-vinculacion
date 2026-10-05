@@ -35,7 +35,7 @@ export type NearbyPublicCenterPage = Readonly<{
 
 export type PublicCenterDetail = PublicCenter &
   Readonly<{
-    touristZone: string;
+    touristZone: string | null;
     address: string | null;
     altitudeMeters: number | null;
     admission: Readonly<{

@@ -81,7 +81,7 @@ function catalogCodeBase(name: string) {
 type CenterDraft = {
   name: string;
   subtypeId: number;
-  touristZoneId: number;
+  touristZoneId: number | null;
   parishId: number;
   productLineId: number;
   scenarioId: number;
@@ -116,7 +116,7 @@ interface CenterRow extends JsonRecord {
   responsibleId: number | null;
   publishedAt: string | null;
   subtypeId: number;
-  touristZoneId: number;
+  touristZoneId: number | null;
   parishId: number;
   productLineId: number;
   scenarioId: number;
@@ -1818,7 +1818,6 @@ function getCoreSectionCompletion(
     identificacion: Boolean(
       draft.name &&
       draft.subtypeId &&
-      draft.touristZoneId &&
       draft.parishId &&
       draft.productLineId &&
       draft.scenarioId,
@@ -3479,7 +3478,6 @@ export class AdminCentersService {
     if (
       published.name &&
       published.subtypeId &&
-      published.touristZoneId &&
       published.parishId &&
       published.productLineId &&
       published.scenarioId
@@ -6410,7 +6408,10 @@ export class AdminCentersService {
     return {
       name: center.name,
       subtypeId: Number(center.subtypeId),
-      touristZoneId: Number(center.touristZoneId),
+      touristZoneId:
+        center.touristZoneId === null || center.touristZoneId === undefined
+          ? null
+          : Number(center.touristZoneId),
       parishId: Number(center.parishId),
       productLineId: Number(center.productLineId),
       scenarioId: Number(center.scenarioId),
@@ -6440,7 +6441,6 @@ export class AdminCentersService {
     const required = [
       "name",
       "subtypeId",
-      "touristZoneId",
       "parishId",
       "productLineId",
       "scenarioId",
@@ -6454,7 +6454,11 @@ export class AdminCentersService {
         throw new ConflictException(`Falta completar el campo ${key}.`);
       }
     }
-    return value as CenterDraft;
+    // La zona turística no forma parte de la ficha MINTUR: es opcional.
+    return {
+      ...value,
+      touristZoneId: value.touristZoneId ?? null,
+    } as CenterDraft;
   }
 
   private async ensureProvisionalHierarchy(
@@ -6490,7 +6494,15 @@ export class AdminCentersService {
     this.validateSectionMap(draft.sections);
     const references: Array<[string, number, string]> = [
       ["subtipos_atractivo", draft.subtypeId, "subtipo"],
-      ["zonas_turisticas", draft.touristZoneId, "zona turística"],
+      ...(draft.touristZoneId
+        ? [
+            ["zonas_turisticas", draft.touristZoneId, "zona turística"] as [
+              string,
+              number,
+              string,
+            ],
+          ]
+        : []),
       ["parroquias", draft.parishId, "parroquia"],
       ["lineas_producto", draft.productLineId, "línea de producto"],
       ["escenarios", draft.scenarioId, "escenario"],
