@@ -2119,14 +2119,14 @@ export class AdminCentersService {
         `SELECT id, codigo AS code, nombre AS name FROM rangos_jerarquia WHERE activo ORDER BY codigo`,
       ),
       this.dataSource.query(
-        `SELECT id, codigo, nombre FROM catalogo_clima WHERE activo AND ($1::text IS NULL OR nombre ILIKE $1) ORDER BY nombre`,
+        `SELECT id, codigo AS code, nombre AS name FROM catalogo_clima WHERE activo AND ($1::text IS NULL OR nombre ILIKE $1) ORDER BY nombre`,
         [like],
       ),
       this.dataSource.query(
-        `SELECT id, codigo, nombre FROM tipos_ingreso WHERE activo ORDER BY nombre`,
+        `SELECT id, codigo AS code, nombre AS name FROM tipos_ingreso WHERE activo ORDER BY nombre`,
       ),
       this.dataSource.query(
-        `SELECT id, codigo, nombre FROM modalidades_atencion WHERE activo ORDER BY nombre`,
+        `SELECT id, codigo AS code, nombre AS name FROM modalidades_atencion WHERE activo ORDER BY nombre`,
       ),
       this.dataSource.query(
         `SELECT id, codigo AS code, nombre AS name, activo AS active FROM tipos_accesibilidad WHERE eliminado_at IS NULL AND ${activeCondition} AND ($1::text IS NULL OR nombre ILIKE $1) ORDER BY nombre`,
