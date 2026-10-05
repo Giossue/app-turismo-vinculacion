@@ -1,9 +1,11 @@
-import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import {
+  BottomSheetFlatList,
+  type BottomSheetFlatListMethods,
+} from "@gorhom/bottom-sheet";
 import { useEffect, useRef, useState } from "react";
 import {
   BackHandler,
   Keyboard,
-  type ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,7 +19,6 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
-import { TourismOptionRow } from "@/core/ui/tourism-option-row";
 import {
   TourismActionButton,
   TourismIconAction,
@@ -34,17 +35,23 @@ import {
   AGENT_MESSAGE_MAX_LENGTH,
   AGENT_MAX_USER_MESSAGES,
   type AgentCard,
+  type AgentMessage,
 } from "../domain/agent";
 import {
-  agentStarterPrompts,
   getRetryableAgentTurn,
   showsAgentStarterPrompts,
 } from "../domain/agent-conversation";
+import { AgentChatListFooter } from "./agent-chat-list-footer";
 import { AgentMessageBubble } from "./agent-message-bubble";
-import { AgentThinkingIndicator } from "./agent-thinking-indicator";
 import { confirmNewAgentChat } from "./confirm-new-agent-chat";
 import { AgentVoiceListening } from "./agent-voice-listening";
 import { useAgentVoiceInput } from "./agent-voice-input";
+
+/** A chat holds a few dozen bubbles at most; render most of them at once. */
+const initialMessagesToRender = 16;
+const messageWindowSize = 7;
+
+const keyExtractor = (message: AgentMessage) => message.id;
 
 /** Conversation and composer of the agent sheet. */
 export function AgentChatContent({
@@ -107,7 +114,7 @@ export function AgentChatContent({
     !conversation.sending &&
     !conversation.requestingLocation &&
     !voiceBusy;
-  const messagesScrollRef = useRef<ScrollView>(null);
+  const messagesListRef = useRef<BottomSheetFlatListMethods>(null);
   const canSend =
     Boolean(conversation.draft.trim()) &&
     !conversation.limitReached &&
@@ -115,6 +122,16 @@ export function AgentChatContent({
     !conversation.requestingLocation &&
     !voiceBusy;
   const canRetry = Boolean(getRetryableAgentTurn(conversation.messages));
+  const visibleMessages = conversation.messages.filter(
+    (message) => message.kind !== "partial" || message.text,
+  );
+  const showStarters =
+    !conversation.sending && showsAgentStarterPrompts(conversation.messages);
+  const hasListFooter =
+    showStarters ||
+    conversation.awaitingText ||
+    canRetry ||
+    Boolean(conversation.locationFeedback);
   const voiceRecording = voice.recording;
   const cancelVoice = voice.cancel;
   useEffect(() => {
@@ -149,61 +166,45 @@ export function AgentChatContent({
         keyboardStyle,
       ]}
     >
-      <BottomSheetScrollView
+      {/* Las burbujas se virtualizan; el pie (sugerencias, indicador,
+      reintentar y aviso de ubicación) va dentro de la lista para que
+      desplace junto a ellas, igual que antes. */}
+      <BottomSheetFlatList
         contentContainerStyle={styles.content}
+        data={visibleMessages}
+        initialNumToRender={initialMessagesToRender}
+        keyExtractor={keyExtractor}
         keyboardShouldPersistTaps="handled"
-        onContentSizeChange={() =>
-          messagesScrollRef.current?.scrollToEnd({ animated: true })
+        ListFooterComponent={
+          hasListFooter ? (
+            <AgentChatListFooter
+              awaitingText={conversation.awaitingText}
+              canRetry={canRetry}
+              locationFeedback={conversation.locationFeedback}
+              onRetry={conversation.retry}
+              onSend={(text) => void conversation.send(text)}
+              showStarters={showStarters}
+            />
+          ) : null
         }
-        ref={messagesScrollRef}
+        onContentSizeChange={() =>
+          messagesListRef.current?.scrollToEnd({ animated: true })
+        }
+        ref={messagesListRef}
+        renderItem={({ item }) => (
+          <AgentMessageBubble
+            message={item}
+            onOpenCard={onOpenCard}
+            onRequestLocation={() =>
+              void conversation.requestLocationForMessage(item.id)
+            }
+            requestingLocation={conversation.requestingLocation}
+          />
+        )}
         showsVerticalScrollIndicator={false}
         style={styles.messagesScroll}
-      >
-        <View style={styles.messages}>
-          {conversation.messages
-            .filter((message) => message.kind !== "partial" || message.text)
-            .map((message) => (
-              <AgentMessageBubble
-                key={message.id}
-                message={message}
-                onOpenCard={onOpenCard}
-                onRequestLocation={() =>
-                  void conversation.requestLocationForMessage(message.id)
-                }
-                requestingLocation={conversation.requestingLocation}
-              />
-            ))}
-          {!conversation.sending &&
-          showsAgentStarterPrompts(conversation.messages) ? (
-            <View style={styles.starters}>
-              {agentStarterPrompts.map((prompt) => (
-                <TourismOptionRow
-                  compact
-                  icon={prompt.icon}
-                  key={prompt.text}
-                  onPress={() => void conversation.send(prompt.text)}
-                  title={prompt.text}
-                />
-              ))}
-            </View>
-          ) : null}
-          {conversation.awaitingText ? <AgentThinkingIndicator /> : null}
-          {canRetry ? (
-            <TourismActionButton
-              accessibilityLabel="Reintentar la última pregunta"
-              compact
-              label="Reintentar"
-              onPress={conversation.retry}
-              style={styles.retry}
-            />
-          ) : null}
-          {conversation.locationFeedback ? (
-            <Text style={[styles.error, { color: colors.danger }]}>
-              {conversation.locationFeedback}
-            </Text>
-          ) : null}
-        </View>
-      </BottomSheetScrollView>
+        windowSize={messageWindowSize}
+      />
 
       {conversation.limitReached ? (
         <View style={styles.limitNotice}>
@@ -228,6 +229,8 @@ export function AgentChatContent({
 
       {mediaStatus ? (
         <Text
+          accessibilityLiveRegion="polite"
+          accessibilityRole={mediaStatus.error ? "alert" : undefined}
           style={[
             styles.mediaStatus,
             { color: mediaStatus.error ? colors.danger : colors.textMuted },
@@ -351,13 +354,9 @@ const styles = StyleSheet.create({
   compactKeyboardComposer: { marginBottom: 0 },
   content: {
     flexGrow: 1,
+    gap: turismoSpacing.lg,
     paddingBottom: turismoSpacing.xs,
   },
-  messages: { gap: turismoSpacing.lg },
-  // Alineadas con la burbuja del agente, a la derecha de su ícono.
-  starters: { gap: turismoSpacing.xxs, marginLeft: turismoSpacing.xxl },
-  retry: { alignSelf: "flex-start", marginLeft: turismoSpacing.xxl },
-  error: { ...turismoTypography.bodySmall, marginLeft: turismoSpacing.xxl },
   mediaStatus: {
     ...turismoTypography.caption,
     marginHorizontal: turismoSpacing.sm,

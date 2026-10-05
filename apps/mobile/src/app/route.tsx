@@ -12,6 +12,7 @@ import { TourismStateView } from "@/core/ui/tourism-state";
 import { turismoSpacing } from "@/core/ui/tokens";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { buildLoginHref } from "@/features/auth/application/login-href";
+import { useBackgroundTrackingPreference } from "@/features/routing/application/use-background-tracking-preference";
 import { useCalculatedRoute } from "@/features/routing/application/use-calculated-route";
 import { useNavigationFollow } from "@/features/routing/application/use-navigation-follow";
 import { useNavigationRoute } from "@/features/routing/application/use-navigation-route";
@@ -28,10 +29,6 @@ import {
   savedRouteNavigationNotice,
 } from "@/features/routing/domain/route-source";
 import type { RouteMode } from "@/features/routing/domain/routing";
-import {
-  requestNavigationBackgroundPermission,
-  requestNavigationNotificationPermission,
-} from "@/features/routing/infrastructure/navigation-background-task";
 import { ActiveNavigationOverlay } from "@/features/routing/presentation/active-navigation-overlay";
 import { RouteMap } from "@/features/routing/presentation/route-map";
 import { RoutePreviewPanel } from "@/features/routing/presentation/route-preview-panel";
@@ -139,6 +136,8 @@ function RouteScreenContent({
   const [retryingRoute, setRetryingRoute] = useState(false);
   const [backgroundTrackingEnabled, setBackgroundTrackingEnabled] =
     useState(false);
+  // Persisted opt-in: only when on are background permissions requested.
+  const backgroundPreference = useBackgroundTrackingPreference();
   const [previewExpanded, setPreviewExpanded] = useState(true);
   const [mapBottomInset, setMapBottomInset] = useState(0);
   // Guards double taps before the `startingNavigation` render lands.
@@ -254,19 +253,13 @@ function RouteScreenContent({
   };
 
   /**
-   * Asks for the permissions to keep following the route outside the app.
-   * Any refusal only leaves the navigation in the foreground.
+   * Only with the opt-in on, asks for the permissions to keep following the
+   * route outside the app. A refusal leaves the navigation in the foreground
+   * and `backgroundPreference.notice` says so.
    */
   const enableBackgroundTracking = async (isCancelled: () => boolean) => {
-    try {
-      const permission = await requestNavigationBackgroundPermission();
-      if (!permission.granted || isCancelled()) return;
-      const notifications = await requestNavigationNotificationPermission();
-      if (!notifications || isCancelled()) return;
-      setBackgroundTrackingEnabled(true);
-    } catch {
-      setBackgroundTrackingEnabled(false);
-    }
+    const outcome = await backgroundPreference.request(isCancelled);
+    if (!isCancelled()) setBackgroundTrackingEnabled(outcome.enabled);
   };
 
   const handleStartNavigation = async () => {
@@ -339,6 +332,7 @@ function RouteScreenContent({
   };
 
   const navigationNotice = savedRoute ? savedRouteNavigationNotice : routeError;
+  const authLoading = auth.status === "loading";
 
   if (!destination) {
     return (
@@ -380,6 +374,8 @@ function RouteScreenContent({
       />
       {!navigationActive ? (
         <RoutePreviewPanel
+          backgroundTrackingEnabled={backgroundPreference.optedIn}
+          backgroundTrackingNotice={backgroundPreference.notice}
           destinationName={destinationName}
           expanded={previewExpanded}
           isCalculating={isCalculating}
@@ -397,11 +393,13 @@ function RouteScreenContent({
           onClose={closeRoute}
           onExpandedChange={setPreviewExpanded}
           onHeightChange={setMapBottomInset}
+          onBackgroundTrackingChange={backgroundPreference.setOptedIn}
           onModeChange={setMode}
           onStartNavigation={() => void handleStartNavigation()}
           route={route}
           routeError={routeError}
           savedRoute={savedRoute !== null}
+          startDisabled={authLoading}
           startingNavigation={startingNavigation}
         />
       ) : route ? (
@@ -410,7 +408,11 @@ function RouteScreenContent({
           isFollowing={follow.following}
           isRecalculating={isCalculating || retryingRoute}
           message={navigationSession.message}
-          notice={navigationSession.backgroundNotice ?? navigationNotice}
+          notice={
+            navigationSession.backgroundNotice ??
+            backgroundPreference.notice ??
+            navigationNotice
+          }
           onBottomInsetChange={setMapBottomInset}
           onRecenter={() => follow.setFollowing(true)}
           onStop={handleStopNavigation}

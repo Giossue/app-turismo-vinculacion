@@ -14,9 +14,10 @@ export function useExploreLocationFocus() {
     null,
   );
   const hasFreshLocation = status === "ready" && coordinate !== null;
-  // Every request (button or return to foreground) passes through
-  // `requesting`, so a position turning ready is the only trigger that
-  // moves the camera to the user; the button does not recenter again.
+  // The "my location" button forces a refresh, which clears the coordinate
+  // and passes through `requesting`; a position turning ready again is the
+  // only trigger that moves the camera. Returning to the foreground keeps the
+  // coordinate (the watcher just resumes), so the camera does not jump then.
   const [locationFocus, setLocationFocus] = useState({ fresh: false, key: 0 });
   if (locationFocus.fresh !== hasFreshLocation) {
     setLocationFocus({

@@ -1,40 +1,39 @@
 import * as Location from "expo-location";
 import { AppState, type AppStateStatus } from "react-native";
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
 } from "react";
 
 import type { GeoCoordinate } from "../geo/types";
-import {
-  getLocationAvailability,
-  locationUnavailableMessages,
-  type LocationUnavailableReason,
-} from "./location-availability";
+import { getLocationAvailability } from "./location-availability";
 import { toCoordinate } from "./location-coordinate";
 import { isReliableLocationAccuracy } from "./location-quality";
+import {
+  toUnavailableState,
+  withTimeout,
+  type UserLocationState,
+} from "./location-session-helpers";
+import {
+  UserLocationActionsContext,
+  UserLocationStateContext,
+  UserLocationStatusContext,
+  type UserLocationActions,
+  type UserLocationStatusValue,
+} from "./user-location-context";
 
-type UserLocationStatus =
-  "idle" | "requesting" | "ready" | "denied" | "disabled" | "error";
-
-type UserLocationState = Readonly<{
-  accuracy: number | null;
-  coordinate: GeoCoordinate | null;
-  message: string | null;
-  status: UserLocationStatus;
-}>;
-
-type UserLocationContextValue = UserLocationState & {
-  requestLocation: (
-    options?: Readonly<{ forceRefresh?: boolean }>,
-  ) => Promise<GeoCoordinate | null>;
-  setForegroundTrackingSuspended: (suspended: boolean) => void;
-};
+export {
+  useUserLocation,
+  useUserLocationActions,
+  useUserLocationStatus,
+  type UserLocationActions,
+  type UserLocationContextValue,
+  type UserLocationStatusValue,
+} from "./user-location-context";
 
 type LocationReadOptions = Readonly<{
   allowPermissionRequest: boolean;
@@ -50,17 +49,18 @@ const initialState: UserLocationState = {
   status: "idle",
 };
 const currentLocationTimeoutMs = 12_000;
-/** How often the visible session re-checks permission and GPS provider. */
-const availabilitySyncIntervalMs = 5_000;
+/**
+ * How often an enabled session without a healthy watcher re-checks permission
+ * and GPS provider. Returning to the foreground and watcher errors already
+ * trigger a check, so this is only a safety net (e.g. the provider turned off
+ * while the watcher could not be started).
+ */
+const availabilitySyncIntervalMs = 30_000;
 const foregroundLocationOptions: Location.LocationOptions = {
   accuracy: Location.Accuracy.High,
   distanceInterval: 10,
   timeInterval: 5_000,
 };
-
-const UserLocationContext = createContext<UserLocationContextValue | null>(
-  null,
-);
 
 /**
  * Mantiene una única sesión de ubicación para todas las pantallas del móvil.
@@ -75,6 +75,9 @@ export function UserLocationProvider({
   children,
 }: Readonly<{ children: ReactNode }>) {
   const [state, setState] = useState<UserLocationState>(initialState);
+  // Mirrors `trackingEnabledRef` so the availability timer effect can start
+  // only once the session is in use.
+  const [trackingEnabled, setTrackingEnabled] = useState(false);
   const stateRef = useRef<UserLocationState>(initialState);
   const trackingEnabledRef = useRef(false);
   const foregroundTrackingSuspendedRef = useRef(false);
@@ -133,6 +136,8 @@ export function UserLocationProvider({
       return;
     }
 
+    // Dropping the subscription also hands the session back to the
+    // availability timer, which retries the watcher on its next tick.
     stopForegroundTracking();
     updateState((current) => ({
       ...current,
@@ -232,6 +237,10 @@ export function UserLocationProvider({
           }
 
           if (options.forceRefresh) {
+            // Only explicit "my location" taps reach here. Clearing the
+            // coordinate makes the status pass through `requesting` again,
+            // which is what Explore uses to recenter the camera once the new
+            // fix is ready (see `useExploreLocationFocus`).
             updateState((current) => ({
               ...current,
               accuracy: null,
@@ -361,6 +370,7 @@ export function UserLocationProvider({
     async (options: Readonly<{ forceRefresh?: boolean }> = {}) => {
       const forceRefresh = options.forceRefresh === true;
       trackingEnabledRef.current = true;
+      setTrackingEnabled(true);
       const currentCoordinate = stateRef.current.coordinate;
       if (currentCoordinate && !forceRefresh) {
         // La sesión comparte una lectura que ya pasó el filtro de precisión;
@@ -397,7 +407,11 @@ export function UserLocationProvider({
   useEffect(() => {
     const handleAppStateChange = (nextState: AppStateStatus) => {
       if (nextState === "active") {
-        void syncAvailability(true);
+        // Volver al primer plano no borra la coordenada: se reanuda el watcher
+        // (o se lee una nueva posición solo si no había una válida). Así la
+        // cámara de Explorar no salta a la persona en cada regreso; un salto
+        // lo pide únicamente el botón «mi ubicación» con `forceRefresh`.
+        void syncAvailability(false);
       } else {
         // Explorar usa solo permiso foreground. La tarea persistente pertenece
         // exclusivamente a una navegación activa.
@@ -409,69 +423,49 @@ export function UserLocationProvider({
       "change",
       handleAppStateChange,
     );
-    const availabilityTimer = setInterval(() => {
-      if (AppState.currentState === "active") {
-        void syncAvailability(false);
-      }
-    }, availabilitySyncIntervalMs);
 
     return () => {
       subscription.remove();
-      clearInterval(availabilityTimer);
       stopForegroundTracking();
     };
   }, [stopForegroundTracking, syncAvailability]);
 
-  const value: UserLocationContextValue = {
-    ...state,
-    requestLocation,
-    setForegroundTrackingSuspended,
-  };
+  useEffect(() => {
+    if (!trackingEnabled) return;
+
+    const availabilityTimer = setInterval(() => {
+      // A live subscription is removed on its first error, so its presence
+      // means the watcher is healthy and the bridge calls can be skipped.
+      if (
+        AppState.currentState !== "active" ||
+        foregroundSubscriptionRef.current
+      ) {
+        return;
+      }
+      void syncAvailability(false);
+    }, availabilitySyncIntervalMs);
+
+    return () => {
+      clearInterval(availabilityTimer);
+    };
+  }, [syncAvailability, trackingEnabled]);
+
+  const actions = useMemo<UserLocationActions>(
+    () => ({ requestLocation, setForegroundTrackingSuspended }),
+    [requestLocation, setForegroundTrackingSuspended],
+  );
+  const statusValue = useMemo<UserLocationStatusValue>(
+    () => ({ message: state.message, status: state.status }),
+    [state.message, state.status],
+  );
 
   return (
-    <UserLocationContext.Provider value={value}>
-      {children}
-    </UserLocationContext.Provider>
+    <UserLocationActionsContext.Provider value={actions}>
+      <UserLocationStatusContext.Provider value={statusValue}>
+        <UserLocationStateContext.Provider value={state}>
+          {children}
+        </UserLocationStateContext.Provider>
+      </UserLocationStatusContext.Provider>
+    </UserLocationActionsContext.Provider>
   );
-}
-
-export function useUserLocation(): UserLocationContextValue {
-  const context = useContext(UserLocationContext);
-  if (!context) {
-    throw new Error(
-      "useUserLocation debe usarse dentro de UserLocationProvider.",
-    );
-  }
-  return context;
-}
-
-function toUnavailableState(
-  current: UserLocationState,
-  reason: LocationUnavailableReason,
-): UserLocationState {
-  return {
-    ...current,
-    coordinate: null,
-    message: locationUnavailableMessages[reason],
-    status: reason === "services-disabled" ? "disabled" : "denied",
-  };
-}
-
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(
-      () => reject(new Error("Location request timed out")),
-      timeoutMs,
-    );
-    promise.then(
-      (value) => {
-        clearTimeout(timeout);
-        resolve(value);
-      },
-      (error: unknown) => {
-        clearTimeout(timeout);
-        reject(error);
-      },
-    );
-  });
 }

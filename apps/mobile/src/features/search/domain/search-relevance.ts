@@ -108,7 +108,7 @@ export function getSearchRelevance(
 }
 
 /** Same formula as the API: up to 150 points for nearby places, half at 5 km. */
-export function searchScore(
+function searchScore(
   relevance: number,
   distanceMeters: number | null | undefined,
 ): number {

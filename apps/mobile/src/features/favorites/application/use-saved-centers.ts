@@ -1,8 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
-import { ApiError } from "@/core/api/http";
 import { queryKeys } from "@/core/api/query-keys";
-import { useAuth } from "@/features/auth/application/auth-context";
 import type { PublicCenter } from "@/features/centers/domain/public-center";
 import {
   listRemoteSavedCenters,
@@ -10,26 +6,20 @@ import {
   saveRemoteCenter,
 } from "../data/favorites-api";
 import { importLegacySavedCenters } from "./import-legacy-saved-centers";
-
-// The list is persisted for offline use; after a restart it is revalidated
-// once it is older than this.
-const savedCentersStaleTimeMs = 5 * 60 * 1000;
+import {
+  describeSavedCollectionError,
+  useSavedCollection,
+  useSavedCollectionMutation,
+} from "./use-saved-collection";
 
 export function useSavedCenters() {
-  const auth = useAuth();
-
-  return useQuery({
-    queryKey: [...queryKeys.savedCenters, auth.user?.id ?? "anonymous"],
-    queryFn: async () => {
-      if (auth.status !== "authenticated") return [];
-
-      await importLegacySavedCenters(auth.request);
-      return listRemoteSavedCenters(auth.request);
+  return useSavedCollection<PublicCenter>(
+    queryKeys.savedCenters,
+    async (request) => {
+      await importLegacySavedCenters(request);
+      return listRemoteSavedCenters(request);
     },
-    enabled: auth.status !== "loading",
-    gcTime: Infinity,
-    staleTime: savedCentersStaleTimeMs,
-  });
+  );
 }
 
 /**
@@ -39,49 +29,22 @@ export function useSavedCenters() {
  * failure with `describeSavedCenterError` (e.g. in a `TourismSnackbar`).
  */
 export function useSavedCenterMutation() {
-  const auth = useAuth();
-  const queryClient = useQueryClient();
-  const queryKey = [...queryKeys.savedCenters, auth.user?.id ?? "anonymous"];
-
-  return useMutation({
-    mutationFn: async (variables: SavedCenterMutation) => {
-      if (auth.status !== "authenticated") {
-        throw new ApiError("Inicia sesión para usar tus guardados.");
-      }
-      if (variables.currentlySaved) {
-        await removeRemoteCenter(variables.center.code, auth.request);
-      } else {
-        await saveRemoteCenter(variables.center.code, auth.request);
-      }
+  return useSavedCollectionMutation<PublicCenter, SavedCenterMutation>(
+    queryKeys.savedCenters,
+    {
+      apply: (list, center, currentlySaved) => {
+        const rest = list.filter((item) => item.code !== center.code);
+        return currentlySaved ? rest : [center, ...rest];
+      },
+      getItem: (variables) => variables.center,
+      remove: (center, request) => removeRemoteCenter(center.code, request),
+      save: (center, request) => saveRemoteCenter(center.code, request),
     },
-    onMutate: async (variables: SavedCenterMutation) => {
-      await queryClient.cancelQueries({ queryKey });
-      const previous =
-        queryClient.getQueryData<readonly PublicCenter[]>(queryKey);
-      const current = previous ?? [];
-      const { center } = variables;
-      const next = variables.currentlySaved
-        ? current.filter((item) => item.code !== center.code)
-        : [center, ...current.filter((item) => item.code !== center.code)];
-      queryClient.setQueryData(queryKey, next);
-      return { previous };
-    },
-    onError: (_error, _variables, context) => {
-      if (!context) return;
-      queryClient.setQueryData(queryKey, context.previous);
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.savedCenters });
-    },
-  });
+  );
 }
 
 /** User-facing message for a failed save/remove. */
-export function describeSavedCenterError(error: unknown): string {
-  return error instanceof ApiError
-    ? error.message
-    : "No pudimos actualizar tus guardados.";
-}
+export const describeSavedCenterError = describeSavedCollectionError;
 
 export type SavedCenterMutation = Readonly<{
   center: PublicCenter;

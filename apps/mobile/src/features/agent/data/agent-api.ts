@@ -172,15 +172,27 @@ export async function askTourismAgentStream(
     }
   };
 
+  // The listener above misses an abort that happened while the request was
+  // resolving; without this check the stream would be read to completion.
+  const stopIfAborted = async (): Promise<boolean> => {
+    if (!signal?.aborted) return false;
+    await reader.cancel().catch(() => undefined);
+    return true;
+  };
+
   try {
-    while (true) {
+    let aborted = await stopIfAborted();
+    while (!aborted) {
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
       await consumeEvents(false);
+      aborted = await stopIfAborted();
     }
-    buffer += decoder.decode();
-    await consumeEvents(true);
+    if (!aborted) {
+      buffer += decoder.decode();
+      await consumeEvents(true);
+    }
   } catch (error) {
     await reader.cancel(error).catch(() => undefined);
     // Un corte de red a mitad de la respuesta no debe mostrar texto técnico.

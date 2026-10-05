@@ -45,6 +45,20 @@ describe("visible map center queries", () => {
     expect(isPersistedQueryKey(filtered.queryKey)).toBe(false);
   });
 
+  it("shares one key between viewports inside the same grid cells", () => {
+    const first = getPublishedMapCentersQueryOptions(firstArea);
+    const nudged = getPublishedMapCentersQueryOptions([
+      -79.0196, -1.6192, -78.9804, -1.5804,
+    ]);
+    expect(nudged.queryKey).toEqual(first.queryKey);
+    expect(first.queryKey.at(-1)).toEqual({
+      west: -79.02,
+      south: -1.62,
+      east: -78.98,
+      north: -1.58,
+    });
+  });
+
   it("waits for a valid camera box instead of requesting an arbitrary national list", () => {
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);

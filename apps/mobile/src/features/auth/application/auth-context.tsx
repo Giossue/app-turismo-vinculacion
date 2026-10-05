@@ -30,6 +30,10 @@ import {
   saveStoredSession,
 } from "../data/token-storage";
 import type { AuthStatus, AuthUser } from "../domain/auth-user";
+import {
+  shouldRefreshBeforeRequest,
+  shouldRetryAfterUnauthorized,
+} from "../domain/authorized-request-policy";
 import type { TouristRegistrationInput } from "../domain/registration-options";
 
 /**
@@ -58,11 +62,15 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const queryClient = useQueryClient();
   const accessTokenRef = useRef<string | null>(null);
   const refreshPromiseRef = useRef<Promise<boolean> | null>(null);
+  // Set once a refresh finds no stored session (or after logout) so guest
+  // requests do not read the secure store again on every call.
+  const knownAnonymousRef = useRef(false);
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<AuthUser | null>(null);
 
   const clearSession = useCallback(async () => {
     accessTokenRef.current = null;
+    knownAnonymousRef.current = true;
     try {
       await clearStoredSession();
     } catch {
@@ -82,6 +90,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const setSession = useCallback(async (result: SessionResult) => {
     await saveStoredSession(result.refreshToken, result.user);
     accessTokenRef.current = result.accessToken;
+    knownAnonymousRef.current = false;
     setUser(result.user);
     setStatus("authenticated");
   }, []);
@@ -92,6 +101,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     const promise = (async () => {
       const stored = await readStoredSession().catch(() => null);
       if (!stored) {
+        knownAnonymousRef.current = true;
         setStatus("anonymous");
         return false;
       }
@@ -170,10 +180,24 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         return fetch(input, { ...init, headers });
       };
 
-      // A session restored offline has no access token yet.
-      if (!accessTokenRef.current) await refreshSession();
-      const response = await execute(accessTokenRef.current);
+      // A session restored offline has no access token yet; a tourist known
+      // to be anonymous skips the secure-store read entirely.
+      if (
+        shouldRefreshBeforeRequest({
+          hasAccessToken: accessTokenRef.current !== null,
+          knownAnonymous: knownAnonymousRef.current,
+        })
+      ) {
+        await refreshSession();
+      }
+      const sentToken = accessTokenRef.current;
+      const response = await execute(sentToken);
       if (response.status !== 401) return response;
+      if (
+        !shouldRetryAfterUnauthorized({ sentAccessToken: sentToken !== null })
+      ) {
+        return response;
+      }
       if (!(await refreshSession())) return response;
       return execute(accessTokenRef.current);
     },

@@ -1,5 +1,4 @@
-import { showSaveToast } from "@/features/favorites/presentation/save-toast";
-import { useAuth } from "@/features/auth/application/auth-context";
+import { useSaveToggle } from "@/features/favorites/application/use-save-toggle";
 import {
   useSavedEstablishmentMutation,
   useSavedEstablishments,
@@ -20,34 +19,27 @@ export function useEstablishmentSaveToggle(
   detail: PublicEstablishmentDetail | undefined,
   onRequireAuth: () => void,
 ) {
-  const auth = useAuth();
   const savedEstablishments = useSavedEstablishments();
   const mutation = useSavedEstablishmentMutation();
   const { id } = establishment;
-  if (id === undefined) return null;
   const saved =
-    savedEstablishments.data?.some((item) => item.id === id) ?? false;
+    id !== undefined &&
+    (savedEstablishments.data?.some((item) => item.id === id) ?? false);
 
-  const toggle = () => {
-    if (auth.status !== "authenticated") {
-      onRequireAuth();
-      return;
-    }
-    mutation.mutate(
-      {
-        establishment: toSavedEstablishment({ ...establishment, id }, detail),
-        currentlySaved: saved,
-      },
-      { onSuccess: () => showSaveToast(saved) },
-    );
-  };
-
-  return {
-    accessibilityLabel: saved
-      ? "Quitar de guardados"
-      : "Guardar establecimiento",
+  // Hooks run unconditionally; the null result is decided afterwards.
+  const toggle = useSaveToggle({
+    buildVariables: (currentlySaved) => ({
+      establishment: toSavedEstablishment(
+        { ...establishment, id: id ?? Number.NaN },
+        detail,
+      ),
+      currentlySaved,
+    }),
     mutation,
+    onRequireAuth,
+    saveLabel: "Guardar establecimiento",
     saved,
-    toggle,
-  };
+  });
+
+  return id === undefined ? null : toggle;
 }

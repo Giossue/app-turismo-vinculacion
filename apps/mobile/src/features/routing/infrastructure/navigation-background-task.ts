@@ -21,15 +21,31 @@ import {
 
 const navigationLocationTaskName = "turismo-vinculacion-navigation-location";
 
-/** Watch options shared by the foreground watcher and the background task. */
+/** Watch options of the persistent background task. */
 export const navigationLocationOptions = {
   accuracy: Location.Accuracy.High,
   distanceInterval: 10,
   timeInterval: 2_000,
 } as const satisfies Location.LocationOptions;
 
+/**
+ * Foreground watcher options. Without a distance filter Android keeps
+ * delivering fixes while the person stands still, so a first imprecise
+ * reading (cold GPS, indoors) is replaced by the next one instead of leaving
+ * the navigation without arrow or voice until they walk 10 m.
+ */
+export const navigationForegroundLocationOptions = {
+  ...navigationLocationOptions,
+  distanceInterval: 0,
+} as const satisfies Location.LocationOptions;
+
 let startTaskPromise: Promise<void> | null = null;
 let sessionOwners = 0;
+/**
+ * Fixes are handled one at a time: two deliveries queued together must not
+ * both read a stale notification key and restart the service twice.
+ */
+let fixQueue: Promise<void> = Promise.resolve();
 
 type BackgroundLocationTaskData = Readonly<{
   locations?: Location.LocationObject[];
@@ -55,13 +71,22 @@ if (
       if (!latest || !isReliableLocationAccuracy(latest.coords.accuracy)) {
         return;
       }
-      await handleBackgroundFix({
+      await enqueueBackgroundFix({
         accuracy: latest.coords.accuracy ?? null,
         coordinate: toCoordinate(latest),
         timestamp: latest.timestamp,
       });
     },
   );
+}
+
+/** Serializes `handleBackgroundFix`; a failed fix never blocks the next one. */
+function enqueueBackgroundFix(
+  location: PersistedNavigationLocation,
+): Promise<void> {
+  const next = fixQueue.then(() => handleBackgroundFix(location));
+  fixQueue = next.catch(() => undefined);
+  return next;
 }
 
 async function handleBackgroundFix(
@@ -128,6 +153,35 @@ export function claimNavigationSessionOwnership(): () => void {
     released = true;
     sessionOwners -= 1;
   };
+}
+
+/**
+ * Ends a foreground service that outlived the screen that started it (the
+ * process was killed and relaunched cold, so no route screen owns the
+ * navigation). The task also cleans itself on its next fix, but that needs a
+ * GPS delivery; the root layout calls this shortly after mount, once a
+ * restored route screen had the chance to claim ownership. A headless launch
+ * (app not visible) keeps the task: it is legitimately running in background.
+ */
+export async function stopOrphanedNavigationTask(): Promise<boolean> {
+  if (Platform.OS === "web") return false;
+  if (sessionOwners > 0 || AppState.currentState !== "active") return false;
+  try {
+    if (
+      !(await Location.hasStartedLocationUpdatesAsync(
+        navigationLocationTaskName,
+      ))
+    ) {
+      return false;
+    }
+  } catch {
+    return false;
+  }
+  // Re-check: a screen may have claimed the session while the query ran.
+  if (sessionOwners > 0) return false;
+  await clearNavigationSession();
+  await stopNavigationLocationTask();
+  return true;
 }
 
 export async function requestNavigationBackgroundPermission(): Promise<{

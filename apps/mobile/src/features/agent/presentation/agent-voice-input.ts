@@ -33,6 +33,14 @@ const maxRecordingMs = 30_000;
 const pollMs = 120;
 
 /**
+ * Leaves the iOS record category; otherwise navigation voice (expo-speech)
+ * keeps playing quietly after the microphone was used. Best effort.
+ */
+async function restorePlaybackAudioMode(): Promise<void> {
+  await setAudioModeAsync({ allowsRecording: false }).catch(() => undefined);
+}
+
+/**
  * Voice questions like a phone assistant: tap the microphone, speak, and the
  * recording ends by itself after a short pause, then it is transcribed.
  * `finish` ends early and `cancel` discards it.
@@ -60,6 +68,15 @@ export function useAgentVoiceInput({
   const activeRef = useRef(true);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestRef = useRef<AbortController | null>(null);
+  // Timers and the poll read the latest callbacks, not those of the render
+  // that started the recording.
+  const onTranscriptRef = useRef(onTranscript);
+  const finishRef = useRef<(transcribe: boolean, message?: string) => void>(
+    () => undefined,
+  );
+  useEffect(() => {
+    onTranscriptRef.current = onTranscript;
+  });
 
   useEffect(() => {
     activeRef.current = true;
@@ -75,7 +92,7 @@ export function useAgentVoiceInput({
             await recorder.stop();
             erase(recorder.uri);
           } finally {
-            await setAudioModeAsync({ allowsRecording: false });
+            await restorePlaybackAudioMode();
           }
         })().catch(() => undefined);
       }
@@ -86,6 +103,7 @@ export function useAgentVoiceInput({
     if (disabled || recordingRef.current || processing) return;
     onStatus(null);
     onWorkingChange(true);
+    let recordingModeSet = false;
     try {
       const permission = await AudioModule.requestRecordingPermissionsAsync();
       if (!activeRef.current) return;
@@ -101,8 +119,9 @@ export function useAgentVoiceInput({
         allowsRecording: true,
         playsInSilentMode: true,
       });
+      recordingModeSet = true;
       if (!activeRef.current) {
-        await setAudioModeAsync({ allowsRecording: false });
+        await restorePlaybackAudioMode();
         return;
       }
       await recorder.prepareToRecordAsync();
@@ -112,7 +131,7 @@ export function useAgentVoiceInput({
         } catch {
           /* Nothing was recorded. */
         }
-        await setAudioModeAsync({ allowsRecording: false });
+        await restorePlaybackAudioMode();
         erase(recorder.uri);
         return;
       }
@@ -121,7 +140,10 @@ export function useAgentVoiceInput({
       setRecording(true);
       setLevel(0);
       setElapsedMs(0);
-      timerRef.current = setTimeout(() => void finish(true), maxRecordingMs);
+      timerRef.current = setTimeout(
+        () => finishRef.current(true),
+        maxRecordingMs,
+      );
       // Times come from the recording itself, not the wall clock.
       let heardSpeech = false;
       let quietSince = 0;
@@ -136,15 +158,18 @@ export function useAgentVoiceInput({
           heardSpeech = true;
           quietSince = elapsed;
         } else if (heardSpeech && elapsed - quietSince >= endSilenceMs) {
-          void finish(true);
+          finishRef.current(true);
         } else if (!heardSpeech && elapsed >= noSpeechTimeoutMs) {
-          void finish(
+          finishRef.current(
             false,
             "No te escuché. Toca el micrófono para intentarlo de nuevo.",
           );
         }
       }, pollMs);
-    } catch {
+    } catch (failure) {
+      // Recording never started: leave the record category or TTS stays quiet.
+      if (recordingModeSet) await restorePlaybackAudioMode();
+      if (__DEV__) console.warn("Agent voice recording failed", failure);
       if (activeRef.current) {
         onStatus(
           "No se pudo iniciar el micrófono. Puedes escribir tu pregunta.",
@@ -170,7 +195,7 @@ export function useAgentVoiceInput({
     try {
       await recorder.stop();
       uri = recorder.uri;
-      await setAudioModeAsync({ allowsRecording: false });
+      await restorePlaybackAudioMode();
       if (!transcribe) return;
       if (!uri) {
         onStatus(
@@ -196,7 +221,7 @@ export function useAgentVoiceInput({
         controller.signal,
       );
       if (activeRef.current && !controller.signal.aborted) {
-        if (text.trim()) onTranscript(text.trim());
+        if (text.trim()) onTranscriptRef.current(text.trim());
         else
           onStatus(
             "No entendí el audio. Inténtalo de nuevo o escribe tu pregunta.",
@@ -204,12 +229,19 @@ export function useAgentVoiceInput({
           );
       }
     } catch (failure) {
-      console.warn("Agent voice transcription failed", failure);
+      // `recorder.stop()` may have thrown before the mode was restored.
+      await restorePlaybackAudioMode();
+      if (__DEV__) {
+        console.warn(
+          `Agent voice transcription failed: ${describeCause(failure)}`,
+          failure,
+        );
+      }
       if (activeRef.current) {
         onStatus(
           failure instanceof ApiError
-            ? `${failure.message}${failure.status ? ` (${failure.status})` : ` (${describeCause(failure.cause)})`}`
-            : `No se pudo transcribir (${describeCause(failure)}). Puedes escribir tu pregunta.`,
+            ? failure.message
+            : "No se pudo transcribir el audio. Puedes escribir tu pregunta.",
           true,
         );
       }
@@ -223,6 +255,11 @@ export function useAgentVoiceInput({
     }
   };
 
+  useEffect(() => {
+    finishRef.current = (transcribe, message) =>
+      void finish(transcribe, message);
+  });
+
   return {
     begin,
     cancel: () => finish(false),
@@ -234,8 +271,9 @@ export function useAgentVoiceInput({
   };
 }
 
-/** Short technical hint so a failure can be located from a screenshot. */
+/** Short technical hint for development logs only. */
 function describeCause(cause: unknown): string {
+  if (cause instanceof ApiError && cause.status) return `HTTP ${cause.status}`;
   if (cause instanceof Error) return cause.message.slice(0, 120);
   return cause === undefined ? "sin respuesta" : String(cause).slice(0, 120);
 }

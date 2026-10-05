@@ -1,9 +1,5 @@
 import { useState } from "react";
-import {
-  KeyboardAvoidingView,
-  ScrollView,
-  StyleSheet,
-} from "react-native";
+import { KeyboardAvoidingView, ScrollView, StyleSheet } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
@@ -80,10 +76,7 @@ export default function LoginScreen() {
       onBack={handleBack}
       title={mode === "register" ? "Crear cuenta" : "Iniciar sesión"}
     >
-      <KeyboardAvoidingView
-        behavior="padding"
-        style={styles.flex}
-      >
+      <KeyboardAvoidingView behavior="padding" style={styles.flex}>
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"

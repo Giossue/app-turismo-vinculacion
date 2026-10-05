@@ -88,12 +88,10 @@ export const turismoMapLayerStyle = {
   navigationArrowScale: 0.15,
 } as const;
 
-/** Resorte del panel de ruta al expandirse o contraerse. */
-export const turismoPanelSpring = {
-  damping: 30,
-  mass: 0.8,
-  overshootClamping: true,
-  stiffness: 280,
+/** Anula los márgenes y el relleno vertical que Paper añade a sus controles. */
+export const turismoPaperReset = {
+  margin: 0,
+  paddingVertical: 0,
 } as const;
 
 export const turismoIconSizes = {

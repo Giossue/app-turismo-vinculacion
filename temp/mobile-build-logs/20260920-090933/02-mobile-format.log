@@ -1,3 +1,0 @@
-$ prettier --check --ignore-path ../../.prettierignore .
-Checking formatting...
-All matched files use Prettier code style!

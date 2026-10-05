@@ -12,7 +12,7 @@ const pendingStyles = new Map<
 const styleUrls = new Map<TurismoColorScheme, string>();
 
 /** URL of the self-hosted TileServer GL style, if this build configures one. */
-export function getSelfHostedStyleUrl(): string | undefined {
+function getSelfHostedStyleUrl(): string | undefined {
   return process.env.EXPO_PUBLIC_TILESERVER_STYLE_URL?.trim() || undefined;
 }
 

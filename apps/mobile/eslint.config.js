@@ -12,8 +12,6 @@ module.exports = defineConfig([
       "import/no-unresolved": [
         "error",
         {
-          // TypeScript/Metro select the platform file (.native/.web), while
-          // eslint-plugin-import has no platform-aware resolver by default.
           ignore: [
             "^@/features/map/presentation/center-map$",
             "^@/features/offline/application/offline-download$",
@@ -21,6 +19,15 @@ module.exports = defineConfig([
             "^@/features/routing/presentation/route-map$",
           ],
         },
+      ],
+    },
+  },
+  {
+    files: ["src/**"],
+    rules: {
+      "max-lines": [
+        "warn",
+        { max: 400, skipBlankLines: true, skipComments: true },
       ],
     },
   },

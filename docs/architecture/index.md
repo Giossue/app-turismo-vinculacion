@@ -10,7 +10,8 @@
 6. `authentication.md` y `database.md`
 7. `maps-navigation.md`, `ai.md` o `integrations.md` según la tarea
 8. `deployment.md`
-9. ADRs en `adr/`
+9. `native-patches.md` cuando se toquen dependencias nativas o el prebuild falle
+10. ADRs en `adr/`
 
 ## Reglas
 

@@ -270,3 +270,67 @@ describe("askTourismAgentStream", () => {
     await expect(request).rejects.toThrow("respuesta incompleta");
   });
 });
+
+describe("askTourismAgentStream abort handling", () => {
+  function openStream(onCancel: () => void, chunks: readonly string[]) {
+    const encoder = new TextEncoder();
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        start(stream) {
+          for (const chunk of chunks) stream.enqueue(encoder.encode(chunk));
+          // The server keeps the connection open.
+        },
+        cancel: onCancel,
+      }),
+      { status: 200 },
+    );
+  }
+
+  it("cancels the stream when aborted before the body is read", async () => {
+    const controller = new AbortController();
+    const cancelled = vi.fn();
+    const onText = vi.fn();
+    const fetcher = vi.fn().mockImplementation(async () => {
+      // Closed while the request was still resolving.
+      controller.abort();
+      return openStream(cancelled, [
+        'data: {"type":"text-delta","text":"Hola"}\n\n',
+        completeEvent({ text: "Hola.", cards: [], actions: [], sources: [] }),
+      ]);
+    });
+
+    await expect(
+      askTourismAgentStream("Hola", [], onText, {
+        apiUrl,
+        fetcher,
+        signal: controller.signal,
+      }),
+    ).rejects.toThrow("respuesta incompleta");
+    expect(cancelled).toHaveBeenCalledTimes(1);
+    expect(onText).not.toHaveBeenCalled();
+  });
+
+  it("stops after the chunk during which the abort happened", async () => {
+    const controller = new AbortController();
+    const cancelled = vi.fn();
+    const onText = vi.fn(() => controller.abort());
+    const fetcher = vi
+      .fn()
+      .mockResolvedValue(
+        openStream(cancelled, [
+          'data: {"type":"text-delta","text":"Hola"}\n\n',
+          'data: {"type":"text-delta","text":"Hola viajero"}\n\n',
+        ]),
+      );
+
+    await expect(
+      askTourismAgentStream("Hola", [], onText, {
+        apiUrl,
+        fetcher,
+        signal: controller.signal,
+      }),
+    ).rejects.toThrow("respuesta incompleta");
+    expect(cancelled).toHaveBeenCalled();
+    expect(onText).toHaveBeenCalledTimes(1);
+  });
+});

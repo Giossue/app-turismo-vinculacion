@@ -1,5 +1,4 @@
-import { showSaveToast } from "@/features/favorites/presentation/save-toast";
-import { useAuth } from "@/features/auth/application/auth-context";
+import { useSaveToggle } from "@/features/favorites/application/use-save-toggle";
 import {
   useSavedCenterMutation,
   useSavedCenters,
@@ -15,7 +14,6 @@ export function useCenterSaveToggle(
   center: PublicCenter,
   onRequireAuth: () => void,
 ) {
-  const auth = useAuth();
   const savedCenters = useSavedCenters();
   const mutation = useSavedCenterMutation();
   const saved =
@@ -23,23 +21,11 @@ export function useCenterSaveToggle(
       (savedCenter) => savedCenter.code === center.code,
     ) ?? false;
 
-  const toggle = () => {
-    if (auth.status !== "authenticated") {
-      onRequireAuth();
-      return;
-    }
-    mutation.mutate(
-      { center, currentlySaved: saved },
-      { onSuccess: () => showSaveToast(saved) },
-    );
-  };
-
-  return {
-    accessibilityLabel: saved
-      ? "Quitar de guardados"
-      : "Guardar centro turístico",
+  return useSaveToggle({
+    buildVariables: (currentlySaved) => ({ center, currentlySaved }),
     mutation,
+    onRequireAuth,
+    saveLabel: "Guardar centro turístico",
     saved,
-    toggle,
-  };
+  });
 }

@@ -66,7 +66,7 @@ function routeIntersectsBounds(
   return false;
 }
 
-export function getPublicSearchSuggestions(
+function getPublicSearchSuggestions(
   results: readonly PublicSearchResult[],
   coordinate: GeoCoordinate | null,
   filters: SearchFilters = {},

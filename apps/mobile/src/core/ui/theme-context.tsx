@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   createContext,
   useCallback,
@@ -10,7 +9,9 @@ import {
   type ReactNode,
 } from "react";
 import { useColorScheme } from "react-native";
+import { z } from "zod";
 
+import { readJson, writeJson } from "@/core/storage/json-storage";
 import {
   getTurismoColors,
   getTurismoMapColors,
@@ -25,7 +26,9 @@ type TurismoThemeContextValue = Readonly<{
   setPreference: (preference: ThemePreference) => void;
 }>;
 
-const themePreferenceStorageKey = "turismo-vinculacion.theme-preference";
+// v2: stored as JSON through `json-storage`; v1 kept a raw string.
+const themePreferenceStorageKey = "turismo-vinculacion.theme-preference.v2";
+const themePreferenceSchema = z.enum(["system", "light", "dark"]);
 const TurismoThemeContext = createContext<TurismoThemeContextValue | null>(
   null,
 );
@@ -41,17 +44,15 @@ export function TurismoThemeProvider({
 
   useEffect(() => {
     let active = true;
-    void AsyncStorage.getItem(themePreferenceStorageKey)
-      .then((storedPreference) => {
-        if (!active || chosenRef.current) return;
-        if (isThemePreference(storedPreference)) {
-          setPreferenceState(storedPreference);
-        }
-      })
-      .catch(() => {
-        // El tema del sistema sigue siendo un valor válido si el almacenamiento
-        // local no está disponible (por ejemplo, durante una web preview).
-      });
+    // `readJson` nunca rechaza: el tema del sistema sigue siendo un valor
+    // válido si el almacenamiento local no está disponible (por ejemplo,
+    // durante una web preview).
+    void readJson(themePreferenceStorageKey, themePreferenceSchema).then(
+      (storedPreference) => {
+        if (!active || chosenRef.current || !storedPreference) return;
+        setPreferenceState(storedPreference);
+      },
+    );
     return () => {
       active = false;
     };
@@ -60,7 +61,7 @@ export function TurismoThemeProvider({
   const setPreference = useCallback((next: ThemePreference) => {
     chosenRef.current = true;
     setPreferenceState(next);
-    void AsyncStorage.setItem(themePreferenceStorageKey, next).catch(() => {
+    void writeJson(themePreferenceStorageKey, next).catch(() => {
       // La preferencia continúa activa durante la sesión aunque no pueda
       // persistirse en el dispositivo.
     });
@@ -118,8 +119,4 @@ export function useTurismoPalette() {
 /** Colors of the active scheme for MapLibre layers and map controls. */
 export function useTurismoMapPalette() {
   return getTurismoMapColors(useTurismoTheme().scheme);
-}
-
-function isThemePreference(value: string | null): value is ThemePreference {
-  return value === "system" || value === "light" || value === "dark";
 }

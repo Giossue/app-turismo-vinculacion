@@ -15,7 +15,14 @@ import { TurismoPaperProvider } from "@/core/ui/turismo-paper-provider";
 import { getTurismoColors } from "@/core/ui/tokens";
 import { AuthProvider } from "@/features/auth/application/auth-context";
 import { UserLocationProvider } from "@/core/location/use-user-location";
-import "@/features/routing/infrastructure/navigation-background-task";
+import { stopOrphanedNavigationTask } from "@/features/routing/infrastructure/navigation-background-task";
+
+/**
+ * Delay before ending a navigation service nobody owns after a cold start:
+ * a route screen restored from the stack or opened by a deep link mounts and
+ * claims the session well within this window.
+ */
+const orphanedNavigationTaskCheckDelayMs = 3_000;
 
 function AppProviders({ children }: Readonly<{ children: ReactNode }>) {
   const [queryClient] = useState(
@@ -46,6 +53,13 @@ function AppProviders({ children }: Readonly<{ children: ReactNode }>) {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void stopOrphanedNavigationTask();
+    }, orphanedNavigationTaskCheckDelayMs);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AppProviders>

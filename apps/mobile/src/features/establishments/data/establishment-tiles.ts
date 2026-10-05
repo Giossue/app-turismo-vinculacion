@@ -9,8 +9,6 @@ import type { PublicMapEstablishment } from "../domain/establishment";
  * them by itself; the app only reads the features the tourist taps.
  */
 export const establishmentTileLayer = "establishments";
-/** From this zoom each feature is one establishment; below, a cell count. */
-export const establishmentTileDetailZoom = 13;
 /** Deeper zooms reuse (overzoom) these tiles instead of requesting more. */
 export const establishmentTileMaxZoom = 16;
 

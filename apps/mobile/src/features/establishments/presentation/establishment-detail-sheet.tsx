@@ -107,10 +107,7 @@ export function EstablishmentDetailSheet({
             variant="loading"
           />
         ) : detail ? (
-          <CenterPhotos
-            photos={detail.photos}
-            variant="divided"
-          />
+          <CenterPhotos photos={detail.photos} variant="divided" />
         ) : isApiUnavailableError(detailQuery.error) ? null : (
           <TourismStateView
             actionPending={detailQuery.isFetching}

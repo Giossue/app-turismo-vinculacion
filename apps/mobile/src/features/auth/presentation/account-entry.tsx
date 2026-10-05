@@ -20,7 +20,7 @@ import {
   turismoTypography,
 } from "@/core/ui/tokens";
 
-const accountHeroImage = require("@/assets/images/account-hero.png");
+const accountHeroImage = require("@/assets/images/account-hero.webp");
 
 const benefits: readonly Readonly<{ icon: TurismoIconName; label: string }>[] =
   [

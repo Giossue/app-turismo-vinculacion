@@ -7,7 +7,7 @@ changing the implementation or trying another workaround.
 
 ## Versiones y reglas de plataforma
 
-Este paquete usa Expo `~57.0.24`, Expo Router `~57.0.22`, React Native `0.86.3` y React
+Este paquete usa Expo `~57.0.26`, Expo Router `~57.0.24`, React Native `0.86.3` y React
 `19.2.3`. Instala dependencias Expo con `corepack pnpm expo install` y verifica siempre la
 compatibilidad en la documentación versionada antes de actualizar. Los cambios de
 `app.json`/`app.config.*` o config plugins solo llegan al dispositivo después de regenerar
@@ -70,6 +70,12 @@ su permiso cuando se use. Rechazar un permiso opcional o tocar «Cancelar» nunc
 iniciar la navegación.
 
 Fuentes: [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/), [Expo Location](https://docs.expo.dev/versions/v57.0.0/sdk/location/), [Expo Router](https://docs.expo.dev/router/introduction/), [Style RN 0.86](https://reactnative.dev/docs/0.86/style), [dimensiones](https://reactnative.dev/docs/0.86/height-and-width), [useWindowDimensions](https://reactnative.dev/docs/0.86/usewindowdimensions), [PixelRatio](https://reactnative.dev/docs/0.86/pixelratio), [Text](https://reactnative.dev/docs/0.86/text), [Pressable](https://reactnative.dev/docs/0.86/pressable), [BackHandler](https://reactnative.dev/docs/0.86/backhandler) y [accesibilidad](https://reactnative.dev/docs/0.86/accessibility).
+
+## Comentarios y copy
+
+Todo texto visible por la persona va en español. Los comentarios de código nuevos o
+modificados también se escriben en español; no reescribas comentarios existentes solo por
+idioma. Los parches de `patches/` se documentan en `docs/architecture/native-patches.md`.
 
 ## UI declarativa y overlays
 

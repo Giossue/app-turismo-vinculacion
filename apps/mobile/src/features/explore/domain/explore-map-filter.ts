@@ -10,10 +10,7 @@ export type ExploreMapFilter =
   | Readonly<{ kind: "establishments"; group: EstablishmentMapGroup }>
   | null;
 
-export function isSameMapFilter(
-  a: ExploreMapFilter,
-  b: ExploreMapFilter,
-): boolean {
+function isSameMapFilter(a: ExploreMapFilter, b: ExploreMapFilter): boolean {
   if (a === null || b === null) return a === b;
   if (a.kind !== b.kind) return false;
   return (

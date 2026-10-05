@@ -16,3 +16,7 @@ build/
 *.iml
 .idea/
 .vscode/
+
+# Scratch directories
+temp/
+tmp/

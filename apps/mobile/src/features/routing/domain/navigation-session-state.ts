@@ -6,6 +6,10 @@ import type {
 
 export const navigationMessages = {
   arrived: "Has llegado a tu destino.",
+  backgroundNotificationDenied:
+    "Sin permiso de notificaciones la navegación seguirá solo mientras la app esté abierta.",
+  backgroundPermissionDenied:
+    "Sin permiso de ubicación «Siempre» la navegación seguirá solo mientras la app esté abierta.",
   backgroundUnavailable:
     "La navegación seguirá solo mientras la app esté abierta: no pudimos activar el seguimiento al cambiar de aplicación.",
   offRoute: "Te alejaste de la ruta; buscando un nuevo trayecto.",

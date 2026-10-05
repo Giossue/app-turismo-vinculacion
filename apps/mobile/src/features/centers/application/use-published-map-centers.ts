@@ -5,6 +5,7 @@ import { queryKeys } from "@/core/api/query-keys";
 import type { GeoBoundingBox } from "@/core/geo/types";
 import { isValidSearchBounds } from "@/features/search/domain/search-suggestion";
 import { getPublishedMapCenters } from "../data/public-centers-api";
+import { quantizeMapBounds } from "../domain/map-bounds-cell";
 import type { CenterFilters, PublicCenter } from "../domain/public-center";
 
 const emptyFilters: CenterFilters = {};
@@ -38,13 +39,23 @@ export function usePublishedMapCenters(
   };
 }
 
-/** Only final camera boxes trigger requests; no GPS or persisted view history. */
+/**
+ * Only final camera boxes trigger requests; no GPS or persisted view history.
+ * The box is snapped outward to a fixed grid so small pans inside the same
+ * cells hit the cache instead of a new request; the fetched (expanded) area
+ * always covers the camera box.
+ */
 export function getPublishedMapCentersQueryOptions(
   bounds: GeoBoundingBox | null,
   filters: CenterFilters = {},
 ) {
   const area = isValidSearchBounds(bounds)
-    ? { west: bounds[0], south: bounds[1], east: bounds[2], north: bounds[3] }
+    ? quantizeMapBounds({
+        west: bounds[0],
+        south: bounds[1],
+        east: bounds[2],
+        north: bounds[3],
+      })
     : null;
   return {
     queryKey: [...queryKeys.publishedMapCenters, filters, area],

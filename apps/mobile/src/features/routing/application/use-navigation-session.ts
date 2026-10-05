@@ -7,7 +7,7 @@ import type { GeoCoordinate } from "@/core/geo/types";
 import { getLocationAvailability } from "@/core/location/location-availability";
 import { toCoordinate } from "@/core/location/location-coordinate";
 import { isReliableLocationAccuracy } from "@/core/location/location-quality";
-import { useUserLocation } from "@/core/location/use-user-location";
+import { useUserLocationActions } from "@/core/location/use-user-location";
 import {
   getDistanceToRouteMeters,
   getNavigationGuidance,
@@ -31,7 +31,7 @@ import {
 import {
   claimNavigationSessionOwnership,
   hasNavigationBackgroundPermission,
-  navigationLocationOptions,
+  navigationForegroundLocationOptions,
   startNavigationLocationTask,
   stopNavigationLocationTask,
 } from "../infrastructure/navigation-background-task";
@@ -76,7 +76,7 @@ export function useNavigationSession({
   route,
   reroutingEnabled = true,
 }: NavigationSessionOptions): NavigationSessionState {
-  const { setForegroundTrackingSuspended } = useUserLocation();
+  const { setForegroundTrackingSuspended } = useUserLocationActions();
   const [state, dispatch] = useReducer(
     navigationSessionReducer,
     initialNavigationSessionState,
@@ -163,10 +163,12 @@ export function useNavigationSession({
       outsideTrace && !reroutingEnabled
         ? null
         : getNavigationGuidance(route, coordinate);
+    // The first reliable fix always announces the current step, wherever it
+    // lands on the trace; later steps wait until the maneuver is close.
     if (
       guidance &&
       guidance.stepIndex > announcedStepRef.current &&
-      (guidance.stepIndex === 0 ||
+      (announcedStepRef.current === -1 ||
         guidance.distanceMeters <= voiceTriggerDistanceMeters)
     ) {
       replaceSpeech(
@@ -279,7 +281,7 @@ export function useNavigationSession({
 
         void startBackgroundTracking();
         const nextSubscription = await Location.watchPositionAsync(
-          navigationLocationOptions,
+          navigationForegroundLocationOptions,
           handleLocation,
           handleLocationError,
         );
@@ -288,6 +290,11 @@ export function useNavigationSession({
           return;
         }
         subscription = nextSubscription;
+        // Draw the arrow and speak the first step right away instead of
+        // waiting for the watcher's first delivery.
+        Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        }).then(handleLocation, () => undefined);
       } catch {
         if (!disposed) {
           dispatch({
@@ -319,6 +326,9 @@ export function useNavigationSession({
         // El punto que existía antes de salir puede haber quedado atrás.
         // Ocúltalo hasta que el watcher entregue una muestra fresca.
         dispatch({ type: "resumed" });
+        // The point is hidden now, so a cached fix with the previous
+        // timestamp must be accepted again to redraw it.
+        lastFixAtRef.current = 0;
         void resumeBackgroundTracking();
         Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.High,

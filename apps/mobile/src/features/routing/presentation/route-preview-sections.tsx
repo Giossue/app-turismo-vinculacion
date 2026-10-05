@@ -6,6 +6,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { Switch } from "react-native-paper";
 
 import { formatDistance } from "@/core/format/distance";
 import { formatDurationSeconds } from "@/core/format/duration";
@@ -113,6 +114,61 @@ export function RouteNotice({ message }: Readonly<{ message: string }>) {
   );
 }
 
+const backgroundTrackingLabel = "Seguir en segundo plano";
+
+/**
+ * Explicit opt-in to background tracking. The explanation sits next to the
+ * option; the system permission prompts only appear when navigation starts
+ * with it on (never an explanatory alert before).
+ */
+export function RouteBackgroundTrackingToggle({
+  disabled = false,
+  enabled,
+  notice,
+  onChange,
+}: Readonly<{
+  disabled?: boolean;
+  enabled: boolean;
+  /** Why the last start could not keep tracking outside the app. */
+  notice: string | null;
+  onChange: (enabled: boolean) => void;
+}>) {
+  const colors = useTurismoPalette();
+  return (
+    <TourismSurface style={styles.toggleCard}>
+      <View style={styles.toggleRow}>
+        <View style={styles.toggleCopy}>
+          <Text style={[styles.toggleLabel, { color: colors.text }]}>
+            {backgroundTrackingLabel}
+          </Text>
+          <Text style={[styles.caption, { color: colors.textMuted }]}>
+            Mantiene las indicaciones al cambiar de app o apagar la pantalla. Al
+            iniciar se pedirá el permiso de ubicación «Siempre».
+          </Text>
+        </View>
+        <Switch
+          accessibilityLabel={backgroundTrackingLabel}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: enabled, disabled }}
+          disabled={disabled}
+          onValueChange={onChange}
+          style={styles.switch}
+          value={enabled}
+        />
+      </View>
+      {notice ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          accessibilityRole="alert"
+          style={[styles.caption, { color: colors.danger }]}
+        >
+          {notice}
+        </Text>
+      ) : null}
+    </TourismSurface>
+  );
+}
+
 export function RouteSteps({ route }: Readonly<{ route: CalculatedRoute }>) {
   const colors = useTurismoPalette();
   const hasSteps = route.steps.length > 0;
@@ -203,6 +259,7 @@ export function RoutePrimaryAction({
   onCalculateRoute,
   onStartNavigation,
   routeError,
+  startDisabled = false,
   startingNavigation,
   style,
 }: Readonly<{
@@ -211,6 +268,8 @@ export function RoutePrimaryAction({
   onCalculateRoute: () => void;
   onStartNavigation: () => void;
   routeError: string | null;
+  /** Waiting on something external (session loading): shown as busy. */
+  startDisabled?: boolean;
   startingNavigation: boolean;
   style?: StyleProp<ViewStyle>;
 }>) {
@@ -220,10 +279,10 @@ export function RoutePrimaryAction({
     return (
       <TourismActionButton
         accessibilityLabel="Iniciar navegación"
-        disabled={startingNavigation}
+        disabled={startingNavigation || startDisabled}
         icon="navigation"
         label={enlargedText ? "Navegar" : "Iniciar navegación"}
-        loading={startingNavigation}
+        loading={startingNavigation || startDisabled}
         onPress={onStartNavigation}
         style={style}
       />
@@ -268,6 +327,16 @@ const styles = StyleSheet.create({
     padding: turismoSpacing.md,
   },
   noticeText: { ...turismoTypography.caption, flex: 1 },
+  toggleCard: { gap: turismoSpacing.sm, padding: turismoSpacing.md },
+  toggleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: turismoSpacing.md,
+    minHeight: turismoMetrics.touchTarget,
+  },
+  toggleCopy: { flex: 1, gap: turismoSpacing.xxs, minWidth: 0 },
+  toggleLabel: { ...turismoTypography.body },
+  switch: { flexShrink: 0 },
   stepsSection: { gap: turismoSpacing.sm },
   stepsList: { gap: turismoSpacing.xxs },
   stepRow: {

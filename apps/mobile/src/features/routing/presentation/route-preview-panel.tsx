@@ -19,6 +19,7 @@ import {
 import type { CalculatedRoute, RouteMode } from "../domain/routing";
 import { getRouteModeOption } from "./route-mode-options";
 import {
+  RouteBackgroundTrackingToggle,
   RouteCompactSummary,
   RouteLoading,
   RouteModeTabs,
@@ -36,6 +37,10 @@ const estimatedCompactContentHeight =
   turismoMetrics.controlLg * 3 + turismoSpacing.xxl + turismoSpacing.lg;
 
 export type RoutePreviewPanelProps = Readonly<{
+  /** Persisted opt-in to keep following the route outside the app. */
+  backgroundTrackingEnabled?: boolean;
+  /** Why the opt-in could not be honoured on the last start. */
+  backgroundTrackingNotice?: string | null;
   destinationName: string;
   expanded: boolean;
   isCalculating: boolean;
@@ -43,6 +48,8 @@ export type RoutePreviewPanelProps = Readonly<{
   locationRequesting: boolean;
   mode: RouteMode;
   navigationNotice: string | null;
+  /** Without a handler the background opt-in is not offered. */
+  onBackgroundTrackingChange?: (enabled: boolean) => void;
   onCalculateRoute: () => void;
   onClose: () => void;
   onExpandedChange: (expanded: boolean) => void;
@@ -52,6 +59,8 @@ export type RoutePreviewPanelProps = Readonly<{
   onStartNavigation: () => void;
   route: CalculatedRoute | null;
   routeError: string | null;
+  /** The primary action waits (e.g. the session is still loading). */
+  startDisabled?: boolean;
   startingNavigation: boolean;
   savedRoute?: boolean;
 }>;
@@ -62,6 +71,8 @@ export type RoutePreviewPanelProps = Readonly<{
  * map sheets, it follows the finger between both heights.
  */
 export function RoutePreviewPanel({
+  backgroundTrackingEnabled = false,
+  backgroundTrackingNotice = null,
   destinationName,
   expanded,
   isCalculating,
@@ -69,6 +80,7 @@ export function RoutePreviewPanel({
   locationRequesting,
   mode,
   navigationNotice,
+  onBackgroundTrackingChange,
   onCalculateRoute,
   onClose,
   onExpandedChange,
@@ -77,6 +89,7 @@ export function RoutePreviewPanel({
   onStartNavigation,
   route,
   routeError,
+  startDisabled = false,
   startingNavigation,
   savedRoute = false,
 }: RoutePreviewPanelProps) {
@@ -159,6 +172,7 @@ export function RoutePreviewPanel({
         onCalculateRoute={onCalculateRoute}
         onStartNavigation={onStartNavigation}
         routeError={routeError}
+        startDisabled={startDisabled}
         startingNavigation={startingNavigation}
         style={actionStyle}
       />
@@ -208,6 +222,14 @@ export function RoutePreviewPanel({
         {savedRoute ? null : (
           <RouteModeTabs mode={mode} onChange={onModeChange} />
         )}
+        {route && !isCalculating && onBackgroundTrackingChange ? (
+          <RouteBackgroundTrackingToggle
+            disabled={startingNavigation}
+            enabled={backgroundTrackingEnabled}
+            notice={backgroundTrackingNotice}
+            onChange={onBackgroundTrackingChange}
+          />
+        ) : null}
         {notice && notice !== routeError && notice !== locationMessage ? (
           <RouteNotice message={notice} />
         ) : null}

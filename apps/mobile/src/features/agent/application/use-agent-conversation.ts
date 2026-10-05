@@ -49,6 +49,11 @@ export function useAgentConversation() {
   const locationRequestRef = useRef(false);
   const locationRequestIdRef = useRef(0);
   const mountedRef = useRef(true);
+  // A voice question is sent long after its render; use the newest reading.
+  const locationRef = useRef({ accuracy, coordinate });
+  useEffect(() => {
+    locationRef.current = { accuracy, coordinate };
+  }, [accuracy, coordinate]);
   /** Nothing is saved until the stored chat of this account was read. */
   const [restoredUserId, setRestoredUserId] = useState<
     number | undefined | null
@@ -201,7 +206,7 @@ export function useAgentConversation() {
 
     try {
       let currentCoordinate: GeoCoordinate | null | undefined =
-        locationOverride ?? coordinate;
+        locationOverride ?? locationRef.current.coordinate;
       const needsCurrentLocation = shouldShareAgentLocation(message);
       if (needsCurrentLocation && !currentCoordinate) {
         // Un permiso ya concedido no implica que el mapa haya leído el GPS.
@@ -233,7 +238,7 @@ export function useAgentConversation() {
         location:
           currentCoordinate && needsCurrentLocation
             ? {
-                accuracyMeters: accuracy ?? undefined,
+                accuracyMeters: locationRef.current.accuracy ?? undefined,
                 latitude: currentCoordinate.latitude,
                 longitude: currentCoordinate.longitude,
               }
