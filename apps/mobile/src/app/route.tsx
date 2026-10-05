@@ -17,6 +17,7 @@ import { useCalculatedRoute } from "@/features/routing/application/use-calculate
 import { useNavigationFollow } from "@/features/routing/application/use-navigation-follow";
 import { useNavigationRoute } from "@/features/routing/application/use-navigation-route";
 import { useNavigationSession } from "@/features/routing/application/use-navigation-session";
+import type { PersistedNavigationLocation } from "@/features/routing/data/navigation-session-storage";
 import { useRouteScreenParams } from "@/features/routing/application/use-route-screen-params";
 import { useSavedCalculatedRoute } from "@/features/routing/application/use-saved-routes";
 import { getRouteErrorMessage } from "@/features/routing/data/routing-api";
@@ -132,6 +133,8 @@ function RouteScreenContent({
   );
   const [routeRequested, setRouteRequested] = useState(false);
   const [navigationActive, setNavigationActive] = useState(false);
+  const [startLocation, setStartLocation] =
+    useState<PersistedNavigationLocation | null>(null);
   const [startingNavigation, setStartingNavigation] = useState(false);
   const [retryingRoute, setRetryingRoute] = useState(false);
   const [backgroundTrackingEnabled, setBackgroundTrackingEnabled] =
@@ -145,6 +148,7 @@ function RouteScreenContent({
   const startAttemptRef = useRef(0);
   const retryInFlightRef = useRef(false);
   const {
+    accuracy: locationAccuracy,
     message: locationMessage,
     requestLocation,
     status: locationStatus,
@@ -181,6 +185,7 @@ function RouteScreenContent({
     // One failed remote attempt keeps the current route without repeatedly
     // contacting an unavailable service as GPS positions change.
     reroutingEnabled: savedRoute === null && !routeQuery.isError,
+    initialLocation: startLocation,
   });
 
   // `blur` fires when another screen covers this one, never on a bare
@@ -279,10 +284,17 @@ function RouteScreenContent({
     startInFlightRef.current = true;
     setStartingNavigation(true);
     try {
-      const coordinate = await requestLocation({ forceRefresh: true });
+      // La sesión pide su propia lectura fresca al arrancar: aquí basta la
+      // última posición válida del proveedor para no esperar dos veces al GPS.
+      const coordinate = await requestLocation();
       if (!coordinate || isCancelled()) return;
       await enableBackgroundTracking(isCancelled);
       if (isCancelled()) return;
+      setStartLocation({
+        accuracy: locationAccuracy,
+        coordinate,
+        timestamp: Date.now(),
+      });
       setNavigationActive(true);
     } finally {
       startInFlightRef.current = false;
@@ -294,6 +306,7 @@ function RouteScreenContent({
     startAttemptRef.current += 1;
     setPreviewExpanded(true);
     setNavigationActive(false);
+    setStartLocation(null);
     setBackgroundTrackingEnabled(false);
   };
 

@@ -50,6 +50,11 @@ type NavigationSessionOptions = Readonly<{
   route: CalculatedRoute | null;
   /** Saved routes and a failed remote recalculation keep the current trace. */
   reroutingEnabled?: boolean;
+  /**
+   * Posición ya validada al pulsar «Iniciar navegación». Dibuja la flecha y
+   * anuncia el primer paso sin esperar la primera entrega del watcher.
+   */
+  initialLocation?: PersistedNavigationLocation | null;
 }>;
 
 /**
@@ -75,6 +80,7 @@ export function useNavigationSession({
   onReroute,
   route,
   reroutingEnabled = true,
+  initialLocation = null,
 }: NavigationSessionOptions): NavigationSessionState {
   const { setForegroundTrackingSuspended } = useUserLocationActions();
   const [state, dispatch] = useReducer(
@@ -98,6 +104,9 @@ export function useNavigationSession({
   const speechRequestRef = useRef(0);
   const ownsSessionRef = useRef(false);
   const sessionSavedRef = useRef<Promise<boolean>>(Promise.resolve(false));
+  // Solo se consume al arrancar; no debe reiniciar el watcher si cambia.
+  const initialLocationRef = useRef(initialLocation);
+  initialLocationRef.current = initialLocation;
 
   // The navigation watcher replaces the shared foreground watcher meanwhile.
   useEffect(() => {
@@ -290,8 +299,15 @@ export function useNavigationSession({
           return;
         }
         subscription = nextSubscription;
-        // Draw the arrow and speak the first step right away instead of
-        // waiting for the watcher's first delivery.
+        // Semillas inmediatas, de más rápida a más precisa: la posición con la
+        // que se pulsó «Iniciar», la última conocida del sistema y una lectura
+        // fresca. `processFix` descarta las imprecisas o más antiguas.
+        const seed = initialLocationRef.current;
+        if (seed) processFix(seed);
+        Location.getLastKnownPositionAsync({ maxAge: 60_000 }).then(
+          (location) => location && handleLocation(location),
+          () => undefined,
+        );
         Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.High,
         }).then(handleLocation, () => undefined);
