@@ -11,6 +11,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { DataSource, EntityManager } from "typeorm";
 
 import { establishmentPhotoUrl } from "../establishments/public-establishment";
+import { optimizePhoto, PHOTO_UPLOAD_TYPES } from "./media-image";
 import { MediaStorageService } from "./media-storage.service";
 import {
   assertImageSize,
@@ -98,17 +99,18 @@ export class EstablishmentMediaService {
     const definition = MEDIA_TYPES.get(mimeType);
     if (
       !definition ||
-      definition.kind !== "image" ||
+      !PHOTO_UPLOAD_TYPES.has(mimeType) ||
       !hasMediaSignature(input.buffer, mimeType)
     ) {
       throw new BadRequestException(
-        "La fotografía no es válida. Solo se aceptan imágenes JPEG, PNG o WebP.",
+        "La fotografía no es válida. Solo se aceptan imágenes JPEG o PNG.",
       );
     }
     assertImageSize(
       input.buffer,
       this.config.getOrThrow<number>("MEDIA_MAX_IMAGE_BYTES"),
     );
+    const stored = await optimizePhoto(input.buffer);
     const { originalName, description, sourceAuthor } = mediaMetadata(input);
     const order = await this.dataSource.transaction(async (manager) => {
       await this.establishment(manager, establishmentId, actorId, isAdmin);
@@ -120,14 +122,14 @@ export class EstablishmentMediaService {
       )) as Array<{ next: number }>;
       return orderRows[0]?.next ?? 1;
     });
-    const objectKey = `establishments/${establishmentId}/photos/${randomUUID()}${definition.extension}`;
-    await this.storage.put(objectKey, input.buffer, mimeType);
+    const objectKey = `establishments/${establishmentId}/photos/${randomUUID()}${stored.extension}`;
+    await this.storage.put(objectKey, stored.buffer, stored.mimeType);
     const state = isAdmin ? "PUBLICADO" : "PENDIENTE";
     try {
       return await this.dataSource.transaction(async (manager) => {
         await this.establishment(manager, establishmentId, actorId, isAdmin);
         const checksum = createHash("sha256")
-          .update(input.buffer)
+          .update(stored.buffer)
           .digest("hex");
         const inserted = (await manager.query(
           `INSERT INTO archivos_establecimiento_turistico
@@ -142,8 +144,8 @@ export class EstablishmentMediaService {
             objectKey,
             this.config.getOrThrow<"LOCAL" | "S3">("MEDIA_STORAGE_PROVIDER"),
             checksum,
-            mimeType,
-            input.buffer.length,
+            stored.mimeType,
+            stored.buffer.length,
             sourceAuthor,
             description,
             order,
@@ -162,16 +164,16 @@ export class EstablishmentMediaService {
           {
             mediaId: Number(file.id),
             originalName,
-            mimeType,
-            sizeBytes: input.buffer.length,
+            mimeType: stored.mimeType,
+            sizeBytes: stored.buffer.length,
             state,
           },
         );
         return {
           id: Number(file.id),
           originalName,
-          mimeType,
-          sizeBytes: input.buffer.length,
+          mimeType: stored.mimeType,
+          sizeBytes: stored.buffer.length,
           description,
           sourceAuthor,
           order,

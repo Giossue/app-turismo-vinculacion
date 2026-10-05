@@ -10,6 +10,7 @@ import { InjectDataSource } from "@nestjs/typeorm";
 import { createHash, randomUUID } from "node:crypto";
 import type { DataSource, EntityManager } from "typeorm";
 
+import { optimizePhoto, PHOTO_UPLOAD_TYPES } from "./media-image";
 import { MediaStorageService } from "./media-storage.service";
 import {
   assertImageSize,
@@ -129,6 +130,19 @@ export class MediaService {
     if (definition.kind === "image") {
       assertImageSize(input.buffer, maxImageBytes);
     }
+    if (typeCode === "FOTOGRAFIA" && !PHOTO_UPLOAD_TYPES.has(mimeType)) {
+      throw new BadRequestException(
+        "La fotografía debe ser una imagen JPEG o PNG.",
+      );
+    }
+    const stored =
+      typeCode === "FOTOGRAFIA"
+        ? await optimizePhoto(input.buffer)
+        : {
+            buffer: input.buffer,
+            mimeType,
+            extension: definition.extension,
+          };
     const { originalName, description, sourceAuthor } = mediaMetadata(input);
     const prepared = await this.dataSource.transaction(async (manager) => {
       const center = await this.center(manager, code, actorId, isAdmin);
@@ -157,8 +171,8 @@ export class MediaService {
         : MEDIA_CATALOG_CODES.has(typeCode)
           ? "media"
           : "documents";
-    const objectKey = `centers/${prepared.centerId}/${folder}/${randomUUID()}${definition.extension}`;
-    await this.storage.put(objectKey, input.buffer, mimeType);
+    const objectKey = `centers/${prepared.centerId}/${folder}/${randomUUID()}${stored.extension}`;
+    await this.storage.put(objectKey, stored.buffer, stored.mimeType);
     try {
       return await this.dataSource.transaction(async (manager) => {
         const centerRows = (await manager.query(
@@ -168,7 +182,7 @@ export class MediaService {
         if (!centerRows[0])
           throw new NotFoundException("No se encontró la ficha turística.");
         const checksum = createHash("sha256")
-          .update(input.buffer)
+          .update(stored.buffer)
           .digest("hex");
         const inserted = (await manager.query(
           `INSERT INTO archivos_centro_turistico
@@ -184,8 +198,8 @@ export class MediaService {
             objectKey,
             this.config.getOrThrow<"LOCAL" | "S3">("MEDIA_STORAGE_PROVIDER"),
             checksum,
-            mimeType,
-            input.buffer.length,
+            stored.mimeType,
+            stored.buffer.length,
             sourceAuthor,
             description,
             prepared.order,
@@ -204,15 +218,15 @@ export class MediaService {
             mediaId: Number(file.id),
             originalName,
             typeCode,
-            mimeType,
-            sizeBytes: input.buffer.length,
+            mimeType: stored.mimeType,
+            sizeBytes: stored.buffer.length,
           },
         );
         return {
           id: Number(file.id),
           originalName,
-          mimeType,
-          sizeBytes: input.buffer.length,
+          mimeType: stored.mimeType,
+          sizeBytes: stored.buffer.length,
           state: "PENDIENTE",
           typeCode,
           downloadUrl: null,

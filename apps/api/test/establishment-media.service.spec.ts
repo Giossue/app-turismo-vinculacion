@@ -1,11 +1,17 @@
-import { describe, expect, it, vi } from "vitest";
+import sharp from "sharp";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import { EstablishmentMediaService } from "../src/files/establishment-media.service";
 
-const png = Buffer.concat([
-  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-  Buffer.alloc(16),
-]);
+let png: Buffer;
+
+beforeAll(async () => {
+  png = await sharp({
+    create: { width: 40, height: 20, channels: 3, background: "#2e7d32" },
+  })
+    .png()
+    .toBuffer();
+});
 
 type QueryMock = (sql: string, params?: unknown[]) => Promise<unknown[]>;
 
@@ -42,7 +48,14 @@ describe("EstablishmentMediaService", () => {
         mimeType: "application/pdf",
         buffer: Buffer.from("%PDF-1.7\ncontenido"),
       }),
-    ).rejects.toThrow("Solo se aceptan imágenes JPEG, PNG o WebP.");
+    ).rejects.toThrow("Solo se aceptan imágenes JPEG o PNG.");
+    await expect(
+      service.upload(9, "8", {
+        originalName: "foto.webp",
+        mimeType: "image/webp",
+        buffer: Buffer.from("RIFF\0\0\0\0WEBPVP8 "),
+      }),
+    ).rejects.toThrow("Solo se aceptan imágenes JPEG o PNG.");
     await expect(
       service.upload(9, "8", {
         originalName: "foto.png",
@@ -91,9 +104,9 @@ describe("EstablishmentMediaService", () => {
       downloadUrl: "/api/v1/media/establishments/40",
     });
     expect(storage.put).toHaveBeenCalledWith(
-      expect.stringMatching(/^establishments\/8\/photos\/.+\.png$/),
-      png,
-      "image/png",
+      expect.stringMatching(/^establishments\/8\/photos\/.+\.webp$/),
+      expect.any(Buffer),
+      "image/webp",
     );
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO archivos_establecimiento_turistico"),
