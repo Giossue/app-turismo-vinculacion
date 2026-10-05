@@ -18,6 +18,8 @@ export type LocalMapPlace = Readonly<{
 export type MapPlaceMarker = Readonly<{
   coordinate: GeoCoordinate;
   title: string;
+  /** Contexto administrativo del resultado (p. ej. «Bolívar, Ecuador»). */
+  subtitle?: string;
 }>;
 
 /** Actual visible map area, read after the camera settles. */

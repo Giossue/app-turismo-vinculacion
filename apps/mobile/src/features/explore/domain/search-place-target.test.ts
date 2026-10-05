@@ -117,6 +117,7 @@ describe("getSearchPlaceTarget", () => {
       kind: "coordinate",
       coordinate: { latitude: -1.6, longitude: -79.01 },
       title: "Guaranda",
+      subtitle: base.subtitle,
     };
     expect(getSearchPlaceTarget(base, [], fallbackPin)).toEqual(expected);
     expect(

@@ -11,7 +11,12 @@ import type { PublicSearchResult } from "@/features/search/domain/search-result"
  */
 export type SearchPlaceTarget =
   | Readonly<{ kind: "feature"; selection: MapFeatureSelection }>
-  | Readonly<{ kind: "coordinate"; coordinate: GeoCoordinate; title: string }>;
+  | Readonly<{
+      kind: "coordinate";
+      coordinate: GeoCoordinate;
+      title: string;
+      subtitle: string;
+    }>;
 
 /** Pin used for establishments whose result carries no icon. */
 export type FallbackEstablishmentPin = Readonly<{ key: string }>;
@@ -55,6 +60,7 @@ export function getSearchPlaceTarget(
     kind: "coordinate",
     coordinate: { latitude: place.latitude, longitude: place.longitude },
     title: place.title,
+    subtitle: place.subtitle,
   };
 }
 

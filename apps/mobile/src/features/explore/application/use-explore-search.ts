@@ -11,6 +11,7 @@ type FocusCoordinateRequest = Readonly<{
   key: number;
   /** Nombre del lugar geográfico mostrado como marcador en el mapa. */
   title: string;
+  subtitle: string;
 }>;
 
 /**
@@ -65,7 +66,11 @@ export function useExploreSearch({
     focusCoordinate,
     /** Lugar geográfico elegido en la búsqueda; sin ficha ni pin propio. */
     placeMarker: focusCoordinate
-      ? { coordinate: focusCoordinate.coordinate, title: focusCoordinate.title }
+      ? {
+          coordinate: focusCoordinate.coordinate,
+          subtitle: focusCoordinate.subtitle,
+          title: focusCoordinate.title,
+        }
       : null,
     focused,
     history: history.history,
@@ -109,7 +114,7 @@ export function useExploreSearch({
       search(query);
     },
     /** Shows a geographic place: its name stays in the box, no sheet opens. */
-    showPlace: (title: string, coordinate: GeoCoordinate) => {
+    showPlace: (title: string, subtitle: string, coordinate: GeoCoordinate) => {
       closeFocus();
       onResetOverlay();
       setText(title);
@@ -117,6 +122,7 @@ export function useExploreSearch({
       setFocusCoordinate((current) => ({
         coordinate,
         key: (current?.key ?? 0) + 1,
+        subtitle,
         title,
       }));
     },

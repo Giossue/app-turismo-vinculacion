@@ -36,6 +36,7 @@ import type {
 import type { SearchModeFieldProps } from "@/features/search/presentation/search-mode-field";
 import { SearchOverlay } from "@/features/search/presentation/search-overlay";
 import { useExploreLocationFocus } from "../application/use-explore-location-focus";
+import { ExplorePlaceCard } from "./explore-place-card";
 import {
   useExploreBackHandler,
   useExploreOverlay,
@@ -193,7 +194,9 @@ export function ExploreMapScreen() {
     if (target?.kind === "feature") {
       search.clearPlace();
       overlay.focusFeature(target.selection);
-    } else if (target) search.showPlace(target.title, target.coordinate);
+    } else if (target) {
+      search.showPlace(target.title, target.subtitle, target.coordinate);
+    }
   };
   const selectSuggestion = (item: SearchSuggestionItem) => {
     search.remember(search.text.trim() || item.title);
@@ -334,6 +337,18 @@ export function ExploreMapScreen() {
             onResetNorth={() => setResetNorthKey((key) => key + 1)}
             showLocate={location.showLocateAction}
           />
+          {search.placeMarker && current.kind !== "agent" ? (
+            <ExplorePlaceCard
+              landscape={landscape}
+              onClose={search.clearPlace}
+              onRoute={() => {
+                const place = search.placeMarker;
+                if (!place) return;
+                openRoute({ ...place.coordinate, name: place.title });
+              }}
+              place={search.placeMarker}
+            />
+          ) : null}
           {focused && current.kind === "moreFilters" ? (
             <ExploreMoreFiltersSheet
               filter={data.mapFilter}
