@@ -108,6 +108,10 @@ queda para una fase posterior.
 La sección Usuarios consulta cuentas registradas con búsqueda por nombre, correo o rol y
 paginación; solo administradores pueden acceder mediante `/admin/users`. Muestra nombre,
 correo, roles, estado y fecha de registro, sin exponer atributos de identidad ni credenciales.
+La sección Actividad reúne eventos existentes de auditoría de fichas, catastros, catálogos y
+moderación de opiniones mediante `/admin/activity`. Permite buscar por responsable o registro,
+filtrar por tipo y rango de fechas, y muestra solo acción, registro, responsable y fecha.
+El acceso es exclusivo del administrador y no devuelve los snapshots de auditoría.
 La sección Catálogos permite administrar las opciones técnicas mediante la API y muestra
 estados activos/inactivos sin conexión directa a PostgreSQL. Los tipos de establecimiento
 conservan un código de icono y un color hexadecimal asignado automáticamente por la API para representar

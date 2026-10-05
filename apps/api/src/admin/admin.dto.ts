@@ -2,6 +2,7 @@ import { Transform, Type } from "class-transformer";
 import {
   IsBoolean,
   IsArray,
+  IsDateString,
   IsEmail,
   IsIn,
   IsInt,
@@ -112,6 +113,46 @@ export class AdminCentersQueryDto {
 }
 
 export class AdminUsersQueryDto {
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
+  @MinLength(2)
+  q?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 20;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset = 0;
+}
+
+export const ADMIN_ACTIVITY_TYPES = [
+  "CENTRO",
+  "ESTABLECIMIENTO",
+  "CATALOGO",
+  "OPINION",
+] as const;
+
+export class AdminActivityQueryDto {
+  @IsOptional()
+  @IsIn(ADMIN_ACTIVITY_TYPES)
+  type?: (typeof ADMIN_ACTIVITY_TYPES)[number];
+
+  @IsOptional()
+  @IsDateString({ strict: true })
+  from?: string;
+
+  @IsOptional()
+  @IsDateString({ strict: true })
+  to?: string;
+
   @IsOptional()
   @IsString()
   @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
