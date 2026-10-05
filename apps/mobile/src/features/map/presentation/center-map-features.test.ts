@@ -5,6 +5,7 @@ import type { PublicMapEstablishment } from "@/features/establishments/domain/es
 import {
   buildCenterFeatures,
   buildCentersByCode,
+  buildPlaceMarkerFeatures,
   buildLocalFeatures,
   buildLocalRouteFeature,
   buildSelectedFeatures,
@@ -165,6 +166,24 @@ describe("buildLocalRouteFeature", () => {
     };
     expect(buildLocalRouteFeature(line).features).toEqual([
       { type: "Feature", geometry: line, properties: {} },
+    ]);
+  });
+});
+
+describe("buildPlaceMarkerFeatures", () => {
+  it("returns an empty collection without a marker", () => {
+    expect(buildPlaceMarkerFeatures(null).features).toEqual([]);
+  });
+
+  it("builds one named point at the marker coordinate", () => {
+    const collection = buildPlaceMarkerFeatures({
+      coordinate: { latitude: -1.59, longitude: -79.0 },
+      title: "Guaranda",
+    });
+    expect(collection.features).toHaveLength(1);
+    expect(collection.features[0]?.properties).toEqual({ name: "Guaranda" });
+    expect(collection.features[0]?.geometry.coordinates).toEqual([
+      -79.0, -1.59,
     ]);
   });
 });

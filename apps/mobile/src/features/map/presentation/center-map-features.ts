@@ -8,7 +8,7 @@ import {
   getMapFeatureCoordinate,
   type MapFeatureSelection,
 } from "../domain/map-feature-selection";
-import type { LocalMapPlace } from "./center-map.types";
+import type { LocalMapPlace, MapPlaceMarker } from "./center-map.types";
 
 export type CenterFeatureCollection = GeoJSON.FeatureCollection<
   GeoJSON.Point,
@@ -120,6 +120,30 @@ export function buildLocalRouteFeature(
     type: "FeatureCollection",
     features: localRoute
       ? [{ type: "Feature", geometry: localRoute, properties: {} }]
+      : [],
+  };
+}
+
+/** Punto único con el nombre del lugar geográfico buscado. */
+export function buildPlaceMarkerFeatures(
+  marker: MapPlaceMarker | null,
+): PointFeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: marker
+      ? [
+          {
+            type: "Feature",
+            properties: { name: marker.title },
+            geometry: {
+              type: "Point",
+              coordinates: [
+                marker.coordinate.longitude,
+                marker.coordinate.latitude,
+              ],
+            },
+          },
+        ]
       : [],
   };
 }

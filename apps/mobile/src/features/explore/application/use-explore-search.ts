@@ -9,6 +9,8 @@ type FocusCoordinateRequest = Readonly<{
   coordinate: GeoCoordinate;
   /** Changes on every request so the map moves even to the same place. */
   key: number;
+  /** Nombre del lugar geográfico mostrado como marcador en el mapa. */
+  title: string;
 }>;
 
 /**
@@ -42,6 +44,7 @@ export function useExploreSearch({
   const search = (query: string) => {
     Keyboard.dismiss();
     setFocused(true);
+    setFocusCoordinate(null);
     void history.remember(query);
     setSubmittedText(query);
     setSortByDistance(false);
@@ -50,6 +53,7 @@ export function useExploreSearch({
 
   const clear = () => {
     closeFocus();
+    setFocusCoordinate(null);
     setText("");
     setSubmittedText("");
     setMode("ALL");
@@ -59,6 +63,10 @@ export function useExploreSearch({
 
   return {
     focusCoordinate,
+    /** Lugar geográfico elegido en la búsqueda; sin ficha ni pin propio. */
+    placeMarker: focusCoordinate
+      ? { coordinate: focusCoordinate.coordinate, title: focusCoordinate.title }
+      : null,
     focused,
     history: history.history,
     mode,
@@ -87,10 +95,13 @@ export function useExploreSearch({
     clearHistory: () => void history.clear(),
     /** Empties the box and keeps typing in the full-screen search. */
     clearInput: () => {
+      setFocusCoordinate(null);
       setText("");
       setSubmittedText("");
       setFocused(true);
     },
+    /** Quita el marcador cuando la selección pasa a un centro o servicio. */
+    clearPlace: () => setFocusCoordinate(null),
     closeFocus,
     remember: (query: string) => void history.remember(query),
     repeat: (query: string) => {
@@ -106,6 +117,7 @@ export function useExploreSearch({
       setFocusCoordinate((current) => ({
         coordinate,
         key: (current?.key ?? 0) + 1,
+        title,
       }));
     },
     submit: () => {

@@ -23,6 +23,7 @@ import {
   buildCentersByCode,
   buildLocalFeatures,
   buildLocalRouteFeature,
+  buildPlaceMarkerFeatures,
   buildSelectedFeatures,
 } from "./center-map-features";
 import { getCenterMapLabelStyles } from "./center-map-label-styles";
@@ -32,6 +33,7 @@ import {
   LocalPlacesSource,
   LocalRouteSource,
   mapImages,
+  PlaceMarkerSource,
   SelectionSource,
 } from "./center-map-sources";
 import type { CenterMapProps } from "./center-map.types";
@@ -102,6 +104,7 @@ export function CenterMap(props: CenterMapProps) {
     onLocalPlacePress,
     onLocalPlacesPress,
     establishmentLayer,
+    placeMarker = null,
     selectedFeature = null,
     onBearingChange,
     onViewportChange,
@@ -168,6 +171,10 @@ export function CenterMap(props: CenterMapProps) {
   const localFeatures = useMemo(
     () => buildLocalFeatures(localPlaces),
     [localPlaces],
+  );
+  const placeFeatures = useMemo(
+    () => buildPlaceMarkerFeatures(placeMarker),
+    [placeMarker],
   );
   const selectedFeatures = useMemo(
     () => buildSelectedFeatures(selectedFeature),
@@ -317,6 +324,12 @@ export function CenterMap(props: CenterMapProps) {
           data={selectedFeatures}
           labels={labels}
           onPress={(event) => handleSourcePress("selection", event)}
+        />
+        <PlaceMarkerSource
+          key="tourism-place-marker-source"
+          colors={colors}
+          data={placeFeatures}
+          labels={labels}
         />
         <UserLocationLayers
           key="tourism-user-location"

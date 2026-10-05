@@ -190,8 +190,10 @@ export function ExploreMapScreen() {
       defaultEstablishmentPin,
     );
     setSelectedFromSearch(target?.kind === "feature");
-    if (target?.kind === "feature") overlay.focusFeature(target.selection);
-    else if (target) search.showPlace(target.title, target.coordinate);
+    if (target?.kind === "feature") {
+      search.clearPlace();
+      overlay.focusFeature(target.selection);
+    } else if (target) search.showPlace(target.title, target.coordinate);
   };
   const selectSuggestion = (item: SearchSuggestionItem) => {
     search.remember(search.text.trim() || item.title);
@@ -234,6 +236,7 @@ export function ExploreMapScreen() {
             establishmentLayer={data.establishmentLayer}
             focusCoordinate={search.focusCoordinate?.coordinate}
             focusCoordinateKey={search.focusCoordinate?.key}
+            placeMarker={search.placeMarker}
             focusLocationKey={location.focusLocationKey}
             focusSelection={
               current.kind === "focusing" ? current.selection : null

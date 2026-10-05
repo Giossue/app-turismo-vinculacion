@@ -353,3 +353,52 @@ export function SelectionSource({
     </GeoJSONSource>
   );
 }
+
+/** Marcador del lugar geográfico buscado: punto del tema con su nombre. */
+export function PlaceMarkerSource({
+  colors,
+  data,
+  labels,
+}: Readonly<{
+  colors: MapColors;
+  data: PointFeatureCollection;
+  labels: CenterMapLabelStyles;
+}>) {
+  return (
+    <GeoJSONSource
+      key="tourism-place-marker-source"
+      data={data}
+      id="tourism-place-marker-source"
+    >
+      <Layer
+        key="tourism-place-marker-halo"
+        id="tourism-place-marker-halo"
+        paint={{ "circle-color": colors.primarySoft, "circle-radius": 16 }}
+        type="circle"
+      />
+      <Layer
+        key="tourism-place-marker-dot"
+        id="tourism-place-marker-dot"
+        paint={{
+          "circle-color": colors.primary,
+          "circle-radius": 7,
+          "circle-stroke-color": colors.surface,
+          "circle-stroke-width": 2.5,
+        }}
+        type="circle"
+      />
+      <Layer
+        key="tourism-place-marker-name"
+        id="tourism-place-marker-name"
+        layout={{
+          ...labels.placeNameLayout,
+          "text-allow-overlap": true,
+          "text-ignore-placement": true,
+          "text-optional": false,
+        }}
+        paint={labels.placeLabelPaint}
+        type="symbol"
+      />
+    </GeoJSONSource>
+  );
+}

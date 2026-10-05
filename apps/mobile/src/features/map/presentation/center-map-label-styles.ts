@@ -43,6 +43,9 @@ export function getCenterMapLabelStyles({
         ],
       }
     : undefined;
+  const placeLabelPaint: SymbolPaint = hasGlyphs
+    ? { ...labelHalo, "text-color": centerPinColor }
+    : undefined;
   const clusterNameLayout: SymbolLayout | undefined = hasGlyphs
     ? {
         "text-field": ["to-string", ["get", "point_count_abbreviated"]],
@@ -64,6 +67,8 @@ export function getCenterMapLabelStyles({
       hasGlyphs,
       fontScale,
     ),
+    placeLabelPaint,
+    placeNameLayout: getMapNameLayout("selected", hasGlyphs, fontScale),
     selectedLabelPaint,
     selectedNameLayout: getMapNameLayout("selected", hasGlyphs, fontScale),
   };

@@ -14,6 +14,12 @@ export type LocalMapPlace = Readonly<{
   icon: string;
 }>;
 
+/** Lugar geográfico de la búsqueda (sin ficha): un marcador con su nombre. */
+export type MapPlaceMarker = Readonly<{
+  coordinate: GeoCoordinate;
+  title: string;
+}>;
+
 /** Actual visible map area, read after the camera settles. */
 export type CenterMapViewport = Readonly<{
   center: GeoCoordinate;
@@ -46,6 +52,8 @@ export type CenterMapProps = Readonly<{
   /** Eases to `focusCoordinate` whenever `focusCoordinateKey` changes. */
   focusCoordinate?: GeoCoordinate | null;
   focusCoordinateKey?: number;
+  /** Marcador del lugar geográfico elegido en la búsqueda. */
+  placeMarker?: MapPlaceMarker | null;
   /** Eases to the user's position whenever this key changes. */
   focusLocationKey?: number;
   focusSelection?: MapFeatureSelection | null;
