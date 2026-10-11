@@ -17,6 +17,12 @@
     "lint": "pnpm -r --if-present run lint",
     "test": "pnpm -r --if-present run test",
     "typecheck": "pnpm -r --if-present run typecheck",
-    "verify": "pnpm format && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "verify": "pnpm format && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "openspec": "node scripts/openspec.mjs",
+    "knowledge:init": "pnpm openspec init --tools codex,claude --profile custom --language Spanish --no-animation",
+    "knowledge:update": "pnpm openspec update --force"
+  },
+  "devDependencies": {
+    "@fission-ai/openspec": "1.14.1"
   }
 }

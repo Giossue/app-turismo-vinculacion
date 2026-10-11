@@ -1,0 +1,20 @@
+{
+  "cliVersion": "1.14.1",
+  "tools": ["codex", "claude"],
+  "profile": "custom",
+  "delivery": "both",
+  "workflows": [
+    "propose",
+    "explore",
+    "new",
+    "continue",
+    "apply",
+    "update",
+    "ff",
+    "sync",
+    "archive",
+    "bulk-archive",
+    "verify",
+    "onboard"
+  ]
+}

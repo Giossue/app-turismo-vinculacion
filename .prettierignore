@@ -8,3 +8,8 @@ build/
 **/android/
 **/ios/
 **/expo-env.d.ts
+
+# Workflows OpenSpec generados para Codex y Claude.
+.agents/skills/openspec-*/
+.claude/skills/openspec-*/
+.claude/commands/opsx/

@@ -15,8 +15,10 @@
 - `turismo_vinculacion_app.sql`: bootstrap inicial verificable.
 - `answers.md`: decisiones de producto que requieren extensiones futuras.
 
-Cuando existan migraciones, estas serán la fuente ejecutable. El SQL raíz se conservará
-como snapshot/bootstrap generado o se retirará mediante una decisión explícita.
+`database/migrations/` ya es la fuente ejecutable incremental. El baseline delega
+en `turismo_vinculacion_app.sql`; conservar ambos y las migraciones históricas.
+`temp/db.md` es contexto conceptual, no sustituye el esquema migrado. No usar
+TypeORM `synchronize` ni crear migraciones Prisma.
 
 ## Reglas
 
@@ -37,18 +39,20 @@ como snapshot/bootstrap generado o se retirará mediante una decisión explícit
 Crear mediante migraciones cuando su feature se especifique:
 
 - instituciones y membresías;
-- creador/responsable de ficha;
-- límites oficiales de ciudades, versiones `LINESTRING` de rutas registradas y metadatos de
-  paquetes offline (migración `20260917_offline_routes_and_city_packages.sql`);
 - consentimientos y dispositivos push;
 - eventos, alertas y fuentes meteorológicas;
 - audioguías, traducciones y variantes multimedia;
 - lotes y errores de importación.
 
-La migración `20260924_tourism_agent_saved_content.sql` crea planes del usuario con
-jornadas y paradas y añade consentimiento explícito, identificador público y fuentes
-para el historial del agente. Las conversaciones anteriores quedan fuera del historial
-voluntario. La API debe desplegarse después de aplicar esta migración.
+La migración histórica `20260924_tourism_agent_saved_content.sql` añadió tablas de
+planes y controles de historial consentido. Los endpoints de itinerarios y su UI
+se retiraron posteriormente, conservando esquema y datos. No restaurarlos como
+parte del knowledge. Los campos de creador y las tablas offline también existen
+en migraciones previas; no tratarlos como DDL aún pendiente.
+
+Operaciones de despliegue requieren verificar conexión y respaldo, usar credenciales
+locales solo en memoria y comprobar permisos de tablas/secuencias. Esta instalación
+no abre una conexión de producción ni aplica SQL.
 
 ## Migraciones
 

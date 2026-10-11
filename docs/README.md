@@ -1,8 +1,17 @@
 # Índice de documentación
 
 Este archivo es el punto de entrada para agentes y personas que trabajen en el proyecto.
-Primero identifica la sección de la tarea, lee la fuente interna indicada y después consulta
-la documentación oficial de la tecnología antes de escribir o modificar código.
+Este knowledge adapta CognitiveStack `dev` y se complementa con OpenSpec.
+Primero identifica la tarea y su fuente, y consulta la documentación oficial de la
+tecnología antes de escribir código. Los comportamientos contrastados están en
+[specs](../openspec/specs/); las propuestas y su historia en
+[cambios](../openspec/changes/). [Adopción](architecture/cognitivestack-adoption.md)
+y [ciclo de cambios](quality/change-lifecycle.md) explican la migración.
+
+Las feature docs anteriores describen contexto y criterios que pueden incluir
+pendientes. La planificación usa exclusivamente OpenSpec; los documentos retirados
+se conservan en el historial Git.
+Una spec no certifica despliegue; el código es evidencia de implementación.
 
 ## Regla de consulta
 
@@ -17,26 +26,27 @@ la documentación oficial de la tecnología antes de escribir o modificar códig
 
 ## Documentación interna por tarea
 
-| Sección              | Fuente                                                                               | Usar cuando                                                                    |
-| -------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| Producto             | `product/overview.md`                                                                | Cambie el propósito, alcance, actores o propuesta de valor.                    |
-| Módulos              | `product/modules.md`                                                                 | Se agregue o divida una funcionalidad del producto.                            |
-| Decisiones           | `product/open-decisions.md`                                                          | Exista una elección de producto pendiente o ambigua.                           |
-| Dominio              | `product/domain-model.md`, `product/glossary.md`                                     | Se modifiquen entidades, estados, nombres o reglas del negocio.                |
-| Arquitectura general | `../ARCHITECTURE.md`, `architecture/stack.md`                                        | Se elija una tecnología, límite o patrón transversal.                          |
-| Móvil                | `architecture/mobile.md`                                                             | Se trabaje en Expo, React Native, navegación, overlays o estado móvil.         |
-| Mapas y rutas        | `architecture/maps-navigation.md`                                                    | Se modifiquen MapLibre, pines, cámara, geocodificación, rutas o navegación.    |
-| Backend              | `architecture/backend.md`, `architecture/authentication.md`                          | Se modifiquen módulos NestJS, API REST, auth o autorización.                   |
-| Datos                | `architecture/database.md`                                                           | Se modifique PostgreSQL, PostGIS, migraciones, índices o consultas espaciales. |
-| IA                   | `architecture/ai.md`                                                                 | Se cambien modelos, proveedores, prompts, herramientas o datos enviados a IA.  |
-| Integraciones        | `architecture/integrations.md`                                                       | Se conecte un proveedor externo o se cambie un adaptador.                      |
-| Despliegue           | `architecture/deployment.md`                                                         | Se cambie Docker Compose, servidores, secretos, almacenamiento o colas.        |
-| Calidad              | `quality/definition-of-done.md`, `quality/testing.md`, `quality/mobile-checklist.md` | Se verifique una feature, regresión o entrega móvil.                           |
-| Rendimiento          | `quality/performance.md`, `quality/observability.md`                                 | Se diagnostiquen lentitud, consumo, métricas o fallos operativos.              |
-| Seguridad            | `security/principles.md`, `security/hardening.md`, `security/threat-model.md`        | Se toquen permisos, datos personales, ubicación, archivos, IA o límites.       |
-| Privacidad           | `security/privacy-location.md`                                                       | Se solicite, procese, almacene o elimine ubicación.                            |
-| Planes               | `plans/active/`                                                                      | El trabajo sea no trivial o cruce varias capas.                                |
-| Generados            | `generated/README.md`                                                                | Se necesite saber cómo regenerar documentación; nunca editarla manualmente.    |
+| Sección              | Fuente                                                                                   | Usar cuando                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Producto             | `product/overview.md`                                                                    | Cambie el propósito, alcance, actores o propuesta de valor.                    |
+| Módulos              | `product/modules.md`                                                                     | Se agregue o divida una funcionalidad del producto.                            |
+| Decisiones           | `product/open-decisions.md`                                                              | Exista una elección de producto pendiente o ambigua.                           |
+| Dominio              | `product/domain-model.md`, `product/glossary.md`                                         | Se modifiquen entidades, estados, nombres o reglas del negocio.                |
+| Arquitectura general | `../ARCHITECTURE.md`, `architecture/stack.md`                                            | Se elija una tecnología, límite o patrón transversal.                          |
+| Criterios cognitivos | [Brief](architecture/cognitive-architecture.md), [índice técnico](architecture/index.md) | Se diseñen superficies, acciones, componentes y estados.                       |
+| OpenSpec y cambios   | [Ciclo](quality/change-lifecycle.md), [instalación](quality/openspec-installation.md)    | Se proponga, implemente, sincronice o archive trabajo nuevo.                   |
+| Móvil                | `architecture/mobile.md`                                                                 | Se trabaje en Expo, React Native, navegación, overlays o estado móvil.         |
+| Mapas y rutas        | `architecture/maps-navigation.md`                                                        | Se modifiquen MapLibre, pines, cámara, geocodificación, rutas o navegación.    |
+| Backend              | `architecture/backend.md`, `architecture/authentication.md`                              | Se modifiquen módulos NestJS, API REST, auth o autorización.                   |
+| Datos                | `architecture/database.md`                                                               | Se modifique PostgreSQL, PostGIS, migraciones, índices o consultas espaciales. |
+| IA                   | `architecture/ai.md`                                                                     | Se cambien modelos, proveedores, prompts, herramientas o datos enviados a IA.  |
+| Integraciones        | `architecture/integrations.md`                                                           | Se conecte un proveedor externo o se cambie un adaptador.                      |
+| Despliegue           | `architecture/deployment.md`                                                             | Se cambie Docker Compose, servidores, secretos, almacenamiento o colas.        |
+| Calidad              | `quality/definition-of-done.md`, `quality/testing.md`, `quality/mobile-checklist.md`     | Se verifique una feature, regresión o entrega móvil.                           |
+| Rendimiento          | `quality/performance.md`, `quality/observability.md`                                     | Se diagnostiquen lentitud, consumo, métricas o fallos operativos.              |
+| Seguridad            | `security/principles.md`, `security/hardening.md`, `security/threat-model.md`            | Se toquen permisos, datos personales, ubicación, archivos, IA o límites.       |
+| Privacidad           | `security/privacy-location.md`                                                           | Se solicite, procese, almacene o elimine ubicación.                            |
+| Generados            | `generated/README.md`                                                                    | Se necesite saber cómo regenerar documentación; nunca editarla manualmente.    |
 
 ## Fuentes oficiales: móvil y UI
 
@@ -67,7 +77,7 @@ la documentación oficial de la tecnología antes de escribir o modificar códig
 | Docker Compose | [Docs](https://docs.docker.com/compose/)                                                                                             | Se levanten servicios locales o despliegues del servidor.            |
 | OpenAPI        | [Specification](https://spec.openapis.org/oas/latest.html)                                                                           | Se modifique un contrato REST o generación de clientes.              |
 
-## Fuentes oficiales: IA y web futura
+## Fuentes oficiales: IA y coordinación web
 
 | Tecnología       | Documentación                                                       | Usar cuando                                                         |
 | ---------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -76,12 +86,17 @@ la documentación oficial de la tecnología antes de escribir o modificar códig
 | AI SDK Anthropic | [Provider](https://ai-sdk.dev/providers/ai-sdk-providers/anthropic) | Se configure Claude mediante variables de entorno.                  |
 | OpenAI API       | [API reference](https://platform.openai.com/docs/api-reference)     | Se revisen modelos, límites, autenticación o cambios del proveedor. |
 | Anthropic API    | [API docs](https://docs.anthropic.com/en/api/getting-started)       | Se revisen capacidades, límites o autenticación de Claude.          |
-| Next.js          | [Docs](https://nextjs.org/docs)                                     | Se trabaje en el repositorio web futuro.                            |
-| HeroUI           | [Docs](https://www.heroui.com/docs)                                 | Se usen componentes de la web administrativa o pública.             |
-| Tailwind CSS     | [Docs](https://tailwindcss.com/docs)                                | Se trabaje en la web; no introducirlo en el cliente móvil.          |
+| Next.js          | [Docs](https://nextjs.org/docs)                                     | Se trabaje en el scaffold o el repositorio del panel.               |
+| Material UI      | [Docs](https://mui.com/material-ui/)                                | Se coordine una interfaz del panel MUI separado.                    |
+| OpenSpec         | [Instalación](https://openspec.dev/docs/installation)               | Se instale o regenere el tooling; perfil y reglas locales en docs.  |
 
 ## Regla de sincronización
 
-Cuando cambie el comportamiento, actualizar la especificación y arquitectura afectadas en la
+Las skills locales están en [.agents/skills](../.agents/skills/): implementar features
+móviles/API, coordinar web, migrar, revisar, endurecer seguridad, documentar,
+optimizar y entregar cambios solicitados. Sus workflows OpenSpec se generan desde
+el CLI; el [perfil de tooling](../openspec/tooling.json) fija los doce.
+
+Cuando cambie el comportamiento, actualizar el delta OpenSpec y arquitectura afectadas en la
 misma unidad de trabajo. Las fuentes externas explican APIs; los documentos internos definen
 las decisiones, límites y políticas de Turismo Vinculación.

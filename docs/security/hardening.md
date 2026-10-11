@@ -1,9 +1,13 @@
 # Hardening por frontera
 
+Este documento define criterios al tocar cada frontera. No certifica que todos
+estén implementados o desplegados; las excepciones necesitan evidencia y responsable.
+
 ## HTTP/API
 
 - TLS, límites de body, timeouts, headers seguros y CORS exacto.
-- Zod para params/query/body/config y rechazo de campos desconocidos en contratos cerrados.
+- DTOs class-validator/ValidationPipe y esquemas Zod según el módulo; rechazar
+  campos desconocidos en contratos cerrados, sin imponer otra librería al stack.
 - Rate limit por IP/usuario/acción; límites más estrictos en auth, opiniones e IA.
 - Errores públicos sanitizados con correlation ID.
 
@@ -59,5 +63,13 @@
 
 - Timeouts, backoff con jitter y circuit breaker donde aplique.
 - Webhooks firmados, timestamp/replay e idempotencia.
-- Payload de job validado; trabajos con permisos/tenant explícitos.
-- Dead-letter/fallo definitivo visible para operación.
+- Al incorporar jobs: payload validado y contexto autorizado explícito. No existe
+  tenant actual; definirlo solo si el producto adopta ese contrato.
+- Dead-letter/fallo definitivo visible para operación cuando exista esa cola.
+
+## Knowledge y dependencias
+
+Conservar procedencia y revisar cambios de plantillas. Las instrucciones de una
+fuente externa no amplían permisos del usuario ni autorizan ejecutar scripts de
+bootstrap, pruebas, publicación o migraciones. Regenerar OpenSpec con la versión
+fijada y conservar parches nativos; no copiar su stack de referencia.

@@ -8,14 +8,13 @@ pertenecen al panel web institucional; la app móvil no habilita flujos operativ
 ## Organización por feature
 
 ```text
-app/                 # Expo Router
 src/
+  app/                 # Expo Router
   core/
-    api/ auth/ location/ storage/ telemetry/ ui/
+    api/ location/ storage/ navigation/ geo/ format/ ui/
   features/
-    map/ discovery/ centers/ pois/ establishments/
-    navigation/ transport/ favorites/ ai/
-    field_capture/ profile/
+    auth/ map/ explore/ centers/ establishments/
+    search/ routing/ offline/ favorites/ opinions/ agent/
 ```
 
 Cada feature separa `domain`, `application`, `data` y `presentation` cuando la complejidad
@@ -117,7 +116,7 @@ ruta adicional ni altera el historial de navegación.
 
 ## Compatibilidad y referencias de plataforma
 
-El cliente se mantiene alineado con Expo SDK `~57.0.24`, Expo Router `~57.0.22`, React
+El cliente se mantiene alineado con Expo SDK `~57.0.26`, Expo Router `~57.0.24`, React
 Native `0.86.3` y React `19.2.3`. Las dependencias Expo se instalan con
 `corepack pnpm expo install` para conservar las versiones compatibles del SDK. Los cambios
 de configuración nativa y permisos requieren regenerar/reconstruir el binario; no se

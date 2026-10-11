@@ -1,65 +1,57 @@
-# Mapa de arquitectura
+# Arquitectura de Turismo Vinculación
 
-## Estilo
+## Sistema actual
 
-Monorepo con monolito modular en el backend, dos clientes y trabajadores asíncronos:
-
-```text
-apps/mobile (React Native + Expo)
-  turistas + captura de campo para guías
-             │
-             ▼
-apps/api (NestJS/Fastify) ◄──────── apps/web (Next.js)
-             │                     web pública + administración
-      ┌──────┼──────────┬──────────────┐
-      ▼      ▼          ▼              ▼
- PostgreSQL Redis   MinIO/S3      Proveedores externos
- PostGIS     │      multimedia    MapLibre, rutas, IA, correo,
- pgvector    ▼                    clima y notificaciones
-          workers                 MapLibre, rutas, IA, correo,
-                                  clima y notificaciones
+```mermaid
+flowchart LR
+    M[Expo / React Native / MapLibre] --> A[NestJS / Fastify]
+    W[Panel Next.js / MUI<br/>repositorio web-turismo-admin] --> A
+    P[Scaffold público apps/web] --> A
+    A --> DB[PostgreSQL / PostGIS]
+    A --> O[Almacenamiento local o S3 / MinIO]
+    A --> S[Proveedores de rutas, búsqueda e IA]
 ```
 
-## Componentes
+La API es un monolito modular. `apps/mobile` es el cliente turístico;
+`web-turismo-admin` es el cliente institucional separado. `apps/web` conserva
+el primer scaffold público y no contiene el panel actual.
 
-- `apps/mobile`: Android/iOS con React Native/Expo, mapa MapLibre, descubrimiento, IA y captura de campo.
-- `apps/web`: web pública indexable y panel institucional de administradores.
-- `apps/api`: identidad, permisos, dominio, API REST, orquestación e integraciones.
-- `apps/worker`: importaciones, multimedia, IA diferida y notificaciones.
-- `packages/contracts`: esquemas y cliente TypeScript derivados de OpenAPI.
-- `database`: migraciones, seeds y documentación derivada cuando se inicialice el código.
-- `infra`: contenedores, proxy, observabilidad y respaldos.
+## Mapa del código
 
-## Dirección de dependencias del backend
+| Área            | Fuentes actuales                                               | Responsabilidad                                          |
+| --------------- | -------------------------------------------------------------- | -------------------------------------------------------- |
+| API             | `apps/api/src/app.module.ts`, `main.ts`                        | Fastify, validación, módulos y OpenAPI                   |
+| Identidad       | `apps/api/src/auth/`                                           | JWT, sesiones, rotación y roles                          |
+| Operación       | `apps/api/src/admin/`                                          | Borradores, propiedad, revisión, publicación y auditoría |
+| Público         | `centers/`, `pois/`, `establishments/`, `search/`              | Contenido publicado, búsqueda y consultas espaciales     |
+| Rutas / offline | `routing/`, `transport/`, `offline/`                           | Proveedores, manifiestos y estilos acotados              |
+| IA / archivos   | `ai/`, `files/`                                                | Herramientas confiables, límites y almacenamiento        |
+| Móvil           | `apps/mobile/src/app/`, `core/`, `features/`                   | Navegación, estado, mapa, caché y componentes nativos    |
+| Esquema         | `database/migrations/`, `turismo_vinculacion_app.sql`          | Migraciones SQL incrementales y baseline                 |
+| Operación       | `scripts/`, `infra/docker/compose.local.yml`, `Dockerfile.api` | Desarrollo y empaquetado existentes                      |
+| Knowledge       | `docs/`, `.agents/skills/`, `openspec/`                        | Producto, criterios, specs y cambios                     |
 
-```text
-domain <- application <- adapters (HTTP, DB, queues, providers)
-```
+## Dirección de dependencias
 
-- Dominio no importa NestJS, TypeORM, Redis ni SDKs externos.
-- Aplicación coordina casos de uso y transacciones mediante puertos.
-- Adaptadores implementan persistencia, HTTP, almacenamiento, mapas/rutas e IA.
-- Controladores no contienen reglas de negocio.
+Las features que separan capas mantienen dominio → aplicación → adaptadores:
+el dominio no conoce Nest, SQL ni proveedores. Algunos servicios existentes usan
+SQL directamente; la separación completa es un criterio de evolución, no una
+refactorización ya realizada. Mantener parámetros SQL y transacciones explícitas.
 
-## Módulos de dominio
+El cliente solo consume la API y datos públicos de mapas autorizados. La API
+decide permisos de registro y publicación. El modelo de IA accede a herramientas
+concretas, no a SQL ni credenciales.
 
-Identidad, territorio, catálogo turístico, centros, puntos de interés, establecimientos,
-fichas, publicación, transporte, rutas, navegación, accesibilidad, multimedia, opiniones,
-favoritos, IA, notificaciones, importaciones, valoración y auditoría.
+## Estado documentado y evolución
 
-## Fuentes de verdad
+Las specs de `openspec/specs/` describen la base contrastada con código. Los
+documentos de `docs/product/features/` conservan contexto y criterios previos;
+los pendientes no se convierten automáticamente en funciones vigentes.
 
-- Requisitos: `docs/product/`.
-- Arquitectura: `docs/architecture/` y ADRs.
-- Esquema conceptual: `temp/db.md`.
-- Bootstrap SQL actual: `turismo_vinculacion_app.sql`.
-- Al existir la aplicación, las migraciones versionadas serán la fuente ejecutable del esquema.
+Redis/BullMQ, outbox, workers separados y `packages/contracts` son opciones
+de arquitectura pendientes; no figuran como implementaciones de `app.module.ts`.
+Los clientes actuales tienen parsers/tipos propios y Swagger se publica desde la API.
+No afirmar generación automática de clientes que no tenga un generador vigente.
 
-## Límites críticos
-
-- Cliente/API: HTTPS, autenticación, autorización y validación.
-- API/base: transacciones y repositorios; sin acceso directo desde clientes.
-- API/mapas y rutas: credenciales con alcance mínimo, control de consumo y proveedor reemplazable.
-- API/IA: herramientas permitidas, contexto publicado y fuentes trazables.
-- API/archivos: subida firmada o mediada, validación y autorización.
-- API/colas: trabajos idempotentes, reintentos y estado persistente.
+Leer [índice técnico](docs/architecture/index.md), [stack](docs/architecture/stack.md),
+[fronteras de datos](docs/architecture/database.md) y [decisiones](docs/architecture/adr/).

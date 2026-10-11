@@ -1,0 +1,55 @@
+schema: spec-driven
+
+context: |
+  Language: Spanish
+  All artifacts must be written in Spanish.
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+  Proyecto: Turismo Vinculación, móvil turístico y API; leer AGENTS.md y docs/README.md.
+  Knowledge adaptado de CognitiveStack dev sin reemplazar tecnologías del producto.
+  Stack: NestJS/Fastify, guards propios, JWT jose, TypeORM/SQL incremental/PostGIS;
+  Expo/React Native, Expo Router, Paper/Tourism, MapLibre y TanStack Query.
+  Gestor del monorepo: pnpm/Corepack. El panel externo web-turismo-admin usa MUI/Bun.
+  apps/web conserva un scaffold Next; no es el panel institucional vigente.
+  Fuentes: docs/product/ para propósito; openspec/specs/ para comportamiento contrastado;
+  openspec/changes/ para cambios; docs/architecture/, docs/security/ y docs/quality/
+  para decisiones, controles y evidencia. La planificación vive exclusivamente en
+  OpenSpec; los antecedentes retirados se conservan en Git, con estados históricos.
+  La API decide autorización por rol, propietario y registro. No asumir tenants,
+  Idempotency-Key general, outbox, Redis, BullMQ ni worker por existir en una plantilla.
+  Usar corepack pnpm openspec y el perfil fijado para las invocaciones del CLI.
+  Conservar alcance y autorización del usuario; no repetir permisos ya concedidos.
+  Añadir o ejecutar pruebas cuando se solicite; declarar evidencia y lo no comprobado.
+  Commit, push y cambios de producción solo cuando se soliciten para ese trabajo.
+githubCopilot:
+  cloudAgent: false
+
+rules:
+  proposal:
+    - Explicar problema, usuario, alcance y exclusiones con vocabulario del producto.
+    - Distinguir comportamiento observado, trabajo propuesto y dependencias externas.
+  specs:
+    - Describir resultados observables con éxito, validación, permisos y límites relevantes.
+    - Para datos privados, cubrir usuario o rol sin acceso y referencias fuera de su alcance.
+    - Especificar repetición y concurrencia por operación sin inventar una garantía general.
+    - La base documental contrastada con código no certifica producción ni dispositivos.
+  design:
+    - Conservar el stack y las decisiones nativas según ADR 0005 y apps/mobile/AGENTS.md.
+    - Para una pantalla, responder brief cognitivo, P0-P3 y estados del flujo.
+    - Usar componentes reales Paper/Tourism en móvil; coordinar MUI en el repo del panel.
+    - Para una frontera sensible, responder el brief de backend y access-control.
+    - Conservar SQL incremental y distinguir efectos en la API de garantías del consumidor.
+  tasks:
+    - Agrupar unidades coherentes y actualizar su fuente única de documentación.
+    - Registrar dependencias de esquema, consumidores y orden de despliegue cuando existan.
+    - Incluir errores, cancelación, offline y accesibilidad proporcionales a la superficie.
+    - Preparar criterios de comprobación y ejecutar tests solo en el alcance solicitado.
+operations:
+  apply:
+    guidance:
+      - Usar las skills locales relevantes y leer las fuentes afectadas.
+      - Completar implementación ya autorizada sin confirmaciones rutinarias nuevas.
+      - Preservar contratos, stack y permisos al adaptar criterios de interfaz.
+  archive:
+    guidance:
+      - Integrar comportamiento implementado o una base documental contrastada con código.
+      - Usar OpenSpec para la planificación; consultar antecedentes en Git y declarar límites de evidencia.

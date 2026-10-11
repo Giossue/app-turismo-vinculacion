@@ -1,16 +1,21 @@
 ---
 name: implement-operational-web
-description: Implement Next.js administrative workflows for tourism capture, review, catalogs, moderation, imports, or audit with consistent accessible operational UX.
+description: Coordina cambios de API y contratos del panel institucional separado cuando una tarea del monorepo afecta captura, revisión, catálogos o auditoría web.
 ---
 
-# Implement operational web
+# Coordinar con el panel
 
-Read `docs/architecture/web.md`, the feature spec and `docs/quality/web-checklist.md`.
+Leer [web](../../../docs/architecture/web.md), el contrato afectado y el cambio OpenSpec.
+El panel actual está en web-turismo-admin, con Next/MUI y Bun. apps/web conserva
+un scaffold público anterior; no contiene la operación institucional.
 
-Optimize repeated work: searchable selectors, consistent tables, clear state/permission
-actions and recoverable long forms. Use dialogs for brief CRUD and pages for the 14-section
-workflow. Make published versus proposed data obvious during review.
+Definir compatibilidad, roles, propiedad, versiones y estados que consume la web.
+Mantener autorización real y auditoría en la API. Las mutaciones del cliente no
+sustituyen transacciones ni idempotencia del servidor.
 
-Use HeroUI React and shared tokens/components. TanStack Query owns server state, React
-Hook Form owns form state and the URL owns shareable filters. Every mutation handles
-pending/success/error and repeated submission. Backend remains the authorization boundary.
+Para implementar interfaz del panel, cargar sus AGENTS, docs y skill frontend
+locales y respetar el alcance de repositorios autorizado. No instalar HeroUI,
+Tailwind o componentes MUI dentro del monorepo como efecto de la coordinación.
+
+Actualizar ambos contratos cuando corresponda y describir lo implementado,
+pendiente y comprobado. Pruebas y entrega respetan la solicitud del usuario.

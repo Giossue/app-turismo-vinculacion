@@ -1,0 +1,791 @@
+{
+  "sourceRepository": "https://github.com/Giossue/app-turismo-vinculacion",
+  "sourceCommit": "91736d206fe194838f07fb72b45c95411f6e75d2",
+  "documentCount": 94,
+  "recovery": "git show <sourceCommit>:<path>",
+  "stateMeaning": "Los estados y checkboxes son declaraciones históricas; no prueban implementación ni despliegue.",
+  "documents": [
+    {
+      "path": "docs/plans/active/2026-09-16-react-native-paper-foundation.md",
+      "sha256": "92bc4b816c04cab8feeed610c150c34f7525b1f15369d0e557a2253af9a2ce8c",
+      "title": "Base de interfaz móvil con React Native Paper",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-17-admin-auth-review.md",
+      "sha256": "9df90443174f99dd1f9c1fd840c9e3b16a0566b7c4b4192bcded56c234db3bc2",
+      "title": "Panel administrativo: autenticación y revisión de fichas",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-17-mobile-motion.md",
+      "sha256": "a55b0173eee220c6df22db7b5a51422bc65a5ff02e7ed5a681b3176dad3d8e57",
+      "title": "Plan: motion del menú móvil",
+      "declaredState": ["Estado: implementado"],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-17-mobile-visual-consistency.md",
+      "sha256": "c7e10b934aca5a7eedbb6836b89c131346941351bd3c095eca82091de48f4499",
+      "title": "Sistema visual móvil consistente",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-17-performance-offline.md",
+      "sha256": "c79222790705e5d1376063208729fb451c6705586026fe8f7342c44e50f62656",
+      "title": "Plan: navegación persistente y paquetes offline",
+      "declaredState": [
+        "Estado: fase móvil y contratos públicos implementados; publicación institucional de paquetes"
+      ],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-17-remove-tailwind.md",
+      "sha256": "15d84773ba167179b1780feb48538ecdddc6d5ca9cc2daab834312faf36478ed",
+      "title": "Retiro de Tailwind del repositorio actual",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-18-admin-center-capture.md",
+      "sha256": "8567e84897f3fab34bcb952f05025dd92cb9acdbb6c9675d2e7056b62920f285",
+      "title": "Implementación activa: captura y publicación de fichas administrativas",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-18-seed-guaranda-demo-content.md",
+      "sha256": "e3b5fdd58f8ea7233e11e60009678e42c26d6dba30457202f3efd679f2b13a51",
+      "title": "Contenido demostrativo de Guaranda",
+      "declaredState": ["Estado: implementado en el entorno local."],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-19-admin-full-center-record-and-cadastre.md",
+      "sha256": "38fe08bf25489a6d84859bc484ea04dbe1afe9e0a650afa9ff05981ea96f8e7b",
+      "title": "Refactor administrativo: ficha integral y catastro por localidad",
+      "declaredState": [
+        "Estado: en curso; catastro inicial, navegación integral, revisión por diferencias, captura",
+        "- estados de carga, vacío y error accesibles.",
+        "- estado activo."
+      ],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-19-background-navigation.md",
+      "sha256": "0fac0029de546355b251e8278c76b144b35a1cf5e6290ff25282e01618ac181e",
+      "title": "Plan: navegación persistente en segundo plano",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-19-estimated-transport-duration.md",
+      "sha256": "edc3667a206fbe8ed69eba465ae493904e4fed1ee01e7b622a7d0f9f3fda7cec",
+      "title": "Duración estimada de rutas de transporte",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-19-local-dev-orchestration.md",
+      "sha256": "80b18422f22958a05d9fd42c9eebb96639f27b6e94be3c17b6e9abd10a8ce23b",
+      "title": "Arranque local unificado",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-19-map-gestures.md",
+      "sha256": "a3cf5e8dae510eb6faf8c557f6729c9f9a9e7e3235f9cb2cd1897a8bb36705ed",
+      "title": "Plan: gestos del mapa móvil",
+      "declaredState": [],
+      "completedCheckboxes": 5,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-19-mobile-navigation-transitions.md",
+      "sha256": "06b42811317a9bef7836d343ea9ec833fecf9af0f667d940f6fe75bc1fa6548b",
+      "title": "Transiciones suaves de navegación móvil",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-19-osrm-routing-integration.md",
+      "sha256": "02ed6becfb933b91149708e46997e32779514d0777eb8483aa82fcc951b1a226",
+      "title": "Plan: integración de rutas OSRM",
+      "declaredState": [],
+      "completedCheckboxes": 7,
+      "pendingCheckboxes": 2
+    },
+    {
+      "path": "docs/plans/active/2026-09-19-remote-centers-only-map-pins.md",
+      "sha256": "6c5075cb039c5983a1c1d35910f07f0fe0f7d988dcbbc10681dded0c5964e4ff",
+      "title": "Plan: pines del mapa desde centros remotos publicados",
+      "declaredState": [
+        "Estado: implementado y verificado localmente; pendiente confirmación visual en el dispositivo durante Fast Refresh."
+      ],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-19-seed-guaranda-centers.md",
+      "sha256": "39dcd930d4476f3fa4a6dcd014e065a8b8101f2457b89cea577b77d5c73f9032",
+      "title": "Plan: centros turísticos de demostración en Guaranda",
+      "declaredState": [
+        "Estado: aplicado y verificado en la BD remota; pendiente decidir si se hace commit/push de la migración."
+      ],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-19-self-hosted-map-tiles.md",
+      "sha256": "41217c506e90e6b7cc2996bcdf56471d31177eec8b28407e1b97a438ea36f192",
+      "title": "Tiles cartográficos propios",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-20-agent-floating-sheet-map-shell.md",
+      "sha256": "1b44597e13030f5309aea03486181d8823c3752c80058b7217afce20cab25486",
+      "title": "Plan: agente flotante y shell de mapa",
+      "declaredState": [
+        "Estado: implementación móvil completada; pendiente validación visual en dispositivo."
+      ],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-20-center-sheet-dismiss.md",
+      "sha256": "9ef95cfe89e5124762f5c08ef657dd3d9ec0664213cdde1eb6456564dcf9f032",
+      "title": "Cierre de la ficha rápida del mapa",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 5
+    },
+    {
+      "path": "docs/plans/active/2026-09-20-establishment-audit.md",
+      "sha256": "794ba65c9d64b43ce9f9277cb5ab305d6ea3ef24ccd5515c99ba2142631007d5",
+      "title": "Auditoría de mutaciones del catastro",
+      "declaredState": ["Estado: completado (2026-09-20)"],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-20-foreground-location-lifecycle.md",
+      "sha256": "be4fb011742539682a363dadaa2464002cb741060902d571c3cc9c7495e7a6f4",
+      "title": "Sesión global de ubicación en primer plano",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-20-gps-camera-focus-confirmation.md",
+      "sha256": "331bcc0c638bad7dffed3ceeeb50031d5dceef0adf4ca60da78f804d98158ef1",
+      "title": "Confirmación del enfoque GPS",
+      "declaredState": [],
+      "completedCheckboxes": 1,
+      "pendingCheckboxes": 3
+    },
+    {
+      "path": "docs/plans/active/2026-09-20-mobile-build-audit.md",
+      "sha256": "8ad1d4f977934847fe5c23a92279cf4edc4e21d1c89c9c4e7500eb7a93643cc2",
+      "title": "Auditoría profunda del build móvil",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-20-mobile-cache-and-center-detail.md",
+      "sha256": "38d827ce51b8b92118aff0b37919f0f30ac5e18acdb00931cbf1e643b72bf4ab",
+      "title": "Plan: caché móvil y ficha pública de centros",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-20-navigation-back-cancellation.md",
+      "sha256": "188098cc246c0ea653e60e9077e31899c9f293d87926584275ec1fbd12132800",
+      "title": "Cancelación de navegación al salir de la ruta",
+      "declaredState": [],
+      "completedCheckboxes": 4,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-20-opinions-moderation.md",
+      "sha256": "89bd6e16305667b24d9af83a7e2048e9cd7516c06ecb977332b6a4ca7cf55bb8",
+      "title": "Opiniones y moderación con versiones",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-20-remove-mobile-itinerary.md",
+      "sha256": "01249aca9ca187f7865c21c73ec0e66f107c1d190e93f05d5f15cc3871b927c5",
+      "title": "Retiro del itinerario móvil",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-20-saved-centers.md",
+      "sha256": "cf946538ff855b505ccbba1334158c8d0f32a163958a60730b2eaa2d3b29f41e",
+      "title": "Plan: Guardados en la aplicación móvil",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-20-seed-catastro-demo.md",
+      "sha256": "e99383626dcb59619906565490ac58638c09523636b6c62504948cb92a70f1f8",
+      "title": "Seed demostrativo del catastro nacional",
+      "declaredState": ["Estado: completado (2026-09-20)"],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-20-seed-fixed-xlsm-catalogs.md",
+      "sha256": "a56c8292aeb1714240ec7781e0c926840b18564f8f5fca6261355efdc4ffa57a",
+      "title": "Catálogos fijos del XLSM en PostgreSQL",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-20-seed-guaranda-ficha.md",
+      "sha256": "c51972ac06c75be209db1c848c727b6dff693c71b88e926e6dfc8362d56f40e5",
+      "title": "Ficha integral presentada como zona turística de Guaranda",
+      "declaredState": ["- Estado remoto: activo y `PUBLICADO`."],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-20-seed-guaranda-zone.md",
+      "sha256": "c6617b8b9d00271896397931011c158a99dced530bf69e0c42420a31a3fb52d7",
+      "title": "Zona turística demostrativa de Guaranda",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-20-seed-xlsm-operational-catalogs.md",
+      "sha256": "fb4becb7a2c39be96e24eec28ceb42b8fb0dcee9fd4c51133d4ddff8f9ceacbd",
+      "title": "Catálogos operativos fijos de la ficha XLSM",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-20-tourist-account-entry.md",
+      "sha256": "3b08b11623f6d8331bfd007445116c1254dd29245d689778719b834b285896e6",
+      "title": "Cuenta turística y entrada de visitante",
+      "declaredState": [],
+      "completedCheckboxes": 3,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-21-active-navigation-mode.md",
+      "sha256": "1b09ad7afd515ca4698ba32d190fe99f1b7e7f79d61462712ad9c5ccb00023ef",
+      "title": "Plan: modo de navegación activa",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-21-admin-review-history.md",
+      "sha256": "aa048a5a823b964d9783b53ec9db7afb6996fc0f48e399d2a04f736145cbf97c",
+      "title": "Historial visible de revisión de fichas",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-21-ai-agent-tools-and-structured-chat.md",
+      "sha256": "614a55f3bc47f45d553a8d5a6bbbb8c360a590cfa2ca72b7e8d615715b72d006",
+      "title": "Agente turístico con herramientas y chat estructurado",
+      "declaredState": [],
+      "completedCheckboxes": 10,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-21-complete-guaranga-demo-draft.md",
+      "sha256": "baddd80bf42f71b79a81a58bd9baa94a5f1cf1895584b5226047207e5af2686e",
+      "title": "Completar borrador demo de Centro Cultural Indio Guaranga",
+      "declaredState": ["Estado: completado"],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-21-establishment-coordinates-required.md",
+      "sha256": "f7141963cc7659e3ddd9f80b00749dc50e1f4203ca14935c15b8bea69468be5a",
+      "title": "Plan: coordenadas obligatorias para establecimientos",
+      "declaredState": [
+        "Estado: implementado; migración aplicada en la base remota"
+      ],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-21-establishment-map-markers.md",
+      "sha256": "c668b02a232cc4e210ffa3e653150d71362c01a88f9e5efc0fc9ff03cdc5a633",
+      "title": "Plan: categorías de catastro y marcadores en el mapa",
+      "declaredState": [
+        "Estado: implementado; queda pendiente comprobación visual en Development Build"
+      ],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-21-establishment-taxonomy.md",
+      "sha256": "55211e6bf9aecb24193b8bc6b459fb259a1288f5a5198c0a536683d09f9ee4e4",
+      "title": "Catálogo jerárquico del catastro",
+      "declaredState": [
+        "Estado: completado; la semántica de categorías y el perfil visual por clasificación se"
+      ],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-22-admin-catalog-creation.md",
+      "sha256": "d3669ac4c901b21fe9ce17d9ab5d736506a91cb9c3d6d4052c8a84976c9d03de",
+      "title": "Plan: altas administrativas de catálogos",
+      "declaredState": ["Estado: implementado"],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-22-catastro-semantic-taxonomy.md",
+      "sha256": "e6a97cd2928101ee189529a53130173e960d5234ad09e9e951b8b1169d6b4664",
+      "title": "Reforma semántica del catastro",
+      "declaredState": [
+        "Estado: completado; migración aplicada y verificaciones automatizadas ejecutadas"
+      ],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-22-mobile-code-quality-refactor.md",
+      "sha256": "af7952cb326ed4716c1459ee1971a482508c62bb1841adce6e729e90473a5a6a",
+      "title": "Plan activo: auditoría y refactor de calidad del móvil",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-22-opinion-history-dialog.md",
+      "sha256": "cadd9ffc1d06fe9ec11fba35f875fc669b1a3a70cf52e778e4ca5cc4a28f7c82",
+      "title": "Historial detallado de opiniones en el panel",
+      "declaredState": ["Estado: completado"],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-22-osmic-catastro-pins.md",
+      "sha256": "1b206632cc3712d851567fcad85ea2683228f58304f9a0c2610052aeaba1c554",
+      "title": "Plan: pines Osmic y color automático del catastro",
+      "declaredState": [
+        "Estado: implementado; queda pendiente comprobación visual en Development Build"
+      ],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-22-reliable-foreground-location.md",
+      "sha256": "6ea5abab5476899c0196fb0a08ca8a0b5a36a5400b9e68f7fdb59b19059618cf",
+      "title": "Ubicación foreground confiable en mapa y navegación",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-22-search-and-coordinate-picker.md",
+      "sha256": "a159346f14d02abb7d32a54a9d702a06d4bcd3d51eaeaffd209dd0c5eddb84f2",
+      "title": "Búsqueda móvil y selector de coordenadas",
+      "declaredState": [],
+      "completedCheckboxes": 5,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-22-tourism-agent-review-workflow.md",
+      "sha256": "32f4de15f0c6bcacf2f54fb3e6ee6b87ae8da66e9aa6a566f66cf2923f423c54",
+      "title": "Flujo de agente turístico y revisión institucional",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-09-23-chatbot-completion.md",
+      "sha256": "c490527d40f3122de1bc8af86b79ca1e1249d6354a7e80b06b5cdee6ec55d652",
+      "title": "Cierre funcional del chatbot turístico",
+      "declaredState": [],
+      "completedCheckboxes": 5,
+      "pendingCheckboxes": 2
+    },
+    {
+      "path": "docs/plans/active/2026-09-24-tourism-agent-complete.md",
+      "sha256": "7c3d3242a297aabd8d04a7eb07930e5f4c602e4dfaa80c438bed425bda0b6aa1",
+      "title": "Cierre integral del agente turístico",
+      "declaredState": [
+        "Estado: en ejecución. El objetivo abarca todas las capacidades del asistente"
+      ],
+      "completedCheckboxes": 4,
+      "pendingCheckboxes": 2
+    },
+    {
+      "path": "docs/plans/active/2026-09-27-avoid-slow-api-deploy.md",
+      "sha256": "6c6dab4d26edb29eb79bf7135321c342bafe2421222ef2921ceafb137c3ddab8",
+      "title": "Evitar la copia lenta de dependencias de la API en Dokploy",
+      "declaredState": [],
+      "completedCheckboxes": 2,
+      "pendingCheckboxes": 1
+    },
+    {
+      "path": "docs/plans/active/2026-09-27-remove-agent-photo.md",
+      "sha256": "b5329856c76b7fa24cc47841ae1e34734974492cc6cd1e16b29909b23566270a",
+      "title": "Retirar fotos del agente turístico",
+      "declaredState": [],
+      "completedCheckboxes": 4,
+      "pendingCheckboxes": 1
+    },
+    {
+      "path": "docs/plans/active/2026-10-02-admin-deletion.md",
+      "sha256": "1a24c58163baebb856668fd04b0ffafeff2e8443980afe0fc2e3f47f0ff75235",
+      "title": "Eliminación administrativa",
+      "declaredState": [],
+      "completedCheckboxes": 5,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-10-02-map-place-visibility.md",
+      "sha256": "e4810490ae6cb26196b08a582816b7a023760ec074c6427cddade0f10b5adba2",
+      "title": "Plan: aparición progresiva de lugares y nombres en el mapa",
+      "declaredState": [
+        "Estado: implementado; aparición progresiva verificada en Android; ajuste de color de"
+      ],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/active/2026-10-02-national-localities.md",
+      "sha256": "87e06102dae6e37fb9511f537ebd853785b4e1909c84fbb79b59049abe6a5cc7",
+      "title": "Catálogo nacional de localidades y búsqueda administrativa",
+      "declaredState": [
+        "Estado: implementado, verificado y aplicado en el destino remoto"
+      ],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-16-bootstrap-primer-corte.md",
+      "sha256": "fa2810835a964f722f7d47b4b816ee8ae941274dc92cf99b42b2c22cdb9cf64d",
+      "title": "Bootstrap y primer corte vertical",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-16-engineering-kit.md",
+      "sha256": "a9ce2c3468736b9bd77da32a37f9e7bd3b2ca12f3d3281a7517bd5245ff11157",
+      "title": "Engineering kit adaptado",
+      "declaredState": ["- Estado: completado"],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-16-map-first-tourist-home.md",
+      "sha256": "d146d09d546b2848d8203166e081fc5773bb220bf00b44f180dc65542f71bacd",
+      "title": "Inicio turístico centrado en mapa",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-16-mobile-bootstrap-discovery-superseded.md",
+      "sha256": "94bfcc60060304f15019b3900f39917bfd44aa38e43d7add82a4fe7a0723690f",
+      "title": "Bootstrap móvil y descubrimiento público",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-16-public-discovery-complete.md",
+      "sha256": "f8dec017e1a3aee1e9b3652c813f2deab503f351b58ce03395c2622039504b48",
+      "title": "Descubrimiento público completo",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-16-react-native-expo-maplibre.md",
+      "sha256": "10d5d3fddd8baabfcb351ce9803d9017fc63be75e39652375160efe2c90264b0",
+      "title": "React Native, Expo y mapa de descubrimiento",
+      "declaredState": [
+        "- Estados de carga, vacío, error, reintento y uso sin ubicación."
+      ],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-18-admin-centers-empty-filter-fix.md",
+      "sha256": "8736979b43e00fdb63c6fa798265ab6aefcd5412dd5c7f5f62aed80d26a27fc8",
+      "title": "Plan: corregir listado administrativo sin filtros",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-18-admin-panel-completion.md",
+      "sha256": "fcff6c2db0d2623ce093f1b154147073c61bd009388369d64585c92bd6066f3f",
+      "title": "Plan: completar panel administrativo",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-18-two-role-authorization.md",
+      "sha256": "8c784fb1fba941d51c57d2a804592f139c4c0db66b6108b2cafb92c67e152762",
+      "title": "Plan: consolidar autorización en dos roles",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-19-active-navigation-guidance.md",
+      "sha256": "8805efcc08a9174e36b643c4ea1e91353f0d963d5338e2c66b6165b3b12da32d",
+      "title": "Plan: navegación activa con voz y recálculo",
+      "declaredState": ["Estado: completado."],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-19-mobile-agent-chat.md",
+      "sha256": "72902d6c0a0d19432e2dfc01cdaf99cea25ff421ceb9e74fc8fdb3beefaa6b27",
+      "title": "Vista de agente tipo chat",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-19-refresh-explore-tab.md",
+      "sha256": "c0c30089a987f94d519de25e04e4e12df6b6b1bd254773d4b45893f66de8b719",
+      "title": "Plan: refrescar Explorar al pulsar la pestaña activa",
+      "declaredState": ["Estado: completado."],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-21-flexible-mobile-sheets.md",
+      "sha256": "cab45ec7f1c9d7f574b211a921187545e943e2baa89c19ea8d0f231d92c7c723",
+      "title": "Plan: sheets móviles flexibles",
+      "declaredState": [],
+      "completedCheckboxes": 4,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-21-map-overlapping-features.md",
+      "sha256": "8c92ed2c25c04ed6a8e21dd33e05fe45f115490afa31ae05c34309141ce99108",
+      "title": "Plan: selección de marcadores superpuestos",
+      "declaredState": [],
+      "completedCheckboxes": 3,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-21-nearby-demo-poi.md",
+      "sha256": "d50835dfed9b0063f7cbce54a251da23b1f36f9578e1f2bf9545dd33fb50e0e6",
+      "title": "Plan: POI demostrativo cercano al centro de Guaranda",
+      "declaredState": [],
+      "completedCheckboxes": 3,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-21-opinions-admin-public-list.md",
+      "sha256": "7f2f7e5dd3436de12ded920ee475e1f3ef5a10741f4c12b1520056334fc10a3e",
+      "title": "Opiniones publicadas en administración y ficha móvil",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-21-route-preview-inline.md",
+      "sha256": "bff90b161d03f025fff07e80b69ff9fcb7874bce9555ada17dd1ca1020829ef3",
+      "title": "Entrega: preview de ruta manipulable",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-21-spread-demo-establishment-coordinates.md",
+      "sha256": "2d43c0853f66a9051d5548501af7a12712df27ef10454d065d8ce810260b523c",
+      "title": "Plan: distribuir coordenadas aproximadas del catastro demo",
+      "declaredState": [],
+      "completedCheckboxes": 3,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-23-android-dev-metro.md",
+      "sha256": "22cd8ecb528725bfd6fd25b51ff55ff14772c33f4b585e86d523ee7e4529fe1b",
+      "title": "Android de desarrollo con Metro",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-09-27-cache-api-deploy.md",
+      "sha256": "7f7da8447f08ea52738d4dbe934273ec6e4687f9d30a56e8693664b919425fcf",
+      "title": "Caché de dependencias del despliegue API",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-10-02-agent-chat-message-limit.md",
+      "sha256": "ac3078a0e69587aefb793a4f8c74c4adc0ad0db632d0b10f146f31bbcf687324",
+      "title": "Chat sin vista de historial y con veinte mensajes",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-10-02-agent-compact-cards.md",
+      "sha256": "bf2dea08b5ba204cb6aaf44b4fdbfbc4bf0afba3f94b9e22c230d7137b145133",
+      "title": "Tarjetas compactas del agente turístico",
+      "declaredState": [],
+      "completedCheckboxes": 7,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-10-02-agent-travel-times.md",
+      "sha256": "5b8fe85187e0d50ae47f784873555e00209a5de35513435e1ce7eab610512e11",
+      "title": "Tiempos de llegada en el agente turístico",
+      "declaredState": [],
+      "completedCheckboxes": 5,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-10-02-map-downloads-ui-correction.md",
+      "sha256": "eb2725f1c5d6bf15bed85871f7ae2519ab8a1e18e4243e86f5b9443c516582d1",
+      "title": "Corregir descarga de mapas y composición del panel de ruta",
+      "declaredState": [],
+      "completedCheckboxes": 4,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-10-02-mobile-responsive-checks.md",
+      "sha256": "2acc3ef13c80ed3c5435b824f09c719845c57303924bc669f1b48aca2367445d",
+      "title": "Comprobación automatizada de responsividad móvil",
+      "declaredState": [],
+      "completedCheckboxes": 5,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-10-02-offline-city-browsing.md",
+      "sha256": "3bf197aadecb8d3f62c662aab0c44b1562d9efcab4bce94ad68f79a5735ff11f",
+      "title": "Plan: ciudades descargadas y rutas guardadas sin conexión",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-10-02-remove-agent-plans.md",
+      "sha256": "425ae36354a1585c78cc57223d8901ececc4a5d7f69d8dadd13b5044bb7384e6",
+      "title": "Retirar planes del agente turístico",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-10-02-remove-component-blur.md",
+      "sha256": "ed5672589ff7bfb63605e8fc1c3d93a00ad8d506cc78e2b9df266a1c7bc97e02",
+      "title": "Retirar desenfoque de componentes",
+      "declaredState": [],
+      "completedCheckboxes": 5,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-10-02-search-hide-tab-bar.md",
+      "sha256": "4b199d74845fc0a791eeeb7f901897b5187bdcaa299e191bfdca2b129fda8454",
+      "title": "Ocultar navegación inferior durante la búsqueda",
+      "declaredState": [],
+      "completedCheckboxes": 4,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-10-02-unified-live-search.md",
+      "sha256": "fe116f961c39be89c708cd8044489dc210f88ba1ec88060d1693f5a8e1aecb6c",
+      "title": "Búsqueda unificada con resultados al escribir",
+      "declaredState": [],
+      "completedCheckboxes": 6,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-10-03-center-three-state-workflow.md",
+      "sha256": "9b1d459cdb6877c13ce84bb523bd0dad2172a5b5d8e55d75dfa2466fbf22fbea",
+      "title": "Flujo de centros con tres estados",
+      "declaredState": [],
+      "completedCheckboxes": 8,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-10-03-mobile-profile.md",
+      "sha256": "42c54fc9a1e4896dc87a3428f0473db47b38052c8c70d09d396817a112411122",
+      "title": "Perfil móvil desde la cabecera del menú",
+      "declaredState": [],
+      "completedCheckboxes": 4,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-10-03-remove-center-activation-ui.md",
+      "sha256": "1a09d4a294c8200a9a779bac4f25fe4852c5c694337861afbe1a756062fae556",
+      "title": "Retirar activación del panel de centros",
+      "declaredState": [],
+      "completedCheckboxes": 5,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-10-03-row-actions-menu.md",
+      "sha256": "a02b6e66f314473d3f2f815213de5ca84bc87d98ccdc606980e8a1817a8b2c98",
+      "title": "Menú de acciones por fila",
+      "declaredState": [],
+      "completedCheckboxes": 6,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-10-03-sidebar-notifications.md",
+      "sha256": "af3cb09e057626ec137cdc29a6e07ae3f12e21bc91856d46331fc4ee72a8b2d8",
+      "title": "Novedades y pendientes en la navegación administrativa",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/completed/2026-10-03-unified-admin-loading.md",
+      "sha256": "34fc0a64ce974330b9589b14e0896d4db47936941eb342933d00bd7ffde50eb5",
+      "title": "Indicador de carga unificado del panel",
+      "declaredState": [],
+      "completedCheckboxes": 6,
+      "pendingCheckboxes": 0
+    },
+    {
+      "path": "docs/plans/technical-debt.md",
+      "sha256": "3422fd902ab61e067ea454dd35209e6d36819da72c6f0ddee7e4ca9fd94fd0f1",
+      "title": "Deuda técnica",
+      "declaredState": [],
+      "completedCheckboxes": 0,
+      "pendingCheckboxes": 0
+    }
+  ]
+}

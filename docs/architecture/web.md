@@ -1,20 +1,22 @@
-# Arquitectura web futura
+# Coordinación con el portal web
 
-La web no forma parte del cliente móvil en este monorepo. La vista pública y el panel
-operativo viven en el repositorio independiente `web-turismo-admin`; la aplicación móvil
+La web no forma parte del cliente móvil en este monorepo. El panel
+operativo vive en el repositorio independiente `web-turismo-admin`; la aplicación móvil
 es el único cliente para turistas. Ambos clientes consumen la misma API NestJS y ningún
 cliente abre conexiones directas a PostgreSQL.
 
-## Áreas
+## Áreas y propiedad
 
-- Pública: mapa básico, búsqueda, fichas, catastro y enlaces compartibles.
-- Cuenta turística: favoritos con funciones limitadas.
-- Operativa: captura, revisión, catálogos, transporte, moderación y auditoría.
+- `web-turismo-admin`: portal institucional de captura, revisión, catálogos,
+  moderación y auditoría; excluido de indexación, con sesión institucional.
+- `apps/web`: scaffold público anterior del monorepo, conservado sin convertirse
+  en producto turístico o segundo panel.
+- El móvil ofrece mapa, búsqueda, ficha, cuenta, favoritos, IA y navegación turística.
 
 ## Stack
 
 Next.js App Router, TypeScript estricto y MUI para el repositorio administrativo. Server
-Components para landing y contenido público/SEO; Client Components solo cuando existe
+Components para rutas y metadatos; Client Components solo cuando existe
 interacción real. El panel usa superficies planas sin sombras, con bordes sutiles y radios
 contenidos, además de componentes reutilizables con tokens centralizados.
 
@@ -148,5 +150,5 @@ administrativo conserva la fecha y la acción. La migración
 
 ## Web móvil
 
-La web pública debe funcionar en teléfono. El panel administrativo es responsive, pero
+El scaffold público existente y cualquier futura superficie autorizada deben funcionar en teléfono. El panel administrativo es responsive, pero
 la captura de campo con GPS/cámara se optimiza en React Native.

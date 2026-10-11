@@ -1,5 +1,16 @@
 # Estrategia de pruebas
 
+## Ejecución y evidencia
+
+Añadir o ejecutar pruebas cuando el usuario lo solicite. Esta estrategia describe
+cobertura deseada, no comandos que deban lanzarse ante cualquier edición.
+Para instalar knowledge, comprobar CLI, configuración, formato, enlaces y origen
+de generados; no arrancar API, dispositivos o bases por ese motivo.
+
+Scripts reales: `corepack pnpm test`, `typecheck`, `lint`, `build` y `verify`,
+y filtros `@turismo/api` / `@turismo/mobile`. Las suites de migraciones siguientes
+son runners aislados que se ejecutan solo dentro del alcance solicitado.
+
 ## Pirámide
 
 - Unitarias: dominio, validadores, políticas y transformaciones.

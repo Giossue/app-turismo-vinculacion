@@ -5,7 +5,9 @@
 - `pnpm` mediante Corepack para TypeScript.
 - Expo/React Native comparte el workspace `pnpm` con API y web.
 - Turborepo puede coordinar las aplicaciones TypeScript cuando el volumen lo justifique.
-- Versiones exactas se fijan al hacer bootstrap y se actualizan mediante cambios separados.
+- Versiones en los manifiestos y `pnpm-lock.yaml`; las actualizaciones son cambios separados.
+- OpenSpec 1.14.1 es una dependencia de desarrollo en la raíz, con perfil completo
+  en `openspec/tooling.json`. No pertenece al runtime de la API o del móvil.
 
 ## Móvil
 
@@ -13,7 +15,8 @@
 - Expo Router para rutas, enlaces y estructura de pantallas.
 - MapLibre React Native como renderer nativo; requiere Expo Development Build, no Expo Go.
 - TanStack Query para estado remoto y cancelación de consultas.
-- Zustand para estado local efímero; React Hook Form y Zod para formularios.
+- Estado local en React y contratos Zod declarados por feature. Zustand y React
+  Hook Form no están instalados en este paquete; el panel usa su propio formulario.
 - React Native Paper como kit externo de componentes; los tokens y componentes `Tourism*`
   mantienen la identidad visual, mientras `StyleSheet` resuelve el layout nativo.
 - `@gorhom/bottom-sheet` sobre Gesture Handler/Reanimated para sheets con arrastre continuo
@@ -24,11 +27,12 @@
 - expo-secure-store para credenciales mínimas; caché/drafts solo cuando se especifique.
 - expo-notifications y Sentry cuando la feature los requiera.
 
-## Web futura
+## Web y panel
 
-- La web pública y administrativa se desarrollará en un repositorio separado.
-- Este monorepo no mantiene un kit visual ni una cadena de estilos utilitarios para la web.
-- Las decisiones de UI, estilos y dependencias de ese repositorio se tomarán cuando se cree.
+- El panel vigente es Next.js/React/TypeScript/MUI, con Bun, en `web-turismo-admin`.
+- `apps/web` conserva un scaffold público Next.js. HeroUI y Tailwind no están instalados.
+- La aplicación móvil es el producto para turistas; el futuro del scaffold se
+  decide explícitamente, sin eliminarlo o convertirlo por adoptar la plantilla.
 
 ## Backend
 
@@ -37,9 +41,10 @@
 - REST, OpenAPI y eventos asíncronos; WebSockets solo con caso de uso real.
 - Zod en fronteras y variables de entorno.
 - TypeORM para unidades de trabajo y relaciones; SQL parametrizado aislado para PostGIS.
-- Passport/Nest guards para identidad y autorización.
+- Guards Nest propios y JWT con `jose` para identidad y autorización; no Passport.
 - Argon2id para contraseñas.
-- Redis + BullMQ para colas, rate limits y caché.
+- Redis/BullMQ previstos; sin worker o colas de aplicación instalados. El rate
+  limit actual usa Fastify y requiere diseño distribuido si se escala.
 
 ## Datos
 
@@ -54,7 +59,10 @@
 - Docker Compose en servidor propio.
 - Caddy o Nginx para TLS y proxy.
 - Backups de PostgreSQL y objetos probados mediante restauración.
-- OpenTelemetry, logs estructurados y Sentry; Prometheus/Grafana al madurar la operación.
+- OpenTelemetry, Sentry y métricas son criterios de evolución; esta adopción no
+  demuestra que esa instrumentación esté desplegada.
+
+La conservación y procedencia están en [ADR 0005](adr/0005-cognitivestack-openspec.md).
 
 ## Decisiones excluidas
 

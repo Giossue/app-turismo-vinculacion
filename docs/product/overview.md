@@ -15,7 +15,8 @@ aprobada. Los administradores registran y publican el contenido institucional.
 
 - Visitante: explora mapa y lugares públicos sin cuenta.
 - Turista: favoritos, opiniones, preferencias e IA personalizada.
-- Administrador: crea, edita, revisa, publica y mantiene fichas, catálogos, moderación y configuración.
+- Agente turístico: captura sus fichas y catastros, guarda borradores y envía a revisión.
+- Administrador: ámbito global de revisión/publicación, catálogo, moderación y auditoría.
 
 ## Problemas que resuelve
 
@@ -31,7 +32,7 @@ aprobada. Los administradores registran y publican el contenido institucional.
 2. Llegar: elegir origen/modo, calcular una ruta y navegar.
 3. Guardar: conservar lugares favoritos para consultarlos después.
 4. Consultar IA: recibir respuestas con fuentes publicadas.
-5. Registrar: un administrador guarda borradores y prepara una ficha.
+5. Registrar: un agente guarda sus borradores o un administrador prepara una ficha.
 6. Publicar: un administrador compara, observa, aprueba y publica.
 7. Mantener: el administrador gestiona catálogos, rutas, multimedia, opiniones e importaciones.
 
@@ -52,4 +53,6 @@ desactivan posición actual, cercanía en tiempo real y seguimiento de navegaci�
 
 - Módulos y fases: `docs/product/modules.md`.
 - Decisiones todavía abiertas: `docs/product/open-decisions.md`.
-- Modelo relacional: `temp/db.md`.
+- Modelo relacional: `database/migrations/` y contexto histórico de `temp/db.md`.
+- Comportamiento contrastado: `openspec/specs/`.
+- Las fases y no objetivos de estos docs no certifican el estado de despliegue.

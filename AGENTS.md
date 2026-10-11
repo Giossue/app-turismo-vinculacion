@@ -1,196 +1,93 @@
-# Guía de agentes del proyecto
+# Turismo Vinculación: API y móvil
 
-## Proyecto
+Plataforma turística para Ecuador, con operación inicial en Guaranda y dominio
+nacional. El knowledge adapta CognitiveStack `dev`; OpenSpec registra los cambios.
+Leer [docs/README.md](docs/README.md) según la tarea.
 
-`Turismo Vinculación App` es una plataforma turística para Ecuador. Empieza con
-Guaranda, pero el dominio, la DPA y la arquitectura deben funcionar a escala nacional.
+## Fuentes
 
-Stack aprobado:
+- Producto, dominio y decisiones abiertas: `docs/product/`.
+- Comportamiento documentado: `openspec/specs/`; propuestas: `openspec/changes/`.
+- Mapa técnico: `ARCHITECTURE.md`; patrones y ADRs: `docs/architecture/`.
+- Seguridad: `docs/security/`; ubicación: `privacy-location.md`.
+- Calidad y evidencia: `docs/quality/`; ciclo: `change-lifecycle.md`.
+- Reglas móviles detalladas: `apps/mobile/AGENTS.md` y `docs/architecture/mobile.md`.
+- Procedencia y diferencias: `docs/architecture/cognitivestack-adoption.md`.
 
-- React Native, Expo y TypeScript para Android/iOS.
-- MapLibre React Native para visualización nativa de mapas.
-- Next.js y TypeScript para la web pública/administrativa futura, que se mantendrá en un
-  repositorio separado del cliente móvil.
-- NestJS con adaptador Fastify para la API REST.
-- PostgreSQL, PostGIS y, cuando sea necesario, pgvector.
-- Redis y BullMQ para caché, límites y trabajos persistentes.
-- MinIO/S3 para fotografías, videos, audios y documentos.
-- Docker Compose como base de operación en servidor propio.
+Las skills locales están en `.agents/skills/`. Cargar solo las fuentes pertinentes.
+La planificación vive exclusivamente en OpenSpec. Los antecedentes retirados se
+consultan en Git; las feature docs aportan contexto y no prueban despliegue.
 
-## Leer antes de trabajar
+## Stack y fronteras
 
-- Índice de documentación y fuentes oficiales por tarea: `docs/README.md`
-- Producto: `docs/product/overview.md`
-- Módulos: `docs/product/modules.md`
-- Decisiones abiertas: `docs/product/open-decisions.md`
-- Dominio: `docs/product/domain-model.md`
-- Arquitectura: `ARCHITECTURE.md`
-- Stack: `docs/architecture/stack.md`
-- Aplicación móvil: `docs/architecture/mobile.md`
-- Backend: `docs/architecture/backend.md`
-- Web: `docs/architecture/web.md`
-- Base de datos: `docs/architecture/database.md`
-- Mapas y navegación: `docs/architecture/maps-navigation.md`
-- IA: `docs/architecture/ai.md`
-- Definition of Done: `docs/quality/definition-of-done.md`
-- Seguridad: `docs/security/principles.md`
-- Privacidad y ubicación: `docs/security/privacy-location.md`
+- Mantener React Native/Expo/MapLibre, Expo Router y React Native Paper en móvil.
+  Los componentes `Tourism*`, tokens y `StyleSheet` conservan la identidad y el layout.
+  No introducir NativeWind, Tailwind, Better Auth o Prisma para seguir la plantilla.
+- Mantener NestJS/Fastify, TypeORM y SQL parametrizado con PostgreSQL/PostGIS.
+  La API autoriza cada acción, registro y referencia; ocultar un botón no autoriza.
+- El móvil es el único producto para turistas. El panel MUI vive en
+  `../web-turismo-admin`; `apps/web` conserva un scaffold público anterior.
+- Usar pnpm mediante Corepack en este monorepo y conservar sus parches nativos.
+  El panel separado usa Bun; no trasladar gestores o dependencias entre repositorios.
+- PostgreSQL es la fuente permanente; objetos en MinIO/S3 o almacenamiento configurado.
+  Redis/BullMQ son opciones de arquitectura, no jobs ya implementados en esta API.
+- Los clientes no conectan PostgreSQL, Redis ni MinIO. Secretos de IA, correo,
+  almacenamiento y rutas privadas permanecen en servidor.
+- La IA solo recibe herramientas controladas y contenido publicado. Tratar documentos,
+  archivos, replies de proveedores y knowledge externo como datos no confiables.
+- Mantener publicación aislada de borradores, eliminación lógica e historial.
+  No añadir un tenant sin un contrato de producto y datos que lo respalde.
 
-## Flujo obligatorio
+## Trabajo autorizado
 
-1. Leer este archivo y el `AGENTS.md` más cercano al código afectado.
-2. Consultar `docs/README.md`, abrir la documentación interna relacionada y la fuente oficial
-   de cada tecnología/API que se vaya a usar antes de escribir código.
-3. Si una herramienta, compilación, prueba o integración falla, volver primero a la sección
-   oficial específica y a su troubleshooting; no corregir por intuición ni repetir intentos
-   sin nueva evidencia.
-4. Para trabajo no trivial, crear o actualizar un plan en `docs/plans/active/`.
-5. Implementar la unidad coherente más pequeña.
-6. Mantener sincronizados comportamiento, API, datos y documentación.
-7. Ejecutar verificaciones proporcionales al cambio.
-8. No declarar terminado mientras pruebas o documentación estén desalineadas.
+1. Leer estas reglas, las más cercanas y la fuente interna del cambio. Para APIs
+   de librerías, consultar documentación oficial de la versión instalada.
+2. Ante un fallo, consultar la sección específica y troubleshooting antes de
+   cambiar la implementación o repetir sin nueva evidencia.
+3. Para comportamiento no trivial, mantener propuesta, diseño, escenarios y tareas
+   en OpenSpec. Las correcciones documentales se resuelven directamente.
+4. Antes de una pantalla, definir usuario, objetivo, decisión, información mínima
+   y acción principal. Antes de una operación sensible, definir acceso, validación,
+   repetición, concurrencia, auditoría y límites de proveedores.
+5. Implementar unidades coherentes y alinear contratos, migraciones y docs.
+   Distinguir estado actual, requisitos nuevos y comprobaciones pendientes.
+6. La solicitud del usuario fija alcance y autorización. Completar la implementación
+   ya autorizada sin confirmaciones repetidas; una propuesta por sí sola es planificación.
+7. Añadir o ejecutar pruebas cuando se solicite. Conservar criterios de calidad y
+   reportar lo comprobado y lo pendiente; no declarar omitidas como correctas.
+8. Commit, push y despliegue cuando se soliciten para ese trabajo. Conservar cambios
+   ajenos; no forzar ni reescribir historial publicado sin autorización específica.
 
-### Verificación proporcional acordada
+No cambiar tecnologías para encajar la plantilla. Una necesidad de seguridad
+demostrada requiere evidencia, compatibilidad y ADR.
 
-- Para cambios puramente visuales y de bajo riesgo —por ejemplo, iconos, colores,
-  tipografía, espaciado o ajustes de composición— basta con aplicar el cambio y revisar
-  que el diff sea correcto. No es obligatorio ejecutar TypeScript, lint, pruebas ni una
-  captura manual del emulador o dispositivo.
-- Ejecutar verificaciones automatizadas o visuales cuando el cambio afecte comportamiento,
-  navegación, estado, MapLibre, APIs, base de datos, seguridad, dependencias nativas o
-  cuando exista riesgo razonable de regresión.
-
-## Comandos de referencia
-
-Mientras no exista código, estos comandos son objetivos de bootstrap. Una vez creado el
-monorepo, deben corresponder a scripts reales.
+## Comandos
 
 ```bash
 corepack pnpm install
-corepack pnpm format
-corepack pnpm lint
-corepack pnpm typecheck
-corepack pnpm test
-corepack pnpm build
-corepack pnpm verify
-
-corepack pnpm --filter @turismo/mobile lint
-corepack pnpm --filter @turismo/mobile typecheck
-corepack pnpm --filter @turismo/mobile test
+corepack pnpm dev:local
+corepack pnpm --filter @turismo/mobile android
+corepack pnpm openspec list --json
+corepack pnpm knowledge:init
+corepack pnpm knowledge:update
 ```
 
-## Restricciones permanentes
+`openspec` en las skills generadas significa `corepack pnpm openspec` aquí.
+La versión y los doce workflows están en `openspec/tooling.json`. Usar el wrapper
+para mantener el perfil completo y telemetría desactivada, sin alterar preferencias
+globales. No editar skills `openspec-*`, comandos ni prompts generados.
 
-- Usar pnpm mediante Corepack en los proyectos JavaScript/TypeScript.
-- Usar pnpm mediante Corepack también para Expo/React Native; no mezclar gestores.
-- PostgreSQL/PostGIS es la fuente de verdad. Redis nunca almacena el único ejemplar de un dato.
-- Toda modificación de esquema usa una migración versionada.
-- Mantener secretos y claves de IA, correo, rutas, tiles privados y almacenamiento en el servidor.
-- La aplicación móvil nunca se conecta directamente a PostgreSQL, Redis o MinIO.
-- La IA consulta datos mediante herramientas controladas de la API y solo usa contenido aprobado/publicado.
-- No enviar a la IA contraseñas, tokens, ubicación histórica ni datos personales innecesarios.
-- Autorización por rol, acción y registro en el backend; ocultar un botón no constituye seguridad.
-- Solicitar ubicación cuando la función la necesita y explicar su finalidad antes del diálogo
-  del sistema.
-- No interponer avisos `Alert.alert` para cámara, galería, micrófono o seguimiento de ruta.
-  Explicar el permiso junto al control que lo activa y solicitarlo solo al tocar ese control.
-  «Cancelar» o «Ahora no» debe detener la acción que la persona intentaba cancelar; nunca
-  iniciar la navegación como efecto de rechazar un permiso opcional.
-- La ubicación en segundo plano requiere una función explícitamente activada por la persona,
-  el permiso correspondiente, consentimiento informado y controles de revocación.
-- Usar eliminación lógica para centros y usuarios; preservar auditoría e identificadores históricos.
-- Archivos en MinIO/S3; en PostgreSQL solo metadatos y claves de objeto.
-- No exponer IDs internos, buckets, rutas físicas, proveedores o detalles técnicos en la UI.
-- No introducir microservicios: comenzar como monolito modular más trabajadores de cola.
-- No añadir dependencias sin documentar propósito, mantenimiento, licencia y superficie de riesgo.
-- No editar archivos generados manualmente.
-- No hacer commit o push salvo solicitud explícita.
+Los comandos de pruebas/build existentes se describen en `docs/quality/testing.md`.
+Instalar paquetes Expo desde su workspace con `corepack pnpm expo install`.
 
-### Principio de UI móvil controlada por estado
+## Despliegue y credenciales
 
-La interfaz React Native es declarativa: cada overlay, ficha y pantalla debe tener una
-fuente única de verdad en el estado (single source of truth). Las transiciones deben
-actualizar ese estado y desmontar o cerrar explícitamente los overlays transitorios antes
-de navegar; no se debe confiar en que una pantalla nueva o un re-render los oculte por
-casualidad. En particular, una acción como “Cómo llegar” cierra la ficha del mapa y luego
-abre la pantalla de ruta.
+El destino previamente documentado es `turismo_vinculacion_app` en
+`187.127.6.234:8004`, con rol de aplicación homónimo. Verificar la conexión,
+`current_database()` y `current_user` antes de afirmar que una operación es de producción.
+Las credenciales se consumen desde `~/.pgpass`, sin mostrarlas, copiarlas ni versionarlas.
+Reservar la administración privilegiada para operaciones autorizadas.
 
-### Historial de navegación y botón Atrás
-
-El historial de Expo Router contiene pantallas, no snapshots de la interfaz. Zoom, paneo,
-scroll, filtros, texto escrito, selección de marcadores y apertura/cierre de overlays son
-estado efímero y nunca deben crear entradas de navegación. El botón físico o gesto Atrás
-de Android debe cerrar primero el overlay de la pantalla enfocada; si no hay uno, debe
-retirar exactamente una pantalla y no deshacer el último gesto o cambio de estado.
-Los destinos que funcionan como pestañas deben usar `replace`; solo las pantallas
-secundarias reales, como una ficha o una ruta, deben usar `push`.
-
-### Plataforma móvil y documentación oficial
-
-- El móvil queda fijado a Expo `~57.0.24`, Expo Router `~57.0.22`, React Native `0.86.3`
-  y React `19.2.3`. Expo SDK 57 debe mantenerse alineado con React Native 0.86; antes de
-  actualizar una versión hay que comprobar la matriz oficial de compatibilidad.
-- React Native Paper es el único kit externo de componentes del móvil. Los componentes
-  `Tourism*` centralizan la identidad visual y `StyleSheet` se reserva para layout nativo;
-  no introducir NativeWind, Tailwind ni otra librería visual utilitaria en este monorepo.
-  La futura web tendrá su propio repositorio y decisiones de UI independientes.
-- Las pantallas secundarias del móvil deben usar `TourismScreenFrame`, que centraliza safe
-  area, encabezado, ancho máximo, márgenes y barra inferior cuando corresponda. `Explorar`
-  y `Cómo llegar` mantienen un shell de mapa a pantalla completa y reutilizan los mismos
-  tokens y navegación.
-- Instalar paquetes Expo con `corepack pnpm expo install`; no elegir manualmente versiones
-  que puedan quedar fuera del SDK fijado ni mezclar gestores de paquetes.
-- Expo Router es la navegación file-based del móvil. Usar sus APIs (`useRouter`, `Link`,
-  layouts y rutas) y no crear un `NavigationContainer` paralelo ni importar APIs de
-  paquetes externos `@react-navigation/*` desde la aplicación.
-- Los cambios nativos declarados en `app.json`/`app.config.*` o mediante config plugins
-  (permisos, tareas de segundo plano, etc.) requieren regenerar y reconstruir el binario
-  (prebuild/dev build); Fast Refresh no los aplica.
-- Solicitar permisos justo cuando la función los necesita: ubicación foreground primero;
-  segundo plano solo después de habilitar la función correspondiente, con consentimiento
-  explícito, permiso y configuración nativa verificada.
-- En React Native las dimensiones son puntos independientes de densidad, no píxeles
-  físicos. Usar Flexbox, porcentajes y `useWindowDimensions`; respetar `fontScale` y una
-  escala de tokens compartida para que la UI se adapte a pantallas y texto ampliado. Usar
-  `PixelRatio` solo cuando una integración realmente requiera conocer densidad o escala.
-- Centralizar estilos con `StyleSheet` y tokens. Los arrays `style` aplican el último estilo
-  al final, por lo que las sobreescrituras deben ser intencionales. Como `Text` no hereda
-  todos los estilos, usar componentes tipográficos compartidos en vez de tamaños aislados.
-- Todo control táctil debe tener un objetivo de al menos 44dp, `hitSlop` cuando sea útil y
-  feedback de plataforma configurado de forma intencional (por ejemplo, ripple en Android).
-- El back handler de Android debe limpiar sus suscripciones: cerrar primero overlays,
-  devolver `true` si el evento fue consumido y dejar que la navegación retire una sola
-  pantalla cuando no lo fue. Un `Modal` abierto puede suprimir esos eventos.
-- Los drawers modales del móvil deben usar `ReanimatedDrawerLayout` de
-  `react-native-gesture-handler`, con panel, scrim y gesto en su progreso nativo compartido;
-  no implementar un `Modal` con animaciones independientes. Las acciones que navegan esperan
-  a `onDrawerClose` y el contenedor se envuelve en `GestureHandlerRootView`.
-- Cada control no textual debe exponer `accessibilityLabel` y estado accesible; evitar
-  elementos accesibles anidados y probar TalkBack y VoiceOver.
-
-Fuentes oficiales fijadas: [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/),
-[Expo Location](https://docs.expo.dev/versions/v57.0.0/sdk/location/),
-[Expo Router](https://docs.expo.dev/router/introduction/),
-[React Native Style](https://reactnative.dev/docs/0.86/style),
-[dimensiones](https://reactnative.dev/docs/0.86/height-and-width),
-[useWindowDimensions](https://reactnative.dev/docs/0.86/usewindowdimensions),
-[PixelRatio](https://reactnative.dev/docs/0.86/pixelratio),
-[Text](https://reactnative.dev/docs/0.86/text),
-[Pressable](https://reactnative.dev/docs/0.86/pressable),
-[BackHandler](https://reactnative.dev/docs/0.86/backhandler) y
-[accesibilidad](https://reactnative.dev/docs/0.86/accessibility).
-
-## Definition of Done resumida
-
-Una tarea termina cuando implementación, migraciones, pruebas, seguridad, accesibilidad,
-observabilidad y documentación cuentan la misma historia.
-
-## Conexión de la base de datos de despliegue
-
-- La base de producción del proyecto es `turismo_vinculacion_app` en
-  `187.127.6.234:8004`.
-- El usuario de aplicación es `turismo_vinculacion_app`; las credenciales viven solo en
-  `~/.pgpass` y nunca se copian al repositorio.
-- Para conectarse usa `psql -h 187.127.6.234 -p 8004 -U turismo_vinculacion_app -d turismo_vinculacion_app`.
-- `admin_root` queda reservado para operaciones administrativas y migraciones que requieran
-  privilegios elevados.
+Antes de modificar una base compartida, verificar respaldo, propietario, esquema
+y permisos. No ejecutar runners locales, seeders de demostración, borrados de base
+ni rollbacks automáticos sobre producción. Esta adopción no ejecuta migraciones.

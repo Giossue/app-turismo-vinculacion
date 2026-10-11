@@ -1,18 +1,26 @@
 ---
 name: create-migration
-description: Create or review PostgreSQL/PostGIS migrations for the tourism domain, including data movement, spatial indexes, seeds, rollback, and compatibility.
+description: Crea o revisa migraciones SQL PostgreSQL/PostGIS de la API cuando un cambio autorizado requiere esquema, backfill o catálogos.
 ---
 
-# Create migration
+# Evolucionar el esquema
 
-Read `docs/architecture/database.md`, the feature spec and affected parts of `temp/db.md`.
+Leer [datos](../../../docs/architecture/database.md), el cambio y el
+[procedimiento SQL](../../../database/migrations/README.md). Las migraciones
+incrementales ya existen; TypeORM synchronize y Prisma no administran este esquema.
 
-Preserve soft deletion, history, publication isolation and the 17-character code rules.
-Use native PostgreSQL/PostGIS deliberately; parameterize application queries. Include
-indexes for new foreign keys and proven critical queries.
+Conservar códigos, soft delete, auditoría, snapshots y aislamiento de publicación.
+Usar SQL parametrizado en aplicación, constraints, índices y límites de locks
+según el acceso real. Inventariar referencias antes de transformar datos.
 
-For destructive or backfill work document preconditions, batching, locks, backup,
-roll-forward/rollback and deployment order. Test from an empty database and against a
-representative prior schema. Keep seeds idempotent. Refresh generated schema references.
+Para backfill o cambios destructivos, registrar precondiciones, lotes, respaldo,
+compatibilidad, orden de despliegue y estrategia de avance/reversión explícita.
+Mantener seeds idempotentes sin insertar credenciales o datos demo por defecto.
 
-Never treat SQLite as proof that a PostGIS migration works.
+Una operación de producción requiere alcance solicitado, conexión y propietario
+verificados, respaldo y revisión posterior de historial/esquema/permisos. Consumir
+pgpass local solo en memoria; nunca mostrarlo ni copiarlo. No ejecutar runners
+locales, wipes, fresh, seeds de demo o rollback automático sobre producción.
+
+Preparar cobertura de migración; ejecutarla cuando se solicite. SQLite o una
+validación sintáctica no demuestra PostGIS ni permisos del despliegue.

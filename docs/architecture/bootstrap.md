@@ -1,52 +1,66 @@
-# Bootstrap del repositorio
+# Preparar el repositorio existente
 
-## Estructura objetivo
+## Estructura actual
 
 ```text
 apps/
-  api/          NestJS
-  web/          Next.js
-  mobile/       React Native + Expo
-  worker/       consumidores BullMQ
-packages/
-  contracts/    OpenAPI generado y tipos TypeScript
-  config/       eslint, prettier y tsconfig compartidos
+  api/          NestJS/Fastify y módulos registrados
+  mobile/       Expo/React Native para turistas
+  web/          scaffold Next previo, conservado
 database/
-  migrations/
-  seeds/
-infra/
-  docker/
-  proxy/
-  monitoring/
-docs/
+  migrations/   SQL incremental de PostgreSQL/PostGIS
+  seeds/        fuentes locales; no ejecutar en producción por bootstrap
+docs/           producto, arquitectura, seguridad y calidad
+openspec/       contexto, perfil, specs y cambios
+.agents/skills/ especialistas locales y workflows generados
+scripts/        operación local y wrapper OpenSpec
 ```
 
-## Orden recomendado
+El panel institucional vive en el repositorio separado `web-turismo-admin`.
+No hay `apps/worker`, paquetes de contratos compartidos, outbox ni cola BullMQ
+registrados como implementación de este workspace.
 
-1. Inicializar workspace pnpm y configuración compartida.
-2. Crear NestJS con Fastify, health checks, config validada y OpenAPI.
-3. Convertir `turismo_vinculacion_app.sql` en migraciones versionadas sin perder PostGIS.
-4. La web pública/administrativa se creará posteriormente en un repositorio separado.
-5. Crear Expo/React Native y verificar MapLibre en Android; configurar EAS para builds iOS.
-6. Generar clientes desde OpenAPI.
-7. Añadir PostgreSQL/PostGIS, Redis y MinIO a Docker Compose.
-8. Implementar identidad, roles y primer administrador.
-9. Construir un corte vertical: centro publicado → API → mapa → ficha.
-10. Añadir CI con formato, lint, tipos, pruebas, build y validación de migraciones.
+## Instalación local
 
-## Criterio del primer corte
+```bash
+corepack pnpm install --frozen-lockfile
+corepack pnpm knowledge:init
+corepack pnpm openspec list --json
+corepack pnpm dev:api
+corepack pnpm --filter @turismo/mobile start
+```
 
-No iniciar IA, video, notificaciones ni navegación completa antes de demostrar:
+Node y pnpm se fijan en `package.json`. Los lockfiles y `pnpm-workspace.yaml`
+conservan overrides, parches y la política de builds nativos. No cambiar el gestor
+ni regenerar parches por instalar knowledge.
 
-- autenticación y permisos;
-- migraciones reproducibles;
-- centro publicado consultable;
-- búsqueda espacial;
-- marcador MapLibre y ficha pública;
-- revisión básica desde web.
+Leer la configuración de [desarrollo y despliegue](deployment.md) antes de iniciar
+proveedores. Crear variables desde ejemplos locales sin copiar credenciales de
+producción. Tener Docker Compose no confirma que la aplicación use todos sus servicios.
 
-## Entornos
+## Knowledge y OpenSpec
 
-- `local`: Docker Compose y proveedores simulados cuando sea posible.
-- `staging`: datos no sensibles, mismas imágenes y topología que producción.
-- `production`: credenciales separadas, backups, alertas y migración explícita.
+El [router documental](../README.md) indica qué leer por tarea. El
+[perfil completo](../quality/openspec-installation.md) instala Codex y Claude
+con los doce workflows con CLI local exacto y wrapper. `knowledge:update` los regenera.
+
+Las specs base describen código existente. La planificación usa OpenSpec; los
+antecedentes retirados se conservan en Git y no certifican resolución de pendientes.
+No ejecutar onboarding, suites, migraciones o commits como efecto de instalar un
+workflow. La solicitud del usuario define las acciones.
+
+## Móvil nativo
+
+Consultar [AGENTS móvil](../../apps/mobile/AGENTS.md), [arquitectura móvil](mobile.md)
+y [parches nativos](native-patches.md). MapLibre requiere un development build;
+Expo Go no sustituye el runtime nativo de este producto. Conservar la configuración
+Expo, las decisiones de navegación y el flujo de prebuild del proyecto.
+
+## Entornos y persistencia
+
+Local, staging y producción conservan configuración, datos y credenciales propias.
+Comprobar el destino real antes de afirmar que se opera sobre producción. Las
+migraciones siguen el procedimiento de [datos](database.md): verificar respaldo,
+propietario y permisos; no recrear ni limpiar una base productiva.
+
+La adopción documental y de tooling no requiere acceder a bases ni ejecutar SQL.

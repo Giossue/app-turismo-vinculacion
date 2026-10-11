@@ -1,13 +1,13 @@
 # Despliegue
 
-## Topología inicial
+## Topología prevista y estado actual
 
 Servidor Ubuntu con Docker Compose:
 
 - `proxy`: Caddy o Nginx, TLS y límites de entrada.
 - `web`: Next.js.
 - `api`: NestJS/Fastify.
-- `worker`: BullMQ.
+- `worker`: opción futura BullMQ; no hay aplicación worker instalada.
 - `postgres`: PostgreSQL con PostGIS y pg_trgm.
 - `redis`: caché/colas con persistencia apropiada para trabajos.
 - `minio`: almacenamiento de objetos.
@@ -15,6 +15,11 @@ Servidor Ubuntu con Docker Compose:
 
 Producción debe separar volúmenes persistentes del ciclo de despliegue. El contenedor de
 aplicación nunca posee el único ejemplar de datos.
+
+`Dockerfile.api` y el Compose local son las fuentes actuales de empaquetado.
+Los nombres de servicios previstos no prueban su despliegue. El panel se construye
+desde su propio repositorio; Redis, colas y observabilidad requieren su configuración.
+OpenSpec es tooling de desarrollo y sus integraciones quedan fuera del contexto Docker.
 
 ## Dominios
 

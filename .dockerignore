@@ -15,3 +15,6 @@ database
 docs
 infra
 scripts
+.claude
+.codex
+openspec

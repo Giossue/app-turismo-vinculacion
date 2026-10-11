@@ -1,20 +1,22 @@
 ---
 name: implement-feature
-description: Implement a Turismo Vinculación feature across specification, API, mobile or web, persistence, tests, and documentation when the request changes product behavior.
+description: Implementa cambios de Turismo Vinculación que cruzan API, móvil, contratos o datos, con el alcance y autorización solicitados.
 ---
 
-# Implement feature
+# Implementar una feature
 
-Read `AGENTS.md`, the feature spec, `ARCHITECTURE.md`, the affected client document and
-`docs/quality/definition-of-done.md`.
+Leer [índice](../../../docs/README.md), producto, cambio OpenSpec y arquitectura
+afectada. Identificar actor, propiedad, estado publicado/privado, ubicación,
+offline, integraciones y datos que necesitan migración.
 
-For non-trivial work create/update `docs/plans/active/`. Identify actor, permission,
-published/private visibility, offline/location behavior, data ownership and external
-degradation before coding.
+Usar propuesta, diseño, escenarios y tareas para comportamiento no trivial;
+respetar autorización existente sin agregar aprobaciones rutinarias. Implementar
+una unidad coherente y coordinar el panel separado cuando cambia su API.
 
-Implement the smallest vertical slice. Keep domain rules out of controllers/widgets,
-validate boundaries, authorize the record, use migrations for schema changes and update
-OpenAPI before regenerating clients. Add tests at the lowest useful level plus a critical
-integration/E2E path. Update durable docs and report verification truthfully.
+Conservar Nest/Fastify/SQL y Expo/Paper/MapLibre. Autorizar registros y referencias,
+validar límites, mantener transacciones y compatibilidad de consumidores.
+No inventar tenants, jobs o módulos por aparecer en una hoja de ruta.
 
-Do not expand into adjacent roadmap modules without explicit scope.
+Actualizar contratos, docs y deltas. Añadir/ejecutar tests cuando se solicite y
+reportar evidencia real y pendientes. No ampliar a módulos adyacentes ni publicar
+sin la solicitud correspondiente.

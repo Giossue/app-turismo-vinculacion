@@ -3,7 +3,8 @@
 ## General
 
 - La implementación coincide con la especificación y sus criterios.
-- Formato, lint, tipos, pruebas y build aplicables pasan.
+- Registrar las verificaciones solicitadas y sus resultados. Añadir/ejecutar
+  pruebas cuando se solicite; declarar pendientes, sin afirmar que lo omitido pasó.
 - OpenAPI, migraciones, documentación y clientes generados están sincronizados.
 - Entradas no confiables se validan y cada acción protegida autoriza el registro.
 - No existen secretos ni datos personales innecesarios en código, logs o fixtures.
@@ -16,12 +17,14 @@
 - Dominio no importa infraestructura.
 - Controladores son delgados y errores tienen códigos estables.
 - Escrituras críticas son transaccionales e idempotentes donde corresponde.
-- Cambios de esquema incluyen migración y prueba desde cero.
+- Cambios de esquema incluyen migración, compatibilidad y cobertura prevista;
+  ejecutar pruebas de esquema cuando se solicite.
 - Trabajos declaran reintento, timeout y fallo definitivo.
 
 ## Móvil
 
-- Probado en Android e iOS soportados, no solo emulador ideal.
+- Informar dispositivos y escenarios comprobados; una validación documental
+  no demuestra comportamiento en Android/iOS.
 - Permisos denegados y GPS apagado tienen alternativa clara.
 - Tokens permanecen en almacenamiento seguro.
 - Texto escalado, lector de pantalla, contraste y touch targets funcionan.

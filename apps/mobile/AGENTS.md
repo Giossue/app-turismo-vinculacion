@@ -19,8 +19,8 @@ código de aplicación.
 
 React Native Paper es el único kit externo de componentes de este paquete. Las pantallas
 usan componentes `Tourism*` y tokens Turismo; `StyleSheet` queda para layout nativo. No
-añadir NativeWind, Tailwind ni otra librería visual al móvil. La versión web se mantiene
-fuera de este paquete y se desarrollará en otro repositorio.
+añadir NativeWind, Tailwind ni otra librería visual al móvil. El panel MUI ya existe
+en el repositorio independiente `web-turismo-admin`.
 
 Las pantallas secundarias deben montarse dentro de `TourismScreenFrame` para compartir safe
 area, encabezado, ancho máximo y márgenes. `Explorar` y `Cómo llegar` (`route.tsx`) son las
@@ -82,6 +82,15 @@ idioma. Los parches de `patches/` se documentan en `docs/architecture/native-pat
 Mantén una única fuente de verdad para el estado visible. Los bottom sheets, fichas y
 otros overlays transitorios se cierran o desmontan explícitamente antes de navegar a otra
 pantalla; una nueva ruta no debe depender de ocultarlos implícitamente.
+
+Si se introduce un drawer modal, usar `ReanimatedDrawerLayout` dentro de
+`GestureHandlerRootView`: panel, scrim y gesto comparten progreso nativo.
+Las acciones que navegan esperan `onDrawerClose`. El menú actual es una sheet;
+no se rediseña por adoptar el knowledge.
+
+Antes de una pantalla no trivial, responder el brief de
+`docs/architecture/cognitive-architecture.md` y registrar escenarios en OpenSpec.
+La ejecución de pruebas y la entrega respetan la solicitud del usuario y AGENTS raíz.
 
 ## Historial y botón Atrás
 

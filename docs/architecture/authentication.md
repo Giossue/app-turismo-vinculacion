@@ -2,8 +2,9 @@
 
 ## Propiedad
 
-El backend NestJS es dueño de registro, verificación, login, recuperación, tokens,
-revocación y roles. No se delega autenticación al proveedor de mapas/rutas ni al proveedor de IA.
+El backend NestJS es dueño del registro turístico, login, tokens, revocación y roles.
+Verificación por correo, recuperación y MFA requieren un flujo específico;
+no se dan por implementados por una instrucción de la plantilla. No se delega autenticación al proveedor de mapas/rutas ni al proveedor de IA.
 
 ## Credenciales
 
@@ -11,11 +12,13 @@ revocación y roles. No se delega autenticación al proveedor de mapas/rutas ni 
 - Access JWT breve, firmado y con `sub`, identificador de sesión (`sid`), roles y audiencia.
 - Refresh token opaco, aleatorio, rotado y almacenado como hash.
 - Detección de reutilización revoca la familia de sesión.
-- Tokens de verificación/recuperación de un solo uso, con hash y expiración.
+- Al añadir verificación/recuperación: tokens de un solo uso, hash y expiración.
+  El controlador actual no ofrece esos endpoints.
 
 ## Clientes
 
-- Móvil: access token en memoria; refresh token en Secure Storage.
+- Móvil: access token en memoria; refresh token y perfil mínimo en SecureStore nativo.
+  Las variantes web del cliente usan su implementación de almacenamiento específica.
 - Web: refresh token en cookie `HttpOnly`, `Secure`, `SameSite`; no en localStorage.
 - Cerrar sesión revoca el refresh token y limpia cachés privadas.
 

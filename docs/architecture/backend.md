@@ -29,26 +29,30 @@ clientes externos.
 - Éxito: `{ "data": ..., "meta": ... }` cuando exista metadata.
 - Error: `{ "error": { "code": "...", "message": "...", "details": ... } }`.
 - Cursores para feeds/mapa; paginación estable para tablas administrativas.
-- `Idempotency-Key` en importaciones, publicación y operaciones costosas.
+- Diseñar repetición y concurrencia por operación. No existe un contrato general
+  de `Idempotency-Key` en esta API; ver [idempotency.md](idempotency.md).
 - ETag/Cache-Control para catálogos y fichas públicas.
 - OpenAPI es el contrato de clientes; toda ruptura exige versión o migración coordinada.
 
 ## Transacciones
 
 Una transacción cubre la operación de negocio completa: aprobación y aplicación de una
-revisión, recálculo de valoración/código, auditoría y outbox. Las llamadas externas no se
-mantienen dentro de una transacción de base.
+revisión, recálculo de valoración/código y auditoría según el flujo implementado.
+Outbox es una opción futura. Las llamadas externas no deben mantenerse dentro de
+una transacción de negocio; revisar límites y consistencia en cada caso.
 
 ## Trabajos
 
-BullMQ procesa importaciones, miniaturas, transcodificación, audioguías, notificaciones e
-indexación semántica. Cada trabajo declara idempotencia, reintentos con backoff, timeout,
-estado y estrategia de fallo definitivo.
+Redis/BullMQ y los workers separados son arquitectura prevista, no módulos
+registrados actualmente. Cuando se implemente un job, declarar idempotencia,
+reintentos, timeout, estado durable y fallo definitivo. El parser de ficha del
+panel vive en su repositorio y no es un consumidor BullMQ.
 
 ## Caché
 
-Cache-aside en Redis solo para datos públicos costosos. Invalidar por evento de
-publicación. La ausencia de Redis degrada rendimiento, no integridad.
+Si se incorpora Redis, usarlo para datos públicos costosos y diseñar invalidación.
+PostgreSQL conserva la fuente permanente. No afirmar caché Redis existente por
+la presencia de un servicio en Compose.
 
 ## Paquetes offline
 
@@ -58,11 +62,11 @@ construye desde PostgreSQL/PostGIS y solo incluye centros publicados y versiones
 marcadas `PUBLICADA`. La generación, revisión y publicación del paquete requiere el flujo
 administrativo autenticado; el móvil no escribe en estas tablas.
 
-## Módulos iniciales
+## Módulos actuales
 
-`auth`, `users`, `roles`, `territory`, `tourism-catalog`, `centers`, `admin`, `pois`,
-`establishments`, `publication`, `files`, `transport`, `reviews`, `favorites`,
-`audit`, `health`.
+`app.module.ts` registra health, centers, ai, offline, auth, admin, files, routing,
+establishments, favorites, opinions y search. Otros módulos del mapa conceptual
+son posibles cortes futuros; no se instalan por adoptar el knowledge.
 
 El módulo `admin` es la frontera de captura y publicación: acepta `AGENTE_TURISTICO` para
 capturar sus propios borradores y `ADMINISTRADOR` para el ámbito global, revisión,

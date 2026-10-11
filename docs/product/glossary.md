@@ -1,19 +1,20 @@
 # Glosario
 
-| Término | Significado |
-| --- | --- |
-| Centro turístico | Entidad principal que posee la ficha técnica del atractivo. |
-| Atractivo | Recurso natural o manifestación cultural clasificada por categoría, tipo y subtipo. |
-| POI | Punto de interés complementario dentro de una zona turística. |
-| Catastro | Registro de establecimientos turísticos habilitados o inventariados. |
-| DPA | División Político-Administrativa: provincia, cantón y parroquia. |
-| Ficha | Conjunto normalizado de datos técnicos del centro turístico. |
-| Administrador | Usuario institucional autorizado para levantar, revisar y publicar información. |
-| Revisión | Propuesta pendiente de aprobación que todavía no altera la versión pública. |
-| Ruta registrada | Recorrido, paradas y horarios declarados por una entidad de transporte. |
-| Ruta calculada | Trayecto generado por el motor de navegación para un origen y destino. |
-| Itinerario | Función retirada de planes con jornadas y visitas; el esquema histórico conserva sus tablas. |
-| Ubicación en uso | Acceso al GPS mientras la app se encuentra activa. |
+| Término                    | Significado                                                                                     |
+| -------------------------- | ----------------------------------------------------------------------------------------------- |
+| Centro turístico           | Entidad principal que posee la ficha técnica del atractivo.                                     |
+| Atractivo                  | Recurso natural o manifestación cultural clasificada por categoría, tipo y subtipo.             |
+| POI                        | Punto de interés complementario dentro de una zona turística.                                   |
+| Catastro                   | Registro de establecimientos turísticos habilitados o inventariados.                            |
+| DPA                        | División Político-Administrativa: provincia, cantón y parroquia.                                |
+| Ficha                      | Conjunto normalizado de datos técnicos del centro turístico.                                    |
+| Administrador              | Usuario institucional autorizado para levantar, revisar y publicar información.                 |
+| Agente turístico           | Cuenta institucional que captura sus registros y los envía a revisión.                          |
+| Revisión                   | Propuesta pendiente de aprobación que todavía no altera la versión pública.                     |
+| Ruta registrada            | Recorrido, paradas y horarios declarados por una entidad de transporte.                         |
+| Ruta calculada             | Trayecto generado por el motor de navegación para un origen y destino.                          |
+| Itinerario                 | Función retirada de planes con jornadas y visitas; el esquema histórico conserva sus tablas.    |
+| Ubicación en uso           | Acceso al GPS mientras la app se encuentra activa.                                              |
 | Ubicación en segundo plano | Acceso al GPS fuera de primer plano mientras una función explícitamente habilitada está activa. |
 
 Usar lenguaje turístico en la UI. Ocultar IDs, nombres de tablas, proveedores, buckets y

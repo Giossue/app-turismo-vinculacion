@@ -26,7 +26,8 @@ ficha del centro.
 
 ### Ficha y revisión
 
-Un administrador prepara cambios en `borradores_centros_turisticos`. Una revisión conserva
+Un agente prepara sus cambios y un administrador tiene ámbito global en
+`borradores_centros_turisticos`. Una revisión conserva
 un snapshot de los datos propuestos sin modificar la versión pública. Una única decisión
 de aprobación/publicación aplica el snapshot normalizado en una transacción junto con el
 código, valoración, multimedia y auditoría. El flujo es `BORRADOR → EN_REVISION → PUBLICADO`;
@@ -58,4 +59,6 @@ del backend y poder vincularse con sus fuentes publicadas.
 
 ## Fuente detallada
 
-El inventario completo de tablas y cardinalidades está en `temp/db.md`.
+El esquema ejecutable está en `database/migrations/` y su baseline SQL.
+`temp/db.md` conserva el inventario conceptual anterior. El dominio no introduce
+un tenant por analogía con CognitiveStack.

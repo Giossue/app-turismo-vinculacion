@@ -1,52 +1,28 @@
 ---
 name: implement-mobile-feature
-description: Build React Native/Expo mobile features involving MapLibre, location, navigation, offline state, tourist UX, or guide field capture.
+description: Implementa features móviles de Expo/React Native con MapLibre, navegación, ubicación, offline o datos turísticos; la captura institucional vive en el panel separado.
 ---
 
-# Implement mobile feature
+# Implementar una feature móvil
 
-Read `docs/README.md` first to route the task, then read `docs/architecture/mobile.md`,
-`maps-navigation.md`, `docs/security/privacy-location.md` and the feature specification.
-Before using an Expo, React Native, MapLibre or Gesture Handler API, consult its official
-versioned documentation. If a command, build, test or runtime integration fails, return to
-the matching official API/troubleshooting section before changing the implementation.
+Leer [AGENTS móvil](../../../apps/mobile/AGENTS.md), [mobile](../../../docs/architecture/mobile.md),
+[mapas/rutas](../../../docs/architecture/maps-navigation.md), privacidad y el cambio.
+Consultar la documentación oficial versionada antes de APIs nativas y ante fallos.
 
-Model denied permissions, GPS off, stale location, network loss and cancellation as
-normal states. Keep browsing usable without location. Request background access only for
-an explicitly enabled feature, explain its purpose, and release tracking/resources when it
-ends.
+Diseñar con el brief cognitivo y componentes Tourism/Paper existentes. La UI deriva
+del estado; cerrar overlays antes de navegar. Las rutas representan pantallas,
+sin snapshots de gestos o filtros. Mantener replace para pestañas y push para detalles.
 
-Use repositories behind TanStack Query, generated API models, local cache only for declared
-cached or draft state, and Expo SecureStore only for minimal credentials. MapLibre requires
-a Development Build, never Expo Go. Verify supported Android and iOS devices, deep links,
-lifecycle restoration, accessibility and degraded networks.
+Conservar alternativas para permisos denegados, GPS apagado, posición antigua,
+red caída y cancelación. Background requiere función voluntaria y permiso;
+cancelar no inicia navegación. Liberar listeners, tareas y recursos al terminar.
 
-## UI declarativa y navegación
+Reutilizar HTTP/query keys/geo/formato, parsers y almacenamiento declarado.
+Refresh y perfil mínimo en SecureStore nativo; no persistir chat o ubicación histórica
+por conveniencia. MapLibre requiere Development Build, no Expo Go.
 
-Aplica el patrón state-driven UI / single source of truth de React: la vista debe derivarse
-del estado y las acciones deben actualizarlo explícitamente. Los overlays transitorios
-(bottom sheets, fichas y menús) se cierran o desmontan antes de navegar a otra pantalla;
-no deben quedar montados debajo o encima de la ruta por depender solo del re-render o de la
-transición del navegador.
+Preservar clustering nativo, fuentes/capas estables y los parches de plataforma.
+El diseño de nuevos drawers sigue las reglas móviles; el menú actual es una sheet.
 
-Los drawers modales deben usar `ReanimatedDrawerLayout` de
-`react-native-gesture-handler` dentro de un `GestureHandlerRootView`. Ese componente mantiene
-panel, scrim y gesto en un único progreso nativo; no sustituirlo por un `Modal` con
-animaciones independientes. Las acciones que navegan se ejecutan después de `onDrawerClose`.
-
-## Historial de navegación
-
-Separa navegación de estado efímero: zoom, paneo, scroll, filtros y selección local no
-crean rutas ni snapshots en el stack. En Android registra el back handler por pantalla
-enfocada para cerrar primero overlays y, si no hay uno, ejecutar exactamente un `router.back()`;
-no conviertas cada cambio de UI en una entrada de historial. Para navegación tipo pestaña
-usa `router.replace`; reserva `router.push` para pantallas secundarias que sí necesitan un
-regreso explícito.
-
-## Anotaciones MapLibre
-
-Para puntos públicos estáticos usa `GeoJSONSource` con `Layer` de tipo `symbol` y clustering
-nativo; evita un `Marker` o `ViewAnnotation` React por cada centro. Registra `Images` con
-recursos locales para los iconos, activa `icon-allow-overlap` cuando la visibilidad del pin
-sea prioritaria y deja el conteo de clusters en una capa separada. Así zoom y paneo se
-resuelven en el render nativo sin recalcular ni desmontar vistas React en cada gesto.
+Alinear contrato API y docs. Pruebas/dispositivos se ejecutan cuando se solicite;
+registrar entorno y límites sin atribuir pruebas omitidas como correctas.

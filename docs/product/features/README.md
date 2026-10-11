@@ -1,7 +1,9 @@
 # Catálogo de funcionalidades
 
-Crear una carpeta por feature antes de implementarla con `specification.md`,
-`acceptance-criteria.md` y `decisions.md`.
+Estas carpetas conservan especificaciones y decisiones anteriores a OpenSpec.
+Pueden combinar comportamiento existente y alcance futuro. Los cambios nuevos
+se registran con [el ciclo OpenSpec](../../quality/change-lifecycle.md); al retomar
+una feature, reconciliar sus criterios y enlazarlos sin duplicar fuentes vigentes.
 
 ## Módulos previstos
 
@@ -29,7 +31,7 @@ de aceptación primero.
 
 La captura administrativa inicial está especificada en
 `admin-center-capture/` y cubre el núcleo de ficha, borradores, revisión, publicación y
-auditoría, además de multimedia básica (fotos, video y audio). Las demás secciones se
-añadirán como cortes verticales posteriores.
+auditoría, además de multimedia básica (fotos, video y audio). Las secciones ya implementadas se contrastan con el código actual; esa hoja de
+ruta histórica no debe reabrir trabajo completado ni certificar pendientes.
 
 El alcance integral del asistente turístico se especifica en `tourism-agent/`.

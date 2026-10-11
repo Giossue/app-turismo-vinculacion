@@ -1,5 +1,9 @@
 # Observabilidad
 
+Las señales siguientes son criterios de operación. Esta adopción no instala
+telemetría, collectors, Sentry ni colas. La auditoría editorial existente y health
+se consultan en el código; no dar por disponibles todas las métricas de esta lista.
+
 ## Señales
 
 - Health/readiness, latencia, tráfico y códigos de error.
