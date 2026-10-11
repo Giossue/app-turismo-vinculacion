@@ -79,6 +79,13 @@ Las políticas se publican contra preguntas activas del catálogo y se leen de v
 comparación; mientras falten esas preguntas, el borrador no puede publicarse.
 El plan de promoción se normaliza de forma independiente; los medios sin tipo catalogado se
 conservan en el borrador y detienen la publicación.
+Las decisiones de plan, inclusión y paquete admiten Sí, No o Sin confirmar;
+el desconocido se conserva como NULL al publicar y vuelve como SIN_INFORMACION
+en la lectura institucional. Una inclusión nula de clientes anteriores sigue
+siendo compatible. Solo las respuestas afirmativas suman los pesos 2/2/3 de
+Jerarquia; se mantienen los controles de los medios y las demás secciones.
+Requiere `20261011_promotion_unknown_responses.sql` antes de desplegar esta API
+y después el panel; preparar esa migración no certifica su aplicación remota.
 El resumen de recurso humano se normaliza sin separar el centro; educación, capacitación e
 idiomas requieren un tipo de formación catalogado para poder publicarse.
 Conservación publica evaluaciones, factores de alteración y declaratorias en las tablas

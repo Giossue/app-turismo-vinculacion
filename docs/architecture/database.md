@@ -99,6 +99,14 @@ seed `20260920_z1_seed_guaranda_zone.sql` explica el origen de «Entorno de Guar
 su contenido de demostración no define una nueva regla de captura. La retirada
 del selector y la consulta geográfica no requieren otra migración ni backfill.
 
+`20261011_promotion_unknown_responses.sql` hace nullable `tiene_plan_promocion`
+y `forma_parte_paquete` en Promoción, sin transformar datos existentes. La API
+compatible guarda respuestas desconocidas como NULL y mantiene explícitos true
+y false; `incluido_en_plan` ya era nullable. Aplicar migración, API y panel en
+ese orden, verificando respaldo, conexión, propietario y permisos. La migración
+es idempotente, usa límites de locks y no requiere backfill. No restablecer NOT
+NULL ni desplegar la proyección binaria anterior mientras haya desconocidos.
+
 ## Consultas críticas
 
 - Centros publicados dentro de viewport/radio.

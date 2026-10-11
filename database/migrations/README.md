@@ -44,6 +44,21 @@ Python 3; no instala dependencias ni se conecta a la base compartida.
 No ejecutar migraciones con el ORM en modo `synchronize`; PostgreSQL/PostGIS es la
 fuente de verdad del esquema.
 
+La migración `20261011_promotion_unknown_responses.sql` retira NOT NULL de
+`tiene_plan_promocion` y `forma_parte_paquete` en `promocion_centro_turistico`.
+`incluido_en_plan` ya admite NULL. Conserva valores, filas, IDs, permisos y
+secuencias, y se puede repetir sin transformar datos. Usa `lock_timeout=5s` y
+`statement_timeout=30s`; reintentar un bloqueo en una ventana operativa.
+
+Aplicar antes de desplegar la API que admite SIN_INFORMACION en las decisiones
+de Promoción y después el panel. Verificar destino, respaldo, propietario y
+permisos antes de ejecutar con `psql -X -v ON_ERROR_STOP=1`; comprobar las tres
+columnas nullable después. No requiere backfill ni ejecutar seeds. Una API
+anterior convierte desconocidos en No al leer/proyectar: conservar las lecturas
+y escrituras compatibles si se revierte la aplicación. No ejecutar un rollback
+automático que rellene NULL con false o restablezca NOT NULL; requiere inventario
+y resolución explícita de los desconocidos.
+
 La migración `20261002_admin_logical_deletion.sql` añade `eliminado_at` a centros,
 establecimientos, opiniones y los cinco catálogos administrables, y permite la acción
 `ELIMINAR` en sus auditorías. Conserva filas, FKs, versiones, acciones previas e
@@ -271,4 +286,3 @@ cada establecimiento. No usa el catálogo de tipos de archivo porque solo admite
 fotografías. También amplía `auditoria_catalogos_accion_check` con `AGREGAR_MULTIMEDIA`,
 `ELIMINAR_MULTIMEDIA` y `PUBLICAR_MULTIMEDIA`. Es aditiva e idempotente y no requiere
 backfill; aplicarla antes de desplegar la API que la consulta.
-

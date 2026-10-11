@@ -486,6 +486,10 @@ function isBinarySectionResponse(value: unknown): value is "SI" | "NO" {
   return value === "SI" || value === "NO";
 }
 
+function isPromotionDecisionResponse(value: unknown): boolean {
+  return isBinarySectionResponse(value) || value === "SIN_INFORMACION";
+}
+
 function validateAccessibilityDetailsBlock(value: unknown): string | null {
   if (!isJsonRecord(value)) return "El detalle de accesibilidad no es válido.";
 
@@ -1284,6 +1288,8 @@ function validatePolicyBlock(value: unknown): string | null {
 function validatePromotionBlock(value: unknown): string | null {
   if (!isJsonRecord(value)) return "El bloque de promoción no es válido.";
   for (const key of ["hasPlan", "includedInPlan", "partOfPackage"]) {
+    // Clientes anteriores representan una inclusión desconocida como null.
+    if (key === "includedInPlan" && value[key] === null) continue;
     if (!isSectionResponse(value[key])) {
       return "Cada decisión de promoción requiere una respuesta válida.";
     }
@@ -4637,10 +4643,10 @@ export class AdminCentersService {
          updated_at = CURRENT_TIMESTAMP`,
       [
         centerId,
-        sectionResponseToBoolean(promotion.hasPlan) ?? false,
+        sectionResponseToBoolean(promotion.hasPlan),
         promotion.planName ?? null,
         sectionResponseToBoolean(promotion.includedInPlan),
-        sectionResponseToBoolean(promotion.partOfPackage) ?? false,
+        sectionResponseToBoolean(promotion.partOfPackage),
         promotion.packageDetail ?? null,
         promotion.observation ?? section.observation ?? null,
       ],
@@ -5937,14 +5943,22 @@ export class AdminCentersService {
     const [promotionRows, mediaRows] = (await Promise.all([
       manager.query(
         `SELECT json_build_object(
-                  'hasPlan', CASE WHEN tiene_plan_promocion THEN 'SI' ELSE 'NO' END,
+                  'hasPlan', CASE
+                    WHEN tiene_plan_promocion IS TRUE THEN 'SI'
+                    WHEN tiene_plan_promocion IS FALSE THEN 'NO'
+                    ELSE 'SIN_INFORMACION'
+                  END,
                   'planName', nombre_plan,
                   'includedInPlan', CASE
                     WHEN incluido_en_plan IS TRUE THEN 'SI'
                     WHEN incluido_en_plan IS FALSE THEN 'NO'
                     ELSE 'SIN_INFORMACION'
                   END,
-                  'partOfPackage', CASE WHEN forma_parte_paquete THEN 'SI' ELSE 'NO' END,
+                  'partOfPackage', CASE
+                    WHEN forma_parte_paquete IS TRUE THEN 'SI'
+                    WHEN forma_parte_paquete IS FALSE THEN 'NO'
+                    ELSE 'SIN_INFORMACION'
+                  END,
                   'packageDetail', detalle_paquete,
                   'observation', observacion
                 ) AS data
@@ -6836,9 +6850,9 @@ export class AdminCentersService {
       : null;
     if (!promotion) return;
     for (const key of ["hasPlan", "partOfPackage"]) {
-      if (!isBinarySectionResponse(promotion[key])) {
+      if (!isPromotionDecisionResponse(promotion[key])) {
         throw new ConflictException(
-          "La sección promoción requiere respuestas SI o NO para publicar el plan.",
+          "Las preguntas de promoción admiten Sí, No o Sin confirmar antes de publicar.",
         );
       }
     }
@@ -6846,9 +6860,9 @@ export class AdminCentersService {
       promotion.includedInPlan !== undefined &&
       promotion.includedInPlan !== null
     ) {
-      if (!isBinarySectionResponse(promotion.includedInPlan)) {
+      if (!isPromotionDecisionResponse(promotion.includedInPlan)) {
         throw new ConflictException(
-          "La inclusión en un plan debe responderse como SI o NO antes de publicar.",
+          "La inclusión en el plan admite Sí, No o Sin confirmar antes de publicar.",
         );
       }
     }
@@ -6875,7 +6889,7 @@ export class AdminCentersService {
       const uniqueTypeIds = [...new Set(typeIds as number[])];
       if (uniqueTypeIds.length !== typeIds.length) {
         throw new ConflictException(
-          "No repitas tipos de formación en la misma ficha.",
+          "No repitas tipos de medios de promoción en la misma ficha.",
         );
       }
       const rows = (await manager.query(
