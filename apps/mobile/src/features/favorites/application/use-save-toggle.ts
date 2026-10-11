@@ -27,7 +27,9 @@ export function useSaveToggle<TVariables, TContext>(
       return;
     }
     mutation.mutate(buildVariables(saved), {
-      onSuccess: () => showSaveToast(saved),
+      onSuccess: () => {
+        if (auth.isCurrentSession(auth.sessionScope)) showSaveToast(saved);
+      },
     });
   };
 

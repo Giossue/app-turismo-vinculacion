@@ -49,6 +49,7 @@ export async function calculateRoute(
     routeResponseSchema,
     {
       errorMessage: routeErrorMessage,
+      timeoutMs: 30_000,
       fetcher,
       init: {
         method: "POST",

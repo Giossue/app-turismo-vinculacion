@@ -1,5 +1,11 @@
 import { useRouter } from "expo-router";
-import { RefreshControl, ScrollView, StyleSheet, Text } from "react-native";
+import {
+  RefreshControl,
+  SectionList,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismStateView } from "@/core/ui/tourism-state";
@@ -33,7 +39,7 @@ function OfflineCityList() {
   const removal = useOfflineCityRemoval();
   const cities = mergeOfflineCities(
     citiesQuery.data ?? [],
-    storedQuery.manifests,
+    storedQuery.summaries,
   );
   const stored = cities.filter((city) => storedQuery.data?.includes(city.slug));
   // Ciudades sin lugares publicados no se pueden descargar: no se listan.
@@ -44,7 +50,7 @@ function OfflineCityList() {
   const error = downloadError ?? removal.error;
 
   return (
-    <ScrollView
+    <SectionList
       contentContainerStyle={styles.content}
       refreshControl={
         <RefreshControl
@@ -53,99 +59,117 @@ function OfflineCityList() {
         />
       }
       showsVerticalScrollIndicator={false}
-    >
-      {error ? (
+      sections={[
+        { title: "Mapas descargados", stored: true, data: stored },
+        {
+          title: stored.length ? "Descargar otro mapa" : "Ciudades disponibles",
+          stored: false,
+          data: available,
+        },
+      ].filter((section) => !section.stored || section.data.length > 0)}
+      keyExtractor={(city) => city.slug}
+      initialNumToRender={6}
+      maxToRenderPerBatch={6}
+      windowSize={5}
+      stickySectionHeadersEnabled={false}
+      ItemSeparatorComponent={() => <View style={styles.separator} />}
+      renderSectionHeader={({ section }) => (
         <Text
-          accessibilityLiveRegion="polite"
-          accessibilityRole="alert"
-          style={[styles.errorText, { color: colors.danger }]}
+          accessibilityRole="header"
+          style={[styles.heading, { color: colors.text }]}
         >
-          {error}
+          {section.title}
         </Text>
-      ) : null}
-
-      {storedQuery.error ? (
-        <TourismStateView
-          actionPending={storedQuery.isFetching}
-          layout="card"
-          message="No pudimos revisar las ciudades guardadas en este dispositivo."
-          onAction={() => void storedQuery.refetch()}
-          variant="error"
-        />
-      ) : null}
-
-      {stored.length ? (
-        <Text style={[styles.heading, { color: colors.text }]}>
-          Mapas descargados
-        </Text>
-      ) : null}
-      {stored.map((city) => (
+      )}
+      renderItem={({ item: city, section }) => (
         <OfflineCityCard
           city={city}
           disabled={busy}
-          key={city.slug}
           onDownload={() => start(city)}
-          onOpen={() =>
-            router.push({
-              pathname: "/offline-city",
-              params: { slug: city.slug },
-            })
+          onOpen={
+            section.stored
+              ? () =>
+                  router.push({
+                    pathname: "/offline-city",
+                    params: { slug: city.slug },
+                  })
+              : undefined
           }
-          onRemove={() => void removal.remove(city.slug).catch(() => undefined)}
+          onRemove={
+            section.stored
+              ? () => void removal.remove(city.slug).catch(() => undefined)
+              : undefined
+          }
           progress={downloads.get(city.slug) ?? null}
           removing={removal.removingSlug === city.slug}
-          stored
-          storedManifest={storedQuery.manifests.find(
-            (manifest) => manifest.city.slug === city.slug,
+          stored={section.stored}
+          storedManifest={storedQuery.summaries.find(
+            (summary) => summary.city.slug === city.slug,
           )}
         />
-      ))}
-      <Text style={[styles.heading, { color: colors.text }]}>
-        {stored.length ? "Descargar otro mapa" : "Ciudades disponibles"}
-      </Text>
-      {citiesQuery.isPending && !available.length ? (
-        <TourismStateView
-          layout="inline"
-          message="Cargando mapas disponibles…"
-          variant="loading"
-        />
-      ) : citiesQuery.error && !available.length ? (
-        <TourismStateView
-          actionPending={citiesQuery.isFetching}
-          layout="inline"
-          message="Conéctate a internet para consultar otras ciudades. Tus descargas siguen disponibles arriba."
-          onAction={() => void citiesQuery.refetch()}
-          variant="error"
-        />
-      ) : available.length ? (
-        available.map((city) => (
-          <OfflineCityCard
-            city={city}
-            disabled={busy}
-            key={city.slug}
-            onDownload={() => start(city)}
-            progress={downloads.get(city.slug) ?? null}
-            stored={false}
-          />
-        ))
-      ) : (
-        <TourismStateView
-          icon="mapPin"
-          layout="inline"
-          message="Aún no hay mapas de ciudades disponibles para descargar."
-          variant="empty"
-        />
       )}
-    </ScrollView>
+      ListHeaderComponent={
+        <>
+          {error ? (
+            <Text
+              accessibilityLiveRegion="polite"
+              accessibilityRole="alert"
+              style={[styles.errorText, { color: colors.danger }]}
+            >
+              {error}
+            </Text>
+          ) : null}
+
+          {storedQuery.error ? (
+            <TourismStateView
+              actionPending={storedQuery.isFetching}
+              layout="card"
+              message="No pudimos revisar las ciudades guardadas en este dispositivo."
+              onAction={() => void storedQuery.refetch()}
+              variant="error"
+            />
+          ) : null}
+        </>
+      }
+      ListFooterComponent={
+        <>
+          {citiesQuery.isPending &&
+          !citiesQuery.isPaused &&
+          !available.length ? (
+            <TourismStateView
+              layout="inline"
+              message="Cargando mapas disponibles…"
+              variant="loading"
+            />
+          ) : (citiesQuery.error || citiesQuery.isPaused) &&
+            !available.length ? (
+            <TourismStateView
+              actionPending={citiesQuery.isFetching}
+              layout="inline"
+              message="Conéctate a internet para consultar otras ciudades. Tus descargas siguen disponibles arriba."
+              onAction={() => void citiesQuery.refetch()}
+              variant="error"
+            />
+          ) : available.length ? null : (
+            <TourismStateView
+              icon="mapPin"
+              layout="inline"
+              message="Aún no hay mapas de ciudades disponibles para descargar."
+              variant="empty"
+            />
+          )}
+        </>
+      }
+    />
   );
 }
 
 const styles = StyleSheet.create({
   content: {
-    gap: turismoSpacing.md,
     paddingBottom: turismoSpacing.xl,
     paddingVertical: turismoSpacing.md,
   },
+  separator: { height: turismoSpacing.md },
   errorText: { ...turismoTypography.caption },
-  heading: { ...turismoTypography.heading },
+  heading: { ...turismoTypography.heading, paddingVertical: turismoSpacing.md },
 });

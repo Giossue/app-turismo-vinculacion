@@ -21,15 +21,22 @@ export async function saveStoredSession(
   refreshToken: string,
   user: AuthUser,
 ): Promise<void> {
-  await Promise.all([
+  await completeStorageOperations([
     SecureStore.setItemAsync(refreshTokenKey, refreshToken),
     SecureStore.setItemAsync(userKey, serializeStoredUser(user)),
   ]);
 }
 
 export async function clearStoredSession(): Promise<void> {
-  await Promise.all([
+  await completeStorageOperations([
     SecureStore.deleteItemAsync(refreshTokenKey),
     SecureStore.deleteItemAsync(userKey),
   ]);
+}
+
+/** Espera las dos operaciones antes de liberar la cola, incluso ante un fallo. */
+async function completeStorageOperations(operations: Promise<void>[]) {
+  const results = await Promise.allSettled(operations);
+  const rejected = results.find((result) => result.status === "rejected");
+  if (rejected?.status === "rejected") throw rejected.reason;
 }

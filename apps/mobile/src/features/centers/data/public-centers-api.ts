@@ -109,24 +109,16 @@ export async function getPublishedMapCenters(
   filters: CenterFilters & Readonly<{ bounds: GeoBounds }>,
   { apiUrl = getApiUrl(), fetcher = fetch, signal }: ApiRequestOptions = {},
 ): Promise<readonly PublicCenter[]> {
-  const query = buildCenterQuery(filters);
-  query.set("limit", "100");
   const centers: PublicCenter[] = [];
   const seenCodes = new Set<string>();
   let offset = 0;
   while (true) {
     assertNotAborted(signal);
-    query.set("offset", String(offset));
-    const page = await requestJson(
-      `${apiUrl}/centers?${query}`,
-      mapPageSchema,
-      {
-        errorMessage: "No fue posible cargar los atractivos de esta zona.",
-        invalidMessage: "La respuesta turística no tiene el formato esperado.",
-        fetcher,
-        init: { headers: acceptJsonHeaders, signal },
-      },
-    );
+    const page = await getPublishedMapCenterPage(filters, offset, {
+      apiUrl,
+      fetcher,
+      signal,
+    });
     assertNotAborted(signal);
     const newCodes = page.data.filter((center) => !seenCodes.has(center.code));
     if (
@@ -144,6 +136,33 @@ export async function getPublishedMapCenters(
     offset += page.data.length;
     if (offset >= page.meta.total) return uniqueByCode(centers);
   }
+}
+
+/** Una página se publica en el mapa mientras se completa el área. */
+export async function getPublishedMapCenterPage(
+  filters: CenterFilters & Readonly<{ bounds: GeoBounds }>,
+  offset: number,
+  { apiUrl = getApiUrl(), fetcher = fetch, signal }: ApiRequestOptions = {},
+) {
+  assertNotAborted(signal);
+  const query = buildCenterQuery(filters);
+  query.set("limit", "100");
+  query.set("offset", String(offset));
+  const page = await requestJson(`${apiUrl}/centers?${query}`, mapPageSchema, {
+    errorMessage: "No fue posible cargar los atractivos de esta zona.",
+    invalidMessage: "La respuesta turística no tiene el formato esperado.",
+    fetcher,
+    init: { headers: acceptJsonHeaders, signal },
+  });
+  assertNotAborted(signal);
+  if (
+    page.meta.offset !== offset ||
+    page.data.length > page.meta.limit ||
+    (page.data.length === 0 && offset < page.meta.total)
+  ) {
+    throw new ApiError("No fue posible completar los atractivos de esta zona.");
+  }
+  return page;
 }
 
 function assertNotAborted(signal?: AbortSignal): void {

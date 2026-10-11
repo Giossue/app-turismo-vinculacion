@@ -119,7 +119,7 @@ export function ExploreCenterSheetContent({
           label="Cómo llegar"
           onPress={onOpenRoute}
         />
-        {detailQuery.isPending ? (
+        {detailQuery.isPending && !detailQuery.isPaused ? (
           <TourismStateView
             layout="inline"
             message="Cargando la ficha completa…"

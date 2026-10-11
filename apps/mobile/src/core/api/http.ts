@@ -5,6 +5,21 @@ export type Fetcher = (
   init?: RequestInit,
 ) => Promise<Response>;
 
+// Los adaptadores conservan su señal para que el plazo total escuche también
+// la cancelación del caller sin sustituir la señal que aborta el transporte.
+const requestSignals = new WeakMap<Fetcher, readonly AbortSignal[]>();
+
+/** Propaga la cancelación de una consulta hasta su transporte HTTP. */
+export function withRequestSignal(
+  request: Fetcher,
+  signal: AbortSignal,
+): Fetcher {
+  const scoped: Fetcher = (input, init) =>
+    request(input, { ...init, signal: init?.signal ?? signal });
+  requestSignals.set(scoped, [...(requestSignals.get(request) ?? []), signal]);
+  return scoped;
+}
+
 /** Optional transport overrides shared by the feature API clients. */
 export type ApiRequestOptions = Readonly<{
   apiUrl?: string;
@@ -52,6 +67,8 @@ export type SendRequestOptions = Readonly<{
   errorMessage: string;
   fetcher?: Fetcher;
   init?: RequestInit;
+  /** Plazo total; cero se reserva para un transporte ya acotado por su caller. */
+  timeoutMs?: number;
 }>;
 
 export type RequestJsonOptions = SendRequestOptions &
@@ -86,12 +103,15 @@ export async function readApiErrorMessage(
  */
 export async function sendRequest(
   url: string,
-  { errorMessage, fetcher = fetch, init }: SendRequestOptions,
+  options: SendRequestOptions,
 ): Promise<Response> {
+  const { errorMessage, fetcher = fetch } = options;
   try {
-    return init === undefined ? await fetcher(url) : await fetcher(url, init);
+    return await withTransportDeadline(options, (init) =>
+      init === undefined ? fetcher(url) : fetcher(url, init),
+    );
   } catch (error) {
-    if (isAbortError(error)) throw error;
+    if (isAbortError(error) || error instanceof ApiError) throw error;
     throw new ApiError(errorMessage, { cause: error });
   }
 }
@@ -145,9 +165,54 @@ export async function requestJson<T>(
   schema: z.ZodType<T>,
   options: RequestJsonOptions,
 ): Promise<T> {
-  const response = await sendRequest(url, options);
-  await assertResponseOk(response, options);
-  return parseJsonResponse(response, schema, options.invalidMessage);
+  // El mismo plazo cubre conexión, cabeceras y un cuerpo que quede bloqueado.
+  return withTransportDeadline(options, async (init) => {
+    const response = await sendRequest(url, { ...options, init, timeoutMs: 0 });
+    await assertResponseOk(response, options);
+    return parseJsonResponse(response, schema, options.invalidMessage);
+  });
+}
+
+async function withTransportDeadline<T>(
+  { init, fetcher, timeoutMs = 12_000, errorMessage }: SendRequestOptions,
+  operation: (init: RequestInit | undefined) => Promise<T>,
+): Promise<T> {
+  if (timeoutMs === 0) return operation(init);
+  const signals = [
+    ...new Set([
+      ...(init?.signal ? [init.signal] : []),
+      ...(fetcher ? (requestSignals.get(fetcher) ?? []) : []),
+    ]),
+  ];
+  const controller = new AbortController();
+  let rejectLimit!: (error: Error) => void;
+  const limit = new Promise<never>((_, reject) => {
+    rejectLimit = reject;
+  });
+  const cancel = () => {
+    const error = new Error("La solicitud fue cancelada.");
+    error.name = "AbortError";
+    rejectLimit(error);
+    controller.abort(error);
+  };
+  for (const signal of signals)
+    signal.addEventListener("abort", cancel, { once: true });
+  const timer = setTimeout(() => {
+    const error = new ApiError(errorMessage);
+    rejectLimit(error);
+    controller.abort(error);
+  }, timeoutMs);
+  try {
+    const aborted = signals.some((signal) => signal.aborted);
+    if (aborted) cancel();
+    return await Promise.race([
+      limit,
+      aborted ? limit : operation({ ...init, signal: controller.signal }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+    for (const signal of signals) signal.removeEventListener("abort", cancel);
+  }
 }
 
 function isAbortError(error: unknown): boolean {

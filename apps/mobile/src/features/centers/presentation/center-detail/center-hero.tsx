@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { Defs, LinearGradient, Rect, Stop, Svg } from "react-native-svg";
 
-import { resolveMediaUrl } from "@/core/api/media-url";
+import { resolveMediaVariantUrl } from "@/core/api/media-url";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
@@ -48,7 +48,7 @@ export function CenterHero({
           accessible
           cachePolicy="memory-disk"
           contentFit="cover"
-          source={{ uri: resolveMediaUrl(photo.url) }}
+          source={{ uri: resolveMediaVariantUrl(photo.url, "preview") }}
           style={styles.image}
         />
       ) : (

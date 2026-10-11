@@ -8,7 +8,8 @@ import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { ONE_DAY_MS } from "@/core/api/query-keys";
-import { queryPersistOptions } from "@/core/api/query-persistence";
+import { getQueryPersistOptions } from "@/core/api/query-persistence";
+import { useQueryRuntime } from "@/core/api/use-query-runtime";
 import { useTurismoTheme, TurismoThemeProvider } from "@/core/ui/theme-context";
 import { TourismToastHost } from "@/core/ui/tourism-toast";
 import { TurismoPaperProvider } from "@/core/ui/turismo-paper-provider";
@@ -25,6 +26,7 @@ import { stopOrphanedNavigationTask } from "@/features/routing/infrastructure/na
 const orphanedNavigationTaskCheckDelayMs = 3_000;
 
 function AppProviders({ children }: Readonly<{ children: ReactNode }>) {
+  useQueryRuntime();
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -36,10 +38,11 @@ function AppProviders({ children }: Readonly<{ children: ReactNode }>) {
         },
       }),
   );
+  const [persistOptions] = useState(() => getQueryPersistOptions(queryClient));
   return (
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={queryPersistOptions}
+      persistOptions={persistOptions}
     >
       <TurismoThemeProvider>
         <TurismoPaperProvider>

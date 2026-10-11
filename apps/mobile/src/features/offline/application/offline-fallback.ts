@@ -3,22 +3,21 @@ import type {
   PublicCenterDetail,
 } from "@/features/centers/domain/public-center";
 
-import { listStoredOfflineManifests } from "../data/offline-storage";
+import { listStoredOfflineCenterRecords } from "../data/offline-storage";
 
 export async function getStoredOfflineCenters(): Promise<
   readonly PublicCenter[]
 > {
-  const manifests = await listStoredOfflineManifests();
-  return manifests.flatMap((manifest) => manifest.centers);
+  const records = await listStoredOfflineCenterRecords();
+  return records.map(({ center }) => center);
 }
 
 export async function getStoredOfflineCenter(
   code: string,
 ): Promise<PublicCenterDetail | null> {
-  const manifests = await listStoredOfflineManifests();
-  for (const manifest of manifests) {
-    const center = manifest.centers.find((item) => item.code === code);
-    if (!center) continue;
+  const record = (await listStoredOfflineCenterRecords(code))[0];
+  if (record) {
+    const { center, cityName } = record;
     return {
       ...center,
       address: null,
@@ -28,7 +27,7 @@ export async function getStoredOfflineCenter(
       altitudeMeters: null,
       facilities: [],
       photos: [],
-      touristZone: manifest.city.name,
+      touristZone: cityName,
     };
   }
   return null;

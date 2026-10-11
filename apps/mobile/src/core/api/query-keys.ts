@@ -35,11 +35,9 @@ export const userScopedQueryKeys: readonly QueryKey[] = [
 ];
 
 /**
- * Data that may be persisted to AsyncStorage: the public catalog and the
- * tourist's saved places, so Guardados opens without a connection. Logout
- * removes `userScopedQueryKeys` from memory and clears the persisted
- * snapshot. Anything else (the own opinion, searches, viewport- or GPS-keyed
- * results) stays in memory.
+ * Catálogo público y favoritos admitidos en AsyncStorage para uso sin conexión.
+ * Salir retira las claves privadas y reescribe una copia pública. La opinión
+ * propia, búsquedas, viewport y resultados derivados de GPS quedan en memoria.
  */
 const persistedQueryKeys: readonly QueryKey[] = [
   queryKeys.centerOpinions,
@@ -52,8 +50,23 @@ const persistedQueryKeys: readonly QueryKey[] = [
   queryKeys.savedEstablishments,
 ];
 
-const persistedRoots = new Set(persistedQueryKeys.map((key) => key[0]));
-
 export function isPersistedQueryKey(queryKey: QueryKey): boolean {
-  return persistedRoots.has(queryKey[0]);
+  return persistedQueryKeys.some((prefix) =>
+    prefix.every((segment, index) => queryKey[index] === segment),
+  );
+}
+
+export function isUserScopedQueryKey(queryKey: QueryKey): boolean {
+  return userScopedQueryKeys.some((prefix) => queryKey[0] === prefix[0]);
+}
+
+/** Las claves privadas terminan con el ID numérico de su propietario. */
+export function getQueryAccountId(queryKey: QueryKey): number | null {
+  const owner = queryKey.at(-1);
+  return isUserScopedQueryKey(queryKey) &&
+    typeof owner === "number" &&
+    Number.isInteger(owner) &&
+    owner > 0
+    ? owner
+    : null;
 }

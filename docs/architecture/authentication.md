@@ -22,6 +22,18 @@ no se dan por implementados por una instrucción de la plantilla. No se delega a
 - Web: refresh token en cookie `HttpOnly`, `Secure`, `SameSite`; no en localStorage.
 - Cerrar sesión revoca el refresh token y limpia cachés privadas.
 
+En móvil, `MobileSession` coordina una renovación por generación de sesión. El fetcher
+solo adjunta credenciales a la API configurada, propaga cancelación y repite como máximo
+una vez un `401` autenticado; un `401` recibido después de renovar usa ese acceso sin
+rotarlo otra vez. Cerrar sesión o iniciar otra invalida de inmediato la generación,
+retira datos privados y ordena el borrado local; la revocación remota no bloquea esa
+limpieza. Cambiar identidad o roles durante la renovación también invalida los callbacks
+anteriores. Guardar tokens y perfil y borrarlos son operaciones serializadas; los errores
+de borrado local se propagan sin conservar acceso en memoria. Un error de red o `5xx`
+conserva el perfil local para uso sin conexión, mientras un rechazo de la API elimina la
+sesión. La restauración espera la hidratación de consultas y valida su propietario;
+política y retención en [mobile.md](mobile.md#caché-y-funcionamiento-sin-conexión).
+
 El cliente móvil ofrece una entrada única para iniciar sesión, crear una cuenta turística
 o explorar como invitado. El registro crea únicamente una cuenta con rol `TURISTA` y usa
 `nombre`, `email`, `genero` obligatorio (opciones `Masculino` o `Femenino`) y `fecha_nac`

@@ -14,7 +14,7 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
-import type { OfflineCity, OfflineCityManifest } from "../domain/offline-city";
+import type { OfflineCity, OfflineCitySummary } from "../domain/offline-city";
 import { formatOfflineMapSize } from "./offline-city-browser";
 
 /**
@@ -41,7 +41,7 @@ export function OfflineCityCard({
   progress: number | null;
   removing?: boolean;
   stored: boolean;
-  storedManifest?: OfflineCityManifest;
+  storedManifest?: OfflineCitySummary;
 }>) {
   const colors = useTurismoPalette();
   const downloading = progress !== null;
@@ -68,11 +68,11 @@ export function OfflineCityCard({
       </View>
       {storedManifest ? (
         <Text style={[styles.caption, { color: colors.textMuted }]}>
-          {storedManifest.centers.length} centros · {storedManifest.pois.length}{" "}
+          {storedManifest.counts.centers} centros · {storedManifest.counts.pois}{" "}
           puntos de interés
           {" · "}
-          {storedManifest.establishments.length} establecimientos ·{" "}
-          {storedManifest.routes.length} rutas
+          {storedManifest.counts.establishments} establecimientos ·{" "}
+          {storedManifest.counts.routes} rutas
           {mapSize ? `\n${mapSize}` : ""}
           {storedManifest.download?.savedAt
             ? `\nDescargado el ${new Date(storedManifest.download.savedAt).toLocaleDateString("es")}`

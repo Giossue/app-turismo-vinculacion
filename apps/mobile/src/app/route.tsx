@@ -168,9 +168,12 @@ function RouteScreenContent({
     savedRoute?.route ?? routeQuery.data ?? null,
     navigationActive,
   );
-  const routeError = routeQuery.error
-    ? getRouteErrorMessage(routeQuery.error)
-    : null;
+  const routeError =
+    routeQuery.isPaused && !routeQuery.data
+      ? "Conéctate para calcular una ruta nueva."
+      : routeQuery.error
+        ? getRouteErrorMessage(routeQuery.error)
+        : null;
 
   const navigationSession = useNavigationSession({
     active: navigationActive,

@@ -18,7 +18,9 @@ alteran la versión publicada hasta ser aprobadas.
 ## Flujo principal
 
 1. El turista abre la pestaña Opiniones de una ficha.
-2. La API devuelve resumen y versiones aprobadas.
+2. La API devuelve resumen y versiones aprobadas. El móvil muestra veinte opiniones por
+   página y permite avanzar y retroceder; al avanzar más allá de lo cargado pide la siguiente
+   página. El filtro Recientes muestra las tres primeras, sin borrar el borrador del formulario.
 3. El turista autenticado envía una calificación de 1 a 5, un comentario o ambos.
 4. La opinión queda pendiente y no modifica el resumen público.
 5. El administrador revisa la versión en el panel.
@@ -37,7 +39,14 @@ alteran la versión publicada hasta ser aprobadas.
   reintento; los envíos no se simulan localmente. Al volver a abrir la pestaña, el cliente
   revalida la lista pública para no conservar indefinidamente un estado vacío después de una
   aprobación.
+  Si la consulta se pausa sin una copia, se pide conexión y se ofrece reintento sin
+  mostrar una carga indefinida. El fallo de un envío se informa inmediatamente después
+  del transporte; no se deja pendiente para ejecutarlo al recuperar red.
 - Error de moderación concurrente: la API devuelve conflicto y el panel recarga la cola.
+- La opinión propia se consulta por cuenta con cancelación. Un envío o una lectura que
+  termina después de cerrar sesión o sustituirla no escribe en la caché privada actual;
+  las claves de mutación también incluyen la generación, incluso para volver a entrar
+  con la misma cuenta. La opinión propia y las mutaciones pendientes no se persisten.
 
 ## Datos
 

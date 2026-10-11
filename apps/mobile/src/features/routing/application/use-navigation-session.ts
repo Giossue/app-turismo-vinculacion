@@ -106,7 +106,9 @@ export function useNavigationSession({
   const sessionSavedRef = useRef<Promise<boolean>>(Promise.resolve(false));
   // Solo se consume al arrancar; no debe reiniciar el watcher si cambia.
   const initialLocationRef = useRef(initialLocation);
-  initialLocationRef.current = initialLocation;
+  useEffect(() => {
+    initialLocationRef.current = initialLocation;
+  }, [initialLocation]);
 
   // The navigation watcher replaces the shared foreground watcher meanwhile.
   useEffect(() => {

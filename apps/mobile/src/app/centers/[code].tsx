@@ -39,6 +39,7 @@ export default function CenterDetailScreen() {
     error,
     isFetching,
     isPending,
+    isPaused,
     refetch,
   } = usePublishedCenter(code);
 
@@ -54,7 +55,7 @@ export default function CenterDetailScreen() {
     );
   }
 
-  if (isPending) {
+  if (isPending && !isPaused) {
     return (
       <CenterStateFrame onBack={goBack}>
         <TourismStateView

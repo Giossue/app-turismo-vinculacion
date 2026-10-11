@@ -22,7 +22,7 @@ import {
   useCenterOpinions,
   useOwnCenterOpinion,
 } from "../application/use-center-opinions";
-import { getOpinionKey } from "../domain/opinion";
+import { OPINIONS_PAGE_SIZE, getOpinionKey } from "../domain/opinion";
 import { OpinionComposer } from "./opinion-composer";
 import { OpinionListItem } from "./opinion-list-item";
 import { OpinionSummary } from "./opinion-summary";
@@ -51,6 +51,8 @@ export function CenterOpinions({
   const [formError, setFormError] = useState<string | null>(null);
   const [reviewFilter, setReviewFilter] = useState<"all" | "recent">("all");
 
+  const [page, setPage] = useState(0);
+
   const authenticated = auth.status === "authenticated";
   const ownState = own.data ?? null;
   const formMode = ownState?.canEdit && editing ? "edit" : "create";
@@ -64,8 +66,31 @@ export function CenterOpinions({
     ownState.current?.submittedAt === publishedAt;
 
   const items = opinions.data?.items ?? [];
+  const currentPage = Math.min(
+    page,
+    Math.max(0, Math.ceil(items.length / OPINIONS_PAGE_SIZE) - 1),
+  );
   const visibleOpinions =
-    reviewFilter === "recent" ? items.slice(0, recentOpinionsCount) : items;
+    reviewFilter === "recent"
+      ? items.slice(0, recentOpinionsCount)
+      : items.slice(
+          currentPage * OPINIONS_PAGE_SIZE,
+          (currentPage + 1) * OPINIONS_PAGE_SIZE,
+        );
+  const hasLoadedNext = (currentPage + 1) * OPINIONS_PAGE_SIZE < items.length;
+
+  async function nextPage() {
+    if (hasLoadedNext) {
+      setPage(currentPage + 1);
+      return;
+    }
+    const result = await opinions.fetchNextPage();
+    if (
+      result.data &&
+      result.data.items.length > (currentPage + 1) * OPINIONS_PAGE_SIZE
+    )
+      setPage(currentPage + 1);
+  }
 
   function requireAuth() {
     if (onRequireAuth) {
@@ -152,17 +177,21 @@ export function CenterOpinions({
         </View>
       ) : null}
 
-      {opinions.isPending ? (
+      {opinions.isPending && !opinions.isPaused ? (
         <TourismStateView
           layout="inline"
           message="Cargando opiniones…"
           variant="loading"
         />
-      ) : opinions.isError && !opinions.data ? (
+      ) : (opinions.isError || opinions.isPaused) && !opinions.data ? (
         <TourismStateView
           actionPending={opinions.isFetching}
           layout="card"
-          message="No pudimos cargar las opiniones."
+          message={
+            opinions.isPaused
+              ? "Conéctate para consultar las opiniones."
+              : "No pudimos cargar las opiniones."
+          }
           onAction={() => void opinions.refetch()}
           variant="error"
         />
@@ -178,15 +207,48 @@ export function CenterOpinions({
         ))
       )}
 
-      {reviewFilter === "all" && opinions.hasNextPage ? (
-        <TourismActionButton
-          compact
-          disabled={opinions.isFetchingNextPage}
-          label="Cargar más opiniones"
-          loading={opinions.isFetchingNextPage}
-          mode="outlined"
-          onPress={() => void opinions.fetchNextPage()}
-        />
+      {reviewFilter === "all" && items.length > 0 ? (
+        <View style={styles.pagination}>
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[styles.noticeText, { color: colors.textMuted }]}
+          >
+            Opiniones {currentPage * OPINIONS_PAGE_SIZE + 1}–
+            {Math.min((currentPage + 1) * OPINIONS_PAGE_SIZE, items.length)} de{" "}
+            {opinions.data?.total ?? items.length}
+          </Text>
+          {currentPage > 0 ? (
+            <TourismActionButton
+              compact
+              label="Opiniones anteriores"
+              mode="outlined"
+              onPress={() => setPage(currentPage - 1)}
+            />
+          ) : null}
+          {hasLoadedNext || opinions.hasNextPage ? (
+            <TourismActionButton
+              compact
+              disabled={opinions.isFetching}
+              label="Opiniones siguientes"
+              loading={opinions.isFetchingNextPage}
+              mode="outlined"
+              onPress={() => void nextPage()}
+            />
+          ) : null}
+          {opinions.isError || opinions.isPaused ? (
+            <TourismStateView
+              layout="inline"
+              message="No pudimos actualizar las opiniones. Las ya cargadas siguen disponibles."
+              onAction={() =>
+                void (opinions.isFetchNextPageError
+                  ? opinions.fetchNextPage()
+                  : opinions.refetch())
+              }
+              actionPending={opinions.isFetching}
+              variant="error"
+            />
+          ) : null}
+        </View>
       ) : null}
 
       {auth.status === "anonymous" ? (
@@ -203,7 +265,7 @@ export function CenterOpinions({
             onPress={requireAuth}
           />
         </TourismSurface>
-      ) : authenticated && own.isPending ? (
+      ) : authenticated && own.isPending && !own.isPaused ? (
         // Until the own opinion is known the composer could offer to write
         // a second one; wait for it instead of flashing the form.
         <TourismStateView
@@ -211,10 +273,12 @@ export function CenterOpinions({
           message="Consultando tu opinión…"
           variant="loading"
         />
-      ) : authenticated && own.error ? (
+      ) : authenticated && (own.error || own.isPaused) ? (
         <TourismSurface style={styles.notice}>
           <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-            No pudimos consultar tu opinión.
+            {own.isPaused
+              ? "Conéctate para consultar tu opinión."
+              : "No pudimos consultar tu opinión."}
           </Text>
           <TourismActionButton
             compact
@@ -291,6 +355,7 @@ export function CenterOpinions({
 
 const styles = StyleSheet.create({
   container: { gap: turismoSpacing.md },
+  pagination: { gap: turismoSpacing.xs },
   filters: { flexDirection: "row", gap: turismoSpacing.xs },
   separator: { height: turismoMetrics.borderWidth, width: "100%" },
   notice: { gap: turismoSpacing.sm, padding: turismoSpacing.md },

@@ -6,17 +6,19 @@ import {
   Inject,
   Param,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { FastifyReply, FastifyRequest } from "fastify";
 
 import { CurrentUser, Roles } from "../auth/auth.decorators";
 import { AuthGuard } from "../auth/auth.guard";
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { RolesGuard } from "../auth/roles.guard";
+import { createMediaVariant, type MediaImageSize } from "./media-variants";
 import { EstablishmentMediaService } from "./establishment-media.service";
 import { MediaService, type CenterFileTypeCode } from "./media.service";
 
@@ -156,20 +158,34 @@ export class PublicMediaController {
   ) {}
 
   @Get(":id")
-  async get(@Param("id") id: string, @Res() response: FastifyReply) {
-    sendMedia(response, await this.media.publicFile(parseMediaId(id)));
+  @ApiQuery({ name: "size", required: false, enum: ["thumbnail", "preview"] })
+  async get(
+    @Param("id") id: string,
+    @Res() response: FastifyReply,
+    @Query("size") size?: string,
+  ) {
+    const variant = parseImageSize(size);
+    const file = await this.media.publicFile(parseMediaId(id));
+    sendMedia(response, await createMediaVariant(file, variant));
   }
 
   @Get("establishments/:id")
+  @ApiQuery({ name: "size", required: false, enum: ["thumbnail", "preview"] })
   async getEstablishmentPhoto(
     @Param("id") id: string,
     @Res() response: FastifyReply,
+    @Query("size") size?: string,
   ) {
-    sendMedia(
-      response,
-      await this.establishmentMedia.publicFile(parseMediaId(id)),
-    );
+    const variant = parseImageSize(size);
+    const file = await this.establishmentMedia.publicFile(parseMediaId(id));
+    sendMedia(response, await createMediaVariant(file, variant));
   }
+}
+
+function parseImageSize(value?: string): MediaImageSize | undefined {
+  if (value === undefined || value === "thumbnail" || value === "preview")
+    return value;
+  throw new BadRequestException("El tamaño de la fotografía no es válido.");
 }
 
 function sendMedia(

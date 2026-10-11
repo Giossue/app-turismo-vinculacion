@@ -41,6 +41,7 @@ export function getPublicSearchQueryOptions(
       }),
     enabled: normalizedQuery.length >= 2 && filters.enabled !== false,
     staleTime: 60_000,
+    gcTime: 5 * 60_000,
     retry: 1,
   };
 }

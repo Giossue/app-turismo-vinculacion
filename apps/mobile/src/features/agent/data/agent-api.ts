@@ -101,6 +101,7 @@ export async function askTourismAgentStream(
 ): Promise<AgentResponse> {
   const response = await sendRequest(`${apiUrl}/ai/chat/stream`, {
     errorMessage: AGENT_UNAVAILABLE_MESSAGE,
+    timeoutMs: 30_000,
     fetcher,
     init: {
       body: JSON.stringify(

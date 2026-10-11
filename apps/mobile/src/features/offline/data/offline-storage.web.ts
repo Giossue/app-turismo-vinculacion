@@ -1,3 +1,4 @@
+import { summarizeOfflineManifest } from "./offline-summary";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import type { OfflineCityManifest } from "../domain/offline-city";
@@ -44,4 +45,16 @@ export async function listStoredOfflineManifests(): Promise<
     const manifest = value ? parseStoredOfflineManifest(value) : null;
     return manifest ? [manifest] : [];
   });
+}
+
+export async function listStoredOfflineSummaries() {
+  return (await listStoredOfflineManifests()).map(summarizeOfflineManifest);
+}
+
+export async function listStoredOfflineCenterRecords(code?: string) {
+  return (await listStoredOfflineManifests()).flatMap((manifest) =>
+    manifest.centers
+      .filter((center) => !code || center.code === code)
+      .map((center) => ({ center, cityName: manifest.city.name })),
+  );
 }

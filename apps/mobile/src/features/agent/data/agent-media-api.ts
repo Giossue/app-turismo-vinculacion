@@ -33,6 +33,7 @@ export async function transcribeAgentAudio(
     z.object({ data: z.object({ text: z.string().trim().min(1).max(2_000) }) }),
     {
       fetcher: request,
+      timeoutMs: 60_000,
       errorMessage: "No se pudo transcribir el audio.",
       useServerMessage: true,
       invalidMessage: "La transcripción no tiene el formato esperado.",

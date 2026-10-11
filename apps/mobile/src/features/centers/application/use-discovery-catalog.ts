@@ -1,27 +1,34 @@
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
+import { isApiUnavailableError, withRequestSignal } from "@/core/api/http";
 import { queryKeys } from "@/core/api/query-keys";
 import { getStoredOfflineCenters } from "@/features/offline/application/offline-fallback";
 import { getDiscoveryCatalog } from "../data/public-centers-api";
 import type { DiscoveryCatalog, PublicCenter } from "../domain/public-center";
 import { uniqueByCode } from "../domain/unique-by-code";
 
-export function useDiscoveryCatalog() {
-  return useQuery({
+export function getDiscoveryCatalogQueryOptions() {
+  return queryOptions({
     queryKey: queryKeys.discoveryCatalog,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       try {
-        return await getDiscoveryCatalog();
+        return await getDiscoveryCatalog(withRequestSignal(fetch, signal));
       } catch (error) {
+        if (!isApiUnavailableError(error)) throw error;
         const centers = await getStoredOfflineCenters();
         if (!centers.length) throw error;
         return catalogFromOfflineCenters(centers);
       }
     },
     refetchOnMount: false,
+    networkMode: "offlineFirst",
     staleTime: 3_600_000,
     retry: 1,
   });
+}
+
+export function useDiscoveryCatalog() {
+  return useQuery(getDiscoveryCatalogQueryOptions());
 }
 
 /**

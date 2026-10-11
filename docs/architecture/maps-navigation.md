@@ -42,6 +42,8 @@
   obtiene la ubicación o calcula la ruta, tanto en el panel compacto como expandido.
   No muestra textos de preparación o búsqueda de GPS durante esa espera. Los permisos
   denegados, GPS apagado y errores reales conservan su aviso y la acción de reintento.
+  Una consulta de ruta pausada sin red informa que calcular una ruta nueva requiere
+  conexión; las rutas ya guardadas se leen localmente sin ese requisito.
 
 ### Geocodificación y búsqueda
 
@@ -205,7 +207,8 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   paneo pide varias teselas a la vez.
 - Los atractivos de Explorar se consultan por el bbox inicial y al terminar los gestos;
   `GET /centers` mantiene páginas de hasta 100 elementos y añade `offset`/`meta.offset`
-  para completar el total de la zona sin truncar el mapa. La API mantiene orden estable
+  para completar el total de la zona sin truncar el mapa. El móvil muestra cada página
+  al recibirla y continúa de una en una mientras Explorar está activo. La API mantiene orden estable
   por relevancia, nombre y código, y los filtros de publicación. Esta paginación por
   offset conserva compatibilidad con la lista pública; las teselas para atractivos
   continúan siendo una opción de escala futura. La ficha completa llega bajo demanda.
@@ -213,7 +216,10 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 - Cachear catálogos/mapas públicos con política de invalidación por publicación.
 - El cliente persiste la caché de catálogos y consultas públicas sin ubicación durante 24 horas y evita repetir la
   petición al volver a una pestaña mientras el dato siga fresco; una revalidación puede
-  ocurrir al recuperar conectividad o mediante una acción explícita.
+  ocurrir al recuperar foco o conectividad nativos, o mediante una acción explícita.
+  Foco y red usan eventos del sistema y no solicitan ubicación. La retención de 24 horas
+  se comprueba por entrada al guardar/restaurar, sin prolongarse por otros cambios del
+  snapshot; política en [mobile.md](mobile.md#caché-y-funcionamiento-sin-conexión).
   Los pines por bbox usan el prefijo `public-map-centers`, con frescura y retención en
   memoria de cinco minutos; sus claves y coordenadas nunca se persisten.
 - El estilo propio se cachea en memoria por combinación de tema y modo (`streets` o

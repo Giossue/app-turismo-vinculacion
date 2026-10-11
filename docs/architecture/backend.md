@@ -101,3 +101,22 @@ operaciones autenticadas del visitante (`GET/POST/PATCH /opinions/...`) de la co
 administrativa (`GET/PATCH /admin/opinions`). El servicio autoriza por identidad antes de
 editar, usa transacciones para cambiar la versión publicada y registra cada aprobación o
 rechazo en `moderaciones_opinion`.
+
+## Variantes de fotografías públicas
+
+`GET /api/v1/media/:id` y `GET /api/v1/media/establishments/:id` admiten opcionalmente
+`size=thumbnail|preview`, con anchos máximos 640/1280 y sin ampliar imágenes pequeñas.
+El tamaño inválido responde 400; sin parámetro conserva el archivo existente. La variante
+WebP usa Sharp ya instalado y conserva proporciones. La publicación y vigencia del registro
+se comprueban por el servicio antes de acceder a cualquier variante; el caché no autoriza
+una fotografía retirada. Las imágenes admitidas que no pueden transformarse o llegan cuando
+hay dos transformaciones distintas en curso conservan su original válido.
+
+Las variantes viven en una caché local al proceso, identificadas por SHA-256 del contenido
+y tamaño: máximo 16 MiB, 128 entradas y una hora, con expulsión LRU y deduplicación concurrente.
+No se escribe una variante en MinIO/S3 ni se cambia PostgreSQL. Cada solicitud conserva
+la consulta de visibilidad y la lectura del objeto; el ahorro principal es transferencia
+al cliente y transformación repetida, sin afirmar ahorro de consultas a la base.
+El cache HTTP conserva `public, max-age=3600`; retirar publicación no revoca una copia
+que el cliente ya recibió bajo esa política. El contrato está implementado en código y
+OpenAPI; requiere desplegar la API para servir imágenes reducidas al móvil.

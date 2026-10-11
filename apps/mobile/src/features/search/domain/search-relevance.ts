@@ -34,7 +34,7 @@ function alternatives(term: string): readonly string[] {
 }
 
 /** One insertion, deletion, replacement or transposition for words >= 5 chars. */
-function isCloseWord(term: string, word: string): boolean {
+export function isCloseSearchWord(term: string, word: string): boolean {
   if (term.length < 5 || Math.abs(term.length - word.length) > 1) return false;
   if (term === word) return true;
   if (term.length === word.length) {
@@ -71,31 +71,90 @@ export function getSearchRelevance(
   subtitle: string,
   extra = "",
 ): number {
+  return getPreparedSearchRelevance(
+    prepareSearchQuery(query),
+    prepareSearchDocument(title, subtitle, extra),
+  );
+}
+
+export type PreparedSearchQuery = Readonly<{
+  normalized: string;
+  aliases: readonly string[];
+  terms: readonly Readonly<{ text: string; aliases: readonly string[] }>[];
+}>;
+
+export type PreparedSearchDocument = Readonly<{
+  name: string;
+  details: string;
+  titleWords: readonly string[];
+  detailWords: readonly string[];
+}>;
+
+/** Normaliza la consulta una sola vez, incluidos sus sinónimos. */
+export function prepareSearchQuery(query: string): PreparedSearchQuery {
   const normalized = normalizeSearchText(query);
-  if (normalized.length < 2) return 0;
+  return {
+    normalized,
+    aliases: alternatives(normalized),
+    terms: normalized
+      .split(" ")
+      .filter(Boolean)
+      .map((text) => ({
+        text,
+        aliases: alternatives(text),
+      })),
+  };
+}
+
+/** Los textos de una descarga no se vuelven a normalizar por cada pulsación. */
+export function prepareSearchDocument(
+  title: string,
+  subtitle: string,
+  extra = "",
+): PreparedSearchDocument {
   const name = normalizeSearchText(title);
   const details = normalizeSearchText(`${subtitle} ${extra}`);
+  return {
+    name,
+    details,
+    titleWords: name.split(" "),
+    detailWords: details.split(" "),
+  };
+}
+
+export function getPreparedSearchRelevance(
+  query: PreparedSearchQuery,
+  document: PreparedSearchDocument,
+): number {
+  const { normalized } = query;
+  if (normalized.length < 2) return 0;
+  const { name, details, titleWords, detailWords } = document;
   if (name === normalized) return 600;
   if (name.startsWith(normalized)) return 500;
   if (name.includes(normalized)) return 400;
-  const queryAliases = alternatives(normalized);
+  const queryAliases = query.aliases;
   if (queryAliases.some((term) => name.includes(term))) return 300;
   if (queryAliases.some((term) => details.includes(term))) return 200;
-  const titleWords = name.split(" ");
-  const detailWords = details.split(" ");
   let allTermsInTitle = true;
   let needsFuzzyMatch = false;
   let fuzzyTitleMatch = false;
-  for (const term of normalized.split(" ")) {
-    const terms = alternatives(term);
+  for (const { text: term, aliases: terms } of query.terms) {
     const titleMatch = terms.some((candidate) =>
       titleWords.some((word) => word.startsWith(candidate)),
     );
     const detailsMatch = terms.some((candidate) =>
       detailWords.some((word) => word.startsWith(candidate)),
     );
-    const closeTitle = titleWords.some((word) => isCloseWord(term, word));
-    const closeDetails = detailWords.some((word) => isCloseWord(term, word));
+    // La coincidencia aproximada solo hace falta si falló la normal.
+    const closeTitle =
+      !titleMatch &&
+      !detailsMatch &&
+      titleWords.some((word) => isCloseSearchWord(term, word));
+    const closeDetails =
+      !titleMatch &&
+      !detailsMatch &&
+      !closeTitle &&
+      detailWords.some((word) => isCloseSearchWord(term, word));
     if (!titleMatch && !detailsMatch && !closeTitle && !closeDetails) return 0;
     if (!titleMatch) allTermsInTitle = false;
     if (!titleMatch && !detailsMatch) {

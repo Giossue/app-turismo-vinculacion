@@ -1,6 +1,8 @@
 import type { StyleSpecification } from "@maplibre/maplibre-react-native";
+import { z } from "zod";
 
 import { getApiUrl } from "@/core/api/api-url";
+import { requestJson } from "@/core/api/http";
 import { getTurismoMapColors, type TurismoColorScheme } from "@/core/ui/tokens";
 import { basemapFillRules, basemapPalettes } from "./basemap-palette";
 
@@ -93,11 +95,15 @@ export function getOfflineMapStyleUrl(): string {
 }
 
 async function fetchSelfHostedMapStyles(styleUrl: string) {
-  const response = await fetch(styleUrl);
-  if (!response.ok) {
-    throw new Error(`Self-hosted basemap responded with ${response.status}`);
-  }
-  const value: unknown = await response.json();
+  const value = await requestJson(
+    styleUrl,
+    z.custom<StyleSpecification>(isValidBasemapStyle),
+    {
+      timeoutMs: 10_000,
+      errorMessage: "No pudimos preparar el mapa base.",
+      invalidMessage: "El mapa base no tiene el formato esperado.",
+    },
+  );
   return {
     light: normalizeSelfHostedStyle(value, "light", styleUrl),
     dark: normalizeSelfHostedStyle(value, "dark", styleUrl),

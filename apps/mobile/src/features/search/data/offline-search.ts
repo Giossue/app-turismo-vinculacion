@@ -5,6 +5,8 @@ import { getOfflineBrowserItems } from "@/features/offline/presentation/offline-
 import {
   deduplicateSearchSuggestions,
   getSearchRelevance,
+  getPreparedSearchRelevance,
+  prepareSearchQuery,
   normalizeSearchText,
   rankSearchSuggestions,
 } from "../domain/search-relevance";
@@ -15,6 +17,7 @@ import {
   type SearchSuggestionItem,
   type OfflineSearchCoverage,
 } from "../domain/search-suggestion";
+import { getOfflineSearchCandidates } from "./offline-search-index";
 
 function placeKey(
   kind: SearchSuggestionItem["kind"],
@@ -103,76 +106,73 @@ export function getOfflineSearchSuggestions(
   coordinate: GeoCoordinate | null,
   filters: SearchFilters = {},
 ): readonly SearchSuggestionItem[] {
-  if (normalizeSearchText(query).length < 2) return [];
+  const prepared = prepareSearchQuery(query);
+  if (prepared.normalized.length < 2) return [];
   return manifests.flatMap((manifest) =>
-    getOfflineBrowserItems(manifest).flatMap((item) => {
-      const kind =
-        item.kind === "route"
-          ? "route"
-          : item.center
-            ? "center"
-            : item.key.startsWith("establishment:")
-              ? "establishment"
-              : "poi";
-      if (
-        filters.kind &&
-        filters.kind !== kind &&
-        !(filters.kind === "geographic" && (kind === "poi" || kind === "route"))
-      )
-        return [];
-      const extra =
-        item.kind === "place"
-          ? `${item.description ?? ""} ${item.address ?? ""}`
-          : "";
-      const relevance = getSearchRelevance(
-        query,
-        item.name,
-        item.subtitle,
-        extra,
-      );
-      if (!relevance) return [];
-      const itemCoordinate =
-        item.kind === "place"
-          ? item.coordinate
-          : item.route.geometry.coordinates[0]?.length === 2
-            ? {
-                longitude: item.route.geometry.coordinates[0]![0]!,
-                latitude: item.route.geometry.coordinates[0]![1]!,
-              }
-            : null;
-      const inArea =
-        !filters.bounds ||
-        (item.kind === "place"
-          ? isInsideSearchBounds(item.coordinate, filters.bounds)
-          : routeIntersectsBounds(
-              item.route.geometry.coordinates,
-              filters.bounds,
-            ));
-      if (!inArea) return [];
-      return [
-        {
-          key:
-            kind === "center" || kind === "route"
-              ? item.key
-              : itemCoordinate
-                ? placeKey(kind, item.name, itemCoordinate)
-                : `${manifest.city.slug}:${item.key}`,
-          title: item.name,
-          subtitle: `${item.subtitle} · ${manifest.city.name}`,
-          kind,
-          relevance,
-          distanceMeters:
-            coordinate && itemCoordinate
-              ? getDistanceMeters(coordinate, itemCoordinate)
-              : null,
-          offline: {
-            slug: manifest.city.slug,
-            itemKey: item.key,
-            cityName: manifest.city.name,
+    getOfflineSearchCandidates(manifest, prepared).flatMap(
+      ({ item, document }) => {
+        const kind =
+          item.kind === "route"
+            ? "route"
+            : item.center
+              ? "center"
+              : item.key.startsWith("establishment:")
+                ? "establishment"
+                : "poi";
+        if (
+          filters.kind &&
+          filters.kind !== kind &&
+          !(
+            filters.kind === "geographic" &&
+            (kind === "poi" || kind === "route")
+          )
+        )
+          return [];
+        const relevance = getPreparedSearchRelevance(prepared, document);
+        if (!relevance) return [];
+        const itemCoordinate =
+          item.kind === "place"
+            ? item.coordinate
+            : item.route.geometry.coordinates[0]?.length === 2
+              ? {
+                  longitude: item.route.geometry.coordinates[0]![0]!,
+                  latitude: item.route.geometry.coordinates[0]![1]!,
+                }
+              : null;
+        const inArea =
+          !filters.bounds ||
+          (item.kind === "place"
+            ? isInsideSearchBounds(item.coordinate, filters.bounds)
+            : routeIntersectsBounds(
+                item.route.geometry.coordinates,
+                filters.bounds,
+              ));
+        if (!inArea) return [];
+        return [
+          {
+            key:
+              kind === "center" || kind === "route"
+                ? item.key
+                : itemCoordinate
+                  ? placeKey(kind, item.name, itemCoordinate)
+                  : `${manifest.city.slug}:${item.key}`,
+            title: item.name,
+            subtitle: `${item.subtitle} · ${manifest.city.name}`,
+            kind,
+            relevance,
+            distanceMeters:
+              coordinate && itemCoordinate
+                ? getDistanceMeters(coordinate, itemCoordinate)
+                : null,
+            offline: {
+              slug: manifest.city.slug,
+              itemKey: item.key,
+              cityName: manifest.city.name,
+            },
           },
-        },
-      ];
-    }),
+        ];
+      },
+    ),
   );
 }
 
@@ -208,6 +208,7 @@ export function buildSearchSuggestions({
   coordinate,
   filters = {},
   onlineUnavailable,
+  offlineCoverage,
 }: Readonly<{
   query: string;
   manifests: readonly OfflineCityManifest[];
@@ -215,6 +216,7 @@ export function buildSearchSuggestions({
   coordinate: GeoCoordinate | null;
   filters?: SearchFilters;
   onlineUnavailable: boolean;
+  offlineCoverage?: readonly OfflineSearchCoverage[];
 }>) {
   const local = getOfflineSearchSuggestions(
     manifests,
@@ -231,6 +233,7 @@ export function buildSearchSuggestions({
       deduplicateSearchSuggestions([...online, ...local]),
       query,
     ),
-    offlineCoverage: getOfflineSearchCoverage(manifests, filters),
+    offlineCoverage:
+      offlineCoverage ?? getOfflineSearchCoverage(manifests, filters),
   };
 }

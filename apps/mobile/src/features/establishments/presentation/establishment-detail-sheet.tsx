@@ -100,7 +100,8 @@ export function EstablishmentDetailSheet({
           onPress={onOpenRoute}
         />
 
-        {establishment.id === undefined ? null : detailQuery.isPending ? (
+        {establishment.id === undefined ? null : detailQuery.isPending &&
+          !detailQuery.isPaused ? (
           <TourismStateView
             layout="inline"
             message="Cargando fotografías…"
@@ -108,7 +109,8 @@ export function EstablishmentDetailSheet({
           />
         ) : detail ? (
           <CenterPhotos photos={detail.photos} variant="divided" />
-        ) : isApiUnavailableError(detailQuery.error) ? null : (
+        ) : detailQuery.isPaused ||
+          isApiUnavailableError(detailQuery.error) ? null : (
           <TourismStateView
             actionPending={detailQuery.isFetching}
             layout="inline"

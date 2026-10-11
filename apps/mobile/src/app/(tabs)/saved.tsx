@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { SectionList, StyleSheet, Text, View } from "react-native";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismSectionTitle } from "@/core/ui/tourism-controls";
@@ -61,7 +61,9 @@ function SavedCenterList() {
 
   // A failed background refresh keeps the saved (possibly offline) lists.
   if (!savedCenters.data || !savedEstablishments.data) {
-    const failed = savedCenters.isError || savedEstablishments.isError;
+    const paused = savedCenters.isPaused || savedEstablishments.isPaused;
+    const failed =
+      savedCenters.isError || savedEstablishments.isError || paused;
     return failed ? (
       <TourismStateView
         actionPending={
@@ -72,6 +74,7 @@ function SavedCenterList() {
           if (!savedEstablishments.data) void savedEstablishments.refetch();
         }}
         title="No pudimos abrir tus guardados."
+        message={paused ? "Conéctate para cargar tus guardados." : undefined}
         variant="error"
       />
     ) : (
@@ -102,78 +105,73 @@ function SavedCenterList() {
 
   return (
     <>
-      <ScrollView
+      <SectionList
+        sections={[
+          {
+            title: "Centros turísticos",
+            data: centers.map((center) => ({
+              key: `center:${center.code}`,
+              title: center.name,
+              subtitle: cantonNames.get(center.cantonCode),
+              onOpen: () =>
+                router.push({
+                  pathname: "/centers/[code]",
+                  params: { code: center.code },
+                }),
+              onRemove: () =>
+                savedMutation.mutate({ center, currentlySaved: true }),
+            })),
+          },
+          {
+            title: "Establecimientos",
+            data: establishments.map((establishment) => ({
+              key: `establishment:${establishment.id}`,
+              title: establishment.nombreComercial,
+              subtitle:
+                [
+                  establishment.categoriaEtiqueta ??
+                    establishment.clasificacion ??
+                    establishment.actividad,
+                  establishment.localityName,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || undefined,
+              onOpen:
+                establishment.latitude === null ||
+                establishment.longitude === null
+                  ? undefined
+                  : () =>
+                      router.replace({
+                        pathname: "/",
+                        params: { establishmentId: String(establishment.id) },
+                      }),
+              onRemove: () =>
+                establishmentMutation.mutate({
+                  establishment,
+                  currentlySaved: true,
+                }),
+            })),
+          },
+        ].filter((section) => section.data.length > 0)}
+        keyExtractor={(item) => item.key}
+        renderItem={({ item }) => <SavedPlaceRow {...item} />}
+        renderSectionHeader={({ section }) =>
+          showHeadings ? (
+            <TourismSectionTitle>{section.title}</TourismSectionTitle>
+          ) : null
+        }
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        SectionSeparatorComponent={() => <View style={styles.separator} />}
+        stickySectionHeadersEnabled={false}
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={7}
         contentContainerStyle={[
           styles.content,
           { paddingBottom: turismoSpacing.xxl + tabBarInset },
         ]}
         showsVerticalScrollIndicator={false}
-      >
-        {centers.length > 0 ? (
-          <View style={styles.list}>
-            {showHeadings ? (
-              <TourismSectionTitle>Centros turísticos</TourismSectionTitle>
-            ) : null}
-            {centers.map((center) => (
-              <SavedPlaceRow
-                key={center.code}
-                onOpen={() =>
-                  router.push({
-                    pathname: "/centers/[code]",
-                    params: { code: center.code },
-                  })
-                }
-                onRemove={() =>
-                  savedMutation.mutate({ center, currentlySaved: true })
-                }
-                subtitle={cantonNames.get(center.cantonCode)}
-                title={center.name}
-              />
-            ))}
-          </View>
-        ) : null}
-        {establishments.length > 0 ? (
-          <View style={styles.list}>
-            {showHeadings ? (
-              <TourismSectionTitle>Establecimientos</TourismSectionTitle>
-            ) : null}
-            {establishments.map((establishment) => (
-              <SavedPlaceRow
-                key={establishment.id}
-                // Explorar is a tab: it is replaced, and it focuses the
-                // establishment on the map before opening its sheet.
-                onOpen={
-                  establishment.latitude === null ||
-                  establishment.longitude === null
-                    ? undefined
-                    : () =>
-                        router.replace({
-                          pathname: "/",
-                          params: { establishmentId: String(establishment.id) },
-                        })
-                }
-                onRemove={() =>
-                  establishmentMutation.mutate({
-                    establishment,
-                    currentlySaved: true,
-                  })
-                }
-                subtitle={
-                  [
-                    establishment.categoriaEtiqueta ??
-                      establishment.clasificacion ??
-                      establishment.actividad,
-                    establishment.localityName,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ") || undefined
-                }
-                title={establishment.nombreComercial}
-              />
-            ))}
-          </View>
-        ) : null}
-      </ScrollView>
+      />
       <SavedCenterErrorSnackbar mutation={failedMutation} />
     </>
   );
@@ -247,11 +245,10 @@ function SavedPlaceRow({
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: {
-    gap: turismoSpacing.lg,
     paddingVertical: turismoSpacing.md,
     paddingBottom: turismoSpacing.xxl,
   },
-  list: { gap: turismoSpacing.sm },
+  separator: { height: turismoSpacing.sm },
   row: {
     alignItems: "center",
     borderRadius: turismoRadii.md,

@@ -5,7 +5,11 @@ import { getApiUrl } from "@/core/api/api-url";
 import { acceptJsonHeaders, requestJson, type Fetcher } from "@/core/api/http";
 import { publicCenterSchema } from "@/features/centers/data/public-centers-api";
 import { isValidBasemapStyle } from "@/features/map/data/basemap-style";
-import type { OfflineCity, OfflineCityManifest } from "../domain/offline-city";
+import type {
+  OfflineCity,
+  OfflineCityManifest,
+  OfflineCitySummary,
+} from "../domain/offline-city";
 
 const latitudeSchema = z.number().min(-90).max(90);
 const longitudeSchema = z.number().min(-180).max(180);
@@ -128,6 +132,7 @@ export async function getOfflineCityManifest(
     manifestResponseSchema,
     {
       errorMessage: "Esta ciudad aún no tiene paquete offline.",
+      timeoutMs: 60_000,
       fetcher,
       init: { headers: acceptJsonHeaders },
       invalidMessage: "El manifiesto offline no es válido.",
@@ -142,6 +147,34 @@ export function parseStoredOfflineManifest(
 ): OfflineCityManifest | null {
   try {
     const parsed = offlineCityManifestSchema.safeParse(JSON.parse(json));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+const offlineCitySummarySchema = z.object({
+  city: citySchema,
+  package: publishedPackageSchema,
+  bounds: boundsSchema.nullish().transform((value) => value ?? undefined),
+  counts: z.object({
+    centers: z.number().int().nonnegative(),
+    establishments: z.number().int().nonnegative(),
+    pois: z.number().int().nonnegative(),
+    routes: z.number().int().nonnegative(),
+  }),
+  download: offlineCityManifestSchema.shape.download
+    .unwrap()
+    .omit({ mapStyles: true })
+    .nullish()
+    .transform((value) => value ?? undefined),
+});
+
+export function parseStoredOfflineSummary(
+  json: string,
+): OfflineCitySummary | null {
+  try {
+    const parsed = offlineCitySummarySchema.safeParse(JSON.parse(json));
     return parsed.success ? parsed.data : null;
   } catch {
     return null;

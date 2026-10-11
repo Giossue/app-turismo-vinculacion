@@ -1,39 +1,91 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
+import { dehydrate, type QueryClient } from "@tanstack/react-query";
 import type { PersistQueryClientOptions } from "@tanstack/react-query-persist-client";
 
-import { isPersistedQueryKey, ONE_DAY_MS } from "./query-keys";
+import {
+  canPersistQuery,
+  createQueryCachePersister,
+  filterPersistedClient,
+} from "./query-cache-persister";
+import {
+  getQueryAccountId,
+  isUserScopedQueryKey,
+  ONE_DAY_MS,
+} from "./query-keys";
+import { preserveConfirmedQueries } from "./optimistic-query-persistence";
 
-const queryCachePersister = createAsyncStoragePersister({
+// Al iniciar se desconoce la cuenta; AuthProvider valida el propietario tras hidratar.
+let persistedAccountId: number | null | undefined;
+let accountChange = 0;
+
+const queryCachePersister = createQueryCachePersister({
   key: "turismo-vinculacion-query-cache-v1",
   storage: AsyncStorage,
-  throttleTime: 1000,
+  filter: (client) => filterPersistedClient(client, persistedAccountId),
 });
 
 /** Options for `PersistQueryClientProvider`: see `persistedQueryKeys`. */
 export const queryPersistOptions = {
-  // v3 descarta cachés anteriores que aún contenían búsquedas y consultas por
-  // viewport.
   buster: "mobile-v3",
   dehydrateOptions: {
-    // Solo las claves permitidas: nada de búsquedas ni consultas por
-    // ubicación o viewport sobrevive en AsyncStorage.
+    shouldDehydrateMutation: () => false,
     shouldDehydrateQuery: (query) =>
-      query.state.status === "success" && isPersistedQueryKey(query.queryKey),
+      query.state.status === "success" &&
+      canPersistQuery(
+        query.queryKey,
+        query.state.dataUpdatedAt,
+        persistedAccountId,
+      ),
   },
   maxAge: ONE_DAY_MS,
   persister: queryCachePersister,
 } satisfies Omit<PersistQueryClientOptions, "queryClient">;
 
-/**
- * Deletes the persisted snapshot right away instead of waiting for the
- * throttled write. Used at logout just before removing the account's
- * queries; that removal writes a fresh snapshot without them.
- */
-export async function clearPersistedQueryCache(): Promise<void> {
-  try {
-    await queryCachePersister.removeClient();
-  } catch {
-    // La caché persistida se reescribe con el siguiente cambio de la caché.
+/** La copia de disco conserva favoritos confirmados durante los cambios visuales. */
+export function getQueryPersistOptions(queryClient: QueryClient) {
+  return {
+    ...queryPersistOptions,
+    persister: {
+      ...queryCachePersister,
+      persistClient: (
+        client: Parameters<typeof queryCachePersister.persistClient>[0],
+      ) =>
+        queryCachePersister.persistClient(
+          preserveConfirmedQueries(queryClient, client),
+        ),
+    },
+  };
+}
+
+/** Retira otras cuentas de inmediato y reescribe solo los datos admitidos. */
+export function retainQueryAccount(
+  queryClient: QueryClient,
+  accountId: number | null,
+): Promise<void> {
+  persistedAccountId = accountId;
+  const change = ++accountChange;
+  queryClient.removeQueries({
+    predicate: (query) =>
+      isUserScopedQueryKey(query.queryKey) &&
+      (accountId === null || getQueryAccountId(query.queryKey) !== accountId),
+  });
+  const mutations = queryClient.getMutationCache();
+  for (const mutation of mutations.getAll()) {
+    if (
+      isUserScopedQueryKey(mutation.options.mutationKey ?? []) &&
+      (accountId === null || mutation.options.meta?.accountId !== accountId)
+    ) {
+      mutations.remove(mutation);
+    }
   }
+  return Promise.resolve(queryCachePersister.removeClient()).then(async () => {
+    if (change !== accountChange) return;
+    const write = getQueryPersistOptions(queryClient).persister.persistClient({
+      buster: queryPersistOptions.buster,
+      timestamp: Date.now(),
+      clientState: dehydrate(queryClient, queryPersistOptions.dehydrateOptions),
+    });
+    await queryCachePersister.flush();
+    await write;
+  });
 }

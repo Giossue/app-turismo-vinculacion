@@ -32,7 +32,7 @@ export type OfflineBrowserItem = OfflinePlaceItem | OfflineRouteItem;
 /** Local packages remain visible even when the remote catalog fails or changes. */
 export function mergeOfflineCities(
   remote: readonly OfflineCity[],
-  stored: readonly OfflineCityManifest[],
+  stored: readonly Pick<OfflineCityManifest, "city">[],
 ): readonly OfflineCity[] {
   const cities = new Map(
     stored.map((manifest) => [manifest.city.slug, manifest.city]),

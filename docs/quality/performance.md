@@ -22,3 +22,21 @@ Estos objetivos se revisan con mediciones reales, no se convierten en promesas c
 - Cachear datos privados sin clave de usuario/permiso.
 - Añadir Redis o pgvector sin un cuello medido.
 - Mantener GPS de alta precisión fuera de una función activa.
+
+## Controles móviles implementados
+
+Búsqueda local con documentos e índice reutilizables, preparación inicial cooperativa,
+listas virtualizadas y galerías/opiniones paginadas. Las lecturas nativas de catálogo offline
+proyectan metadatos/centros; contenido completo bajo demanda con una entrada por ciudad.
+El mapa muestra páginas sucesivas y conserva cancelación y cobertura. Las lecturas HTTP
+tienen plazos por operación y las búsquedas inactivas retención breve. React Compiler y
+clustering nativo se conservan; no se introduce otra tecnología de caché.
+
+Las fotografías admiten variantes fijas en la API con recursos acotados. La mejora de bytes
+requiere desplegar esa API; el móvil conserva compatibilidad con el servidor anterior.
+Arquitectura en [mobile.md](../architecture/mobile.md) y
+[backend.md](../architecture/backend.md#variantes-de-fotografías-públicas).
+
+La [evidencia de implementación](../../openspec/changes/mejorar-rendimiento-movil/evidence.md)
+separa benchmarks sintéticos en ordenador, compilación y comprobaciones pendientes en el
+dispositivo. Las medianas de una función no expresan la mejora porcentual de toda la app.

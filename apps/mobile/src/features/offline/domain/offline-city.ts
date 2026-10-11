@@ -80,3 +80,17 @@ export type OfflineCityManifest = Readonly<{
     directions: readonly unknown[];
   }>[];
 }>;
+
+/** Catálogo local sin contenidos, geometrías ni estilos del mapa. */
+export type OfflineCitySummary = Readonly<{
+  city: OfflineCity;
+  package: OfflineCityManifest["package"];
+  bounds?: GeoBoundingBox;
+  counts: Readonly<{
+    centers: number;
+    establishments: number;
+    pois: number;
+    routes: number;
+  }>;
+  download?: Omit<NonNullable<OfflineCityManifest["download"]>, "mapStyles">;
+}>;

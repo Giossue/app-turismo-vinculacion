@@ -212,9 +212,13 @@ Antes de crear una utilidad o un componente nuevo, reutilizar estos módulos del
   clientes `features/*/data/*-api.ts` los usan para que la UI nunca muestre errores de red o
   de JSON en inglés; las opciones de transporte se pasan como `{ apiUrl, fetcher, signal }`.
 - `src/core/api/query-keys.ts`: prefijos de claves de TanStack Query, `ONE_DAY_MS` y las
-  políticas de persistencia y de cierre de sesión. `src/core/api/media-url.ts`:
-  `resolveMediaUrl` para fotografías servidas por la API.
+  políticas de persistencia y de cierre de sesión. `query-cache-persister.ts` ordena y
+  cancela escrituras; `optimistic-query-persistence.ts` conserva colecciones confirmadas
+  mientras hay cambios tentativos; `use-query-runtime.native.ts` conecta foco/red del sistema.
+  `src/core/api/media-url.ts`:
+  `resolveMediaUrl` para multimedia y `resolveMediaVariantUrl` para tamaños de fotografías de la API.
 - `src/core/storage/json-storage.ts`: `readJson`/`writeJson`/`removeJson` validados con zod.
+  `serial-task-queue.ts` ordena operaciones de caché y almacenamiento de sesión.
 - `src/core/location`: `getLocationAvailability` (permiso foreground y proveedor/GPS, con
   `locationUnavailableMessages`), `toCoordinate` e `isReliableLocationAccuracy`.
   `src/core/navigation/use-screen-back-handler.ts`: `useScreenBackHandler`.
@@ -268,7 +272,8 @@ Antes de crear una utilidad o un componente nuevo, reutilizar estos módulos del
 ## Estado
 
 - TanStack Query: estado remoto, cancelación y caché explícita.
-- Zustand: sesión, dependencias de UI y estado local de feature.
+- Contexto de autenticación y `MobileSession`: identidad, generación y transporte.
+- Hooks, contextos y almacenes propios de aplicación: estado local de las interfaces.
 - Expo SecureStore: refresh token y material sensible mínimo (el perfil público de la
   sesión —id, nombre, correo y roles— para restaurarla sin conexión).
 - SQLite/AsyncStorage: catálogos descargados y borradores solo cuando se especifique su
@@ -290,8 +295,14 @@ refresh token en SecureStore. `request` solo adjunta el token a URL de la API co
 Si la renovación falla por red o por un error 5xx, la sesión guardada se conserva: con el
 perfil guardado la app sigue autenticada sin access token y la siguiente solicitud
 autenticada vuelve a renovarla; solo una negativa de la API (400, 401 o 403) la borra.
-Cerrar sesión es de mejor esfuerzo: intenta revocar el token y, aunque falle sin conexión,
-borra la sesión local; la pantalla protegida redirige una sola vez a la entrada de cuenta.
+Cerrar sesión invalida primero el acceso local, cancela solicitudes y retira las cachés
+privadas; la revocación remota es de mejor esfuerzo y no bloquea la salida. Las escrituras
+de SecureStore están serializadas: un borrado termina después de un guardado ya iniciado
+y antes del de la cuenta nueva. Los resultados de otra generación no restauran identidad
+ni se repiten con las credenciales actuales. Si falla el borrado en el sistema, la sesión
+queda anónima en memoria y un aviso global informa que no se pudo borrar del dispositivo;
+no se certifica eliminación física en ese caso. La pantalla protegida redirige una sola
+vez a la entrada de cuenta. Véase [authentication.md](authentication.md).
 Tras iniciar sesión, la entrada vuelve a `returnTo` con `router.dismissTo`, que retira la
 entrada si el destino ya está debajo (sin duplicar pantallas) o la reemplaza; `/route`
 vuelve con `back()` para conservar su destino. Los errores de cada formulario viven en el
@@ -304,9 +315,17 @@ cuenta que inicia sesión en el dispositivo y después se borra, para que otra c
 herede; solo se conservan, para reintentar, los lugares que no se pudieron subir por falta
 de conexión. La app no escribe un resumen local propio al guardar o quitar un lugar: la
 lista de la cuenta solo se conserva como consulta persistida de TanStack Query (ver
-«Caché y funcionamiento sin conexión»). Si guardar o quitar falla, el marcador vuelve a su
-estado anterior y un `TourismSnackbar` lo explica. La mutación recibe `currentlySaved`
+«Caché y funcionamiento sin conexión»). Los callbacks capturan propietario, generación y
+clave; un resultado tardío no altera otra sesión, incluso si vuelve a entrar la misma
+cuenta. Si guardar o quitar falla, se revierte su actualización cuando sigue siendo la
+última y un `TourismSnackbar` lo explica. Si hay varios cambios simultáneos, se conserva
+el más reciente y la colección se revalida al terminar el último; la invalidación usa
+solo la clave de esa cuenta. La mutación recibe `currentlySaved`
 (el estado antes del toque; `saved` queda como alias obsoleto).
+Los cambios optimistas no reemplazan la última colección confirmada en disco mientras
+están pendientes. Esa copia conserva su fecha; si un cambio concurrente falla, se mantiene
+hasta una lectura confirmada. Sin copia previa no se persiste una lista tentativa. Guardar
+o quitar sin red intenta el transporte, informa el fallo y evita dejar el envío en cola.
 
 ### UI declarativa y overlays
 
@@ -386,7 +405,11 @@ Un solo campo ofrece «Todo», «Atractivos», «Servicios» y «Lugares». Desd
 se actualizan las coincidencias; las peticiones a `GET /api/v1/search` usan debounce de
 300 ms y cancelación de TanStack Query. Los cambios de texto, tipo y alcance forman parte
 de la clave de consulta para que una respuesta anterior no sustituya la lista actual.
-Las coincidencias locales leen manifiestos guardados y no hacen peticiones a la API.
+Las coincidencias locales leen manifiestos guardados bajo demanda y no hacen peticiones a la API.
+Cada paquete reutiliza un índice de palabras y documentos normalizados, conservando la
+fórmula de relevancia. Su preparación cede el hilo entre bloques de 250 lugares antes de
+publicar el paquete para búsqueda. El índice vive en un WeakMap y se libera con el contenido.
+Los resultados usan FlatList con filas de altura variable; no se recorta la colección.
 El filtro «Lugares» reúne referencias geográficas remotas y, en los paquetes descargados,
 POIs y recorridos publicados; «Atractivos» limita a centros y «Servicios» al catastro.
 
@@ -416,19 +439,43 @@ ficha. No proporciona geocodificación offline general de calles ni paquetes pro
 
 ## Caché y funcionamiento sin conexión
 
-TanStack Query persiste en AsyncStorage durante un máximo de 24 horas
+TanStack Query persiste en AsyncStorage durante un máximo de 24 horas por entrada
 (`src/core/api/query-persistence.ts`) una lista de claves permitidas (`persistedQueryKeys`
 en `src/core/api/query-keys.ts`): centros y fichas publicados, filtros, opiniones públicas
-(paginadas, 20 por página con `Cargar más`), ciudades offline y los guardados de la cuenta,
+(20 filas visibles por página, con avance y retroceso), ciudades offline y los guardados de la cuenta,
 para que `Guardados` abra sin conexión; tras 5 minutos la lista se revalida y, si falla, se
 sigue mostrando la copia. La opinión propia, las búsquedas y las consultas por viewport o GPS
-solo viven en memoria. Al cerrar sesión se eliminan de la caché todas las claves de
-`userScopedQueryKeys` y se borra de inmediato la copia persistida, que se reescribe con el
-siguiente cambio sin los datos de la cuenta. Si la API no responde, la ficha de un
+solo viven en memoria. Las búsquedas públicas inactivas se retiran tras cinco minutos;
+la caducidad de los datos permitidos en disco conserva su política de 24 horas.
+Las mutaciones nunca se persisten. Al cerrar sesión se retiran
+consultas y mutaciones privadas de la caché, se cancelan escrituras pendientes y el
+borrado en disco espera las escrituras en curso. Se reescribe una copia pública sin
+datos de la cuenta. Tras hidratar, la sesión valida el propietario y conserva solo sus
+favoritos; snapshots `mobile-v3` compatibles se filtran sin descartar entradas vigentes
+por actualizar la aplicación. La edad se comprueba al guardar y restaurar, aunque otra
+consulta haya renovado la fecha del snapshot. Si la API no responde, la ficha de un
 atractivo usa la copia offline solo ante errores de conexión o del servidor; un 404 se
 muestra como tal.
+
+Las consultas con fallback de fichas y filtros usan `offlineFirst` para alcanzar SQLite
+incluso si la red ya se conoce como desconectada. El mapa usa las descargas también ante
+una consulta pausada o conectividad ya conocida como desconectada, sin esperar el viewport; su reintento periódico requiere foco y conexión. Sin copia disponible,
+Guardados, opiniones, fichas, nuevas rutas y ciudades disponibles informan falta de conexión
+en lugar de mantener una carga indefinida. Las rutas y ciudades almacenadas mantienen sus
+lecturas locales con `networkMode: "always"`.
+
+En Android/iOS, `AppState` comunica el foco y `expo-network` `~57.0.2` comunica conexión
+y alcance de Internet a TanStack Query. Recuperar foco o red revalida consultas activas
+vencidas; no fuerza una consulta todavía vigente. Una lectura inicial tardía no sustituye
+un evento posterior y los listeners se retiran al desmontar. No se leen IP, SSID ni GPS,
+ni se solicitan permisos de ubicación para la caché. La variante web conserva los
+listeners del navegador. El nuevo módulo exige reconstruir el binario nativo;
+Fast Refresh no lo incorpora. Comprobaciones y límites en
+[testing.md](../quality/testing.md).
 El mapa en línea espera el bbox real antes de pedir sus atractivos y completa las páginas
-de hasta 100 elementos. Sus consultas usan `public-map-centers`, con cinco minutos de
+de hasta 100 elementos. Cada página se muestra al llegar y solo entonces se pide la siguiente;
+no espera el catálogo completo ni impone un máximo de destinos. La clave de páginas incluye
+`pages-v1` para distinguir su formato. Las consultas usan `public-map-centers`, con cinco minutos de
 frescura y retención en memoria; ese prefijo no pertenece a la lista persistible. Se cancelan
 peticiones obsoletas al cambiar el área y se conservan los pines anteriores durante la carga.
 Si la nueva área falla, la pantalla mantiene el último resultado exitoso de los mismos filtros,
@@ -437,6 +484,27 @@ la caché nunca sustituye la fuente remota PostgreSQL. Los
 manifiestos guardados no sustituyen la capa remota de centros de Explorar. También
 aportan coincidencias identificadas a la búsqueda; seleccionarlas abre el visor explícito
 de mapas sin conexión.
+
+El catálogo de descargas nativo obtiene mediante JSON1 únicamente ciudad, versión,
+conteos y metadatos, sin pasar estilos, rutas o todos los lugares al hilo JS. Las fichas
+locales proyectan los centros necesarios. El JSON persistido y el esquema SQLite no
+cambian. Los paquetes completos se consultan por ciudad para búsqueda o fallback del mapa;
+se seleccionan por intersección de cobertura, incluyendo paquetes antiguos sin límites.
+Cada ciudad comparte una sola entrada de contenido, con cinco minutos de retención al
+quedar sin observadores; paneos y filtros no duplican el manifiesto. Descargar y borrar
+invalidan el prefijo local. La variante web conserva AsyncStorage.
+
+Guardados y el catálogo de ciudades usan SectionList. Las galerías dentro de fichas montan
+hasta ocho fotos por página; las opiniones montan hasta veinte y conservan el formulario.
+La galería pide `size=thumbnail` y la portada `size=preview` solo para fotos de la API propia.
+Las URLs externas se conservan; una API anterior ignora el parámetro y entrega el original.
+El contrato y los límites del servidor están en [backend.md](backend.md#variantes-de-fotografías-públicas).
+
+Las lecturas JSON tienen un plazo total de 12 s, incluyendo el cuerpo; rutas 30 s y
+manifiestos de descarga/transcripción 60 s. SSE tiene 30 s para conectar, sin cortar la conversación por un plazo
+total JSON. Los estilos propios tienen 10 s. Cancelar conserva AbortError; un plazo agotado
+es ApiError de transporte y admite únicamente el fallback autorizado. No se añaden
+reintentos automáticos de mutaciones ni se cambia la generación de sesión.
 
 Los paquetes de mapa se descargan por ciudad desde `Mapas sin conexión` y requieren una
 sesión turística autenticada. MapLibre `OfflineManager` persiste los recursos del estilo

@@ -74,7 +74,9 @@ export function ExploreMapScreen() {
     onRequestLocation: location.requestLocation,
     onResetOverlay: overlay.close,
   });
+  const focused = useIsFocused();
   const data = useExploreQueries({
+    active: focused,
     mode: search.mode,
     query: search.focused ? search.text : "",
     scope,
@@ -133,7 +135,6 @@ export function ExploreMapScreen() {
       : null;
   // Las sheets se dibujan en el host del layout de pestañas (encima de la
   // barra); en otra pestaña no se muestran, pero su estado se conserva.
-  const focused = useIsFocused();
   useTourismTabBarHidden(focused && search.focused);
 
   /** A selected result returns to the same live list when its detail closes. */

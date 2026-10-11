@@ -516,10 +516,7 @@ export class AiAgentService {
                 entities.has(ref),
               );
               for (const ref of shown) {
-                if (
-                  shownCardRefs.length < 6 &&
-                  !shownCardRefs.includes(ref)
-                ) {
+                if (shownCardRefs.length < 6 && !shownCardRefs.includes(ref)) {
                   shownCardRefs.push(ref);
                 }
               }
