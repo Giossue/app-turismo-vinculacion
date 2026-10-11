@@ -30,4 +30,4 @@ Ninguna.
 
 ## Impact
 
-Móvil Expo/React Native y módulo `files` de la API NestJS. Sin nuevas dependencias ni migraciones PostgreSQL. Las miniaturas requieren desplegar la API; la consulta opcional conserva la respuesta original con servidores anteriores. Se preservan los cambios de caché ya existentes, las descargas, las reglas de publicación, SecureStore y los permisos de ubicación. Commit, push, producción y reinstalación no forman parte de esta solicitud.
+Móvil Expo/React Native y módulo `files` de la API NestJS. Sin nuevas dependencias ni migraciones PostgreSQL. Las miniaturas requieren desplegar la API; la consulta opcional conserva la respuesta original con servidores anteriores. Se preservan los cambios de caché ya existentes, las descargas, las reglas de publicación, SecureStore y los permisos de ubicación. El usuario solicitó posteriormente push y actualización del Android conectado. La comprobación física detectó que R8 retiraba el cargador de tareas de Expo; se conserva esa clase mediante la configuración nativa existente. No se solicitó un despliegue de la API ni una migración.

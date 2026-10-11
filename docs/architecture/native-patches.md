@@ -15,3 +15,20 @@ rechaza la instalación (`ERR_PNPM_UNUSED_PATCH`) hasta regenerar el parche con
 | `react-native-safe-area-context@5.7.0`            | Quita `package=` del manifiesto; `namespace =` en `build.gradle`.                                                                                                                                                                                                                                                 | Compatibilidad AGP 8.                                                                                                                                                                                                                            | Al subir a una versión que ya lo incluya.                                                                                                    |
 
 Regla: todo parche nuevo se añade a esta tabla con su motivo y su condición de retirada.
+
+## Conservación del cargador de tareas en Android
+
+Además de los parches de dependencias, `app.json` configura una regla exacta en
+`expo-build-properties.android.extraProguardRules` para conservar
+`expo.modules.adapters.react.apploader.RNHeadlessAppLoader` y sus miembros. Expo lo
+localiza por nombre desde los metadatos del manifiesto y lo crea por reflexión. En la
+release optimizada de SDK 57.0.26, R8 lo eliminaba y el arranque registraba
+`Cannot initialize app loader`; el reporte `usage.txt` confirmó esa eliminación.
+La regla mantiene la minificación y reducción de recursos del resto de la app y
+se reproduce con prebuild, sin editar ni versionar el Android generado.
+
+Revisar su retirada cuando Expo conserve correctamente esta clase al actualizar el SDK:
+comprobar el reporte R8 y el arranque de una APK release antes de quitarla. Evidencia
+de instalación y límites físicos en el
+[cambio de rendimiento](../../openspec/changes/mejorar-rendimiento-movil/evidence.md).
+La opción procede de [BuildProperties SDK 57](https://docs.expo.dev/versions/v57.0.0/sdk/build-properties/).

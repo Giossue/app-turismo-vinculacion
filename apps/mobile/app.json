@@ -72,7 +72,8 @@
         {
           "android": {
             "enableMinifyInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "# Expo carga esta clase por reflexión desde el manifiesto.\n-keep class expo.modules.adapters.react.apploader.RNHeadlessAppLoader { *; }"
           }
         }
       ]

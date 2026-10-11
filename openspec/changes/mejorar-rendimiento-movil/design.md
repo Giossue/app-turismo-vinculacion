@@ -45,6 +45,26 @@ Frontera: actor público; activo fotografía ya publicada; validación estricta 
 
 Fuentes: [Expo SQLite SDK 57](https://docs.expo.dev/versions/v57.0.0/sdk/sqlite/), [Expo Image SDK 57](https://docs.expo.dev/versions/v57.0.0/sdk/image/), [FlatList RN 0.86](https://reactnative.dev/docs/0.86/flatlist), [TanStack Query v5](https://tanstack.com/query/v5/docs/react/guides/infinite-queries), [Sharp resize](https://sharp.pixelplumbing.com/api-resize/).
 
+## Entrega Android solicitada posteriormente
+
+La actualización conserva el paquete y la firma instalados y utiliza `adb install -r`,
+sin desinstalar ni borrar datos. La APK incluye el bundle Hermes y no requiere Metro.
+Durante el primer arranque de la build optimizada, Expo registró que no podía crear
+`RNHeadlessAppLoader`; `usage.txt` de R8 confirmó su eliminación. El SDK obtiene esa
+clase por nombre desde el manifiesto y llama su constructor por reflexión.
+
+Se añade una regla exacta mediante `expo-build-properties.android.extraProguardRules`
+en `app.json`, manteniendo la optimización del resto de clases. Prebuild regenera la
+regla local; no se versiona el directorio Android ni se desactiva R8.
+
+Escenarios de aceptación: una release conserva el nombre y constructor del cargador;
+un arranque frío mantiene la app activa y deja de registrar el fallo; la actualización
+conserva firma, identificador y fecha original de instalación. La navegación real en
+segundo plano continúa pendiente y no se inicia seguimiento para comprobar el arranque.
+
+Fuentes: [BuildProperties SDK 57](https://docs.expo.dev/versions/v57.0.0/sdk/build-properties/)
+y [reglas de conservación de R8](https://developer.android.com/topic/performance/app-optimization/keep-rules-overview).
+
 ## Risks / Trade-offs
 
 - La preparación inicial del índice cuesta trabajo y memoria; se mide separada de consultas calientes y se libera con el manifiesto.

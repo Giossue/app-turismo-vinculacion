@@ -1,6 +1,7 @@
 # Evidencia de rendimiento móvil
 
-Fecha: 2026-10-11. Implementación local; no acredita despliegue ni reinstalación.
+Fecha: 2026-10-11. Las medidas de implementación son locales; la actualización
+Android solicitada posteriormente se documenta al final. No acredita despliegue de la API.
 
 ## Comparación de búsqueda
 
@@ -63,8 +64,43 @@ Las mutaciones no reciben reintentos nuevos. 403/404 siguen excluyendo fallback 
 La conectividad conocida activa la lectura local aunque todavía no exista un viewport.
 Descargar/borrar invalida el prefijo de metadatos y contenido por ciudad.
 
-No se añadieron ni ejecutaron suites de tests en esta solicitud. Tampoco se reinstaló,
-se modificó producción ni se ejecutaron migraciones. Pendiente comprobación física de
+Durante la implementación inicial no se añadieron ni ejecutaron suites de tests ni
+se reinstaló, modificó producción o ejecutaron migraciones. Pendiente comprobación física de
 scroll/teclado/fuente ampliada, primer arranque offline, cambio de paquete, respuestas
 retardadas, opiniones con varias páginas, API con varios cientos de centros y consumo
 real de memoria/fotogramas. La muestra pasiva de la APK anterior no valida esta versión.
+
+## Actualización física de Android solicitada posteriormente
+
+Se construyó el código de `2c98e93` para el Motorola Edge 50 Fusion conectado por ADB,
+Android 14 y ABI `arm64-v8a`. La primera build terminó correctamente en 40 s y se
+actualizó con `adb install -r`; el arranque frío mostró el mapa. Su registro Expo
+contenía tres errores de inicialización de `RNHeadlessAppLoader`. R8 lo incluía en
+`usage.txt`; tanto la APK previa como esta primera APK carecían del descriptor exacto
+del cargador que Expo localiza por reflexión.
+
+Se añadió la regla exacta en `app.json` y se regeneró Android con
+`APP_VARIANT=production NODE_ENV=production corepack pnpm expo prebuild --platform android --no-install`.
+La build final usó Java 17 y
+`APP_VARIANT=production ./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a --max-workers=4 --console=plain`:
+`BUILD SUCCESSFUL` en 3 min 5 s. El reporte de R8 conserva el nombre del cargador y
+su constructor sin argumentos, y el descriptor está en el DEX de la APK final.
+Minificación y reducción de recursos continúan habilitadas.
+
+La APK final contiene el bundle Hermes de 5.370.080 bytes y mide 53.624.355 bytes.
+Su SHA-256 es `789c9ebc2541f7ddaa36b05a19c2e0119e625de2609b0851b2b8d130a65dcd19`.
+Se verificaron firma e identificador antes de instalarla; ambos coinciden con la app
+anterior. `adb install -r` devolvió `Success`, sin desinstalar ni borrar datos. Android
+conservó `firstInstallTime=2026-10-03 16:19:18` y actualizó `lastUpdateTime` a
+`2026-10-11 01:50:29`. La APK recuperada del dispositivo tiene el mismo SHA-256.
+
+`am start -W` respondió `Status: ok`, `LaunchState: COLD` y `TotalTime: 1426` ms.
+Se comprobaron proceso activo, actividad en primer plano y captura local de la app.
+El registro del nuevo proceso no contiene errores de ReactNativeJS, AndroidRuntime,
+Expo ni fallos nativos de libc en la ventana observada. Esto comprueba el arranque,
+sin acreditar navegación real en segundo plano, continuidad individual de cada
+favorito/descarga o los demás escenarios de rendimiento pendientes. No se activó
+seguimiento de ubicación ni se ejecutaron suites de tests; la API no se desplegó.
+
+Prebuild, formato de los archivos afectados y validación estricta del cambio correctos.
+Capturas, registros y APK de comprobación permanecen fuera del repositorio.
