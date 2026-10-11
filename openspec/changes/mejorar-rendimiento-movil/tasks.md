@@ -19,3 +19,4 @@
 - [x] 3.2 Revisar cancelación, SQL local y fronteras de publicación; declarar escenarios no ejecutados.
 - [x] 3.3 Actualizar arquitectura/calidad, validar y sincronizar deltas OpenSpec.
 - [x] 3.4 Conservar el cargador de tareas de Expo en la release, actualizar por ADB sin borrar datos y comprobar firma, APK instalada y arranque frío; registrar límites físicos.
+- [x] 3.5 Medir y corregir el bloqueo de ordenación al abrir mapas sin conexión, conservar catálogo local y orden español, retirar diagnósticos e instalar la APK definitiva por ADB.

@@ -7,6 +7,25 @@ nativo conservar contenido turístico público para su consulta sin conexión.
 
 ## Requirements
 
+### Requirement: Apertura del catálogo sin ordenación redundante
+
+El móvil SHALL ordenar las ciudades visibles con un comparador español reutilizable y recalcular sus grupos solo cuando cambian los datos del catálogo o sus descargas, manteniendo cierre del menú previo a navegación.
+
+#### Scenario: Catálogo remoto con ciudades sin paquete
+
+- **WHEN** se abre mapas sin conexión con ciudades remotas sin paquete descargable
+- **THEN** esas ciudades no participan en la ordenación visual salvo que ya estén descargadas, y se conserva el estado vacío o de carga correspondiente
+
+#### Scenario: Descarga ausente del catálogo remoto
+
+- **WHEN** el catálogo remoto falla o deja de incluir una ciudad conservada
+- **THEN** la ciudad descargada permanece visible y puede abrirse o eliminarse localmente
+
+#### Scenario: Actualización del progreso de una descarga
+
+- **WHEN** cambia el progreso sin cambiar los datos de ciudades ni los metadatos locales
+- **THEN** no se vuelve a combinar, ordenar y separar todo el catálogo
+
 ### Requirement: Catálogo y manifiesto público de ciudad
 
 La API SHALL exponer ciudades y disponibilidad de paquete y entregar manifiestos publicados con cobertura, versión y contenido turístico público de la ciudad.

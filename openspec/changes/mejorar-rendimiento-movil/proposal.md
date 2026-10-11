@@ -13,6 +13,7 @@ La revisión previa midió en Node, con datos sintéticos, medianas de 1,86/24,3
 - Consultar metadatos offline ligeros y cargar manifiestos completos solo para búsqueda o mapa offline; localizar fichas sin hidratar todas las rutas y estilos.
 - Acotar transporte y lectura JSON por operación, conservando cancelación, sesión y fallback local.
 - Retener búsquedas inactivas pocos minutos y mostrar páginas del mapa progresivamente sin recortar destinos.
+- Evitar el bloqueo al abrir mapas sin conexión: comparador español reutilizable y catálogo visible calculado solo al cambiar sus datos.
 - Servir miniaturas y vistas previas públicas de tamaño fijo y con recursos acotados; el móvil mantiene compatibilidad con la API anterior.
 
 ## Capabilities

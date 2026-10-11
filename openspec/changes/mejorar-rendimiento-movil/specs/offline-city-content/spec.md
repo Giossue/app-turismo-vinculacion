@@ -1,5 +1,24 @@
 ## ADDED Requirements
 
+### Requirement: Apertura del catálogo sin ordenación redundante
+
+El móvil SHALL ordenar las ciudades visibles con un comparador español reutilizable y recalcular sus grupos solo cuando cambian los datos del catálogo o sus descargas, manteniendo cierre del menú previo a navegación.
+
+#### Scenario: Catálogo remoto con ciudades sin paquete
+
+- **WHEN** se abre mapas sin conexión con ciudades remotas sin paquete descargable
+- **THEN** esas ciudades no participan en la ordenación visual salvo que ya estén descargadas, y se conserva el estado vacío o de carga correspondiente
+
+#### Scenario: Descarga ausente del catálogo remoto
+
+- **WHEN** el catálogo remoto falla o deja de incluir una ciudad conservada
+- **THEN** la ciudad descargada permanece visible y puede abrirse o eliminarse localmente
+
+#### Scenario: Actualización del progreso de una descarga
+
+- **WHEN** cambia el progreso sin cambiar los datos de ciudades ni los metadatos locales
+- **THEN** no se vuelve a combinar, ordenar y separar todo el catálogo
+
 ### Requirement: Lecturas locales proporcionadas a la consulta
 
 El móvil SHALL consultar metadatos de ciudades y fichas individuales sin hidratar rutas, estilos y lugares de todos los paquetes; el contenido completo solo se carga para la consulta que lo necesita, manteniendo compatibilidad con descargas existentes.

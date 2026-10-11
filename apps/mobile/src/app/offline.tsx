@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { useMemo } from "react";
 import {
   RefreshControl,
   SectionList,
@@ -37,15 +38,24 @@ function OfflineCityList() {
   const storedQuery = useStoredOfflineCities();
   const { downloads, error: downloadError, start } = useOfflineCityDownload();
   const removal = useOfflineCityRemoval();
-  const cities = mergeOfflineCities(
-    citiesQuery.data ?? [],
-    storedQuery.summaries,
-  );
-  const stored = cities.filter((city) => storedQuery.data?.includes(city.slug));
-  // Ciudades sin lugares publicados no se pueden descargar: no se listan.
-  const available = cities.filter(
-    (city) => city.package && !storedQuery.data?.includes(city.slug),
-  );
+  const { stored, available } = useMemo(() => {
+    const storedSlugs = new Set(
+      storedQuery.summaries.map(({ city }) => city.slug),
+    );
+    // Ordenar solo las ciudades visibles; conservar toda descarga existente.
+    const cities = mergeOfflineCities(
+      (citiesQuery.data ?? []).filter(
+        (city) => city.package || storedSlugs.has(city.slug),
+      ),
+      storedQuery.summaries,
+    );
+    return {
+      stored: cities.filter((city) => storedSlugs.has(city.slug)),
+      available: cities.filter(
+        (city) => city.package && !storedSlugs.has(city.slug),
+      ),
+    };
+  }, [citiesQuery.data, storedQuery.summaries]);
   const busy = downloads.size > 0 || removal.isPending;
   const error = downloadError ?? removal.error;
 

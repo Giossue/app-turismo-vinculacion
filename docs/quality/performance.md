@@ -28,6 +28,9 @@ Estos objetivos se revisan con mediciones reales, no se convierten en promesas c
 Búsqueda local con documentos e índice reutilizables, preparación inicial cooperativa,
 listas virtualizadas y galerías/opiniones paginadas. Las lecturas nativas de catálogo offline
 proyectan metadatos/centros; contenido completo bajo demanda con una entrada por ciudad.
+El catálogo visual ordena solo ciudades descargables o conservadas con un comparador
+español reutilizable y conserva sus grupos mientras no cambian los datos. Las ciudades
+locales siguen visibles aunque falle la consulta remota.
 El mapa muestra páginas sucesivas y conserva cancelación y cobertura. Las lecturas HTTP
 tienen plazos por operación y las búsquedas inactivas retención breve. React Compiler y
 clustering nativo se conservan; no se introduce otra tecnología de caché.

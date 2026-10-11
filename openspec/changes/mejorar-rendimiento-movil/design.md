@@ -65,6 +65,33 @@ segundo plano continúa pendiente y no se inicia seguimiento para comprobar el a
 Fuentes: [BuildProperties SDK 57](https://docs.expo.dev/versions/v57.0.0/sdk/build-properties/)
 y [reglas de conservación de R8](https://developer.android.com/topic/performance/app-optimization/keep-rules-overview).
 
+## Apertura de mapas sin conexión
+
+El turista abre el catálogo desde Menú para consultar sus descargas o descargar una
+ciudad publicada. La información mínima son las ciudades conservadas, los paquetes
+disponibles y los estados de carga/error; abrir o descargar sigue siendo su acción.
+
+En el Motorola conectado, con 222 ciudades remotas y ninguna descarga local, la
+grabación mostró una pausa tras cerrar la hoja. Una build temporal con marcas de
+tiempo aisló 1.862 ms en la combinación/ordenación del catálogo, frente a 4 ms en
+sus hooks. El menú terminó su cierre en 266 ms y el componente de destino comenzó
+10 ms después: no se atribuye el bloqueo a una nueva petición ni a la animación.
+
+`mergeOfflineCities` reutiliza un único `Intl.Collator("es")` en lugar de crear
+reglas nativas de ordenación mediante cada `localeCompare`. La pantalla filtra las
+ciudades remotas sin paquete antes de ordenar, excepto las que ya están descargadas,
+y memoiza la combinación/separación por identidad de los datos. Un `Set` de slugs
+evita búsquedas repetidas al clasificar las filas. Se conserva la sustitución por
+metadatos remotos de una ciudad descargada y su visibilidad si el catálogo falla.
+
+La precarga de la consulta ya existía y se conserva. La hoja cierra antes de navegar;
+no se cambia su duración ni el historial, no se precarga otra pantalla y no se
+descargan paquetes, solicitan permisos o borran datos al abrir el catálogo.
+Las marcas temporales se retiran antes de entregar la APK definitiva.
+
+Fuente: [internacionalización en Hermes](https://github.com/facebook/hermes/blob/static_h/doc/IntlAPIs.md)
+y [comparación de cadenas](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/localeCompare).
+
 ## Risks / Trade-offs
 
 - La preparación inicial del índice cuesta trabajo y memoria; se mide separada de consultas calientes y se libera con el manifiesto.

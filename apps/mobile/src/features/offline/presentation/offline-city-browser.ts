@@ -29,6 +29,9 @@ export type OfflineRouteItem = Readonly<{
 
 export type OfflineBrowserItem = OfflinePlaceItem | OfflineRouteItem;
 
+// Reutilizar las reglas de español evita crear un comparador nativo por pareja.
+const cityNameCollator = new Intl.Collator("es");
+
 /** Local packages remain visible even when the remote catalog fails or changes. */
 export function mergeOfflineCities(
   remote: readonly OfflineCity[],
@@ -39,7 +42,7 @@ export function mergeOfflineCities(
   );
   for (const city of remote) cities.set(city.slug, city);
   return [...cities.values()].sort((a, b) =>
-    a.name.localeCompare(b.name, "es"),
+    cityNameCollator.compare(a.name, b.name),
   );
 }
 

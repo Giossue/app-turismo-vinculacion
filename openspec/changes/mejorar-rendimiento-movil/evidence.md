@@ -104,3 +104,57 @@ seguimiento de ubicación ni se ejecutaron suites de tests; la API no se despleg
 
 Prebuild, formato de los archivos afectados y validación estricta del cambio correctos.
 Capturas, registros y APK de comprobación permanecen fuera del repositorio.
+
+## Demora al abrir mapas sin conexión
+
+El usuario notificó la pausa después de la actualización. Se reprodujo en el mismo
+Motorola Edge 50 Fusion, Android 14, release Hermes, con sesión restaurada, 222
+ciudades remotas precargadas y ninguna descarga local. Una grabación por ADB mostró
+1,17 s sin fotogramas nuevos entre el cierre del menú y el comienzo de la transición.
+La pantalla finalmente mostró el estado vacío: el catálogo observado no tenía
+paquetes publicados. No se alteró publicación ni contenido de la API.
+
+Para aislar la causa se construyeron dos APK temporales con marcas `performance.now()`
+en el toque, final del cierre, render de destino y cálculo de grupos; sin datos
+personales en las marcas. Se instaló cada una con `adb install -r` y se abrió la
+misma opción desde Explorar. Una muestra por build:
+
+| Medida en el hilo JS                           |       Antes |   Después |
+| ---------------------------------------------- | ----------: | --------: |
+| Cierre de la hoja desde el toque               |   265,81 ms | 256,07 ms |
+| Inicio del destino tras terminar el cierre     |    10,79 ms |  19,16 ms |
+| Hooks previos a los grupos                     |     3,98 ms |   0,35 ms |
+| Combinación, ordenación y separación de grupos | 1.862,35 ms |  0,064 ms |
+| Toque hasta cálculo de lista terminado         | 2.144,67 ms | 277,34 ms |
+
+El cambio reutiliza el comparador de español, descarta de la ordenación las ciudades
+que no pueden aparecer y memoiza los grupos. Con estos datos, el conjunto visible
+está vacío; no se afirma que ordenar 222 filas visibles cueste 0,064 ms. Las marcas
+de render JS tampoco miden el final de la transición nativa ni constituyen p95 o
+una mejora porcentual general de la app. La grabación y las marcas son muestras
+distintas; sus duraciones pueden variar con la carga del dispositivo.
+
+Se revisó que las ciudades conservadas permanezcan candidatas aunque la API ya no
+las publique, que falle el catálogo o que no haya conexión. Las dependencias de la
+memoización son los datos remotos y los metadatos locales; cambiar progreso no
+vuelve a ordenar y guardar/eliminar invalida los metadatos existentes.
+No se crearon descargas ficticias ni se borraron datos del teléfono. Los escenarios
+con paquetes descargados y con muchas filas publicadas no se ejecutaron físicamente.
+
+Las marcas se retiraron del código y del bundle Hermes definitivo. Typecheck móvil,
+ESLint de los dos archivos modificados, formato, `git diff --check` y validación
+estricta del cambio OpenSpec correctos. No se ejecutaron suites de tests.
+La build final Android terminó en 35 s; mantiene R8, la regla del cargador Expo,
+el paquete y la misma firma. APK de 53.624.951 bytes, bundle de 5.370.676 bytes,
+SHA-256 `ea26d4ed1f3ac16f09c47d1c638cc7e2df500e02e822d912a394e2edd7dd02d6`.
+
+`adb install -r` respondió `Success`, conservó la fecha original de instalación y
+registró la actualización el `2026-10-11 02:06:13`. La APK recuperada del dispositivo
+coincide por SHA-256. Arranque frío `Status: ok`, `TotalTime: 1265` ms, proceso
+activo y ningún error Expo, ReactNativeJS, AndroidRuntime o libc en la ventana observada.
+La captura final confirmó el catálogo vacío; en la grabación definitiva ya está
+completamente visible en el fotograma con PTS 1,01 s, sin la pausa intermedia de
+1,17 s de la grabación anterior. El tiempo PTS no equivale a tiempo desde el toque.
+Los registros de fotogramas del intervalo observaron 6/53 lentos antes y 2/78 después;
+son muestras de esa apertura, no del rendimiento completo del mapa.
+Capturas, diagnósticos y APK permanecen fuera del repositorio. La API no se desplegó.

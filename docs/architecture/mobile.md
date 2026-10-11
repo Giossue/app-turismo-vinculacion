@@ -494,8 +494,12 @@ Cada ciudad comparte una sola entrada de contenido, con cinco minutos de retenci
 quedar sin observadores; paneos y filtros no duplican el manifiesto. Descargar y borrar
 invalidan el prefijo local. La variante web conserva AsyncStorage.
 
-Guardados y el catálogo de ciudades usan SectionList. Las galerías dentro de fichas montan
-hasta ocho fotos por página; las opiniones montan hasta veinte y conservan el formulario.
+Guardados y el catálogo de ciudades usan SectionList.
+El catálogo combina únicamente ciudades descargables o ya conservadas y ordena sus nombres
+con un único `Intl.Collator("es")`. Los grupos se memoizan por datos remotos/metadatos locales;
+el progreso no vuelve a ordenar la lista y una descarga sigue visible si falla el catálogo.
+Las galerías dentro de fichas montan hasta ocho fotos por página; las opiniones montan
+hasta veinte y conservan el formulario.
 La galería pide `size=thumbnail` y la portada `size=preview` solo para fotos de la API propia.
 Las URLs externas se conservan; una API anterior ignora el parámetro y entrega el original.
 El contrato y los límites del servidor están en [backend.md](backend.md#variantes-de-fotografías-públicas).
