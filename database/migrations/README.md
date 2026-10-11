@@ -76,6 +76,17 @@ local, aplica el esquema desde cero, verifica los servicios con datos de prueba 
 esta migración con historial existente. Requiere `initdb`, `pg_ctl`, `psql`, `rg`, PostGIS
 y Corepack; no utiliza `.pgpass`, variables de despliegue ni la base compartida.
 
+La migración `20261011_conservation_unknown_state.sql` retira NOT NULL de
+`evaluaciones_conservacion.estado_conservacion_id`, sin alterar filas, FKs,
+unicidad ni permisos. Permite conservar factores y observaciones de un
+componente cuyo estado no está confirmado. Es idempotente y usa límites de
+locks y tiempo de 5s/30s. Verificar destino, propietario, respaldo restaurable,
+historial y permisos de evaluaciones/factores y sus secuencias antes de aplicarla.
+Aplicar antes de desplegar la API compatible y posteriormente el panel.
+No ejecutar rollback automático ni volver a la lectura antigua, que omite
+evaluaciones con estado NULL. Una reversión de NOT NULL requiere inventario
+y resolución explícita de desconocidos; no inventar un estado para rellenarlos.
+
 La migración `20260917_offline_routes_and_city_packages.sql` añade límites oficiales de
 ciudades, versiones publicables de rutas y metadatos de paquetes offline. Debe ejecutarse
 después del baseline y antes de habilitar descargas en el móvil.

@@ -1083,8 +1083,9 @@ function isConservationBlockComplete(value: unknown): boolean {
     const entry = value[component];
     if (
       !isJsonRecord(entry) ||
-      typeof entry.state !== "string" ||
-      !CONSERVATION_STATE_VALUES.has(entry.state)
+      (entry.state !== null &&
+        (typeof entry.state !== "string" ||
+          !CONSERVATION_STATE_VALUES.has(entry.state)))
     ) {
       return false;
     }
@@ -4781,41 +4782,64 @@ export class AdminCentersService {
         ["ATRACTIVO", conservation.attraction],
         ["ENTORNO", conservation.environment],
       ] as const;
-      const states: Array<{
+      const factors = Array.isArray(conservation.factors)
+        ? (conservation.factors as JsonRecord[])
+        : [];
+      const evaluations: Array<{
         componentCode: "ATRACTIVO" | "ENTORNO";
         value: JsonRecord;
       }> = [];
       for (const [componentCode, value] of entries) {
         if (
           isJsonRecord(value) &&
-          typeof value.state === "string" &&
-          value.state.trim().length > 0
+          (value.state !== undefined || value.observation !== undefined)
         ) {
-          states.push({ componentCode, value });
+          evaluations.push({ componentCode, value });
+        } else if (
+          factors.some((factor) => factor.component === componentCode)
+        ) {
+          evaluations.push({ componentCode, value: {} });
         }
       }
-      if (states.length > 0) {
-        const stateCodes = states.map((entry) => String(entry.value.state));
-        const stateRows = (await manager.query(
-          `SELECT id, codigo FROM estados_conservacion
+      if (evaluations.length > 0) {
+        const stateCodes = evaluations
+          .map((entry) => entry.value.state)
+          .filter((state): state is string => typeof state === "string");
+        const stateRows: Array<{ id: string; codigo: string }> =
+          stateCodes.length
+            ? await manager.query(
+                `SELECT id, codigo FROM estados_conservacion
             WHERE activo = TRUE AND codigo = ANY($1::text[])`,
-          [stateCodes],
-        )) as Array<{ id: string; codigo: string }>;
+                [stateCodes],
+              )
+            : [];
         const stateByCode = new Map(
           stateRows.map((row) => [row.codigo, row.id]),
         );
         const componentRows = (await manager.query(
           `SELECT id, codigo FROM componentes_conservacion
             WHERE codigo = ANY($1::text[])`,
-          [states.map((entry) => entry.componentCode)],
+          [evaluations.map((entry) => entry.componentCode)],
         )) as Array<{ id: string; codigo: string }>;
         const componentByCode = new Map(
           componentRows.map((row) => [row.codigo, row.id]),
         );
-        for (const entry of states) {
-          const stateId = stateByCode.get(String(entry.value.state));
+        for (const entry of evaluations) {
+          const stateId =
+            typeof entry.value.state === "string"
+              ? stateByCode.get(entry.value.state)
+              : null;
           const componentId = componentByCode.get(entry.componentCode);
-          if (!stateId || !componentId) continue;
+          if (typeof entry.value.state === "string" && !stateId) {
+            throw new ConflictException(
+              "Un estado de conservación ya no está disponible en el catálogo.",
+            );
+          }
+          if (!componentId) {
+            throw new ConflictException(
+              "Un componente de conservación no está disponible en el catálogo.",
+            );
+          }
           await manager.query(
             `INSERT INTO evaluaciones_conservacion
                (centro_turistico_id, componente_conservacion_id,
@@ -4830,10 +4854,7 @@ export class AdminCentersService {
           );
         }
       }
-      if (
-        Array.isArray(conservation.factors) &&
-        conservation.factors.length > 0
-      ) {
+      if (factors.length > 0) {
         const evaluationRows = (await manager.query(
           `SELECT ev.id, cc.codigo
              FROM evaluaciones_conservacion ev
@@ -4845,7 +4866,7 @@ export class AdminCentersService {
         const evaluationByComponent = new Map(
           evaluationRows.map((row) => [row.codigo, row.id]),
         );
-        for (const factor of conservation.factors as JsonRecord[]) {
+        for (const factor of factors) {
           const component = String(factor.component || "ATRACTIVO");
           const evaluationId = evaluationByComponent.get(component);
           if (!evaluationId) {
@@ -6066,7 +6087,7 @@ export class AdminCentersService {
                 ) ORDER BY cc.codigo), '[]'::json) AS data
            FROM evaluaciones_conservacion ev
            JOIN componentes_conservacion cc ON cc.id = ev.componente_conservacion_id
-           JOIN estados_conservacion ec ON ec.id = ev.estado_conservacion_id
+           LEFT JOIN estados_conservacion ec ON ec.id = ev.estado_conservacion_id
           WHERE ev.centro_turistico_id = $1`,
         [centerId],
       ),
@@ -6964,11 +6985,6 @@ export class AdminCentersService {
         stateCodes.push(String(entry.state));
       }
     }
-    if (section.response === "SI" && stateCodes.length !== 2) {
-      throw new ConflictException(
-        "La sección conservación requiere el estado del atractivo y del entorno antes de publicar.",
-      );
-    }
     if (stateCodes.length > 0) {
       const rows = (await manager.query(
         `SELECT codigo FROM estados_conservacion
@@ -6984,18 +7000,6 @@ export class AdminCentersService {
     if (isJsonRecord(conservation) && Array.isArray(conservation.factors)) {
       const factors = conservation.factors as JsonRecord[];
       if (factors.length === 0) return;
-      const stateByComponent = new Map<string, string>();
-      for (const [component, key] of [
-        ["ATRACTIVO", "attraction"],
-        ["ENTORNO", "environment"],
-      ] as const) {
-        const entry = isJsonRecord(conservation[key])
-          ? conservation[key]
-          : null;
-        if (typeof entry?.state === "string" && entry.state.trim().length > 0) {
-          stateByComponent.set(component, entry.state);
-        }
-      }
       const factorIds: number[] = [];
       const uniqueFactors = new Set<string>();
       for (const factor of factors) {
@@ -7014,11 +7018,6 @@ export class AdminCentersService {
         if (!Number.isInteger(factorId) || Number(factorId) < 1) {
           throw new ConflictException(
             "Cada factor de alteración requiere un factor activo del catálogo antes de publicar.",
-          );
-        }
-        if (!stateByComponent.has(component)) {
-          throw new ConflictException(
-            "Cada factor de alteración requiere el estado de conservación de su componente.",
           );
         }
         const uniqueKey = `${component}:${factorId}`;

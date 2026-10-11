@@ -91,6 +91,12 @@ idiomas requieren un tipo de formación catalogado para poder publicarse.
 Conservación publica evaluaciones, factores de alteración y declaratorias en las tablas
 existentes; los factores sin identificador catalogado, componente o respuesta binaria permanecen
 en el borrador y detienen la publicación.
+El estado de cada componente puede permanecer sin confirmar: se publica como
+NULL y aporta cero puntos, conservando su evaluación, factores y observaciones.
+El estado explícitamente nulo es una respuesta válida para el progreso. No se
+deduce un estado de los factores. Requiere aplicar primero
+`20261011_conservation_unknown_state.sql` y luego desplegar API y panel
+compatibles; la implementación local no certifica su aplicación remota.
 Higiene normaliza radios y planes de contingencia; sus filas de servicios y amenazas sin
 referencia de catálogo se conservan en el borrador y detienen la publicación.
 Anexos normaliza documentos tipados, el levantamiento de accesibilidad y la validación del GAD;

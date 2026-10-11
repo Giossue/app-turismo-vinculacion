@@ -107,6 +107,14 @@ ese orden, verificando respaldo, conexión, propietario y permisos. La migració
 es idempotente, usa límites de locks y no requiere backfill. No restablecer NOT
 NULL ni desplegar la proyección binaria anterior mientras haya desconocidos.
 
+`20261011_conservation_unknown_state.sql` hace nullable el estado de una
+evaluación de conservación, manteniendo su FK y la unicidad centro/componente.
+Permite conservar factores y observaciones aunque no se confirme un estado.
+La API compatible publica NULL y lee con LEFT JOIN al catálogo; no infiere
+estados ni transforma evaluaciones históricas. Aplicar primero la migración
+con respaldo y permisos verificados, después API y panel. No restablecer NOT
+NULL ni usar la proyección antigua mientras existan estados desconocidos.
+
 ## Consultas críticas
 
 - Centros publicados dentro de viewport/radio.
