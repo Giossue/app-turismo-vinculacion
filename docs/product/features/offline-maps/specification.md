@@ -18,7 +18,10 @@ fecha de descarga; actualizar requiere internet y datos aún publicados.
 - Solo se descargan ciudades con metadatos de paquete PUBLICADO.
 - El paquete conserva el estilo claro/oscuro y los recursos cartográficos de la zona y
   niveles de zoom definidos. No promete cobertura de Ecuador completo.
-- Los centros pertenecen a la ciudad y deben estar activos y publicados. Los catastros
+- Los centros se incluyen por sus coordenadas dentro de la cobertura descargable
+  y deben estar activos y publicados. No requieren una zona turística asignada
+  desde la captura institucional. El catálogo de ciudades usa la misma cobertura.
+  Los catastros
   están publicados y activos; los POIs propios siguen la misma política de visibilidad
   del endpoint público de POIs. No se incluyen datos fiscales ni identificadores internos.
 - El límite vigente oficial tiene prioridad. Si todavía no existe, se utiliza una zona
@@ -52,6 +55,14 @@ reintentar manualmente, evitando solicitudes automáticas repetidas.
 La descarga por provincia es una ampliación pendiente: requiere límites oficiales y un
 paquete provincial publicado. Agrupar ciudades descargables no equivale a disponer del
 mapa completo de una provincia.
+
+La versión automática usa la fecha de contenido en milisegundos y ofrece
+actualización a descargas anteriores que seleccionaban centros mediante zonas.
+La fecha más reciente de cambios de centros se comparte entre ciudades para
+detectar también centros que se mueven fuera de una cobertura o dejan de estar
+publicados; puede anunciar una actualización aunque esa ciudad no cambie.
+Las descargas guardadas siguen siendo legibles y requieren actualizarse para
+incorporar el contenido geográfico nuevo.
 
 ## Descargas y errores
 

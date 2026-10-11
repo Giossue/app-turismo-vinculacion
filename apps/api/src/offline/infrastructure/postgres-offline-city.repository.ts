@@ -13,7 +13,10 @@ import type {
   OfflineManifestPoi,
   OfflineManifestRoute,
 } from "../domain/offline-city";
-import { getOfflineCityBounds } from "../domain/offline-city-bounds";
+import {
+  getOfflineCityBounds,
+  OFFLINE_CITY_FALLBACK_RADIUS_DEGREES,
+} from "../domain/offline-city-bounds";
 import type { OfflineCityRepository } from "../application/offline-city.repository";
 import { estimateRouteDurationMinutes } from "../../transport/domain/estimated-route-duration";
 import { buildOfflineEstablishmentQuery } from "./offline-establishment-query";
@@ -25,7 +28,7 @@ type CityRow = {
   province: string;
   latitude: string | null;
   longitude: string | null;
-  package_version: number | null;
+  package_version: number | string | null;
   package_checksum: string | null;
   package_zoom_min: number | null;
   package_zoom_max: number | null;
@@ -78,10 +81,18 @@ export class PostgresOfflineCityRepository implements OfflineCityRepository {
       boundary,
       bounds,
     );
+    const areaSql = `WITH area AS (
+      SELECT COALESCE(
+        ST_GeomFromGeoJSON($1::jsonb),
+        ST_MakeEnvelope($2, $3, $4, $5, 4326)
+      )::geography AS geometry
+    )`;
+    const areaParams = [boundary, ...bounds];
 
     const [centers, routes, establishments, pois] = await Promise.all([
       this.dataSource.query<CenterRow[]>(
-        `SELECT c.codigo_atractivo AS code, c.nombre AS name,
+        `${areaSql}
+         SELECT c.codigo_atractivo AS code, c.nombre AS name,
           c.descripcion AS description, c.latitud::double precision AS latitude,
           c.longitud::double precision AS longitude, ca.nombre AS category,
           ta.nombre AS type, sa.nombre AS subtype, rj.nombre AS hierarchy,
@@ -90,7 +101,6 @@ export class PostgresOfflineCityRepository implements OfflineCityRepository {
           ct.codigo_cton AS "cantonCode", pa.codigo_pqa AS "parishCode",
           rj.codigo AS "hierarchyCode"
          FROM centros_turisticos c
-         JOIN zonas_turisticas z ON z.id = c.zona_turistica_id
          JOIN subtipos_atractivo sa ON sa.id = c.subtipo_atractivo_id
          JOIN tipos_atractivo ta ON ta.id = sa.tipo_atractivo_id
          JOIN categorias_atractivo ca ON ca.id = ta.categoria_id
@@ -99,13 +109,15 @@ export class PostgresOfflineCityRepository implements OfflineCityRepository {
          JOIN provincias p ON p.id = ct.provincia_id
          LEFT JOIN rangos_jerarquia rj ON rj.id = c.jerarquia_id
          JOIN estados_resenia er ON er.id = c.estado_resenia_id
-         WHERE c.activo AND z.activo AND er.codigo = 'PUBLICADO'
-           AND z.localidad_id = $1
+         CROSS JOIN area
+         WHERE c.activo AND er.codigo = 'PUBLICADO'
+           AND ST_Covers(area.geometry, c.ubicacion)
          ORDER BY c.nombre, c.codigo_atractivo`,
-        [cityRow.id],
+        areaParams,
       ),
       this.dataSource.query<RouteRow[]>(
-        `SELECT DISTINCT ON (rt.id) rt.id::text AS id,
+        `${areaSql}
+         SELECT DISTINCT ON (rt.id) rt.id::text AS id,
           rt.nombre AS name, rt.origen AS origin,
           rt.destino AS destination,
           EXTRACT(EPOCH FROM rt.duracion_estimada) / 60 AS duration_minutes,
@@ -120,12 +132,12 @@ export class PostgresOfflineCityRepository implements OfflineCityRepository {
           AND version.estado = 'PUBLICADA'
          JOIN centro_rutas_transporte crt ON crt.ruta_transporte_id = rt.id
          JOIN centros_turisticos c ON c.id = crt.centro_turistico_id
-         JOIN zonas_turisticas z ON z.id = c.zona_turistica_id
          JOIN estados_resenia er ON er.id = c.estado_resenia_id
-         WHERE rt.activo AND c.activo AND z.activo AND er.codigo = 'PUBLICADO'
-           AND z.localidad_id = $1
+         CROSS JOIN area
+         WHERE rt.activo AND c.activo AND er.codigo = 'PUBLICADO'
+           AND ST_Covers(area.geometry, c.ubicacion)
          ORDER BY rt.id, version.version DESC`,
-        [cityRow.id],
+        areaParams,
       ),
       this.dataSource.query<OfflineManifestEstablishment[]>(
         establishmentsQuery.sql,
@@ -160,7 +172,7 @@ export class PostgresOfflineCityRepository implements OfflineCityRepository {
     return {
       city,
       package: {
-        version: cityRow.package_version,
+        version: Number(cityRow.package_version),
         checksumSha256: cityRow.package_checksum,
         zoomMin: cityRow.package_zoom_min ?? 8,
         zoomMax: cityRow.package_zoom_max ?? 17,
@@ -178,20 +190,24 @@ export class PostgresOfflineCityRepository implements OfflineCityRepository {
 
 /**
  * A city is downloadable as soon as it has published content: no manual
- * package is needed. The version is the last change (in seconds) to any of
+ * package is needed. The version is the last change (in milliseconds) to any of
  * its zones, centers, points of interest, establishments or transport routes
  * and their versions, including unpublishing or logical deletion, which also
- * touch `updated_at`; it only grows, so the app can offer the update. A
+ * touch `updated_at`. Center changes are shared so moving a center outside an
+ * area cannot hide the update from its previous city. A
  * manual `paquetes_offline_ciudad` row remains optional to set zoom levels.
  */
 function cityQuery(): string {
-  return `SELECT l.id::text AS id, l.nombre AS name, c.nombre AS canton,
+  return `WITH center_changes AS MATERIALIZED (
+    SELECT MAX(updated_at) AS changed_at FROM centros_turisticos
+  )
+  SELECT l.id::text AS id, l.nombre AS name, c.nombre AS canton,
     p.nombre AS province, l.latitud AS latitude, l.longitud AS longitude,
     CASE
       WHEN paquete.id IS NOT NULL OR centers.published OR pois.published
         OR establishments.published
       THEN COALESCE(
-        FLOOR(EXTRACT(EPOCH FROM content.changed_at))::integer,
+        FLOOR(EXTRACT(EPOCH FROM content.changed_at) * 1000)::bigint,
         paquete.version
       )
     END AS package_version,
@@ -202,6 +218,31 @@ function cityQuery(): string {
   FROM localidades l
   JOIN cantones c ON c.id = l.canton_id
   JOIN provincias p ON p.id = c.provincia_id
+  CROSS JOIN center_changes
+  LEFT JOIN LATERAL (
+    SELECT limite.geometria
+      FROM localidad_limites_oficiales limite
+     WHERE limite.localidad_id = l.id AND limite.vigente
+     ORDER BY limite.version DESC LIMIT 1
+  ) boundary ON TRUE
+  CROSS JOIN LATERAL (
+    SELECT COALESCE(
+      boundary.geometria,
+      CASE WHEN l.latitud BETWEEN -90 AND 90 AND l.longitud BETWEEN -180 AND 180
+      THEN ST_MakeEnvelope(
+        GREATEST(-180, l.longitud - ${OFFLINE_CITY_FALLBACK_RADIUS_DEGREES}),
+        GREATEST(-90, l.latitud - ${OFFLINE_CITY_FALLBACK_RADIUS_DEGREES}),
+        LEAST(180, l.longitud + ${OFFLINE_CITY_FALLBACK_RADIUS_DEGREES}),
+        LEAST(90, l.latitud + ${OFFLINE_CITY_FALLBACK_RADIUS_DEGREES}),
+        4326
+      )::geography END
+    ) AS geometry
+  ) area
+  CROSS JOIN LATERAL (
+    SELECT MAX(limite.importado_at) AS changed_at
+      FROM localidad_limites_oficiales limite
+     WHERE limite.localidad_id = l.id
+  ) boundaries
   LEFT JOIN paquetes_offline_ciudad paquete
     ON paquete.localidad_id = l.id AND paquete.estado = 'PUBLICADO'
   CROSS JOIN LATERAL (
@@ -210,13 +251,11 @@ function cityQuery(): string {
      WHERE z.localidad_id = l.id
   ) zones
   CROSS JOIN LATERAL (
-    SELECT MAX(ct.updated_at) AS changed_at,
-      COALESCE(BOOL_OR(ct.activo AND z.activo AND er.codigo = 'PUBLICADO'), FALSE)
+    SELECT COALESCE(BOOL_OR(ct.activo AND er.codigo = 'PUBLICADO'), FALSE)
         AS published
       FROM centros_turisticos ct
-      JOIN zonas_turisticas z ON z.id = ct.zona_turistica_id
       JOIN estados_resenia er ON er.id = ct.estado_resenia_id
-     WHERE z.localidad_id = l.id
+     WHERE ST_Covers(area.geometry, ct.ubicacion)
   ) centers
   CROSS JOIN LATERAL (
     SELECT MAX(pi.updated_at) AS changed_at,
@@ -239,12 +278,12 @@ function cityQuery(): string {
         ON version.ruta_transporte_id = rt.id
       JOIN centro_rutas_transporte crt ON crt.ruta_transporte_id = rt.id
       JOIN centros_turisticos ct ON ct.id = crt.centro_turistico_id
-      JOIN zonas_turisticas z ON z.id = ct.zona_turistica_id
-     WHERE z.localidad_id = l.id
+     WHERE ST_Covers(area.geometry, ct.ubicacion)
   ) routes
   CROSS JOIN LATERAL (
-    SELECT GREATEST(zones.changed_at, centers.changed_at, pois.changed_at,
-      establishments.changed_at, routes.changed_at, paquete.publicado_at)
+    SELECT GREATEST(zones.changed_at, center_changes.changed_at, pois.changed_at,
+      establishments.changed_at, routes.changed_at, paquete.publicado_at,
+      boundaries.changed_at)
       AS changed_at
   ) content
   WHERE l.activo AND l.tipo_localidad = 'CIUDAD'
@@ -264,7 +303,7 @@ function mapCity(row: CityRow): OfflineCity {
       row.package_version === null
         ? null
         : {
-            version: row.package_version,
+            version: Number(row.package_version),
             checksumSha256: row.package_checksum,
             zoomMin: row.package_zoom_min ?? 8,
             zoomMax: row.package_zoom_max ?? 17,

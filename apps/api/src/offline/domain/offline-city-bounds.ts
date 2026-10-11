@@ -5,7 +5,7 @@ import {
   type OfflineGeoJson,
 } from "./offline-city";
 
-const fallbackCityRadiusDegrees = 0.12;
+export const OFFLINE_CITY_FALLBACK_RADIUS_DEGREES = 0.12;
 
 /** The API and the downloaded tiles must cover the same geographic area. */
 export function getOfflineCityBounds(
@@ -36,10 +36,10 @@ export function getOfflineCityBounds(
     throw new OfflineCityAreaUnavailableError();
   }
   return [
-    Math.max(-180, longitude - fallbackCityRadiusDegrees),
-    Math.max(-90, latitude - fallbackCityRadiusDegrees),
-    Math.min(180, longitude + fallbackCityRadiusDegrees),
-    Math.min(90, latitude + fallbackCityRadiusDegrees),
+    Math.max(-180, longitude - OFFLINE_CITY_FALLBACK_RADIUS_DEGREES),
+    Math.max(-90, latitude - OFFLINE_CITY_FALLBACK_RADIUS_DEGREES),
+    Math.min(180, longitude + OFFLINE_CITY_FALLBACK_RADIUS_DEGREES),
+    Math.min(90, latitude + OFFLINE_CITY_FALLBACK_RADIUS_DEGREES),
   ];
 }
 

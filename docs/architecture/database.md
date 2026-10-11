@@ -92,6 +92,13 @@ reemplazar una raíz eliminada gracias a los índices de unicidad de registros v
   es una carga de datos manual, sin DDL, y se aplica únicamente después de verificar los
   criterios A-I. Hasta entonces la API conserva la jerarquía provisional `00`.
 
+`zona_turistica_id` de centros ya es nullable mediante
+`20261005_tourist_zone_optional.sql`. La captura actual no solicita esa relación
+histórica; offline usa las coordenadas publicadas y la cobertura de ciudad. El
+seed `20260920_z1_seed_guaranda_zone.sql` explica el origen de «Entorno de Guaranda»;
+su contenido de demostración no define una nueva regla de captura. La retirada
+del selector y la consulta geográfica no requieren otra migración ni backfill.
+
 ## Consultas críticas
 
 - Centros publicados dentro de viewport/radio.

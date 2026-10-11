@@ -124,6 +124,14 @@ API guarda el binario en el proveedor configurado, registra metadatos en Postgre
 expone una imagen cuando la ficha se publica. Las fotografías de cada catastro usan
 `/admin/establishments/:id/media` con las mismas reglas de almacenamiento.
 
+La ficha no muestra ni solicita zona turística: captura provincia, cantón,
+parroquia y coordenadas. «Entorno de Guaranda» procede de un seed histórico de
+demostración y no es una pregunta MINTUR. Las referencias existentes se conservan
+para compatibilidad; conservar una zona histórica sin cambios no exige que siga
+activa, pero las nuevas asignaciones de clientes anteriores siguen validándose.
+La API offline selecciona los centros por cobertura geográfica sin pedir esa
+relación interna. No se eliminan zonas ni se ejecutan seeds como parte del cambio.
+
 ## Eliminación administrativa
 
 El administrador dispone de Eliminar en las tablas de Centros turísticos, Catastro,

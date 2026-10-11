@@ -6494,7 +6494,10 @@ export class AdminCentersService {
     this.validateSectionMap(draft.sections);
     const references: Array<[string, number, string]> = [
       ["subtipos_atractivo", draft.subtypeId, "subtipo"],
-      ...(draft.touristZoneId
+      // La captura ya no elige zona; una relación histórica sin cambios no
+      // puede exigir al usuario corregir un catálogo interno retirado.
+      ...(draft.touristZoneId &&
+      draft.touristZoneId !== previousDraft?.touristZoneId
         ? [
             ["zonas_turisticas", draft.touristZoneId, "zona turística"] as [
               string,
