@@ -250,7 +250,12 @@ export class AdminController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return {
-      data: await this.centers.submitReview(code, user.id, isAdmin(user)),
+      data: await this.centers.submitReview(
+        code,
+        user.id,
+        isAdmin(user),
+        isAdmin(user),
+      ),
     };
   }
 

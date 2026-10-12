@@ -3041,7 +3041,17 @@ export class AdminCentersService {
     });
   }
 
-  async submitReview(code: string, actorId: number, isAdmin = true) {
+  /**
+   * Envía el borrador a revisión. Con `publishDirectly` (administrador) la
+   * revisión se aprueba en la misma transacción: el administrador no necesita
+   * revisar su propia propuesta.
+   */
+  async submitReview(
+    code: string,
+    actorId: number,
+    isAdmin = true,
+    publishDirectly = false,
+  ) {
     return this.dataSource.transaction(async (manager) => {
       const center = await this.lockCenter(manager, code);
       this.assertCenterAccess(center, actorId, isAdmin);
@@ -3084,6 +3094,9 @@ export class AdminCentersService {
         null,
         complete,
       );
+      if (publishDirectly) {
+        return this.decideReview(manager, code, actorId, "APPROVE", null);
+      }
       return this.findById(manager, center.id);
     });
   }
@@ -3093,77 +3106,87 @@ export class AdminCentersService {
     if (input.action === "REJECT" && !observation) {
       throw new ConflictException("Indica el motivo del rechazo.");
     }
-    return this.dataSource.transaction(async (manager) => {
-      const center = await this.lockCenter(manager, code);
-      const revision = await this.latestRevision(
-        manager,
+    return this.dataSource.transaction((manager) =>
+      this.decideReview(manager, code, actorId, input.action, observation),
+    );
+  }
+
+  private async decideReview(
+    manager: EntityManager,
+    code: string,
+    actorId: number,
+    action: ReviewCenterDto["action"],
+    observation: string | null,
+  ) {
+    const center = await this.lockCenter(manager, code);
+    const revision = await this.latestRevision(
+      manager,
+      center.id,
+      "EN_REVISION",
+    );
+    const draft = await this.getDraft(manager, center.id);
+    if (!revision || !draft || draft.stateCode !== "EN_REVISION") {
+      throw new ConflictException(
+        "La ficha ya no está en revisión; actualiza la lista antes de operar.",
+      );
+    }
+    const approved = action === "APPROVE";
+    const targetCode = approved ? "PUBLICADO" : "BORRADOR";
+    let complete: CenterDraft | null = null;
+    if (approved) {
+      const base = this.mergeDraftWithPublished(
+        await this.readPublishedDraft(manager, center),
+        revision.data,
+      );
+      complete = this.requireComplete(base);
+      await this.validateReferences(manager, complete, true, center.id, base);
+      await this.applyDraft(manager, center, complete);
+    }
+    const target = await this.stateId(manager, targetCode);
+    await manager.query(
+      `UPDATE revisiones_publicacion
+          SET revisado_por = $2, estado_resenia_id = $3,
+              observacion = $4, fecha_revision = CURRENT_TIMESTAMP
+        WHERE id = $1`,
+      [revision.id, actorId, target.id, observation],
+    );
+    await manager.query(
+      `UPDATE borradores_centros_turisticos
+          SET estado_resenia_id = $2, version = version + 1, actualizado_por = $3,
+              datos = COALESCE($4::jsonb, datos)
+        WHERE centro_turistico_id = $1`,
+      [
         center.id,
-        "EN_REVISION",
-      );
-      const draft = await this.getDraft(manager, center.id);
-      if (!revision || !draft || draft.stateCode !== "EN_REVISION") {
-        throw new ConflictException(
-          "La ficha ya no está en revisión; actualiza la lista antes de operar.",
-        );
-      }
-      const approved = input.action === "APPROVE";
-      const targetCode = approved ? "PUBLICADO" : "BORRADOR";
-      let complete: CenterDraft | null = null;
-      if (approved) {
-        const base = this.mergeDraftWithPublished(
-          await this.readPublishedDraft(manager, center),
-          revision.data,
-        );
-        complete = this.requireComplete(base);
-        await this.validateReferences(manager, complete, true, center.id, base);
-        await this.applyDraft(manager, center, complete);
-      }
-      const target = await this.stateId(manager, targetCode);
-      await manager.query(
-        `UPDATE revisiones_publicacion
-            SET revisado_por = $2, estado_resenia_id = $3,
-                observacion = $4, fecha_revision = CURRENT_TIMESTAMP
-          WHERE id = $1`,
-        [revision.id, actorId, target.id, observation],
-      );
-      await manager.query(
-        `UPDATE borradores_centros_turisticos
-            SET estado_resenia_id = $2, version = version + 1, actualizado_por = $3,
-                datos = COALESCE($4::jsonb, datos)
-          WHERE centro_turistico_id = $1`,
-        [
-          center.id,
-          target.id,
-          actorId,
-          complete ? JSON.stringify(complete) : null,
-        ],
-      );
-      if (!approved && center.statusCode !== "PUBLICADO") {
-        await this.setCenterState(manager, center.id, targetCode);
-      }
-      if (approved) {
-        await this.media?.publishPending(manager, center.id, actorId);
-      }
+        target.id,
+        actorId,
+        complete ? JSON.stringify(complete) : null,
+      ],
+    );
+    if (!approved && center.statusCode !== "PUBLICADO") {
+      await this.setCenterState(manager, center.id, targetCode);
+    }
+    if (approved) {
+      await this.media?.publishPending(manager, center.id, actorId);
+    }
+    await this.audit(
+      manager,
+      center.id,
+      actorId,
+      approved ? "APROBAR" : "RECHAZAR",
+      { estado: "EN_REVISION" },
+      { estado: targetCode, observacion: observation },
+    );
+    if (approved) {
       await this.audit(
         manager,
         center.id,
         actorId,
-        approved ? "APROBAR" : "RECHAZAR",
-        { estado: "EN_REVISION" },
-        { estado: targetCode, observacion: observation },
+        "PUBLICAR",
+        { estado: center.statusCode },
+        { estado: "PUBLICADO" },
       );
-      if (approved) {
-        await this.audit(
-          manager,
-          center.id,
-          actorId,
-          "PUBLICAR",
-          { estado: center.statusCode },
-          { estado: "PUBLICADO" },
-        );
-      }
-      return this.findById(manager, center.id);
-    });
+    }
+    return this.findById(manager, center.id);
   }
 
   async publish(code: string, _actorId: number) {
