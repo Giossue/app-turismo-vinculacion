@@ -63,7 +63,9 @@ export class EstablishmentMediaService {
         WHERE e.id = $1
           AND e.eliminado_at IS NULL
           AND a.estado <> 'ELIMINADO'
-          AND ($2::boolean OR e.responsable_usuario_id = $3)
+          AND ($2::boolean OR e.responsable_usuario_id = $3
+               OR (e.estado_revision = 'PUBLICADO' AND e.activo
+                   AND a.estado = 'PUBLICADO'))
         ORDER BY a.orden NULLS LAST, a.created_at DESC, a.id DESC`,
       [establishmentId, isAdmin, actorId ?? null],
     )) as EstablishmentPhotoRow[];

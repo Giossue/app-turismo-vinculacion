@@ -76,6 +76,8 @@ type LocalityRow = {
 };
 
 type AdminEstablishmentItem = {
+  /** Si la persona puede editarlo; los ajenos publicados son de solo lectura. */
+  editable: boolean;
   id: number;
   localityId: number;
   localityName: string;
@@ -195,7 +197,11 @@ export class EstablishmentsService {
       where.push(`e.activo = ${add(query.active)}`);
     if (query.reviewStatus)
       where.push(`e.estado_revision = ${add(query.reviewStatus)}`);
-    if (!isAdmin) where.push(`e.responsable_usuario_id = ${add(actorId)}`);
+    // El agente ve los suyos y, de los demás, solo los publicados y activos.
+    if (!isAdmin)
+      where.push(
+        `(e.responsable_usuario_id = ${add(actorId)} OR (e.estado_revision = 'PUBLICADO' AND e.activo))`,
+      );
     if (query.localityId !== undefined)
       where.push(`e.localidad_id = ${add(query.localityId)}`);
     if (query.provinceId !== undefined)
@@ -236,7 +242,9 @@ export class EstablishmentsService {
     )) as EstablishmentRow[];
 
     return {
-      items: rows.map((row) => this.toAdminItem(row)),
+      items: rows.map((row) =>
+        this.toAdminItem(row, this.canEdit(row, actorId, isAdmin)),
+      ),
       total: Number(countRows[0]?.total ?? 0),
       limit: query.limit ?? 25,
       offset: query.offset ?? 0,
@@ -251,10 +259,11 @@ export class EstablishmentsService {
     )) as EstablishmentRow[];
     const row = rows[0];
     if (!row) throw new NotFoundException("No se encontró el establecimiento.");
-    if (!isAdmin && (!actorId || Number(row.responsibleId) !== actorId)) {
+    const editable = this.canEdit(row, actorId, isAdmin);
+    if (!editable && (row.reviewStatus !== "PUBLICADO" || !row.active)) {
       throw new NotFoundException("No se encontró el establecimiento.");
     }
-    return this.toAdminItem(row);
+    return this.toAdminItem(row, editable);
   }
 
   async create(actorId: number, input: CreateEstablishmentDto, isAdmin = true) {
@@ -1385,8 +1394,20 @@ export class EstablishmentsService {
     };
   }
 
-  private toAdminItem(row: EstablishmentRow): AdminEstablishmentItem {
-    return {
+  private canEdit(
+    row: Pick<EstablishmentRow, "responsibleId">,
+    actorId: number | undefined,
+    isAdmin: boolean,
+  ) {
+    return isAdmin || (!!actorId && Number(row.responsibleId) === actorId);
+  }
+
+  private toAdminItem(
+    row: EstablishmentRow,
+    editable = true,
+  ): AdminEstablishmentItem {
+    const item: AdminEstablishmentItem = {
+      editable,
       id: Number(row.id),
       localityId: Number(row.localityId),
       localityName: row.localityName,
@@ -1419,6 +1440,15 @@ export class EstablishmentsService {
       reviewedAt: row.reviewedAt,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
+    };
+    if (editable) return item;
+    // Los datos de la revisión son del responsable y del administrador.
+    return {
+      ...item,
+      reviewObservation: null,
+      requestedAt: null,
+      requestedBy: null,
+      reviewedAt: null,
     };
   }
 

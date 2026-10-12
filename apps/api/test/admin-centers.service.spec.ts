@@ -974,8 +974,13 @@ describe("AdminCentersService", () => {
       string,
       unknown[],
     ];
-    expect(sql).toContain("inventory.responsible_id = $1");
-    expect(sql).toContain("inventory.status_code = $2");
+    // Las fichas ajenas solo aparecen publicadas y activas, sin su borrador.
+    expect(sql).toContain(
+      "(inventory.responsible_id = $1 OR (inventory.base_status_code = 'PUBLICADO' AND inventory.active))",
+    );
+    expect(sql).toContain(
+      "CASE WHEN inventory.responsible_id = $1 THEN inventory.status_code ELSE inventory.base_status_code END = $2",
+    );
     expect(sql).toContain("inventory.active = $3");
     expect(sql).not.toContain("WHEN c.activo = FALSE THEN 'INACTIVO'");
     expect(values).toEqual([9, "EN_REVISION", false, "%Centro%", 20, 40]);

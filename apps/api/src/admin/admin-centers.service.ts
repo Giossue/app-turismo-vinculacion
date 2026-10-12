@@ -168,6 +168,7 @@ interface CenterListRow {
   active: boolean;
   responsibleId: number | null;
   hasDraft: boolean;
+  editable: boolean;
   total: string;
 }
 
@@ -1849,15 +1850,24 @@ export class AdminCentersService {
   async list(query: AdminCentersQueryDto, actorId = 0, isAdmin = true) {
     const values: unknown[] = [];
     const conditions: string[] = ["TRUE"];
+    // El agente ve lo suyo completo y, de los demás, solo lo publicado y activo
+    // (sin su borrador ni su revisión en curso).
+    let ownRow = "TRUE";
     if (!isAdmin) {
       values.push(actorId);
-      conditions.push(`inventory.responsible_id = $${values.length}`);
+      ownRow = `inventory.responsible_id = $${values.length}`;
+      conditions.push(
+        `(${ownRow} OR (inventory.base_status_code = 'PUBLICADO' AND inventory.active))`,
+      );
     }
+    const statusCode = isAdmin
+      ? "inventory.status_code"
+      : `CASE WHEN ${ownRow} THEN inventory.status_code ELSE inventory.base_status_code END`;
     if (query.status === "REVIEW_QUEUE") {
-      conditions.push("inventory.status_code = 'EN_REVISION'");
+      conditions.push(`${statusCode} = 'EN_REVISION'`);
     } else if (query.status) {
       values.push(query.status);
-      conditions.push(`inventory.status_code = $${values.length}`);
+      conditions.push(`${statusCode} = $${values.length}`);
     }
     if (query.active !== undefined) {
       values.push(query.active);
@@ -1915,9 +1925,10 @@ export class AdminCentersService {
            LEFT JOIN usuarios u ON u.id = rp.solicitado_por
           WHERE c.eliminado_at IS NULL
        )
-       SELECT code, name, status_code AS "statusCode", status_name AS "statusName",
+       SELECT code, name, ${statusCode} AS "statusCode", status_name AS "statusName",
               base_status_code AS "baseStatusCode", "updatedAt", "submittedAt",
               "requestedBy", observation, active, responsible_id AS "responsibleId", "hasDraft",
+              ${ownRow} AS "editable",
               COUNT(*) OVER() AS total
          FROM inventory
         WHERE ${conditions.join(" AND ")}
@@ -1938,7 +1949,15 @@ export class AdminCentersService {
         observation: row.observation,
         active: row.active,
         responsibleId: row.responsibleId,
-        hasDraft: row.hasDraft,
+        editable: row.editable,
+        ...(row.editable
+          ? { hasDraft: row.hasDraft }
+          : {
+              submittedAt: null,
+              requestedBy: null,
+              observation: null,
+              hasDraft: false,
+            }),
       })),
       total: Number(rows[0]?.total ?? 0),
       limit: Number(query.limit),
@@ -2904,8 +2923,8 @@ export class AdminCentersService {
   async find(code: string, actorId?: number, isAdmin = true) {
     return this.dataSource.transaction(async (manager) => {
       const center = await this.findCenterByCode(manager, code);
-      this.assertCenterAccess(center, actorId, isAdmin);
-      return this.mapDetail(manager, center);
+      const editable = this.assertCenterReadAccess(center, actorId, isAdmin);
+      return this.mapDetail(manager, center, editable);
     });
   }
 
@@ -3272,8 +3291,8 @@ export class AdminCentersService {
       const center = rows[0];
       if (!center)
         throw new NotFoundException("No se encontró la ficha turística.");
-      this.assertCenterAccess(center, actorId, isAdmin);
-      const detail = await this.mapDetail(manager, center);
+      const editable = this.assertCenterReadAccess(center, actorId, isAdmin);
+      const detail = await this.mapDetail(manager, center, editable);
       const effectiveDraft = detail.draft ?? detail.published;
       return {
         code: detail.code ?? code,
@@ -3289,8 +3308,11 @@ export class AdminCentersService {
       const rows = (await manager.query(
         `SELECT c.id, c.jerarquia_id AS "hierarchyId",
                 rj.codigo AS "hierarchyCode"
-                ,c.responsable_usuario_id AS "responsibleId"
+                ,c.responsable_usuario_id AS "responsibleId",
+                er.codigo AS "statusCode", c.publicado_at AS "publishedAt",
+                c.activo AS active
            FROM centros_turisticos c
+           JOIN estados_resenia er ON er.id = c.estado_resenia_id
            LEFT JOIN rangos_jerarquia rj ON rj.id = c.jerarquia_id
           WHERE TRIM(c.codigo_atractivo) = TRIM($1) AND c.eliminado_at IS NULL`,
         [code],
@@ -3299,11 +3321,14 @@ export class AdminCentersService {
         hierarchyId: number | null;
         hierarchyCode: string | null;
         responsibleId: number | null;
+        statusCode: string;
+        publishedAt: string | null;
+        active: boolean;
       }>;
       const center = rows[0];
       if (!center)
         throw new NotFoundException("No se encontró la ficha turística.");
-      this.assertCenterAccess(center, actorId, isAdmin);
+      this.assertCenterReadAccess(center, actorId, isAdmin);
 
       const [indicatorRows, criterionRows, totalRows] = await Promise.all([
         manager.query(
@@ -3461,6 +3486,30 @@ export class AdminCentersService {
     return rows[0];
   }
 
+  /**
+   * Lectura: el agente abre sus fichas y las publicadas y activas de otros.
+   * Devuelve si la persona puede editarla (y ver su borrador y su revisión).
+   */
+  private assertCenterReadAccess(
+    center: Pick<
+      CenterRow,
+      "responsibleId" | "statusCode" | "publishedAt" | "active"
+    >,
+    actorId: number | undefined,
+    isAdmin: boolean,
+  ) {
+    if (isAdmin || (actorId && Number(center.responsibleId) === actorId)) {
+      return true;
+    }
+    const published =
+      centerReviewStatus(center.statusCode, center.publishedAt).code ===
+      "PUBLICADO";
+    if (!published || !center.active) {
+      throw new NotFoundException("No se encontró la ficha turística.");
+    }
+    return false;
+  }
+
   private assertCenterAccess(
     center: Pick<CenterRow, "responsibleId">,
     actorId: number | undefined,
@@ -3566,9 +3615,16 @@ export class AdminCentersService {
     return published;
   }
 
-  private async mapDetail(manager: EntityManager, center: CenterRow) {
-    const draft = await this.getDraft(manager, center.id);
-    const revision = await this.latestRevision(manager, center.id);
+  private async mapDetail(
+    manager: EntityManager,
+    center: CenterRow,
+    editable = true,
+  ) {
+    // Quien no puede editarla solo ve la versión publicada.
+    const draft = editable ? await this.getDraft(manager, center.id) : null;
+    const revision = editable
+      ? await this.latestRevision(manager, center.id)
+      : null;
     const hasPendingDraft = draft && draft.stateCode !== "PUBLICADO";
     const effectiveStatus = hasPendingDraft
       ? centerReviewStatus(draft.stateCode)
@@ -3589,6 +3645,7 @@ export class AdminCentersService {
       active: center.active,
       publishedAt: center.publishedAt ?? null,
       version: draft?.version ?? 0,
+      editable,
       published,
       draft: effectiveDraft,
       retainedCatalogOptions,

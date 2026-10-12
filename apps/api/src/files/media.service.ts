@@ -59,7 +59,11 @@ export class MediaService {
   ) {}
 
   async listForAdmin(code: string, actorId?: number, isAdmin = true) {
-    const ownerCondition = isAdmin ? "TRUE" : "c.responsable_usuario_id = $2";
+    // Las fichas ajenas (publicadas y activas) solo muestran fotos publicadas.
+    const ownerCondition = isAdmin
+      ? "TRUE"
+      : `(c.responsable_usuario_id = $2
+          OR (c.activo AND c.publicado_at IS NOT NULL AND a.estado = 'PUBLICADO'))`;
     const rows = (await this.dataSource.query(
       `SELECT a.id, TRIM(c.codigo_atractivo) AS code, c.nombre AS name,
               t.codigo AS "typeCode", t.nombre AS "typeName",
