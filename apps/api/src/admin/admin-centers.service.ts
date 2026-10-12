@@ -4429,8 +4429,7 @@ export class AdminCentersService {
              anios_registro = EXCLUDED.anios_registro,
              genera_reportes = EXCLUDED.genera_reportes,
              frecuencia_reporte = EXCLUDED.frecuencia_reporte,
-             observacion = EXCLUDED.observacion,
-             updated_at = CURRENT_TIMESTAMP`,
+             observacion = EXCLUDED.observacion`,
           [
             centerId,
             sectionResponseToBoolean(registry.exists) ?? false,
@@ -4544,8 +4543,7 @@ export class AdminCentersService {
              cantidad_fin_semana = EXCLUDED.cantidad_fin_semana,
              cantidad_feriados = EXCLUDED.cantidad_feriados,
              frecuencia_demanda = EXCLUDED.frecuencia_demanda,
-             observacion = EXCLUDED.observacion,
-             updated_at = CURRENT_TIMESTAMP`,
+             observacion = EXCLUDED.observacion`,
           [
             centerId,
             influx.weekday ?? null,
@@ -4714,8 +4712,7 @@ export class AdminCentersService {
          ON CONFLICT (centro_turistico_id) DO UPDATE SET
            personas_administracion_operacion = EXCLUDED.personas_administracion_operacion,
            personal_especializado_turismo = EXCLUDED.personal_especializado_turismo,
-           observacion = EXCLUDED.observacion,
-           updated_at = CURRENT_TIMESTAMP`,
+           observacion = EXCLUDED.observacion`,
         [
           centerId,
           summary.administrationOperation ?? null,
@@ -5124,8 +5121,7 @@ export class AdminCentersService {
            uso_interno = EXCLUDED.uso_interno,
            uso_emergencias = EXCLUDED.uso_emergencias,
            cantidad = EXCLUDED.cantidad,
-           observacion = EXCLUDED.observacion,
-           updated_at = CURRENT_TIMESTAMP`,
+           observacion = EXCLUDED.observacion`,
         [
           centerId,
           sectionResponseToBoolean(radios.available) ?? false,
