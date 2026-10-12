@@ -6,11 +6,12 @@ import {
   PublicEstablishmentsController,
 } from "./establishments.controller";
 import { EstablishmentsService } from "./establishments.service";
+import { MinturRegistryImportService } from "./mintur-registry-import.service";
 
 @Module({
   imports: [AuthModule],
   controllers: [AdminEstablishmentsController, PublicEstablishmentsController],
-  providers: [EstablishmentsService],
+  providers: [EstablishmentsService, MinturRegistryImportService],
   exports: [EstablishmentsService],
 })
 export class EstablishmentsModule {}

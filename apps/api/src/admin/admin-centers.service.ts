@@ -1720,6 +1720,13 @@ function validateAnnexesBlock(value: unknown): string | null {
             return "El correo del responsable no es válido.";
         }
       }
+      if (
+        responsible.date !== undefined &&
+        responsible.date !== null &&
+        !isIsoDate(responsible.date)
+      ) {
+        return "La fecha del responsable no es válida.";
+      }
     }
   }
   if (value.accessibilitySurvey !== undefined) {

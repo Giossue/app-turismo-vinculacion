@@ -8,7 +8,10 @@ import { AdminEstablishmentsController } from "../src/establishments/establishme
 describe("AdminEstablishmentsController audit", () => {
   it("delegates the establishment audit history by id", async () => {
     const getAudit = vi.fn().mockResolvedValue({ items: [] });
-    const controller = new AdminEstablishmentsController({ getAudit } as never);
+    const controller = new AdminEstablishmentsController(
+      { getAudit } as never,
+      {} as never,
+    );
 
     await expect(controller.audit("8")).resolves.toEqual({
       data: { items: [] },
@@ -18,7 +21,10 @@ describe("AdminEstablishmentsController audit", () => {
 
   it("passes the agent scope to the private list", async () => {
     const list = vi.fn().mockResolvedValue({ items: [], total: 0 });
-    const controller = new AdminEstablishmentsController({ list } as never);
+    const controller = new AdminEstablishmentsController(
+      { list } as never,
+      {} as never,
+    );
 
     await controller.list({ limit: 25, offset: 0 }, {
       id: 12,
@@ -30,7 +36,10 @@ describe("AdminEstablishmentsController audit", () => {
 
   it("delegates review decisions as an administrator", async () => {
     const review = vi.fn().mockResolvedValue({ id: 8 });
-    const controller = new AdminEstablishmentsController({ review } as never);
+    const controller = new AdminEstablishmentsController(
+      { review } as never,
+      {} as never,
+    );
 
     await expect(
       controller.review(
@@ -47,7 +56,10 @@ describe("AdminEstablishmentsController audit", () => {
 
   it("delegates logical deletion with the authenticated administrator", async () => {
     const remove = vi.fn().mockResolvedValue({ id: 8, deleted: true });
-    const controller = new AdminEstablishmentsController({ remove } as never);
+    const controller = new AdminEstablishmentsController(
+      { remove } as never,
+      {} as never,
+    );
 
     await expect(
       controller.remove("8", { id: 4, roles: ["ADMINISTRADOR"] } as never),
@@ -67,6 +79,24 @@ describe("AdminEstablishmentsController audit", () => {
         getHandler: () => AdminEstablishmentsController.prototype.remove,
         getClass: () => AdminEstablishmentsController,
         switchToHttp: () => ({ getRequest: () => ({ user: { roles } }) }),
+      } as unknown as ExecutionContext;
+
+      expect(() => guard.canActivate(context)).toThrow(
+        "No tienes permisos para esta operación.",
+      );
+    },
+  );
+
+  it.each(["importRegistry", "importStatus"] as const)(
+    "reserves the MINTUR registry import (%s) for administrators",
+    (handler) => {
+      const guard = new RolesGuard(new Reflector());
+      const context = {
+        getHandler: () => AdminEstablishmentsController.prototype[handler],
+        getClass: () => AdminEstablishmentsController,
+        switchToHttp: () => ({
+          getRequest: () => ({ user: { roles: ["AGENTE_TURISTICO"] } }),
+        }),
       } as unknown as ExecutionContext;
 
       expect(() => guard.canActivate(context)).toThrow(

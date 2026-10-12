@@ -64,6 +64,25 @@ type EstablishmentRow = {
   updatedAt: string;
   deletedAt: string | null;
   distanceMeters?: string | null;
+  mintur?: EstablishmentMinturData | null;
+};
+
+/** Datos del catastro nacional MINTUR; nulos si no se importó. */
+export type EstablishmentMinturData = {
+  codigoEstablecimientoRuc: string | null;
+  referenciaDireccion: string | null;
+  telefonoSecundario: string | null;
+  correo: string | null;
+  sitioWeb: string | null;
+  estadoRegistro: string | null;
+  fechaRegistro: string | null;
+  totalTrabajadores: number | null;
+  totalHabitaciones: number | null;
+  totalCamas: number | null;
+  totalPlazas: number | null;
+  totalMesas: number | null;
+  capacidadPersonas: number | null;
+  importadoAt: string | null;
 };
 
 type LocalityRow = {
@@ -110,6 +129,7 @@ type AdminEstablishmentItem = {
   reviewedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  mintur: EstablishmentMinturData | null;
 };
 
 type EstablishmentAuditItem = AdminEstablishmentItem & {
@@ -165,7 +185,23 @@ const establishmentSelect = `
          e.fecha_revision AS "reviewedAt",
          e.created_at AS "createdAt",
          e.updated_at AS "updatedAt",
-         e.eliminado_at AS "deletedAt"`;
+         e.eliminado_at AS "deletedAt",
+         jsonb_build_object(
+           'codigoEstablecimientoRuc', e.codigo_establecimiento_ruc,
+           'referenciaDireccion', e.referencia_direccion,
+           'telefonoSecundario', e.telefono_secundario,
+           'correo', e.correo,
+           'sitioWeb', e.sitio_web,
+           'estadoRegistro', e.estado_registro_mintur,
+           'fechaRegistro', e.fecha_registro_mintur,
+           'totalTrabajadores', e.total_trabajadores,
+           'totalHabitaciones', e.total_habitaciones,
+           'totalCamas', e.total_camas,
+           'totalPlazas', e.total_plazas,
+           'totalMesas', e.total_mesas,
+           'capacidadPersonas', e.capacidad_personas,
+           'importadoAt', e.importado_mintur_at
+         ) AS mintur`;
 
 const establishmentJoin = `
     FROM establecimientos_turisticos e
@@ -1440,6 +1476,7 @@ export class EstablishmentsService {
       reviewedAt: row.reviewedAt,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
+      mintur: row.mintur ?? null,
     };
     if (editable) return item;
     // Los datos de la revisión son del responsable y del administrador.

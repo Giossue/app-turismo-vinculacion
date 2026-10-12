@@ -297,3 +297,16 @@ cada establecimiento. No usa el catálogo de tipos de archivo porque solo admite
 fotografías. También amplía `auditoria_catalogos_accion_check` con `AGREGAR_MULTIMEDIA`,
 `ELIMINAR_MULTIMEDIA` y `PUBLICAR_MULTIMEDIA`. Es aditiva e idempotente y no requiere
 backfill; aplicarla antes de desplegar la API que la consulta.
+
+La migración `20261012_establishment_mintur_registry.sql` añade a
+`establecimientos_turisticos` las columnas del catastro nacional MINTUR que no tenían
+lugar: código de establecimiento RUC, referencia de dirección, segundo teléfono,
+correo, sitio web, estado del registro (`RATIFICADO`, `PENDIENTE_INSPECCION`,
+`SUSPENSION_TEMPORAL`, `SUSPENSION_DEFINITIVA`, `INACTIVO`), fecha de registro,
+trabajadores, habitaciones, camas, plazas, mesas y capacidad; `datos_mintur` (JSONB)
+conserva la fila original completa y `importado_mintur_at` la última importación.
+Es aditiva e idempotente, sin backfill. Aplicarla antes de desplegar la API que importa
+el consolidado desde el panel (`POST /admin/establishments/import`). La importación
+crea o actualiza por `numero_registro`: no cambia responsable ni revisión de registros
+existentes, no restaura eliminados y no sustituye coordenadas exactas por aproximadas.
+Rollback: retirar las columnas solo después de revertir la API.

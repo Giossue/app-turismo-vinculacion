@@ -8,12 +8,13 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   Res,
   UseGuards,
 } from "@nestjs/common";
 import { RouteConfig } from "@nestjs/platform-fastify";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import type { FastifyReply } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 
 import { CurrentUser, Roles } from "../auth/auth.decorators";
 import { AuthGuard } from "../auth/auth.guard";
@@ -28,6 +29,8 @@ import {
   SaveEstablishmentDto,
 } from "./establishments.dto";
 import { EstablishmentsService } from "./establishments.service";
+import { MinturRegistryImportService } from "./mintur-registry-import.service";
+import { readRegistryUpload } from "./mintur-registry-upload";
 
 @ApiTags("admin-establishments")
 @ApiBearerAuth()
@@ -37,7 +40,26 @@ export class AdminEstablishmentsController {
   constructor(
     @Inject(EstablishmentsService)
     private readonly establishments: EstablishmentsService,
+    @Inject(MinturRegistryImportService)
+    private readonly registryImport: MinturRegistryImportService,
   ) {}
+
+  @Post("import")
+  @Roles("ADMINISTRADOR")
+  @RouteConfig({ rateLimit: { max: 5, timeWindow: "1 minute" } })
+  async importRegistry(
+    @Req() request: FastifyRequest,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const file = await readRegistryUpload(request);
+    return { data: this.registryImport.start(file.buffer, file.name, user.id) };
+  }
+
+  @Get("import/:jobId")
+  @Roles("ADMINISTRADOR")
+  importStatus(@Param("jobId") jobId: string) {
+    return { data: this.registryImport.status(jobId) };
+  }
 
   @Get()
   @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
