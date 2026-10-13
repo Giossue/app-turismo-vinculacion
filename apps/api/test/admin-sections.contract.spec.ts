@@ -72,6 +72,35 @@ describe("admin section contract", () => {
     ).toContain("temperatura mínima");
   });
 
+  it("validates travel time and recommended visit months", () => {
+    const base = { schemaVersion: 1, response: "SI", rows: [] };
+    expect(
+      validateAdminSectionContent({
+        ...base,
+        travelTime: "01:30",
+        recommendedMonths: [2, 3, 11],
+      }),
+    ).toBeNull();
+    expect(
+      validateAdminSectionContent({
+        ...base,
+        travelTime: null,
+        recommendedMonths: [],
+      }),
+    ).toBeNull();
+    expect(
+      validateAdminSectionContent({ ...base, travelTime: "90 min" }),
+    ).toContain("HH:MM");
+    expect(
+      validateAdminSectionContent({ ...base, travelTime: "24:00" }),
+    ).toContain("HH:MM");
+    for (const recommendedMonths of [[0], [13], [2, 2], ["2"], "2"]) {
+      expect(
+        validateAdminSectionContent({ ...base, recommendedMonths }),
+      ).toContain("meses recomendables");
+    }
+  });
+
   it("validates the complete accessibility and connectivity detail", () => {
     expect(
       validateAdminSectionContent({

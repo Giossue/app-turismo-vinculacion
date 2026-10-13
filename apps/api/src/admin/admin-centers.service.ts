@@ -282,6 +282,26 @@ export function validateAdminSectionContent(content: unknown): string | null {
   ) {
     return "La distancia debe ser un número mayor o igual que cero.";
   }
+  if (
+    content.travelTime !== undefined &&
+    content.travelTime !== null &&
+    (typeof content.travelTime !== "string" ||
+      !/^([01]\d|2[0-3]):[0-5]\d$/.test(content.travelTime))
+  ) {
+    return "El tiempo de desplazamiento debe tener el formato HH:MM.";
+  }
+  if (content.recommendedMonths !== undefined) {
+    const months = content.recommendedMonths;
+    if (
+      !Array.isArray(months) ||
+      months.some(
+        (month) => !Number.isInteger(month) || month < 1 || month > 12,
+      ) ||
+      new Set(months).size !== months.length
+    ) {
+      return "Los meses recomendables de visita deben ser meses distintos del 1 al 12.";
+    }
+  }
   if (content.climate !== undefined) {
     if (!isJsonRecord(content.climate))
       return "El bloque de clima no es válido.";
@@ -3549,6 +3569,7 @@ export class AdminCentersService {
       publishedConservation,
       publishedHygiene,
       publishedAnnexes,
+      publishedMonths,
     ] = await Promise.all([
       this.readPublishedAccessibilitySection(manager, center.id),
       this.readPublishedPlantSection(manager, center.id),
@@ -3559,6 +3580,7 @@ export class AdminCentersService {
       this.readPublishedConservationSection(manager, center.id),
       this.readPublishedHygieneSection(manager, center.id),
       this.readPublishedAnnexesSection(manager, center.id),
+      this.readRecommendedMonths(manager, center.id),
     ]);
     const publishedSections: Record<string, unknown> = {};
     if (
@@ -3584,11 +3606,15 @@ export class AdminCentersService {
         observation: "",
       };
     }
-    if (published.productLineId && published.scenarioId) {
+    if (
+      (published.productLineId && published.scenarioId) ||
+      publishedMonths.length > 0
+    ) {
       publishedSections.caracteristicas = {
         schemaVersion: 1,
         response: "SI",
         observation: "",
+        recommendedMonths: publishedMonths,
       };
     }
     if (published.activities?.some((activity) => activity.active)) {
@@ -3620,6 +3646,22 @@ export class AdminCentersService {
     if (publishedAnnexes) publishedSections.anexos = publishedAnnexes;
     published.sections = publishedSections;
     return published;
+  }
+
+  /** Meses recomendables de visita (números 1–12) publicados del atractivo. */
+  private async readRecommendedMonths(
+    manager: EntityManager,
+    centerId: string,
+  ): Promise<number[]> {
+    const rows = (await manager.query(
+      `SELECT m.numero AS month
+         FROM centro_meses_recomendados cmr
+         JOIN meses m ON m.id = cmr.mes_id
+        WHERE cmr.centro_turistico_id = $1
+        ORDER BY m.numero`,
+      [centerId],
+    )) as Array<{ month: number | string }>;
+    return rows.map((row) => Number(row.month));
   }
 
   private async mapDetail(
@@ -4424,7 +4466,24 @@ export class AdminCentersService {
         `DELETE FROM caracteristicas_climaticas WHERE centro_turistico_id = $1`,
         [centerId],
       );
+      await manager.query(
+        `DELETE FROM centro_meses_recomendados WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
       return;
+    }
+
+    // Sin la clave (fichas guardadas antes de este campo) se conservan los meses.
+    if (Array.isArray(section.recommendedMonths)) {
+      await manager.query(
+        `DELETE FROM centro_meses_recomendados WHERE centro_turistico_id = $1`,
+        [centerId],
+      );
+      await manager.query(
+        `INSERT INTO centro_meses_recomendados (centro_turistico_id, mes_id)
+         SELECT $1, m.id FROM meses m WHERE m.numero = ANY($2::int[])`,
+        [centerId, section.recommendedMonths],
+      );
     }
 
     if (!isJsonRecord(section.climate)) return;
@@ -5369,18 +5428,21 @@ export class AdminCentersService {
     if (section.localityId !== undefined && section.localityId !== null) {
       await manager.query(
         `INSERT INTO centro_localidad_cercana
-           (centro_turistico_id, localidad_id, distancia_km, observacion)
-         VALUES ($1,$2,$3,$4)
+           (centro_turistico_id, localidad_id, distancia_km, observacion,
+            tiempo_desplazamiento)
+         VALUES ($1,$2,$3,$4,$5::interval)
          ON CONFLICT (centro_turistico_id) DO UPDATE SET
            localidad_id = EXCLUDED.localidad_id,
            distancia_km = EXCLUDED.distancia_km,
            observacion = EXCLUDED.observacion,
+           tiempo_desplazamiento = EXCLUDED.tiempo_desplazamiento,
            updated_at = CURRENT_TIMESTAMP`,
         [
           centerId,
           section.localityId,
           section.distanceKm ?? null,
           section.observation ?? null,
+          typeof section.travelTime === "string" ? section.travelTime : null,
         ],
       );
     }
@@ -5682,6 +5744,7 @@ export class AdminCentersService {
         `SELECT json_build_object(
                     'localityId', localidad_id,
                     'distanceKm', distancia_km,
+                    'travelTime', to_char(tiempo_desplazamiento, 'HH24:MI'),
                     'observation', observacion
                   ) AS data
              FROM centro_localidad_cercana
@@ -5811,6 +5874,7 @@ export class AdminCentersService {
       response: "SI",
       localityId: localityRecord.localityId ?? null,
       distanceKm: localityRecord.distanceKm ?? null,
+      travelTime: localityRecord.travelTime ?? null,
       accessibilityDetails: {
         roads: roads ?? [],
         aquatic: aquatic ?? [],
