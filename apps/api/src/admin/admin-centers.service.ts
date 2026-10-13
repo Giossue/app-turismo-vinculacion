@@ -4386,27 +4386,33 @@ export class AdminCentersService {
   private async loadXlsmValuationCatalogs(
     manager: EntityManager,
   ): Promise<XlsmValuationCatalogs> {
-    const [conditions, plants, activities, accessibility, hygiene] =
-      await Promise.all([
-        manager.query(
-          `SELECT id, codigo FROM estados_condicion WHERE activo = TRUE`,
-        ),
-        manager.query(
-          `SELECT id, nombre FROM tipos_planta_turistica WHERE activo = TRUE`,
-        ),
-        manager.query(
-          `SELECT at.id, ga.codigo AS "groupCode"
+    const [
+      conditions,
+      plants,
+      activities,
+      accessibility,
+      hygiene,
+      facilityCategories,
+    ] = await Promise.all([
+      manager.query(
+        `SELECT id, codigo FROM estados_condicion WHERE activo = TRUE`,
+      ),
+      manager.query(
+        `SELECT id, nombre FROM tipos_planta_turistica WHERE activo = TRUE`,
+      ),
+      manager.query(
+        `SELECT at.id, ga.codigo AS "groupCode"
              FROM actividades_turisticas at
              JOIN grupos_actividad ga ON ga.id = at.grupo_actividad_id
             WHERE at.activo = TRUE AND ga.activo = TRUE`,
-        ),
-        manager.query(
-          `SELECT id, codigo, nombre
+      ),
+      manager.query(
+        `SELECT id, codigo, nombre
              FROM tipos_accesibilidad
             WHERE activo = TRUE`,
-        ),
-        manager.query(
-          `SELECT 'BASIC_SERVICE' AS kind, id, nombre FROM tipos_servicio_basico WHERE activo = TRUE
+      ),
+      manager.query(
+        `SELECT 'BASIC_SERVICE' AS kind, id, nombre FROM tipos_servicio_basico WHERE activo = TRUE
            UNION ALL
            SELECT 'SIGNAGE' AS kind, id, nombre FROM tipos_senaletica WHERE activo = TRUE
            UNION ALL
@@ -4417,8 +4423,11 @@ export class AdminCentersService {
            SELECT 'COMMUNICATION' AS kind, id, nombre FROM tipos_comunicacion WHERE activo = TRUE
            UNION ALL
            SELECT 'THREAT' AS kind, id, nombre FROM tipos_amenaza WHERE activo = TRUE`,
-        ),
-      ]);
+      ),
+      manager.query(
+        `SELECT id, nombre FROM categorias_facilidad WHERE activo = TRUE`,
+      ),
+    ]);
 
     return {
       conditionCodes: new Map(
@@ -4451,6 +4460,11 @@ export class AdminCentersService {
       hygieneNames: new Map(
         (hygiene as Array<{ kind: string; id: string; nombre: string }>).map(
           (row) => [`${row.kind}:${row.id}`, row.nombre],
+        ),
+      ),
+      facilityCategoryNames: new Map(
+        (facilityCategories as Array<{ id: string; nombre: string }>).map(
+          (row) => [Number(row.id), row.nombre],
         ),
       ),
     };

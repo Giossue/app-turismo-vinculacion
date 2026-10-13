@@ -106,6 +106,7 @@ export type XlsmValuationCatalogs = Readonly<{
   activityGroups?: ReadonlyMap<number, string>;
   accessibilityNames?: ReadonlyMap<number, string>;
   hygieneNames?: ReadonlyMap<string, string>;
+  facilityCategoryNames?: ReadonlyMap<number, string>;
 }>;
 
 /** Todos los indicadores que debe tener el catálogo para activar el cálculo. */
@@ -180,9 +181,6 @@ export function buildXlsmValuationInput(
   const roads = records(accessibilityDetails?.roads);
   const aquatic = records(accessibilityDetails?.aquatic);
   const aerial = records(accessibilityDetails?.aerial);
-  const transportTypes = records(accessibilityDetails?.transportTypes);
-  const transportDetails = records(accessibilityDetails?.transportDetails);
-  const criteria = records(accessibilityDetails?.criteria);
   const signage = record(accessibilityDetails?.signage);
 
   const physicalAccess = [
@@ -191,11 +189,9 @@ export function buildXlsmValuationInput(
     "VISUAL",
     "AUDITIVA",
     "COGNITIVA",
-  ].map((kind) =>
-    accessibilitySignal(criteria, draft.accessibility, catalogs, kind),
-  );
+  ].map((kind) => accessibilitySignal(draft.accessibility, catalogs, kind));
 
-  const plant = plantSignals(record(sections.planta), catalogs.plantNames);
+  const plant = plantSignals(record(sections.planta), catalogs);
   const conservation = conservationSignals(record(sections.conservacion));
   const hygieneSafety = hygieneSignals(
     record(sections["higiene-seguridad"]),
@@ -242,11 +238,8 @@ export function buildXlsmValuationInput(
         aerial: { enabled: aerial.some(hasMeaningfulValue) },
       },
       physicalAccess,
-      connectivity: [
-        transportTypes.some((item) => item.applies === true),
-        transportDetails.some(hasMeaningfulValue),
-        responseIsYes(signage?.available),
-      ],
+      // Señalización de aproximación (4.5): estado Bueno, Regular o Malo.
+      connectivity: approachSignageStates(signage, catalogs),
     },
     plant,
     conservation,
@@ -259,40 +252,71 @@ export function buildXlsmValuationInput(
   };
 }
 
+const ATTRACTION = "EN_ATRACTIVO";
+const NEARBY_TOWN = "EN_POBLADO_CERCANO";
+
+/**
+ * Las 15 casillas de Planta de `Jerarquia`: alojamiento, alimentos y bebidas,
+ * agencias y guías, cada uno en el atractivo y en la ciudad cercana; las cinco
+ * categorías de facilidades del entorno y los complementarios en el atractivo
+ * y en la ciudad.
+ */
 function plantSignals(
   section: JsonRecord | null,
-  names?: ReadonlyMap<number, string>,
+  catalogs: XlsmValuationCatalogs,
 ): boolean[] {
-  const rows = records(section?.plant).map((item) => ({
+  const rows: Array<JsonRecord & { label: string }> = records(
+    section?.plant,
+  ).map((item) => ({
     ...item,
-    label: [
-      text(item.typeLabel),
-      names?.get(integer(item.typeId) ?? -1) ?? "",
-      text(item.group),
-    ].join(" "),
+    label: normalize(
+      [
+        text(item.group),
+        text(item.typeLabel),
+        catalogs.plantNames?.get(integer(item.typeId) ?? -1) ?? "",
+      ].join(" "),
+    ),
   }));
-  const patterns = [
-    /HOTEL/,
-    /HOSTAL/,
-    /HOSTERIA/,
-    /HACIENDA/,
-    /LODGE/,
-    /RESORT/,
-    /REFUGIO/,
-    /CAMPAMENTO/,
-    /CASA\s+DE\s+HUESPED/,
-    /RESTAUR/,
-    /CAFETER/,
-    /BAR/,
-    /FUENTE\s+DE\s+SODA/,
-    /AGENCIA|OPERADORA|MAYORISTA|INTERNACIONAL/,
-    /GUIA|GUIANZA/,
-  ];
-  return patterns.map((pattern) =>
+  const inGroup = (pattern: RegExp, scope: string) =>
     rows.some(
-      (row) => pattern.test(normalize(row.label)) && positiveQuantity(row),
+      (row) =>
+        row.scope === scope && pattern.test(row.label) && positiveQuantity(row),
+    );
+  const lodging =
+    /ALOJAMIENTO|HOTEL|HOSTAL|HOSTERIA|HACIENDA|LODGE|RESORT|REFUGIO|CAMPAMENTO|CASA DE HUESPED/;
+  const food = /ALIMENTO|BEBIDA|RESTAUR|CAFETER|BARES|FUENTE DE SODA/;
+  const agencies = /AGENCIA|OPERADORA|MAYORISTA|INTERNACIONAL/;
+  const guides = /GUIA|GUIANZA|ESPECIALIZADO/;
+
+  // Las casillas de facilidades del Excel son una por categoría (a–e).
+  const facilityCategories = records(section?.facilitiesDetails).map((item) =>
+    normalize(
+      catalogs.facilityCategoryNames?.get(integer(item.categoryId) ?? -1) ?? "",
     ),
   );
+  const hasFacility = (pattern: RegExp) =>
+    facilityCategories.some((label) => pattern.test(label));
+  const services = records(section?.complementaryServices);
+  const hasService = (scope: string) =>
+    services.some((item) => item.scope === scope);
+
+  return [
+    inGroup(lodging, ATTRACTION),
+    inGroup(lodging, NEARBY_TOWN),
+    inGroup(food, ATTRACTION),
+    inGroup(food, NEARBY_TOWN),
+    inGroup(agencies, ATTRACTION),
+    inGroup(agencies, NEARBY_TOWN),
+    inGroup(guides, ATTRACTION),
+    inGroup(guides, NEARBY_TOWN),
+    hasFacility(/APOYO/),
+    hasFacility(/OBSERVACION/),
+    hasFacility(/RECORRIDO/),
+    hasFacility(/SERVICIO/),
+    hasFacility(/^OTROS?$/),
+    hasService(ATTRACTION),
+    hasService(NEARBY_TOWN),
+  ];
 }
 
 function conservationSignals(
@@ -305,6 +329,11 @@ function conservationSignals(
   };
 }
 
+/**
+ * Las 13 casillas de Higiene y seguridad: servicios básicos, cinco señales
+ * puntuales, salud, seguridad y comunicación (en el atractivo y en la ciudad
+ * cercana, salvo seguridad) y el plan de contingencia.
+ */
 function hygieneSignals(
   section: JsonRecord | null,
   names?: ReadonlyMap<string, string>,
@@ -313,38 +342,38 @@ function hygieneSignals(
   const entries = records(hygiene?.entries).filter((entry) =>
     responseIsYes(entry.response),
   );
-  const labelFor = (entry: JsonRecord) =>
-    normalize(
-      [
-        text(entry.name),
-        names?.get(
-          `${String(entry.kind)}:${String(integer(entry.typeId) ?? "")}`,
-        ) ?? "",
-      ].join(" "),
-    );
-  const hasBasic = (pattern: RegExp) =>
+  const has = (kind: string, scope?: string) =>
     entries.some(
       (entry) =>
-        entry.kind === "BASIC_SERVICE" && pattern.test(labelFor(entry)),
+        entry.kind === kind && (scope === undefined || entry.scope === scope),
     );
-  const hasKind = (kind: string) =>
-    entries.some((entry) => String(entry.kind) === kind);
-  const radios = record(hygiene?.radios);
+  const signageLabels = entries
+    .filter((entry) => entry.kind === "SIGNAGE")
+    .map((entry) =>
+      normalize(
+        [
+          text(entry.name),
+          names?.get(`SIGNAGE:${String(integer(entry.typeId) ?? "")}`) ?? "",
+        ].join(" "),
+      ),
+    );
+  const hasSignage = (pattern: RegExp) =>
+    signageLabels.some((label) => pattern.test(label));
   const contingency = record(hygiene?.contingency);
   return [
-    hasBasic(/AGUA|POTABLE/),
-    hasBasic(/ENERG|ELECTR/),
-    hasBasic(/SANEAMIENTO|ALCANTAR|LETRINA|POZO/),
-    hasBasic(/DESECH|BASURA|RESIDU/),
-    hasKind("SIGNAGE"),
-    hasKind("HEALTH"),
-    hasKind("SECURITY"),
-    hasKind("COMMUNICATION"),
-    responseIsYes(radios?.available),
+    has("BASIC_SERVICE", ATTRACTION),
+    has("BASIC_SERVICE", NEARBY_TOWN),
+    hasSignage(/PICTOGRAMAS? DE RESTRICCION/),
+    hasSignage(/PANELES? DE DIRECCIONAMIENTO/),
+    hasSignage(/NORMATIVOS/),
+    hasSignage(/PROTECCION DE LOS ELEMENTOS/),
+    hasSignage(/^OTROS?$/),
+    has("HEALTH", ATTRACTION),
+    has("HEALTH", NEARBY_TOWN),
+    has("SECURITY"),
+    has("COMMUNICATION", ATTRACTION),
+    has("COMMUNICATION", NEARBY_TOWN),
     responseIsYes(contingency?.exists),
-    responseIsYes(radios?.visitorUse),
-    responseIsYes(radios?.internalUse),
-    responseIsYes(radios?.emergencyUse),
   ];
 }
 
@@ -392,10 +421,10 @@ function visitorSignals(section: JsonRecord | null): boolean[] {
   const visitors = record(section?.visitors);
   const registry = record(visitors?.registry);
   const influx = record(visitors?.influx);
+  // 11.2 «Frecuencia de visita según informantes clave»: puntúa por
+  // informantes o demanda declarada, no por las temporadas ni los orígenes (11.1).
   const hasVisitData =
-    records(visitors?.seasons).length > 0 ||
-    records(visitors?.origins).length > 0 ||
-    records(visitors?.informants).length > 0 ||
+    records(visitors?.informants).some(hasMeaningfulValue) ||
     [influx?.weekday, influx?.weekend, influx?.holidays].some(
       (value) => typeof value === "number" && value > 0,
     ) ||
@@ -408,45 +437,40 @@ function visitorSignals(section: JsonRecord | null): boolean[] {
   ];
 }
 
+/**
+ * Recurso humano: personas especializadas en turismo, capacitación por
+ * temática e idiomas. Los niveles de instrucción no puntúan.
+ */
 function humanResourceSignals(section: JsonRecord | null): boolean[] {
   const resources = record(section?.humanResources);
   const summary = record(resources?.summary);
   const training = records(resources?.training);
+  const trained = (group: string) =>
+    training.some((item) => item.group === group && positive(item.quantity));
   return [
-    positive(summary?.administrationOperation),
     positive(summary?.specializedTourism),
-    training.some((item) => positive(item.quantity)),
+    trained("CAPACITACION"),
+    trained("IDIOMA"),
   ];
 }
 
+/**
+ * Condiciones de accesibilidad (4.4): la casilla de cada tipo de discapacidad.
+ * Las respuestas del detalle por criterio no puntúan, igual que en el libro.
+ */
 function accessibilitySignal(
-  criteria: JsonRecord[],
   summary: readonly unknown[] | undefined,
   catalogs: XlsmValuationCatalogs,
   kind: string,
 ): boolean {
-  const labels = [
-    ...criteria
-      .filter((criterion) => responseIsYes(criterion.response))
-      .map((criterion) =>
-        normalize(
-          [
-            text(criterion.label),
-            catalogs.accessibilityNames?.get(
-              integer(criterion.accessibilityTypeId) ?? -1,
-            ) ?? "",
-          ].join(" "),
-        ),
+  const labels = records(summary)
+    .filter((item) => item.applies === true)
+    .map((item) =>
+      normalize(
+        catalogs.accessibilityNames?.get(integer(item.typeId) ?? -1) ??
+          text(item.name),
       ),
-    ...records(summary)
-      .filter((item) => item.applies === true)
-      .map((item) =>
-        normalize(
-          catalogs.accessibilityNames?.get(integer(item.typeId) ?? -1) ??
-            text(item.name),
-        ),
-      ),
-  ];
+    );
   const pattern = {
     GENERAL: /GENERAL/,
     FISICA: /FISIC/,
@@ -455,6 +479,19 @@ function accessibilitySignal(
     COGNITIVA: /COGNIT|INTELECT|PSICOSOCIAL/,
   }[kind];
   return pattern ? labels.some((label) => pattern.test(label)) : false;
+}
+
+/** Estado (Bueno, Regular, Malo) de la señalización de aproximación. */
+function approachSignageStates(
+  signage: JsonRecord | null,
+  catalogs: XlsmValuationCatalogs,
+): boolean[] {
+  const state = conditionFrom(
+    signage?.condition,
+    signage?.conditionId,
+    catalogs.conditionCodes,
+  );
+  return [state === "BUENO", state === "REGULAR", state === "MALO"];
 }
 
 function conditionFrom(

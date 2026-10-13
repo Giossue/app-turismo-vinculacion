@@ -17,24 +17,30 @@ describe("valuation engine", () => {
               roads: [{ typeLabel: "Tercer orden", condition: "Bueno" }],
               aquatic: [],
               aerial: [],
-              transportTypes: [{ applies: true }],
-              transportDetails: [{ operator: "Cooperativa" }],
-              criteria: [
-                { label: "Discapacidad física", response: "SI" },
-                { label: "Discapacidad visual", response: "SI" },
-              ],
-              signage: { available: "SI" },
+              // Las respuestas por criterio no puntúan; solo las casillas de 4.4.
+              criteria: [{ label: "Discapacidad visual", response: "SI" }],
+              signage: { conditionId: 2 },
             },
           },
           planta: {
             plant: [
               {
+                scope: "EN_POBLADO_CERCANO",
+                group: "Alimentos y bebidas",
                 typeLabel: "Restaurantes",
                 quantity1: 1,
                 quantity2: 10,
                 quantity3: 20,
               },
+              {
+                scope: "EN_ATRACTIVO",
+                group: "Alojamiento",
+                typeLabel: "Hotel",
+                quantity1: 0,
+              },
             ],
+            facilitiesDetails: [{ categoryId: 4, typeId: 14, quantity: 0 }],
+            complementaryServices: [{ scope: "EN_ATRACTIVO", typeId: 4 }],
           },
           conservacion: {
             conservation: {
@@ -45,10 +51,23 @@ describe("valuation engine", () => {
           "higiene-seguridad": {
             hygieneSafety: {
               entries: [
-                { kind: "BASIC_SERVICE", typeId: 1, response: "SI" },
-                { kind: "HEALTH", typeId: 2, response: "SI" },
+                {
+                  kind: "BASIC_SERVICE",
+                  scope: "EN_POBLADO_CERCANO",
+                  typeId: 1,
+                  response: "SI",
+                },
+                { kind: "SIGNAGE", typeId: 5, response: "SI" },
+                {
+                  kind: "HEALTH",
+                  scope: "EN_ATRACTIVO",
+                  typeId: 2,
+                  response: "SI",
+                },
+                { kind: "SECURITY", typeId: 3, response: "SI" },
               ],
-              radios: { available: "SI", visitorUse: "NO" },
+              // La radio portátil no puntúa en el libro.
+              radios: { available: "SI" },
               contingency: { exists: "SI" },
             },
           },
@@ -68,17 +87,32 @@ describe("valuation engine", () => {
           },
           "recurso-humano": {
             humanResources: {
-              summary: { administrationOperation: 2 },
-              training: [{ quantity: 1 }],
+              summary: { administrationOperation: 2, specializedTourism: 0 },
+              training: [
+                { group: "EDUCACION", quantity: 3 },
+                { group: "CAPACITACION", quantity: 1 },
+                { group: "IDIOMA", quantity: 0 },
+              ],
             },
           },
         },
         activities: [{ activityId: 7, active: true }],
+        accessibility: [
+          { typeId: 2, applies: true },
+          { typeId: 3, applies: true },
+        ],
       },
       {
         activityGroups: new Map([[7, "CULTURA"]]),
+        conditionCodes: new Map([[2, "REGULAR"]]),
+        accessibilityNames: new Map([
+          [2, "FISICA Discapacidad física"],
+          [3, "VISUAL Discapacidad visual"],
+        ]),
+        facilityCategoryNames: new Map([[4, "De servicio"]]),
         hygieneNames: new Map([
           ["BASIC_SERVICE:1", "Agua potable"],
+          ["SIGNAGE:5", "Pictogramas de restricción"],
           ["HEALTH:2", "Hospital"],
         ]),
       },
@@ -92,16 +126,49 @@ describe("valuation engine", () => {
       false,
       false,
     ]);
-    expect(input.accessibility.connectivity).toEqual([true, true, true]);
-    expect(input.plant[9]).toBe(true);
+    // Señalización de aproximación: Bueno, Regular, Malo.
+    expect(input.accessibility.connectivity).toEqual([false, true, false]);
+    expect(input.plant).toEqual([
+      false, // alojamiento en el atractivo sin cantidades
+      false,
+      false,
+      true, // alimentos y bebidas en la ciudad
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true, // facilidades de servicio
+      false,
+      true, // complementarios en el atractivo
+      false,
+    ]);
     expect(input.conservation).toEqual({
       attraction: "CONSERVADO",
       environment: "ALTERADO",
     });
+    expect(input.hygieneSafety).toEqual([
+      false,
+      true, // servicios básicos en la ciudad
+      true, // pictogramas de restricción
+      false,
+      false,
+      false,
+      false,
+      true, // salud en el atractivo
+      false,
+      true, // seguridad
+      false,
+      false,
+      true, // plan de contingencia
+    ]);
     expect(input.activities).toEqual([false, false, false, true]);
     expect(input.promotion).toEqual([true, false, true]);
     expect(input.visitors).toEqual([true, false, true]);
-    expect(input.humanResources).toEqual([true, false, true]);
+    // Especializados en turismo, capacitación por temática, idiomas.
+    expect(input.humanResources).toEqual([false, true, false]);
   });
 
   it("reproduces the nine XLSM criteria from the workbook signals", () => {
