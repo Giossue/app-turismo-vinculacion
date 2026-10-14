@@ -97,6 +97,7 @@ function AppNavigation() {
       >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="centers/[code]" />
+        <Stack.Screen name="establishments/[id]" />
         <Stack.Screen name="route" />
         <Stack.Screen name="offline" />
         <Stack.Screen name="offline-city" />
