@@ -310,3 +310,9 @@ el consolidado desde el panel (`POST /admin/establishments/import`). La importac
 crea o actualiza por `numero_registro`: no cambia responsable ni revisión de registros
 existentes, no restaura eliminados y no sustituye coordenadas exactas por aproximadas.
 Rollback: retirar las columnas solo después de revertir la API.
+
+La migración `20261013_contingency_plan_unique.sql` crea el índice único
+`planes_contingencia(centro_turistico_id)` que necesita el upsert de «Higiene y
+seguridad»; sin él, publicar una ficha con plan de contingencia falla con
+`ON CONFLICT`. Es idempotente. Aplicarla antes de publicar fichas.
+Rollback: `DROP INDEX planes_contingencia_centro_turistico_id_key`.
