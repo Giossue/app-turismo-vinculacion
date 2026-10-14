@@ -1,7 +1,8 @@
 import { StyleSheet, View } from "react-native";
 
 import { TourismActionButton } from "@/core/ui/tourism-controls";
-import { turismoSpacing } from "@/core/ui/tokens";
+import { TourismIconAction } from "@/core/ui/tourism-map-actions";
+import { turismoMetrics, turismoSpacing } from "@/core/ui/tokens";
 
 type SaveControl = Readonly<{
   accessibilityLabel: string;
@@ -9,7 +10,7 @@ type SaveControl = Readonly<{
   toggle: () => void;
 }>;
 
-/** «Guardar» / «Guardado» junto a «Cómo llegar». Sin `save`, solo el botón de ruta. */
+/** «Cómo llegar» con el ícono de guardar a su lado (solo ícono, sin texto). */
 export function PlaceActions({
   onOpenRoute,
   save,
@@ -21,17 +22,17 @@ export function PlaceActions({
           icon="route"
           label="Cómo llegar"
           onPress={onOpenRoute}
-          style={styles.button}
+          style={styles.route}
         />
       ) : null}
       {save ? (
-        <TourismActionButton
+        <TourismIconAction
           accessibilityLabel={save.accessibilityLabel}
+          filled={save.saved}
           icon="bookmark"
-          label={save.saved ? "Guardado" : "Guardar"}
-          mode="outlined"
           onPress={save.toggle}
-          style={styles.button}
+          selected={save.saved}
+          style={styles.save}
         />
       ) : null}
     </View>
@@ -39,6 +40,14 @@ export function PlaceActions({
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", gap: turismoSpacing.sm },
-  button: { flex: 1 },
+  row: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: turismoSpacing.sm,
+  },
+  route: { flex: 1 },
+  save: {
+    height: turismoMetrics.controlMd,
+    width: turismoMetrics.controlMd,
+  },
 });

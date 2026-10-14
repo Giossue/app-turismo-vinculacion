@@ -1,18 +1,14 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import {
   TourismBottomSheet,
   TourismSheetScrollView,
 } from "@/core/ui/tourism-bottom-sheet";
-import { TourismActionButton } from "@/core/ui/tourism-controls";
 import { TourismStateView } from "@/core/ui/tourism-state";
-import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
-  turismoIconSizes,
   turismoMetrics,
-  turismoOpacity,
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
@@ -28,6 +24,7 @@ import { CenterInformation } from "@/features/centers/presentation/center-detail
 import { CenterPhotos } from "@/features/centers/presentation/center-detail/center-photos";
 import { CenterRatingSummary } from "@/features/centers/presentation/center-detail/center-rating-summary";
 import { useCenterSaveToggle } from "@/features/centers/presentation/center-detail/use-center-save-toggle";
+import { PlaceActions } from "@/features/favorites/presentation/save-action-button";
 import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/saved-center-error-snackbar";
 import { useCenterOpinions } from "@/features/opinions/application/use-center-opinions";
 import { CenterOpinions } from "@/features/opinions/presentation/center-opinions";
@@ -88,37 +85,12 @@ export function ExploreCenterSheetContent({
         <Text style={[styles.title, { color: colors.text }]}>
           {center.name}
         </Text>
-        <View style={styles.actions}>
-          <CenterRatingSummary
-            onPress={() => setActiveTab("opinions")}
-            style={styles.rating}
-            summary={opinions.data?.summary}
-          />
-          <Pressable
-            accessibilityLabel={save.accessibilityLabel}
-            accessibilityRole="button"
-            accessibilityState={{ selected: save.saved }}
-            hitSlop={turismoSpacing.xxs}
-            onPress={save.toggle}
-            style={({ pressed }) => [
-              styles.saveAction,
-              pressed && styles.pressed,
-            ]}
-          >
-            <TurismoIcon
-              color={save.saved ? colors.primaryStrong : colors.primary}
-              fill={save.saved ? colors.primaryStrong : "none"}
-              fillOpacity={save.saved ? 1 : undefined}
-              name="bookmark"
-              size={turismoIconSizes.md}
-            />
-          </Pressable>
-        </View>
-        <TourismActionButton
-          icon="route"
-          label="Cómo llegar"
-          onPress={onOpenRoute}
+        <CenterRatingSummary
+          onPress={() => setActiveTab("opinions")}
+          style={styles.rating}
+          summary={opinions.data?.summary}
         />
+        <PlaceActions onOpenRoute={onOpenRoute} save={save} />
         {detailQuery.isPending && !detailQuery.isPaused ? (
           <TourismStateView
             layout="inline"
@@ -170,17 +142,5 @@ const styles = StyleSheet.create({
   },
   hero: { marginHorizontal: -turismoSpacing.lg },
   title: { ...turismoTypography.title },
-  actions: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
   rating: { alignSelf: "center" },
-  saveAction: {
-    alignItems: "center",
-    height: turismoMetrics.touchTarget,
-    justifyContent: "center",
-    width: turismoMetrics.touchTarget,
-  },
-  pressed: { opacity: turismoOpacity.pressed },
 });
