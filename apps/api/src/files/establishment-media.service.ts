@@ -91,6 +91,7 @@ export class EstablishmentMediaService {
     id: string,
     input: EstablishmentPhotoInput,
     isAdmin = true,
+    directPublish = false,
   ) {
     const establishmentId = parseEstablishmentId(id);
     assertUploadSize(
@@ -115,7 +116,13 @@ export class EstablishmentMediaService {
     const stored = await optimizePhoto(input.buffer);
     const { originalName, description, sourceAuthor } = mediaMetadata(input);
     const order = await this.dataSource.transaction(async (manager) => {
-      await this.establishment(manager, establishmentId, actorId, isAdmin);
+      await this.establishment(
+        manager,
+        establishmentId,
+        actorId,
+        isAdmin,
+        directPublish,
+      );
       const orderRows = (await manager.query(
         `SELECT COALESCE(MAX(orden), 0) + 1 AS next
            FROM archivos_establecimiento_turistico
@@ -126,10 +133,16 @@ export class EstablishmentMediaService {
     });
     const objectKey = `establishments/${establishmentId}/photos/${randomUUID()}${stored.extension}`;
     await this.storage.put(objectKey, stored.buffer, stored.mimeType);
-    const state = isAdmin ? "PUBLICADO" : "PENDIENTE";
+    const state = isAdmin || directPublish ? "PUBLICADO" : "PENDIENTE";
     try {
       return await this.dataSource.transaction(async (manager) => {
-        await this.establishment(manager, establishmentId, actorId, isAdmin);
+        await this.establishment(
+          manager,
+          establishmentId,
+          actorId,
+          isAdmin,
+          directPublish,
+        );
         const checksum = createHash("sha256")
           .update(stored.buffer)
           .digest("hex");
@@ -190,7 +203,13 @@ export class EstablishmentMediaService {
     }
   }
 
-  async remove(actorId: number, id: string, mediaId: number, isAdmin = true) {
+  async remove(
+    actorId: number,
+    id: string,
+    mediaId: number,
+    isAdmin = true,
+    directPublish = false,
+  ) {
     const establishmentId = parseEstablishmentId(id);
     const deleted = await this.dataSource.transaction(async (manager) => {
       const rows = (await manager.query(
@@ -201,9 +220,10 @@ export class EstablishmentMediaService {
             AND a.estado <> 'ELIMINADO'
             AND e.eliminado_at IS NULL
             AND ($3::boolean OR e.responsable_usuario_id = $4)
-            AND ($3::boolean OR e.estado_revision IN ('BORRADOR', 'RECHAZADO'))
+            AND ($3::boolean OR $5::boolean
+                 OR e.estado_revision IN ('BORRADOR', 'RECHAZADO'))
           FOR UPDATE OF a`,
-        [mediaId, establishmentId, isAdmin, actorId],
+        [mediaId, establishmentId, isAdmin, actorId, directPublish],
       )) as Array<{ id: string; key: string; state: string }>;
       const file = rows[0];
       if (!file) throw new NotFoundException("No se encontró la fotografía.");
@@ -250,6 +270,7 @@ export class EstablishmentMediaService {
     establishmentId: number,
     actorId: number,
     isAdmin: boolean,
+    directPublish = false,
   ) {
     const rows = (await manager.query(
       `SELECT e.id
@@ -257,9 +278,10 @@ export class EstablishmentMediaService {
         WHERE e.id = $1
           AND e.eliminado_at IS NULL
           AND ($2::boolean OR e.responsable_usuario_id = $3)
-          AND ($2::boolean OR e.estado_revision IN ('BORRADOR', 'RECHAZADO'))
+          AND ($2::boolean OR $4::boolean
+               OR e.estado_revision IN ('BORRADOR', 'RECHAZADO'))
         FOR UPDATE`,
-      [establishmentId, isAdmin, actorId],
+      [establishmentId, isAdmin, actorId, directPublish],
     )) as Array<{ id: string }>;
     if (!rows[0])
       throw new NotFoundException("No se encontró el establecimiento.");

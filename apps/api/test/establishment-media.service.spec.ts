@@ -145,7 +145,36 @@ describe("EstablishmentMediaService", () => {
     expect(scopeSql).toContain(
       "e.estado_revision IN ('BORRADOR', 'RECHAZADO')",
     );
-    expect(scopeParams).toEqual([8, false, 12]);
+    expect(scopeParams).toEqual([8, false, 12, false]);
+  });
+
+  it("publishes an agent photo right away when direct publication is on", async () => {
+    const query = vi.fn<QueryMock>(async (sql) => {
+      if (sql.includes("FROM establecimientos_turisticos"))
+        return [{ id: "8" }];
+      if (sql.includes("MAX(orden)")) return [{ next: 1 }];
+      if (sql.includes("RETURNING id")) return [{ id: "42" }];
+      return [];
+    });
+    const service = new EstablishmentMediaService(
+      { transaction: transactional(query) } as never,
+      { put: vi.fn(), remove: vi.fn() } as never,
+      config() as never,
+    );
+
+    await expect(
+      service.upload(
+        12,
+        "8",
+        { originalName: "foto.png", mimeType: "image/png", buffer: png },
+        false,
+        true,
+      ),
+    ).resolves.toMatchObject({
+      state: "PUBLICADO",
+      downloadUrl: "/api/v1/media/establishments/42",
+    });
+    expect(query.mock.calls[0]?.[1]).toEqual([8, false, 12, true]);
   });
 
   it("removes the stored object when the catastro disappears mid-upload", async () => {

@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Inject,
+  Optional,
   Param,
   Post,
   Query,
@@ -20,6 +21,7 @@ import type { AuthenticatedUser } from "../auth/auth.types";
 import { RolesGuard } from "../auth/roles.guard";
 import { createMediaVariant, type MediaImageSize } from "./media-variants";
 import { EstablishmentMediaService } from "./establishment-media.service";
+import { PlatformSettingsService } from "../settings/platform-settings.service";
 import { MediaService, type CenterFileTypeCode } from "./media.service";
 
 @ApiTags("admin-media")
@@ -31,7 +33,15 @@ export class FilesController {
     @Inject(MediaService) private readonly media: MediaService,
     @Inject(EstablishmentMediaService)
     private readonly establishmentMedia: EstablishmentMediaService,
+    @Optional()
+    @Inject(PlatformSettingsService)
+    private readonly settings?: PlatformSettingsService,
   ) {}
+
+  /** Con el paso libre, el agente gestiona las fotos de sus catastros ya publicados. */
+  private async directPublish() {
+    return (await this.settings?.get())?.directPublishCatastros === true;
+  }
 
   @Get("centers/:code/media")
   @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
@@ -126,6 +136,7 @@ export class FilesController {
           sourceAuthor: fieldText(part.fields?.sourceAuthor),
         },
         user.roles.includes("ADMINISTRADOR"),
+        await this.directPublish(),
       ),
     };
   }
@@ -143,6 +154,7 @@ export class FilesController {
         id,
         parseMediaId(mediaId),
         user.roles.includes("ADMINISTRADOR"),
+        await this.directPublish(),
       ),
     };
   }
