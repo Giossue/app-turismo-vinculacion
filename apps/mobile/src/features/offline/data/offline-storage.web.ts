@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { OfflineCityManifest } from "../domain/offline-city";
 import { parseStoredOfflineManifest } from "./offline-api";
 
-const keyPrefix = "turismo-vinculacion-offline-city:";
+const keyPrefix = "rumbo-ec-offline-city:";
 
 export async function saveOfflineManifest(
   manifest: OfflineCityManifest,

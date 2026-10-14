@@ -61,9 +61,7 @@ describe("saved calculated routes", () => {
     await expect(loadSavedCalculatedRoute(7, route.key)).resolves.toEqual(
       route,
     );
-    expect([...values.keys()]).toEqual([
-      "turismo-vinculacion-saved-routes-v1-7",
-    ]);
+    expect([...values.keys()]).toEqual(["rumbo-ec-saved-routes-v1-7"]);
     expect(JSON.parse([...values.values()][0])).not.toHaveProperty("active");
   });
 
@@ -106,7 +104,7 @@ describe("saved calculated routes", () => {
   it("skips corrupted entries and rejects invalid route coordinates or modes", async () => {
     const route = await saveCalculatedRoute(7, input, 10);
     values.set(
-      "turismo-vinculacion-saved-routes-v1-7",
+      "rumbo-ec-saved-routes-v1-7",
       JSON.stringify({
         version: 1,
         routes: [
@@ -150,10 +148,10 @@ describe("saved calculated routes", () => {
   });
 
   it("ignores malformed or unsupported storage without crashing the preview", async () => {
-    values.set("turismo-vinculacion-saved-routes-v1-7", "{broken");
+    values.set("rumbo-ec-saved-routes-v1-7", "{broken");
     await expect(listSavedCalculatedRoutes(7)).resolves.toEqual([]);
     values.set(
-      "turismo-vinculacion-saved-routes-v1-7",
+      "rumbo-ec-saved-routes-v1-7",
       JSON.stringify({ version: 2, routes: [] }),
     );
     await expect(listSavedCalculatedRoutes(7)).resolves.toEqual([]);

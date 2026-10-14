@@ -280,7 +280,7 @@ export class DownloadPageController {
   }
 
   /** Redirige al archivo más reciente; el enlace de la página no cambia nunca. */
-  @Get("turismo-vinculacion.apk")
+  @Get("rumbo-ec.apk")
   apk(@Res() response: FastifyReply) {
     return response
       .header("Cache-Control", "no-cache")

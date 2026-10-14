@@ -7,8 +7,8 @@ import {
   type StoredSession,
 } from "./stored-user";
 
-const refreshTokenKey = "turismo-vinculacion-mobile-refresh-token";
-const userKey = "turismo-vinculacion-mobile-session-user";
+const refreshTokenKey = "rumbo-ec-mobile-refresh-token";
+const userKey = "rumbo-ec-mobile-session-user";
 
 export async function readStoredSession(): Promise<StoredSession | null> {
   const refreshToken = await SecureStore.getItemAsync(refreshTokenKey);

@@ -4,7 +4,7 @@ import { importLegacySavedCenters } from "../application/import-legacy-saved-cen
 import { listLegacySavedCenters } from "./saved-centers-storage";
 
 const values = new Map<string, string>();
-const storageKey = "turismo-vinculacion-saved-centers-v1";
+const storageKey = "rumbo-ec-saved-centers-v1";
 
 vi.mock("@react-native-async-storage/async-storage", () => ({
   default: {

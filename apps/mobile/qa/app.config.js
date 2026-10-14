@@ -3,7 +3,7 @@ module.exports = {
   slug: "turismo-responsive-qa",
   version: "1.0.0",
   orientation: "default",
-  scheme: "turismo-vinculacion",
+  scheme: "rumbo-ec",
   userInterfaceStyle: "automatic",
   android: { package: "ec.edu.ueb.turismovinculacion.software.qa" },
   ios: { bundleIdentifier: "ec.edu.ueb.turismovinculacion.software.qa" },

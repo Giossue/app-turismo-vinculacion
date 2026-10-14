@@ -3,7 +3,7 @@ import { z } from "zod";
 import { readJson, removeJson, writeJson } from "@/core/storage/json-storage";
 import { agentMessageSchema, type AgentMessage } from "../domain/agent";
 
-const storageKeyPrefix = "turismo-vinculacion-agent-chat-v1";
+const storageKeyPrefix = "rumbo-ec-agent-chat-v1";
 
 const storedConversationSchema = z
   .object({

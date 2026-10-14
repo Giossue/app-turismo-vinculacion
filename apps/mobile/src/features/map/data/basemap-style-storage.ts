@@ -5,7 +5,7 @@ import { readJson, writeJson } from "@/core/storage/json-storage";
 import type { TurismoColorScheme } from "@/core/ui/tokens";
 import { isValidBasemapStyle } from "./basemap-style";
 
-const storageKey = "turismo-vinculacion-basemap-style:v1";
+const storageKey = "rumbo-ec-basemap-style:v1";
 
 // Each scheme is validated on its own: a corrupt dark style must not discard
 // a valid light one.

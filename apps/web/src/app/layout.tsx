@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Turismo Vinculación",
+  title: "Rumbo EC",
   description: "Descubre atractivos turísticos validados de Ecuador.",
 };
 

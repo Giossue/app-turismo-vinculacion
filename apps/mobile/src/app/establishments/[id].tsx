@@ -1,16 +1,14 @@
 import type { ReactNode } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { firstSearchParam } from "@/core/navigation/search-params";
 import { useTurismoPalette } from "@/core/ui/theme-context";
-import { TourismActionButton, TourismBadge } from "@/core/ui/tourism-controls";
+import { TourismBadge } from "@/core/ui/tourism-controls";
 import { TourismInfoRow } from "@/core/ui/tourism-content";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import { TourismStateView } from "@/core/ui/tourism-state";
-import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
-  turismoIconSizes,
   turismoMetrics,
   turismoOpacity,
   turismoSpacing,
@@ -27,6 +25,7 @@ import type {
   PublicMapEstablishment,
 } from "@/features/establishments/domain/establishment";
 import { useEstablishmentSaveToggle } from "@/features/establishments/presentation/use-establishment-save-toggle";
+import { PlaceActions } from "@/features/favorites/presentation/save-action-button";
 import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/saved-center-error-snackbar";
 import { buildRouteHref } from "@/features/routing/presentation/route-href";
 
@@ -133,26 +132,6 @@ function EstablishmentContent({
             </Text>
             {category ? <TourismBadge>{category}</TourismBadge> : null}
           </View>
-          {save ? (
-            <Pressable
-              accessibilityLabel={save.accessibilityLabel}
-              accessibilityRole="button"
-              accessibilityState={{ selected: save.saved }}
-              onPress={save.toggle}
-              style={({ pressed }) => [
-                styles.saveAction,
-                pressed && styles.pressed,
-              ]}
-            >
-              <TurismoIcon
-                color={save.saved ? colors.primaryStrong : colors.primary}
-                fill={save.saved ? colors.primaryStrong : "none"}
-                fillOpacity={save.saved ? 1 : undefined}
-                name="bookmark"
-                size={turismoIconSizes.md}
-              />
-            </Pressable>
-          ) : null}
         </View>
         <TourismInfoRow label="Actividad" value={detail.actividad} />
         {detail.clasificacion ? (
@@ -166,21 +145,21 @@ function EstablishmentContent({
         {detail.telefono ? (
           <TourismInfoRow label="Teléfono" value={detail.telefono} />
         ) : null}
-        {hasLocation ? (
-          <TourismActionButton
-            icon="route"
-            label="Cómo llegar"
-            onPress={() =>
-              router.push(
-                buildRouteHref({
-                  latitude: detail.latitude as number,
-                  longitude: detail.longitude as number,
-                  name: detail.nombreComercial,
-                }),
-              )
-            }
-          />
-        ) : null}
+        <PlaceActions
+          onOpenRoute={
+            hasLocation
+              ? () =>
+                  router.push(
+                    buildRouteHref({
+                      latitude: detail.latitude as number,
+                      longitude: detail.longitude as number,
+                      name: detail.nombreComercial,
+                    }),
+                  )
+              : null
+          }
+          save={save}
+        />
         <CenterPhotos photos={detail.photos} variant="divided" />
       </ScrollView>
       {save ? <SavedCenterErrorSnackbar mutation={save.mutation} /> : null}

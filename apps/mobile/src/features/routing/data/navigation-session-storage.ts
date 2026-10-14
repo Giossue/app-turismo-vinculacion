@@ -10,9 +10,8 @@ import {
 } from "../domain/routing";
 import { calculatedRouteSchema } from "./routing-api";
 
-const navigationSessionStorageKey = "turismo-vinculacion-active-navigation-v1";
-const navigationProgressStorageKey =
-  "turismo-vinculacion-active-navigation-progress-v1";
+const navigationSessionStorageKey = "rumbo-ec-active-navigation-v1";
+const navigationProgressStorageKey = "rumbo-ec-active-navigation-progress-v1";
 
 export type PersistedNavigationLocation = Readonly<{
   accuracy: number | null;

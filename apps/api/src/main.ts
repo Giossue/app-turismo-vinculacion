@@ -53,7 +53,7 @@ async function bootstrap(): Promise<void> {
   });
   // `/e/:id` (QR) y `/descargar` (landing de la app) quedan en la raíz: enlaces cortos.
   app.setGlobalPrefix("api/v1", {
-    exclude: ["e/:id", "descargar", "descargar/turismo-vinculacion.apk"],
+    exclude: ["e/:id", "descargar", "descargar/rumbo-ec.apk"],
   });
   app.useGlobalPipes(
     new ValidationPipe({
@@ -65,7 +65,7 @@ async function bootstrap(): Promise<void> {
   app.useGlobalFilters(new HttpExceptionFilter());
 
   const openApiConfig = new DocumentBuilder()
-    .setTitle("Turismo Vinculación API")
+    .setTitle("Rumbo EC API")
     .setDescription("API institucional para información turística publicada.")
     .setVersion("0.1.0")
     .addBearerAuth()

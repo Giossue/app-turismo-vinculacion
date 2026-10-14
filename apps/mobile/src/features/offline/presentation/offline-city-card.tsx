@@ -66,17 +66,16 @@ export function OfflineCityCard({
         </View>
         {stored ? <TourismBadge>Disponible</TourismBadge> : null}
       </View>
-      {storedManifest ? (
+      {storedManifest && (mapSize || storedManifest.download?.savedAt) ? (
         <Text style={[styles.caption, { color: colors.textMuted }]}>
-          {storedManifest.counts.centers} centros · {storedManifest.counts.pois}{" "}
-          puntos de interés
-          {" · "}
-          {storedManifest.counts.establishments} establecimientos ·{" "}
-          {storedManifest.counts.routes} rutas
-          {mapSize ? `\n${mapSize}` : ""}
-          {storedManifest.download?.savedAt
-            ? `\nDescargado el ${new Date(storedManifest.download.savedAt).toLocaleDateString("es")}`
-            : ""}
+          {[
+            mapSize,
+            storedManifest.download?.savedAt
+              ? `Descargado el ${new Date(storedManifest.download.savedAt).toLocaleDateString("es")}`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </Text>
       ) : null}
       {stored && onOpen ? (
@@ -87,33 +86,44 @@ export function OfflineCityCard({
         />
       ) : null}
       {city.package ? (
-        <TourismActionButton
-          disabled={disabled}
-          icon={stored ? "refresh" : "download"}
-          label={
-            downloading
-              ? `Descargando ${progress}%`
-              : stored
-                ? "Actualizar descarga"
-                : "Descargar ciudad"
-          }
-          loading={downloading}
-          onPress={onDownload}
-        />
+        stored ? (
+          <View style={styles.secondaryRow}>
+            <TourismActionButton
+              disabled={disabled}
+              icon="refresh"
+              label={downloading ? `Actualizando ${progress}%` : "Actualizar"}
+              loading={downloading}
+              mode="outlined"
+              onPress={onDownload}
+              style={styles.secondaryAction}
+            />
+            {onRemove ? (
+              <TourismActionButton
+                disabled={disabled && !removing}
+                label="Borrar"
+                loading={removing}
+                mode="ghost"
+                onPress={onRemove}
+                style={styles.secondaryAction}
+              />
+            ) : null}
+          </View>
+        ) : (
+          <TourismActionButton
+            disabled={disabled}
+            icon="download"
+            label={
+              downloading ? `Descargando ${progress}%` : "Descargar ciudad"
+            }
+            loading={downloading}
+            onPress={onDownload}
+          />
+        )
       ) : (
         <Text style={[styles.caption, { color: colors.textFaint }]}>
           Esta ciudad aún no tiene lugares publicados para descargar.
         </Text>
       )}
-      {stored && onRemove ? (
-        <TourismActionButton
-          disabled={disabled && !removing}
-          label="Borrar descarga"
-          loading={removing}
-          mode="ghost"
-          onPress={onRemove}
-        />
-      ) : null}
     </TourismSurface>
   );
 }
@@ -135,4 +145,6 @@ const styles = StyleSheet.create({
   copy: { flex: 1, gap: turismoSpacing.xxs },
   name: { ...turismoTypography.heading },
   caption: { ...turismoTypography.caption },
+  secondaryRow: { flexDirection: "row", gap: turismoSpacing.sm },
+  secondaryAction: { flex: 1 },
 });

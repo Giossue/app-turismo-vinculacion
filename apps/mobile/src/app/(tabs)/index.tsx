@@ -38,10 +38,7 @@ export default function HomeScreen() {
   ) {
     return (
       <View style={[styles.screen, { backgroundColor: colors.background }]}>
-        <TourismStateView
-          message="Preparando Turismo Vinculación…"
-          variant="loading"
-        />
+        <TourismStateView message="Preparando Rumbo EC…" variant="loading" />
       </View>
     );
   }

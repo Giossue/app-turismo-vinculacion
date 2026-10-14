@@ -27,7 +27,7 @@ type TurismoThemeContextValue = Readonly<{
 }>;
 
 // v2: stored as JSON through `json-storage`; v1 kept a raw string.
-const themePreferenceStorageKey = "turismo-vinculacion.theme-preference.v2";
+const themePreferenceStorageKey = "rumbo-ec.theme-preference.v2";
 const themePreferenceSchema = z.enum(["system", "light", "dark"]);
 const TurismoThemeContext = createContext<TurismoThemeContextValue | null>(
   null,

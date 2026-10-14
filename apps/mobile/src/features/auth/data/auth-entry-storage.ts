@@ -3,7 +3,7 @@ import { z } from "zod";
 import { readJson, writeJson } from "@/core/storage/json-storage";
 
 // v2: stored as JSON through `json-storage`; v1 kept a raw string.
-const entryChoiceKey = "turismo-vinculacion-auth-entry-choice-v2";
+const entryChoiceKey = "rumbo-ec-auth-entry-choice-v2";
 
 export type AuthEntryChoice = "guest";
 

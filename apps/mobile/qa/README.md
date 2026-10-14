@@ -19,7 +19,7 @@ Si se genera un binario dedicado, su identificador es
 
 ## Escenarios
 
-Los enlaces `turismo-vinculacion://qa?screen=tabs|chat|route|form|search` seleccionan y reinician
+Los enlaces `rumbo-ec://qa?screen=tabs|chat|route|form|search` seleccionan y reinician
 cada escenario, incluso cuando ya está abierto:
 
 | Escenario | Controles para automatización                                                                                                                                            |

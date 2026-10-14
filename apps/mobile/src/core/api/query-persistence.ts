@@ -19,7 +19,7 @@ let persistedAccountId: number | null | undefined;
 let accountChange = 0;
 
 const queryCachePersister = createQueryCachePersister({
-  key: "turismo-vinculacion-query-cache-v1",
+  key: "rumbo-ec-query-cache-v1",
   storage: AsyncStorage,
   filter: (client) => filterPersistedClient(client, persistedAccountId),
 });

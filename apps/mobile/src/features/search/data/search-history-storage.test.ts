@@ -48,7 +48,7 @@ describe("search history storage", () => {
 
   it("ignores malformed entries and clears the history", async () => {
     values.set(
-      "turismo-vinculacion-search-history-v1",
+      "rumbo-ec-search-history-v1",
       JSON.stringify(["mirador", 3, " ", null]),
     );
     await expect(listSearchHistory()).resolves.toEqual(["mirador"]);

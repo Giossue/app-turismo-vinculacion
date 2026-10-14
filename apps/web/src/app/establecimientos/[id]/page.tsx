@@ -56,7 +56,7 @@ export default async function EstablishmentPage({
         <p>
           <a
             className="backLink"
-            href={`turismo-vinculacion://establishments/${establishment.id}`}
+            href={`rumbo-ec://establishments/${establishment.id}`}
           >
             Abrir en la app
           </a>

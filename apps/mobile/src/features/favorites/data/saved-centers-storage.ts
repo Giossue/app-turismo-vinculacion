@@ -9,7 +9,7 @@ import type { PublicCenter } from "@/features/centers/domain/public-center";
  * accounts existed. It is only read to import it once into the account that
  * signs in; saved places now live exclusively in `favoritos_centros`.
  */
-const legacyStorageKey = "turismo-vinculacion-saved-centers-v1";
+const legacyStorageKey = "rumbo-ec-saved-centers-v1";
 
 export async function listLegacySavedCenters(): Promise<
   readonly PublicCenter[]

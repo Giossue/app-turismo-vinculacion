@@ -29,7 +29,7 @@ describe("establishment QR page", () => {
 
   it("offers the app deep link, directions and the first photo", () => {
     const html = renderEstablishmentPage(base);
-    expect(html).toContain("turismo-vinculacion://establishments/78");
+    expect(html).toContain("rumbo-ec://establishments/78");
     expect(html).toContain("destination=-1.58905,-79.00073");
     expect(html).toContain("/api/v1/media/establishments/5");
   });

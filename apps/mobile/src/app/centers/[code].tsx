@@ -4,11 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { firstSearchParam } from "@/core/navigation/search-params";
 import { useTurismoPalette } from "@/core/ui/theme-context";
-import {
-  TourismActionButton,
-  TourismIconAction,
-  TourismSurface,
-} from "@/core/ui/tourism-controls";
+import { TourismIconAction, TourismSurface } from "@/core/ui/tourism-controls";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import { TourismStateView } from "@/core/ui/tourism-state";
 import { turismoSpacing, turismoTypography } from "@/core/ui/tokens";
@@ -24,6 +20,7 @@ import { CenterInformation } from "@/features/centers/presentation/center-detail
 import { CenterPhotos } from "@/features/centers/presentation/center-detail/center-photos";
 import { CenterRatingSummary } from "@/features/centers/presentation/center-detail/center-rating-summary";
 import { useCenterSaveToggle } from "@/features/centers/presentation/center-detail/use-center-save-toggle";
+import { PlaceActions } from "@/features/favorites/presentation/save-action-button";
 import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/saved-center-error-snackbar";
 import { useCenterOpinions } from "@/features/opinions/application/use-center-opinions";
 import { CenterOpinions } from "@/features/opinions/presentation/center-opinions";
@@ -127,15 +124,6 @@ function CenterDetailContent({
             }
             name={center.name}
             photo={center.photos[0]}
-            trailing={
-              <TourismIconAction
-                accessibilityLabel={save.accessibilityLabel}
-                filled={save.saved}
-                icon="bookmark"
-                onPress={save.toggle}
-                selected={save.saved}
-              />
-            }
           />
           <View style={styles.detailBody}>
             <Text style={[styles.title, { color: colors.text }]}>
@@ -145,11 +133,9 @@ function CenterDetailContent({
               onPress={() => setActiveTab("opinions")}
               summary={opinions.data?.summary}
             />
-            <TourismActionButton
-              icon="route"
-              label="Cómo llegar"
-              onPress={() => router.push(buildRouteHref(center))}
-              style={styles.routeButton}
+            <PlaceActions
+              onOpenRoute={() => router.push(buildRouteHref(center))}
+              save={save}
             />
             <CenterDetailTabs onChange={setActiveTab} value={activeTab} />
             {activeTab === "information" ? (
@@ -176,5 +162,4 @@ const styles = StyleSheet.create({
   detailCard: { overflow: "hidden", padding: 0 },
   detailBody: { gap: turismoSpacing.md, padding: turismoSpacing.md },
   title: { ...turismoTypography.title },
-  routeButton: { width: "100%" },
 });

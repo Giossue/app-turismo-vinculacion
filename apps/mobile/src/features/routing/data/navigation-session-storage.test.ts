@@ -26,7 +26,7 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
   },
 }));
 
-const sessionKey = "turismo-vinculacion-active-navigation-v1";
+const sessionKey = "rumbo-ec-active-navigation-v1";
 
 const snapshot: NavigationSessionSnapshot = {
   active: true,

@@ -5,7 +5,7 @@ import type { GeoCoordinate } from "@/core/geo/types";
 import type { CalculatedRoute, RouteMode } from "../domain/routing";
 import { calculatedRouteSchema } from "./routing-api";
 
-const savedRoutesStoragePrefix = "turismo-vinculacion-saved-routes-v1";
+const savedRoutesStoragePrefix = "rumbo-ec-saved-routes-v1";
 export const savedCalculatedRouteLimit = 20;
 
 const coordinateSchema = z.object({

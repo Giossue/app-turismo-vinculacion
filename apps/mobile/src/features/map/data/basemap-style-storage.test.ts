@@ -34,12 +34,12 @@ describe("persistent basemap style", () => {
     ).resolves.toBeNull();
   });
   it("ignores corrupt JSON and invalid native style objects", async () => {
-    values.set("turismo-vinculacion-basemap-style:v1", "bad json");
+    values.set("rumbo-ec-basemap-style:v1", "bad json");
     await expect(
       readStoredBasemapStyle("light", "https://tiles.test/style.json"),
     ).resolves.toBeNull();
     values.set(
-      "turismo-vinculacion-basemap-style:v1",
+      "rumbo-ec-basemap-style:v1",
       JSON.stringify({
         styleUrl: "url",
         styles: { light: { version: 8, sources: {} } },

@@ -66,7 +66,7 @@ export function renderEstablishmentPage(data: EstablishmentPageData): string {
     }<div class="body"><h1>${escapeHtml(data.nombreComercial)}</h1>
 <p class="tag">${escapeHtml([category, data.actividad].filter(Boolean).join(" · "))}</p>
 <dl>${rows}</dl>
-<a class="btn primary" href="turismo-vinculacion://establishments/${data.id}">Abrir en la app</a>
+<a class="btn primary" href="rumbo-ec://establishments/${data.id}">Abrir en la app</a>
 ${directions}</div></div>`,
   );
 }

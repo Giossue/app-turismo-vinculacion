@@ -1,23 +1,22 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { isApiUnavailableError } from "@/core/api/http";
 import { useTurismoPalette } from "@/core/ui/theme-context";
-import { TourismActionButton, TourismBadge } from "@/core/ui/tourism-controls";
+import { TourismBadge } from "@/core/ui/tourism-controls";
 import {
   TourismBottomSheet,
   TourismSheetScrollView,
 } from "@/core/ui/tourism-bottom-sheet";
 import { TourismInfoRow } from "@/core/ui/tourism-content";
 import { TourismStateView } from "@/core/ui/tourism-state";
-import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
-  turismoIconSizes,
   turismoMetrics,
   turismoOpacity,
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
 import { CenterPhotos } from "@/features/centers/presentation/center-detail/center-photos";
+import { PlaceActions } from "@/features/favorites/presentation/save-action-button";
 import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/saved-center-error-snackbar";
 import { usePublishedEstablishment } from "../application/use-published-establishment";
 import {
@@ -60,27 +59,6 @@ export function EstablishmentDetailSheet({
               <TourismBadge>{categoryLabel}</TourismBadge>
             ) : null}
           </View>
-          {save ? (
-            <Pressable
-              accessibilityLabel={save.accessibilityLabel}
-              accessibilityRole="button"
-              accessibilityState={{ selected: save.saved }}
-              hitSlop={turismoSpacing.xxs}
-              onPress={save.toggle}
-              style={({ pressed }) => [
-                styles.saveAction,
-                pressed && styles.pressed,
-              ]}
-            >
-              <TurismoIcon
-                color={save.saved ? colors.primaryStrong : colors.primary}
-                fill={save.saved ? colors.primaryStrong : "none"}
-                fillOpacity={save.saved ? 1 : undefined}
-                name="bookmark"
-                size={turismoIconSizes.md}
-              />
-            </Pressable>
-          ) : null}
         </View>
 
         <TourismInfoRow
@@ -94,11 +72,7 @@ export function EstablishmentDetailSheet({
           }
         />
 
-        <TourismActionButton
-          icon="route"
-          label="Cómo llegar"
-          onPress={onOpenRoute}
-        />
+        <PlaceActions onOpenRoute={onOpenRoute} save={save} />
 
         {establishment.id === undefined ? null : detailQuery.isPending &&
           !detailQuery.isPaused ? (

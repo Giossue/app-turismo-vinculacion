@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { readJson, removeJson, writeJson } from "@/core/storage/json-storage";
 
-const storageKey = "turismo-vinculacion-search-history-v1";
+const storageKey = "rumbo-ec-search-history-v1";
 const maxEntries = 8;
 
 export async function listSearchHistory(): Promise<readonly string[]> {

@@ -19,7 +19,7 @@ import {
   hasArrivedAtDestination,
 } from "../domain/navigation-guidance";
 
-const navigationLocationTaskName = "turismo-vinculacion-navigation-location";
+const navigationLocationTaskName = "rumbo-ec-navigation-location";
 
 /** Watch options of the persistent background task. */
 export const navigationLocationOptions = {
@@ -299,7 +299,7 @@ function getNavigationLocationTaskOptions(
         notificationBody ??
         "Siguiendo tu ubicación durante la navegación activa.",
       notificationColor: turismoFixedColors.brand,
-      notificationTitle: "Turismo Vinculación",
+      notificationTitle: "Rumbo EC",
     },
     pausesUpdatesAutomatically: false,
     showsBackgroundLocationIndicator: true,

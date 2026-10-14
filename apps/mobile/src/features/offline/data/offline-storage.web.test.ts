@@ -56,13 +56,10 @@ describe("web offline storage", () => {
   });
 
   it("skips stored manifests that no longer match the contract", async () => {
+    values.set("rumbo-ec-offline-city:guaranda", JSON.stringify(manifest));
+    values.set("rumbo-ec-offline-city:roto", "{not json");
     values.set(
-      "turismo-vinculacion-offline-city:guaranda",
-      JSON.stringify(manifest),
-    );
-    values.set("turismo-vinculacion-offline-city:roto", "{not json");
-    values.set(
-      "turismo-vinculacion-offline-city:viejo",
+      "rumbo-ec-offline-city:viejo",
       JSON.stringify({ city: manifest.city }),
     );
 

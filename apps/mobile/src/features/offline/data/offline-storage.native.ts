@@ -22,7 +22,7 @@ function getDatabase(): Promise<SQLiteDatabase> {
 }
 
 async function openOfflineDatabase(): Promise<SQLiteDatabase> {
-  const database = await openDatabaseAsync("turismo-vinculacion-offline.db");
+  const database = await openDatabaseAsync("rumbo-ec-offline.db");
   await database.execAsync(`
     PRAGMA journal_mode = WAL;
     PRAGMA foreign_keys = ON;

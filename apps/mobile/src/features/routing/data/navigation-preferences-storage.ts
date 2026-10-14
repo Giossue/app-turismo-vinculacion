@@ -2,8 +2,7 @@ import { z } from "zod";
 
 import { readJson, writeJson } from "@/core/storage/json-storage";
 
-const navigationPreferencesStorageKey =
-  "turismo-vinculacion-navigation-preferences-v1";
+const navigationPreferencesStorageKey = "rumbo-ec-navigation-preferences-v1";
 
 /**
  * Choices the tourist makes in the route preview and expects to find again.
