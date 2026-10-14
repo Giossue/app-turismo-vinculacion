@@ -1,4 +1,6 @@
 import {
+  BadRequestException,
+  NotFoundException,
   Body,
   Controller,
   Delete,
@@ -31,6 +33,10 @@ import {
 } from "./establishments.dto";
 import { EstablishmentsService } from "./establishments.service";
 import { PlatformSettingsService } from "../settings/platform-settings.service";
+import {
+  renderEstablishmentNotFound,
+  renderEstablishmentPage,
+} from "./establishment-page";
 import { MinturRegistryImportService } from "./mintur-registry-import.service";
 import { readRegistryUpload } from "./mintur-registry-upload";
 
@@ -127,6 +133,7 @@ export class AdminEstablishmentsController {
         user.id,
         body,
         user.roles.includes("ADMINISTRADOR"),
+        (await this.settings?.get())?.directPublishCatastros === true,
       ),
     };
   }
@@ -219,5 +226,38 @@ export class PublicEstablishmentsController {
   @Get(":id")
   async find(@Param("id") id: string) {
     return { data: await this.establishments.findPublic(id) };
+  }
+}
+
+/** Página que abre el código QR pegado en cada establecimiento: `/e/:id`. */
+@ApiTags("establishments")
+@Controller("e")
+export class EstablishmentQrPageController {
+  constructor(
+    @Inject(EstablishmentsService)
+    private readonly establishments: EstablishmentsService,
+  ) {}
+
+  @Get(":id")
+  async page(@Param("id") id: string, @Res() response: FastifyReply) {
+    response
+      .header("Content-Type", "text/html; charset=utf-8")
+      .header(
+        "Content-Security-Policy",
+        "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
+      )
+      .header("Cache-Control", "public, max-age=60");
+    try {
+      const data = await this.establishments.findPublic(id);
+      return response.send(renderEstablishmentPage(data));
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        return response.status(404).send(renderEstablishmentNotFound());
+      }
+      throw error;
+    }
   }
 }

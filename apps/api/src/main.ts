@@ -51,7 +51,8 @@ async function bootstrap(): Promise<void> {
     methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
   });
-  app.setGlobalPrefix("api/v1");
+  // `/e/:id` es la página del QR: debe quedar en la raíz para que el enlace sea corto.
+  app.setGlobalPrefix("api/v1", { exclude: ["e/:id"] });
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,

@@ -334,6 +334,7 @@ export class EstablishmentsService {
     actorId: number,
     input: SaveEstablishmentDto,
     isAdmin = true,
+    directPublish = false,
   ) {
     const numericId = this.parseId(id);
     return this.dataSource.transaction(async (manager) => {
@@ -344,8 +345,12 @@ export class EstablishmentsService {
         actorId,
         isAdmin,
       );
+      // Con el paso libre el agente corrige sus catastros ya publicados y
+      // siguen publicados, igual que cuando edita el administrador.
+      const keepsStatus =
+        isAdmin || (directPublish && current.reviewStatus === "PUBLICADO");
       if (
-        !isAdmin &&
+        !keepsStatus &&
         !["BORRADOR", "RECHAZADO"].includes(current.reviewStatus)
       ) {
         throw new ConflictException(
@@ -400,7 +405,7 @@ export class EstablishmentsService {
         nextLatitude,
         nextLongitude,
         numericId,
-        isAdmin,
+        keepsStatus,
       ];
       await manager.query(
         `UPDATE establecimientos_turisticos
