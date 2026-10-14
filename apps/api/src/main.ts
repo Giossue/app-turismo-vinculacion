@@ -51,8 +51,10 @@ async function bootstrap(): Promise<void> {
     methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
   });
-  // `/e/:id` es la página del QR: debe quedar en la raíz para que el enlace sea corto.
-  app.setGlobalPrefix("api/v1", { exclude: ["e/:id"] });
+  // `/e/:id` (QR) y `/descargar` (landing de la app) quedan en la raíz: enlaces cortos.
+  app.setGlobalPrefix("api/v1", {
+    exclude: ["e/:id", "descargar", "descargar/turismo-vinculacion.apk"],
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,

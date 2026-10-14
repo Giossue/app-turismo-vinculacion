@@ -4,6 +4,7 @@ import { AuthModule } from "../auth/auth.module";
 import { PlatformSettingsModule } from "../settings/platform-settings.module";
 import {
   AdminEstablishmentsController,
+  DownloadPageController,
   EstablishmentQrPageController,
   PublicEstablishmentsController,
 } from "./establishments.controller";
@@ -16,6 +17,7 @@ import { MinturRegistryImportService } from "./mintur-registry-import.service";
     AdminEstablishmentsController,
     PublicEstablishmentsController,
     EstablishmentQrPageController,
+    DownloadPageController,
   ],
   providers: [EstablishmentsService, MinturRegistryImportService],
   exports: [EstablishmentsService],

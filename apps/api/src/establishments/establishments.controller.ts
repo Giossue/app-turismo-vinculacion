@@ -33,6 +33,7 @@ import {
 } from "./establishments.dto";
 import { EstablishmentsService } from "./establishments.service";
 import { PlatformSettingsService } from "../settings/platform-settings.service";
+import { APP_DOWNLOAD_URL, renderDownloadPage } from "./download-page";
 import {
   renderEstablishmentNotFound,
   renderEstablishmentPage,
@@ -259,5 +260,30 @@ export class EstablishmentQrPageController {
       }
       throw error;
     }
+  }
+}
+
+/** Página pública para descargar la app: `/descargar`. */
+@ApiTags("establishments")
+@Controller("descargar")
+export class DownloadPageController {
+  @Get()
+  page(@Res() response: FastifyReply) {
+    return response
+      .header("Content-Type", "text/html; charset=utf-8")
+      .header(
+        "Content-Security-Policy",
+        "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
+      )
+      .header("Cache-Control", "public, max-age=300")
+      .send(renderDownloadPage());
+  }
+
+  /** Redirige al archivo más reciente; el enlace de la página no cambia nunca. */
+  @Get("turismo-vinculacion.apk")
+  apk(@Res() response: FastifyReply) {
+    return response
+      .header("Cache-Control", "no-cache")
+      .redirect(APP_DOWNLOAD_URL, 302);
   }
 }
