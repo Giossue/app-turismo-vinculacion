@@ -52,6 +52,7 @@ export type PublicCenterDetail = PublicCenter &
       url: string;
       mimeType: string;
       description: string | null;
+      sourceAuthor?: string | null;
     }>[];
   }>;
 

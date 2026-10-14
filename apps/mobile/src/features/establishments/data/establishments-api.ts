@@ -53,6 +53,7 @@ const detailSchema = z.object({
           id: z.number().int().positive(),
           url: z.string().min(1),
           description: z.string().nullable(),
+          sourceAuthor: z.string().nullable().default(null),
         }),
       )
       .default([]),

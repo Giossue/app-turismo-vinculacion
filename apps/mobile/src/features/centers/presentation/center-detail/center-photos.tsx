@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { TourismActionButton } from "@/core/ui/tourism-controls";
 import { Image } from "expo-image";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { resolveMediaVariantUrl } from "@/core/api/media-url";
+import { PhotoViewer } from "@/core/ui/photo-viewer";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import {
   turismoAspectRatios,
@@ -16,6 +17,7 @@ type PlacePhoto = Readonly<{
   id: number;
   url: string;
   description: string | null;
+  sourceAuthor?: string | null;
 }>;
 
 /**
@@ -30,6 +32,7 @@ export function CenterPhotos({
 }>) {
   const colors = useTurismoPalette();
   const [page, setPage] = useState(0);
+  const [opened, setOpened] = useState<number | null>(null);
   const pageSize = 8;
   const currentPage = Math.min(
     page,
@@ -45,8 +48,11 @@ export function CenterPhotos({
     <View style={styles.container}>
       <View style={styles.grid}>
         {visible.map((photo) => (
-          <View
+          <Pressable
+            accessibilityHint="Abre la fotografía a pantalla completa"
+            accessibilityRole="imagebutton"
             key={photo.id}
+            onPress={() => setOpened(photos.indexOf(photo))}
             style={[styles.tile, { backgroundColor: colors.surfaceMuted }]}
           >
             <Image
@@ -63,9 +69,16 @@ export function CenterPhotos({
                 {photo.description}
               </Text>
             ) : null}
-          </View>
+          </Pressable>
         ))}
       </View>
+      {opened !== null ? (
+        <PhotoViewer
+          initialIndex={opened}
+          onClose={() => setOpened(null)}
+          photos={photos}
+        />
+      ) : null}
       {photos.length > pageSize ? (
         <View style={styles.pagination}>
           <Text

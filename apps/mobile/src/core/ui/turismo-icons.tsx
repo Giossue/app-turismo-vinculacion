@@ -1,5 +1,6 @@
 import type { LucideIcon, LucideProps } from "lucide-react-native";
 import ArrowLeft from "lucide-react-native/icons/arrow-left";
+import Info from "lucide-react-native/icons/info";
 import ArrowRight from "lucide-react-native/icons/arrow-right";
 import ArrowUp from "lucide-react-native/icons/arrow-up";
 import Bike from "lucide-react-native/icons/bike";
@@ -97,6 +98,7 @@ const turismoIconMap = {
   foot: Footprints,
   history: History,
   image: Image,
+  info: Info,
   locate: LocateFixed,
   logOut: LogOut,
   genderMale: Mars,

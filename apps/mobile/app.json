@@ -2,7 +2,7 @@
   "expo": {
     "name": "Turismo Vinculación",
     "slug": "turismo-vinculacion",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "turismo-vinculacion",
@@ -20,6 +20,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "ec.edu.ueb.turismovinculacion.software",
+      "versionCode": 2,
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",

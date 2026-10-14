@@ -826,9 +826,14 @@ export class EstablishmentsService {
     const row = rows[0];
     if (!row) throw new NotFoundException("No se encontró el establecimiento.");
     const photos = await this.dataSource.query<
-      Array<{ id: string; description: string | null }>
+      Array<{
+        id: string;
+        description: string | null;
+        sourceAuthor: string | null;
+      }>
     >(
-      `SELECT a.id, a.descripcion AS description
+      `SELECT a.id, a.descripcion AS description,
+              a.fuente_autor AS "sourceAuthor"
          FROM archivos_establecimiento_turistico a
         WHERE a.establecimiento_id = $1 AND a.estado = 'PUBLICADO'
         ORDER BY a.orden NULLS LAST, a.created_at, a.id`,
@@ -840,6 +845,7 @@ export class EstablishmentsService {
         id: Number(photo.id),
         url: establishmentPhotoUrl(photo.id),
         description: photo.description,
+        sourceAuthor: photo.sourceAuthor,
       })),
     };
   }

@@ -66,6 +66,7 @@ export type EstablishmentPhoto = Readonly<{
   id: number;
   url: string;
   description: string | null;
+  sourceAuthor?: string | null;
 }>;
 
 /** `GET /establishments/:id`: the public record plus its published photos. */

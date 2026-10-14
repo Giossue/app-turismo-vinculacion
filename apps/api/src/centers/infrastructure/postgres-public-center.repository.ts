@@ -120,7 +120,7 @@ export class PostgresPublicCenterRepository implements PublicCenterRepository {
         COALESCE((SELECT array_agg(DISTINCT at.nombre ORDER BY at.nombre) FROM actividades_centro_turistico act JOIN actividades_turisticas at ON at.id = act.actividad_turistica_id WHERE act.centro_turistico_id = c.id), ARRAY[]::text[]) AS activities,
         COALESCE((SELECT array_agg(DISTINCT tac.nombre ORDER BY tac.nombre) FROM centro_accesibilidad_resumen acr JOIN tipos_accesibilidad tac ON tac.id = acr.tipo_accesibilidad_id WHERE acr.centro_turistico_id = c.id AND acr.aplica), ARRAY[]::text[]) AS accessibility,
         COALESCE((SELECT array_agg(DISTINCT tf.nombre ORDER BY tf.nombre) FROM facilidades_centro fc JOIN tipos_facilidad tf ON tf.id = fc.tipo_facilidad_id WHERE fc.centro_turistico_id = c.id), ARRAY[]::text[]) AS facilities,
-        COALESCE((SELECT json_agg(json_build_object('id', a.id, 'url', '/api/v1/media/' || a.id, 'mimeType', a.mime_type, 'description', a.descripcion) ORDER BY a.orden NULLS LAST, a.id)
+        COALESCE((SELECT json_agg(json_build_object('id', a.id, 'url', '/api/v1/media/' || a.id, 'mimeType', a.mime_type, 'description', a.descripcion, 'sourceAuthor', a.fuente_autor) ORDER BY a.orden NULLS LAST, a.id)
                     FROM archivos_centro_turistico a
                     JOIN tipos_archivo_centro_turistico t ON t.id = a.tipo_archivo_centro_id
                    WHERE a.centro_turistico_id = c.id AND a.estado = 'PUBLICADO' AND t.codigo = 'FOTOGRAFIA'), '[]'::json) AS photos

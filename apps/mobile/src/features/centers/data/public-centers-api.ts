@@ -59,6 +59,7 @@ const detailSchema = publicCenterSchema.extend({
         url: z.string().min(1),
         mimeType: z.string().min(1),
         description: z.string().nullable(),
+        sourceAuthor: z.string().nullable().default(null),
       }),
     )
     .default([]),
