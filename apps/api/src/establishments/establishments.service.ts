@@ -445,7 +445,12 @@ export class EstablishmentsService {
     });
   }
 
-  async submitReview(id: string, actorId: number, isAdmin = true) {
+  async submitReview(
+    id: string,
+    actorId: number,
+    isAdmin = true,
+    publishDirectly = false,
+  ) {
     const numericId = this.parseId(id);
     return this.dataSource.transaction(async (manager) => {
       await this.assertEstablishmentAccess(
@@ -482,22 +487,36 @@ export class EstablishmentsService {
         current,
         saved,
       );
+      // Paso libre: se aprueba en la misma transacción, sin esperar al administrador.
+      if (publishDirectly) {
+        return this.decide(manager, numericId, actorId, { action: "APPROVE" });
+      }
       return saved;
     });
   }
 
   async review(id: string, actorId: number, input: ReviewEstablishmentDto) {
     const numericId = this.parseId(id);
-    return this.dataSource.transaction(async (manager) => {
-      const current = await this.findWithManager(manager, numericId, true);
-      if (current.reviewStatus !== "EN_REVISION") {
-        throw new ConflictException(
-          "El catastro ya no está en revisión; actualiza la lista antes de operar.",
-        );
-      }
-      const approved = input.action === "APPROVE";
-      await manager.query(
-        `UPDATE establecimientos_turisticos
+    return this.dataSource.transaction((manager) =>
+      this.decide(manager, numericId, actorId, input),
+    );
+  }
+
+  private async decide(
+    manager: EntityManager,
+    numericId: number,
+    actorId: number,
+    input: ReviewEstablishmentDto,
+  ) {
+    const current = await this.findWithManager(manager, numericId, true);
+    if (current.reviewStatus !== "EN_REVISION") {
+      throw new ConflictException(
+        "El catastro ya no está en revisión; actualiza la lista antes de operar.",
+      );
+    }
+    const approved = input.action === "APPROVE";
+    await manager.query(
+      `UPDATE establecimientos_turisticos
             SET estado_revision = $2,
                 observacion_revision = $3,
                 revisado_por = $4,
@@ -505,28 +524,27 @@ export class EstablishmentsService {
                 activo = $5,
                 updated_at = CURRENT_TIMESTAMP
           WHERE id = $1`,
-        [
-          numericId,
-          approved ? "PUBLICADO" : "RECHAZADO",
-          input.observation ?? null,
-          actorId,
-          approved,
-        ],
-      );
-      if (approved) {
-        await this.publishPendingPhotos(manager, numericId, actorId);
-      }
-      const saved = await this.findWithManager(manager, numericId);
-      await this.audit(
-        manager,
+      [
         numericId,
+        approved ? "PUBLICADO" : "RECHAZADO",
+        input.observation ?? null,
         actorId,
-        approved ? "APROBAR" : "RECHAZAR",
-        current,
-        saved,
-      );
-      return saved;
-    });
+        approved,
+      ],
+    );
+    if (approved) {
+      await this.publishPendingPhotos(manager, numericId, actorId);
+    }
+    const saved = await this.findWithManager(manager, numericId);
+    await this.audit(
+      manager,
+      numericId,
+      actorId,
+      approved ? "APROBAR" : "RECHAZAR",
+      current,
+      saved,
+    );
+    return saved;
   }
 
   async setActive(id: string, actorId: number, active: boolean) {

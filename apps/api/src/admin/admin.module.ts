@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 
 import { AuthModule } from "../auth/auth.module";
 import { FilesModule } from "../files/files.module";
+import { PlatformSettingsModule } from "../settings/platform-settings.module";
 import { AdminCentersService } from "./admin-centers.service";
 import { AdminActivityController } from "./admin-activity.controller";
 import { AdminActivityService } from "./admin-activity.service";
@@ -11,7 +12,7 @@ import { AdminNavigationController } from "./admin-navigation.controller";
 import { AdminNavigationService } from "./admin-navigation.service";
 
 @Module({
-  imports: [AuthModule, FilesModule],
+  imports: [AuthModule, FilesModule, PlatformSettingsModule],
   controllers: [
     AdminController,
     AdminNavigationController,

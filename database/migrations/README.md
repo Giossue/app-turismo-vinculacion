@@ -316,3 +316,10 @@ La migración `20261013_contingency_plan_unique.sql` crea el índice único
 seguridad»; sin él, publicar una ficha con plan de contingencia falla con
 `ON CONFLICT`. Es idempotente. Aplicarla antes de publicar fichas.
 Rollback: `DROP INDEX planes_contingencia_centro_turistico_id_key`.
+
+La migración `20261014_platform_settings.sql` crea `configuracion_plataforma` con los
+interruptores `publicacion_directa_catastros` y `publicacion_directa_fichas` (ambos
+apagados). Con el interruptor encendido, lo que un agente turístico envía a revisión
+se publica en el mismo momento, sin pasar por el administrador. Aplicarla antes de
+desplegar la API que los consulta. Rollback: `DROP TABLE configuracion_plataforma`
+solo después de revertir la API.

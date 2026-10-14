@@ -118,3 +118,39 @@ describe("AdminEstablishmentsController audit", () => {
     expect(guard.canActivate(context)).toBe(true);
   });
 });
+
+describe("AdminEstablishmentsController direct publication", () => {
+  const agent = { id: 12, roles: ["AGENTE_TURISTICO"] } as never;
+
+  it("keeps the review for agents unless the administrator opened the way", async () => {
+    const submitReview = vi.fn().mockResolvedValue({ id: 8 });
+    const settings = {
+      get: vi.fn().mockResolvedValue({ directPublishCatastros: false }),
+    };
+    const controller = new AdminEstablishmentsController(
+      { submitReview } as never,
+      {} as never,
+      settings as never,
+    );
+
+    await controller.submitReview("8", agent);
+
+    expect(submitReview).toHaveBeenCalledWith("8", 12, false, false);
+  });
+
+  it("publishes the agent's submission right away when the setting is on", async () => {
+    const submitReview = vi.fn().mockResolvedValue({ id: 8 });
+    const settings = {
+      get: vi.fn().mockResolvedValue({ directPublishCatastros: true }),
+    };
+    const controller = new AdminEstablishmentsController(
+      { submitReview } as never,
+      {} as never,
+      settings as never,
+    );
+
+    await controller.submitReview("8", agent);
+
+    expect(submitReview).toHaveBeenCalledWith("8", 12, false, true);
+  });
+});

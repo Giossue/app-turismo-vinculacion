@@ -22,6 +22,7 @@ import {
 
 import { AdminCentersService } from "./admin-centers.service";
 import { AdminUsersService } from "./admin-users.service";
+import { PlatformSettingsService } from "../settings/platform-settings.service";
 import {
   AdminCentersQueryDto,
   AdminUsersQueryDto,
@@ -49,6 +50,9 @@ export class AdminController {
     @Optional()
     @Inject(AdminUsersService)
     private readonly users?: AdminUsersService,
+    @Optional()
+    @Inject(PlatformSettingsService)
+    private readonly settings?: PlatformSettingsService,
   ) {}
 
   @Get("users")
@@ -249,12 +253,16 @@ export class AdminController {
     @Param("code") code: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
+    // El administrador publica directo; los agentes solo si él dejó el paso libre.
+    const publishDirectly =
+      isAdmin(user) ||
+      (await this.settings?.get())?.directPublishFichas === true;
     return {
       data: await this.centers.submitReview(
         code,
         user.id,
         isAdmin(user),
-        isAdmin(user),
+        publishDirectly,
       ),
     };
   }

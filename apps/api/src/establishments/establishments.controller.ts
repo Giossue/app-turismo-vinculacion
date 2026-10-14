@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Inject,
+  Optional,
   Param,
   Patch,
   Post,
@@ -29,6 +30,7 @@ import {
   SaveEstablishmentDto,
 } from "./establishments.dto";
 import { EstablishmentsService } from "./establishments.service";
+import { PlatformSettingsService } from "../settings/platform-settings.service";
 import { MinturRegistryImportService } from "./mintur-registry-import.service";
 import { readRegistryUpload } from "./mintur-registry-upload";
 
@@ -42,6 +44,9 @@ export class AdminEstablishmentsController {
     private readonly establishments: EstablishmentsService,
     @Inject(MinturRegistryImportService)
     private readonly registryImport: MinturRegistryImportService,
+    @Optional()
+    @Inject(PlatformSettingsService)
+    private readonly settings?: PlatformSettingsService,
   ) {}
 
   @Post("import")
@@ -141,11 +146,15 @@ export class AdminEstablishmentsController {
     @Param("id") id: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
+    // Los agentes publican directo solo si el administrador dejó el paso libre.
+    const publishDirectly =
+      (await this.settings?.get())?.directPublishCatastros === true;
     return {
       data: await this.establishments.submitReview(
         id,
         user.id,
         user.roles.includes("ADMINISTRADOR"),
+        publishDirectly,
       ),
     };
   }
