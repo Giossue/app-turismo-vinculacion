@@ -7460,7 +7460,23 @@ export class AdminCentersService {
     const gad = isJsonRecord(annexes.gadValidation)
       ? annexes.gadValidation
       : null;
-    if (gad) {
+    // Solo la completa quien valida cuando el GAD no levantó la ficha: un bloque
+    // vacío (la API lo crea con «Sin información») no impide publicar.
+    const gadHasContent =
+      gad !== null &&
+      (isBinarySectionResponse(gad.acceptance) ||
+        [
+          "name",
+          "institution",
+          "position",
+          "phone",
+          "email",
+          "date",
+          "observation",
+        ].some(
+          (key) => typeof gad[key] === "string" && gad[key].trim().length > 0,
+        ));
+    if (gad && gadHasContent) {
       if (!isBinarySectionResponse(gad.acceptance)) {
         throw new ConflictException(
           "La validación del GAD requiere una aceptación SI o NO antes de publicar.",
