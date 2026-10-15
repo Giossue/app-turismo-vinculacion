@@ -507,7 +507,7 @@ function isBinarySectionResponse(value: unknown): value is "SI" | "NO" {
   return value === "SI" || value === "NO";
 }
 
-function isPromotionDecisionResponse(value: unknown): boolean {
+function isDecisionResponse(value: unknown): boolean {
   return isBinarySectionResponse(value) || value === "SIN_INFORMACION";
 }
 
@@ -4592,10 +4592,10 @@ export class AdminCentersService {
              observacion = EXCLUDED.observacion`,
           [
             centerId,
-            sectionResponseToBoolean(registry.exists) ?? false,
+            sectionResponseToBoolean(registry.exists),
             registry.type ?? null,
             registry.years ?? null,
-            sectionResponseToBoolean(registry.reports) ?? false,
+            sectionResponseToBoolean(registry.reports),
             registry.frequency ?? null,
             registry.observation ?? null,
           ],
@@ -4758,7 +4758,7 @@ export class AdminCentersService {
         [
           centerId,
           questionId,
-          sectionResponseToBoolean(policy.response) ?? false,
+          sectionResponseToBoolean(policy.response),
           policy.year ?? null,
           policy.specification ?? null,
           policy.observation ?? null,
@@ -5989,10 +5989,18 @@ export class AdminCentersService {
       (await Promise.all([
         manager.query(
           `SELECT json_build_object(
-                    'exists', CASE WHEN existe_registro THEN 'SI' ELSE 'NO' END,
+                    'exists', CASE
+                      WHEN existe_registro IS TRUE THEN 'SI'
+                      WHEN existe_registro IS FALSE THEN 'NO'
+                      ELSE 'SIN_INFORMACION'
+                    END,
                     'type', tipo_registro,
                     'years', anios_registro,
-                    'reports', CASE WHEN genera_reportes THEN 'SI' ELSE 'NO' END,
+                    'reports', CASE
+                      WHEN genera_reportes IS TRUE THEN 'SI'
+                      WHEN genera_reportes IS FALSE THEN 'NO'
+                      ELSE 'SIN_INFORMACION'
+                    END,
                     'frequency', frecuencia_reporte,
                     'observation', observacion
                   ) AS data
@@ -6099,7 +6107,11 @@ export class AdminCentersService {
       `SELECT COALESCE(json_agg(json_build_object(
                 'code', qp.codigo,
                 'question', qp.pregunta,
-                'response', CASE WHEN rpc.respuesta THEN 'SI' ELSE 'NO' END,
+                'response', CASE
+                  WHEN rpc.respuesta IS TRUE THEN 'SI'
+                  WHEN rpc.respuesta IS FALSE THEN 'NO'
+                  ELSE 'SIN_INFORMACION'
+                END,
                 'year', rpc.anio,
                 'specification', rpc.especificacion,
                 'observation', rpc.observacion
@@ -6936,11 +6948,11 @@ export class AdminCentersService {
     const registry = isJsonRecord(visitors.registry) ? visitors.registry : null;
     if (registry) {
       if (
-        !isBinarySectionResponse(registry.exists) ||
-        !isBinarySectionResponse(registry.reports)
+        !isDecisionResponse(registry.exists) ||
+        !isDecisionResponse(registry.reports)
       ) {
         throw new ConflictException(
-          "La sección visitantes requiere respuestas SI o NO para publicar el registro.",
+          "La sección visitantes requiere respuestas SI, NO o sin información para publicar el registro.",
         );
       }
     }
@@ -7002,9 +7014,9 @@ export class AdminCentersService {
       );
     }
     for (const policy of policies) {
-      if (!isBinarySectionResponse(policy.response)) {
+      if (!isDecisionResponse(policy.response)) {
         throw new ConflictException(
-          "La sección políticas requiere respuestas SI o NO para publicar.",
+          "La sección políticas requiere respuestas SI, NO o sin información para publicar.",
         );
       }
     }
@@ -7032,7 +7044,7 @@ export class AdminCentersService {
       : null;
     if (!promotion) return;
     for (const key of ["hasPlan", "partOfPackage"]) {
-      if (!isPromotionDecisionResponse(promotion[key])) {
+      if (!isDecisionResponse(promotion[key])) {
         throw new ConflictException(
           "Las preguntas de promoción admiten Sí, No o Sin confirmar antes de publicar.",
         );
@@ -7042,7 +7054,7 @@ export class AdminCentersService {
       promotion.includedInPlan !== undefined &&
       promotion.includedInPlan !== null
     ) {
-      if (!isPromotionDecisionResponse(promotion.includedInPlan)) {
+      if (!isDecisionResponse(promotion.includedInPlan)) {
         throw new ConflictException(
           "La inclusión en el plan admite Sí, No o Sin confirmar antes de publicar.",
         );
