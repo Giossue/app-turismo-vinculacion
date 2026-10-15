@@ -108,7 +108,7 @@ describe("AdminController section contract", () => {
 });
 
 describe("AdminController deletion boundaries", () => {
-  it("delegates logical deletion with the authenticated actor", async () => {
+  it("deletes the center and delegates catalog deletion with the actor", async () => {
     const deleteCenter = vi
       .fn()
       .mockResolvedValue({ code: "EC-001", deleted: true });
@@ -121,7 +121,7 @@ describe("AdminController deletion boundaries", () => {
     } as never);
     const user = { id: 7, roles: ["ADMINISTRADOR"] } as never;
 
-    await expect(controller.deleteCenter("EC-001", user)).resolves.toEqual({
+    await expect(controller.deleteCenter("EC-001")).resolves.toEqual({
       data: { code: "EC-001", deleted: true },
     });
     await expect(
@@ -129,7 +129,7 @@ describe("AdminController deletion boundaries", () => {
     ).resolves.toEqual({
       data: { catalog: "FACILITY", id: 3, deleted: true },
     });
-    expect(deleteCenter).toHaveBeenCalledWith("EC-001", 7);
+    expect(deleteCenter).toHaveBeenCalledWith("EC-001");
     expect(deleteCatalog).toHaveBeenCalledWith(7, "FACILITY", 3);
   });
 

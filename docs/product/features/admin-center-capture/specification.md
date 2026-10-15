@@ -165,11 +165,14 @@ tenía fecha pública, o `BORRADOR`. No se publica contenido mediante la migraci
 
 ## Eliminación administrativa
 
-`DELETE /admin/centers/:code` requiere `ADMINISTRADOR`. Marca `eliminado_at`, desactiva
-la ficha y registra `ELIMINAR` con snapshots anteriores y posteriores en una transacción.
-La ficha, borradores, revisiones, multimedia, relaciones y código se conservan. El centro
-sale del panel y de las consultas públicas; sus mutaciones y reactivación dejan de estar
-disponibles, incluida la carga de multimedia. La auditoría sigue siendo consultable.
+`DELETE /admin/centers/:code` requiere `ADMINISTRADOR` y **borra la ficha de verdad**, en una
+transacción: sus borradores, revisiones, multimedia, relaciones, favoritos, opiniones e
+historial de auditoría se eliminan en cascada, y las conversaciones de IA quedan sin ficha.
+Tras confirmar la transacción se retiran sus archivos del almacenamiento (los fallos de
+limpieza no deshacen el borrado). Un código inexistente devuelve 404, también al repetir la
+llamada. El historial de auditoría sigue siendo inmutable (`20261016_center_hard_delete.sql`
+solo admite su borrado cuando lo dispara el borrado de su ficha), y el número secuencial del
+código se recalcula sobre las fichas restantes.
 
 `DELETE /admin/catalogs/:catalog/:id` aplica el mismo permiso y conservación a las cinco
 opciones de catálogo administrables. Las opciones eliminadas se excluyen incluso al pedir

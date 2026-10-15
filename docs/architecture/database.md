@@ -24,7 +24,7 @@ TypeORM `synchronize` ni crear migraciones Prisma.
 
 - IDs internos `BIGINT`; códigos públicos derivados cuando corresponda.
 - `TIMESTAMPTZ` y almacenamiento UTC; presentación en zona del usuario.
-- Eliminación lógica para usuarios y centros.
+- Eliminación lógica para usuarios; los centros se borran de verdad con su historial (`20261016_center_hard_delete.sql`).
 - Catálogos utilizados conservan sus filas y relaciones; se desactivan o eliminan lógicamente.
 - FKs de catálogo con `RESTRICT`; detalles exclusivos con `CASCADE`; referencias
   opcionales históricas con `SET NULL` según diseño.
@@ -74,6 +74,12 @@ incluyen coordenadas, ya que la fuente no las contiene, y todas las localidades
 existentes conservan sus IDs, posiciones, nombres y activación. El snapshot original
 y su procedencia viven en `database/catalogs/` y el generador no requiere acceso a
 la base ni dependencias adicionales.
+
+`20261016_center_hard_delete.sql` convierte en cascada las claves foráneas que apuntaban a
+`centros_turisticos` con `RESTRICT` (auditoría, revisiones, opiniones, itinerarios; las
+conversaciones de IA pasan a `SET NULL`) y sustituye el trigger de inmutabilidad de
+`auditoria_fichas` por uno que solo permite el `DELETE` anidado en esa cascada. Las filas
+ya eliminadas lógicamente siguen en la base hasta que se borren de nuevo.
 
 `20261002_admin_logical_deletion.sql` distingue eliminación de desactivación con
 `eliminado_at` en centros, establecimientos, opiniones y los cinco catálogos del panel.

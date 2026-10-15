@@ -277,6 +277,13 @@ export class MediaService {
     return { id: deleted.id, state: deleted.state };
   }
 
+  /** Retira del almacenamiento los archivos de una ficha eliminada; los fallos no la deshacen. */
+  async removeObjects(keys: readonly string[]) {
+    await Promise.all(
+      keys.map((key) => this.storage.remove(key).catch(() => undefined)),
+    );
+  }
+
   async publishPending(
     manager: EntityManager,
     centerId: string,

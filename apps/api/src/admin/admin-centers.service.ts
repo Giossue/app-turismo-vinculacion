@@ -2913,38 +2913,35 @@ export class AdminCentersService {
     });
   }
 
-  async deleteCenter(code: string, actorId: number) {
-    return this.dataSource.transaction(async (manager) => {
+  /**
+   * Elimina la ficha de verdad: las tablas dependientes (borrador, revisiones,
+   * historial, archivos…) se borran en cascada y los archivos se retiran del
+   * almacenamiento una vez confirmada la transacción.
+   */
+  async deleteCenter(code: string) {
+    const removed = await this.dataSource.transaction(async (manager) => {
       const rows = (await manager.query(
-        `SELECT id, TRIM(codigo_atractivo) AS code, to_jsonb(c) AS snapshot
-           FROM centros_turisticos c
+        `SELECT id, TRIM(codigo_atractivo) AS code
+           FROM centros_turisticos
           WHERE TRIM(codigo_atractivo) = TRIM($1) FOR UPDATE`,
         [code],
-      )) as Array<{ id: string; code: string; snapshot: JsonRecord }>;
+      )) as Array<{ id: string; code: string }>;
       const current = rows[0];
       if (!current)
         throw new NotFoundException("No se encontró la ficha turística.");
-      if (current.snapshot.eliminado_at != null)
-        return { code: current.code, deleted: true };
-      const updated = (await manager.query(
-        `WITH removed AS (
-           UPDATE centros_turisticos
-            SET activo = FALSE, eliminado_at = CURRENT_TIMESTAMP,
-                updated_at = CURRENT_TIMESTAMP
-          WHERE id = $1 RETURNING *
-         ) SELECT to_jsonb(removed) AS snapshot FROM removed`,
+      const files = (await manager.query(
+        `SELECT ruta_archivo AS key
+           FROM archivos_centro_turistico
+          WHERE centro_turistico_id = $1 AND estado <> 'ELIMINADO'`,
         [current.id],
-      )) as Array<{ snapshot: JsonRecord }>;
-      await this.audit(
-        manager,
+      )) as Array<{ key: string }>;
+      await manager.query(`DELETE FROM centros_turisticos WHERE id = $1`, [
         current.id,
-        actorId,
-        "ELIMINAR",
-        current.snapshot,
-        updated[0].snapshot,
-      );
-      return { code: current.code, deleted: true };
+      ]);
+      return { code: current.code, keys: files.map((file) => file.key) };
     });
+    await this.media?.removeObjects(removed.keys);
+    return { code: removed.code, deleted: true };
   }
 
   async find(code: string, actorId?: number, isAdmin = true) {

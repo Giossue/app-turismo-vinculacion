@@ -148,9 +148,8 @@ relación interna. No se eliminan zonas ni se ejecutan seeds como parte del camb
 ## Eliminación administrativa
 
 El administrador dispone de Eliminar en las tablas de Centros turísticos, Catastro,
-Opiniones y Catálogos. El diálogo identifica el registro, explica la conservación del
-historial, evita el envío repetido y mantiene abierto cualquier error recuperable.
-La API valida el rol y registra una eliminación lógica distinta de la desactivación:
+Opiniones y Catálogos. El diálogo identifica el registro, advierte si el borrado es definitivo, evita el envío repetido y mantiene abierto cualquier error recuperable.
+La API valida el rol. Centros turísticos se borran de verdad; el resto registra una eliminación lógica distinta de la desactivación:
 
 ```text
 DELETE /api/v1/admin/centers/:code

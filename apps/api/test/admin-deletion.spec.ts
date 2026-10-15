@@ -2,57 +2,72 @@ import { describe, expect, it, vi } from "vitest";
 
 import { AdminCentersService } from "../src/admin/admin-centers.service";
 
-function createService(query: ReturnType<typeof vi.fn>) {
+function createService(
+  query: ReturnType<typeof vi.fn>,
+  media?: { removeObjects: ReturnType<typeof vi.fn> },
+) {
   const manager = { query };
   const transaction = vi.fn(
     async (callback: (value: typeof manager) => unknown) => callback(manager),
   );
   return {
-    service: new AdminCentersService({ transaction } as never),
+    service: new AdminCentersService({ transaction } as never, media as never),
     transaction,
   };
 }
 
 describe("administrative logical deletion", () => {
-  it("retains a center and its relations while auditing both row snapshots", async () => {
-    const previous = {
-      id: 10,
-      codigo_atractivo: "EC-001",
-      nombre: "Centro",
-      activo: true,
-      eliminado_at: null,
-    };
-    const next = {
-      ...previous,
-      activo: false,
-      eliminado_at: "2026-10-02T12:00:00Z",
-    };
+  it("deletes a center in one transaction and removes its stored files afterwards", async () => {
     const query = vi
       .fn()
-      .mockResolvedValueOnce([{ id: "10", code: "EC-001", snapshot: previous }])
-      .mockResolvedValueOnce([{ snapshot: next }])
+      .mockResolvedValueOnce([{ id: "10", code: "EC-001" }])
+      .mockResolvedValueOnce([
+        { key: "centers/10/a.webp" },
+        { key: "centers/10/b.webp" },
+      ])
       .mockResolvedValueOnce([]);
-    const { service, transaction } = createService(query);
+    const removeObjects = vi.fn().mockResolvedValue(undefined);
+    const { service, transaction } = createService(query, { removeObjects });
 
-    await expect(service.deleteCenter("EC-001", 7)).resolves.toEqual({
+    await expect(service.deleteCenter("EC-001")).resolves.toEqual({
       code: "EC-001",
       deleted: true,
     });
     expect(transaction).toHaveBeenCalledTimes(1);
     expect(query.mock.calls[0][0]).toContain("FOR UPDATE");
-    expect(query.mock.calls[1][0]).toContain(
-      "eliminado_at = CURRENT_TIMESTAMP",
+    expect(query.mock.calls[2][0]).toMatch(
+      /^\s*DELETE FROM centros_turisticos/,
     );
-    expect(query.mock.calls[2][1]).toEqual([
-      "10",
-      7,
-      "ELIMINAR",
-      null,
-      JSON.stringify(previous),
-      JSON.stringify(next),
+    expect(query.mock.calls[2][1]).toEqual(["10"]);
+    expect(
+      query.mock.calls.some(([sql]) => /UPDATE\s+centros_turisticos/.test(sql)),
+    ).toBe(false);
+    expect(removeObjects).toHaveBeenCalledWith([
+      "centers/10/a.webp",
+      "centers/10/b.webp",
     ]);
-    expect(query.mock.calls.some(([sql]) => /^\s*DELETE\b/.test(sql))).toBe(
-      false,
+  });
+
+  it("does not remove files when the center deletion fails", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([{ id: "10", code: "EC-001" }])
+      .mockResolvedValueOnce([{ key: "centers/10/a.webp" }])
+      .mockRejectedValueOnce(new Error("delete failed"));
+    const removeObjects = vi.fn();
+    const { service } = createService(query, { removeObjects });
+
+    await expect(service.deleteCenter("EC-001")).rejects.toThrow(
+      "delete failed",
+    );
+    expect(removeObjects).not.toHaveBeenCalled();
+  });
+
+  it("returns not found for an unknown center", async () => {
+    const query = vi.fn().mockResolvedValueOnce([]);
+    const { service } = createService(query);
+    await expect(service.deleteCenter("EC-404")).rejects.toThrow(
+      "No se encontró la ficha turística.",
     );
   });
 
@@ -123,9 +138,9 @@ describe("administrative logical deletion", () => {
     expect(transaction).not.toHaveBeenCalled();
   });
 
-  it.each(["center", "catalog"])(
+  it.each(["catalog"])(
     "accepts repeated %s deletion without a second audit",
-    async (entity) => {
+    async () => {
       const query = vi.fn().mockResolvedValue([
         {
           id: "10",
@@ -140,17 +155,15 @@ describe("administrative logical deletion", () => {
       const { service } = createService(query);
 
       await expect(
-        entity === "center"
-          ? service.deleteCenter("EC-001", 7)
-          : service.deleteCatalog(7, "FACILITY", 10),
+        service.deleteCatalog(7, "FACILITY", 10),
       ).resolves.toMatchObject({ deleted: true });
       expect(query).toHaveBeenCalledTimes(1);
     },
   );
 
-  it.each(["center", "catalog"])(
+  it.each(["catalog"])(
     "propagates an audit failure from the %s deletion transaction",
-    async (entity) => {
+    async () => {
       const query = vi
         .fn()
         .mockResolvedValueOnce([
@@ -160,11 +173,9 @@ describe("administrative logical deletion", () => {
         .mockRejectedValueOnce(new Error("audit failed"));
       const { service, transaction } = createService(query);
 
-      await expect(
-        entity === "center"
-          ? service.deleteCenter("EC-001", 7)
-          : service.deleteCatalog(7, "FACILITY", 10),
-      ).rejects.toThrow("audit failed");
+      await expect(service.deleteCatalog(7, "FACILITY", 10)).rejects.toThrow(
+        "audit failed",
+      );
       expect(transaction).toHaveBeenCalledTimes(1);
       await expect(transaction.mock.results[0].value).rejects.toThrow(
         "audit failed",

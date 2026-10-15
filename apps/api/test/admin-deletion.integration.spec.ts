@@ -259,7 +259,7 @@ describe.skipIf(!isolatedSocket)(
       if (source?.isInitialized) await source.destroy();
     });
 
-    it("removes centers from inventory and public reads while retaining drafts, revisions, favorites and audit", async () => {
+    it("deletes centers for real with their drafts, revisions, favorites and audit", async () => {
       const center = await createCenter(true);
       await centers.submitReview(center.code, administrator);
       await source.query(
@@ -275,54 +275,38 @@ describe.skipIf(!isolatedSocket)(
       ).not.toBeNull();
       const summaryBefore = await centers.summary();
 
-      await expect(
-        centers.deleteCenter(center.code, administrator),
-      ).resolves.toEqual({ code: center.code, deleted: true });
-      await expect(
-        centers.deleteCenter(center.code, administrator),
-      ).resolves.toEqual({ code: center.code, deleted: true });
+      await expect(centers.deleteCenter(center.code)).resolves.toEqual({
+        code: center.code,
+        deleted: true,
+      });
 
       expect((await centers.list(listQuery)).total).toBe(0);
       expect((await centers.summary()).total).toBe(summaryBefore.total - 1);
       expect(await publicCenters.findPublishedByCode(center.code)).toBeNull();
-      const retained = await one<{
-        activo: boolean;
-        eliminado_at: Date;
+      const remaining = await one<{
+        centers: number;
         drafts: number;
         revisions: number;
         favorites: number;
+        audit: number;
       }>(
-        `SELECT activo, eliminado_at,
-              (SELECT COUNT(*)::int FROM borradores_centros_turisticos WHERE centro_turistico_id = c.id) AS drafts,
-              (SELECT COUNT(*)::int FROM revisiones_publicacion WHERE centro_turistico_id = c.id) AS revisions,
-              (SELECT COUNT(*)::int FROM favoritos_centros WHERE centro_turistico_id = c.id) AS favorites
-         FROM centros_turisticos c WHERE id = $1`,
+        `SELECT (SELECT COUNT(*)::int FROM centros_turisticos WHERE id = $1) AS centers,
+              (SELECT COUNT(*)::int FROM borradores_centros_turisticos WHERE centro_turistico_id = $1) AS drafts,
+              (SELECT COUNT(*)::int FROM revisiones_publicacion WHERE centro_turistico_id = $1) AS revisions,
+              (SELECT COUNT(*)::int FROM favoritos_centros WHERE centro_turistico_id = $1) AS favorites,
+              (SELECT COUNT(*)::int FROM auditoria_fichas WHERE centro_turistico_id = $1) AS audit`,
         [center.id],
       );
-      expect(retained.activo).toBe(false);
-      expect(retained.eliminado_at).not.toBeNull();
-      expect(retained).toMatchObject({ drafts: 1, revisions: 1, favorites: 1 });
-      const audit = await centers.getAudit(center.code);
-      expect(
-        audit.items.filter(
-          (item: { action: string }) => item.action === "ELIMINAR",
-        ),
-      ).toHaveLength(1);
-      expect(audit.items).toContainEqual(
-        expect.objectContaining({
-          action: "ELIMINAR",
-          previous: expect.objectContaining({
-            nombre: center.name,
-            activo: true,
-            eliminado_at: null,
-          }),
-          next: expect.objectContaining({
-            nombre: center.name,
-            activo: false,
-            eliminado_at: expect.any(String),
-          }),
-        }),
-      );
+      expect(remaining).toEqual({
+        centers: 0,
+        drafts: 0,
+        revisions: 0,
+        favorites: 0,
+        audit: 0,
+      });
+      await expect(centers.deleteCenter(center.code)).rejects.toMatchObject({
+        status: 404,
+      });
       for (const operation of [
         () => centers.find(center.code),
         () => centers.sections(center.code),
@@ -334,30 +318,32 @@ describe.skipIf(!isolatedSocket)(
         () => centers.reactivate(center.code, administrator),
       ])
         await expect(operation()).rejects.toMatchObject({ status: 404 });
-      // Activation is independent of editorial state; logical deletion is
-      // still enforced by its CHECK even for a bare activation request.
+    });
+
+    it("keeps the audit trail immutable except when its center is deleted", async () => {
+      const center = await createCenter();
+      await centers.save(center.code, administrator, {
+        name: fixtureName("Auditada"),
+      });
       await expect(
         source.query(
-          "UPDATE centros_turisticos SET activo = TRUE WHERE id = $1",
+          "DELETE FROM auditoria_fichas WHERE centro_turistico_id = $1",
           [center.id],
         ),
-      ).rejects.toMatchObject({ driverError: { code: "23514" } });
+      ).rejects.toThrow("inmutables");
+      await expect(
+        source.query(
+          "UPDATE auditoria_fichas SET accion = accion WHERE centro_turistico_id = $1",
+          [center.id],
+        ),
+      ).rejects.toThrow("inmutables");
+      await centers.deleteCenter(center.code);
       expect(
-        (
-          await one<{ activo: boolean }>(
-            "SELECT activo FROM centros_turisticos WHERE id = $1",
-            [center.id],
-          )
-        ).activo,
-      ).toBe(false);
-      await expect(
-        source.query(
-          `UPDATE centros_turisticos SET activo = TRUE,
-                estado_resenia_id = (SELECT id FROM estados_resenia WHERE codigo = 'PUBLICADO')
-          WHERE id = $1`,
+        await one<{ audit: number }>(
+          "SELECT COUNT(*)::int AS audit FROM auditoria_fichas WHERE centro_turistico_id = $1",
           [center.id],
         ),
-      ).rejects.toMatchObject({ driverError: { code: "23514" } });
+      ).toEqual({ audit: 0 });
     });
 
     it("removes establishments from administrative and public lists while retaining their audit", async () => {
@@ -1063,18 +1049,13 @@ describe.skipIf(!isolatedSocket)(
       ).toHaveLength(2);
     });
 
-    it.each(["center", "establishment", "catalog", "opinion"] as const)(
+    it.each(["establishment", "catalog", "opinion"] as const)(
       "rolls back %s removal when its audit actor violates a foreign key",
       async (domain) => {
         let remove: () => Promise<unknown>;
         let table: string;
         let id: string | number;
-        if (domain === "center") {
-          const center = await createCenter();
-          table = "centros_turisticos";
-          id = center.id;
-          remove = () => centers.deleteCenter(center.code, invalidActor);
-        } else if (domain === "establishment") {
+        if (domain === "establishment") {
           const establishment = await createEstablishment();
           table = "establecimientos_turisticos";
           id = establishment.id;
@@ -1113,7 +1094,7 @@ describe.skipIf(!isolatedSocket)(
 
     it("returns not found for deletion of unknown records", async () => {
       await expect(
-        centers.deleteCenter("00000000000000000", administrator),
+        centers.deleteCenter("00000000000000000"),
       ).rejects.toMatchObject({ status: 404 });
       await expect(
         centers.deleteCatalog(administrator, "FACILITY", 999999999),

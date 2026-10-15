@@ -217,11 +217,8 @@ export class AdminController {
 
   @Delete("centers/:code")
   @Roles("ADMINISTRADOR")
-  async deleteCenter(
-    @Param("code") code: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return { data: await this.centers.deleteCenter(code, user.id) };
+  async deleteCenter(@Param("code") code: string) {
+    return { data: await this.centers.deleteCenter(code) };
   }
 
   @Post("centers")
