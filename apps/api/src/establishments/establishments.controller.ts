@@ -285,26 +285,12 @@ export class DownloadPageController {
       .send(renderDownloadPage(release));
   }
 
-  /**
-   * Entrega el APK más reciente desde este dominio: el visitante nunca pasa por
-   * GitHub. Si no se puede abrir, redirige al archivo como último recurso.
-   */
+  /** Redirige al archivo más reciente; el enlace de la página no cambia nunca. */
   @Get("rumbo-ec.apk")
-  async apk(@Res() response: FastifyReply) {
-    const abort = new AbortController();
-    response.raw.on("close", () => abort.abort());
-    const apk = await this.releases.openApk(abort.signal);
-    if (!apk) {
-      return response
-        .header("Cache-Control", "no-cache")
-        .redirect(APP_DOWNLOAD_URL, 302);
-    }
-    response
-      .header("Content-Type", "application/vnd.android.package-archive")
-      .header("Content-Disposition", 'attachment; filename="rumbo-ec.apk"')
-      .header("Cache-Control", "no-cache");
-    if (apk.length) response.header("Content-Length", apk.length);
-    return response.send(apk.stream);
+  apk(@Res() response: FastifyReply) {
+    return response
+      .header("Cache-Control", "no-cache")
+      .redirect(APP_DOWNLOAD_URL, 302);
   }
 }
 

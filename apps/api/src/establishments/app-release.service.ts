@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { Readable } from "node:stream";
 
-import { APP_DOWNLOAD_URL, APP_RELEASES_API_URL } from "./download-page";
+import { APP_RELEASES_API_URL } from "./download-page";
 
 export type AppRelease = Readonly<{
   version: string;
@@ -11,9 +10,6 @@ export type AppRelease = Readonly<{
 
 const CACHE_MS = 10 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 5000;
-const APK_HEADERS_TIMEOUT_MS = 15000;
-
-export type AppApk = Readonly<{ stream: Readable; length: string | null }>;
 
 /** Extrae la versión («1.0.3») de la etiqueta de la release («v1.0.3»). */
 export function parseReleaseVersion(tag: unknown): string | null {
@@ -51,35 +47,6 @@ export class AppReleaseService {
       this.pending = null;
     });
     return (await this.pending) ?? this.cached?.release ?? null;
-  }
-
-  /**
-   * Abre el APK de la última release para entregarlo desde nuestro dominio,
-   * sin redirigir al visitante a GitHub. El plazo solo cubre la conexión; el
-   * cuerpo se transmite hasta que termine o el visitante cancele (`signal`).
-   */
-  async openApk(signal: AbortSignal): Promise<AppApk | null> {
-    const upstream = new AbortController();
-    const abort = () => upstream.abort();
-    signal.addEventListener("abort", abort, { once: true });
-    const timer = setTimeout(abort, APK_HEADERS_TIMEOUT_MS);
-    try {
-      const response = await fetch(APP_DOWNLOAD_URL, {
-        signal: upstream.signal,
-      });
-      if (!response.ok || !response.body) {
-        upstream.abort();
-        return null;
-      }
-      return {
-        stream: Readable.fromWeb(response.body as never),
-        length: response.headers.get("content-length"),
-      };
-    } catch {
-      return null;
-    } finally {
-      clearTimeout(timer);
-    }
   }
 
   private async fetchLatest(): Promise<AppRelease | null> {
