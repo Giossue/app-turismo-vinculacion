@@ -34,6 +34,7 @@ import {
 import { EstablishmentsService } from "./establishments.service";
 import { PlatformSettingsService } from "../settings/platform-settings.service";
 import { APP_DOWNLOAD_URL, renderDownloadPage } from "./download-page";
+import { AppReleaseService } from "./app-release.service";
 import {
   renderEstablishmentNotFound,
   renderEstablishmentPage,
@@ -267,8 +268,13 @@ export class EstablishmentQrPageController {
 @ApiTags("establishments")
 @Controller("descargar")
 export class DownloadPageController {
+  constructor(
+    @Inject(AppReleaseService) private readonly releases: AppReleaseService,
+  ) {}
+
   @Get()
-  page(@Res() response: FastifyReply) {
+  async page(@Res() response: FastifyReply) {
+    const release = await this.releases.latest();
     return response
       .header("Content-Type", "text/html; charset=utf-8")
       .header(
@@ -276,7 +282,7 @@ export class DownloadPageController {
         "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
       )
       .header("Cache-Control", "public, max-age=300")
-      .send(renderDownloadPage());
+      .send(renderDownloadPage(release));
   }
 
   /** Redirige al archivo más reciente; el enlace de la página no cambia nunca. */
@@ -285,5 +291,27 @@ export class DownloadPageController {
     return response
       .header("Cache-Control", "no-cache")
       .redirect(APP_DOWNLOAD_URL, 302);
+  }
+}
+
+/** Última versión publicada: la app la compara con la suya para avisar de una actualización. */
+@ApiTags("app")
+@Controller("app")
+export class AppVersionController {
+  constructor(
+    @Inject(AppReleaseService) private readonly releases: AppReleaseService,
+  ) {}
+
+  @Get("latest")
+  async latest() {
+    const release = await this.releases.latest();
+    return {
+      data: release && {
+        version: release.version,
+        publishedAt: release.publishedAt,
+        notes: release.notes,
+        downloadPath: "/descargar",
+      },
+    };
   }
 }

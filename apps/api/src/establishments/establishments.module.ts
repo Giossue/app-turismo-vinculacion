@@ -4,10 +4,12 @@ import { AuthModule } from "../auth/auth.module";
 import { PlatformSettingsModule } from "../settings/platform-settings.module";
 import {
   AdminEstablishmentsController,
+  AppVersionController,
   DownloadPageController,
   EstablishmentQrPageController,
   PublicEstablishmentsController,
 } from "./establishments.controller";
+import { AppReleaseService } from "./app-release.service";
 import { EstablishmentsService } from "./establishments.service";
 import { MinturRegistryImportService } from "./mintur-registry-import.service";
 
@@ -18,8 +20,13 @@ import { MinturRegistryImportService } from "./mintur-registry-import.service";
     PublicEstablishmentsController,
     EstablishmentQrPageController,
     DownloadPageController,
+    AppVersionController,
   ],
-  providers: [EstablishmentsService, MinturRegistryImportService],
+  providers: [
+    AppReleaseService,
+    EstablishmentsService,
+    MinturRegistryImportService,
+  ],
   exports: [EstablishmentsService],
 })
 export class EstablishmentsModule {}

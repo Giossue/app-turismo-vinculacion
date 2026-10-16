@@ -16,6 +16,7 @@ import { TurismoPaperProvider } from "@/core/ui/turismo-paper-provider";
 import { getTurismoColors } from "@/core/ui/tokens";
 import { AuthProvider } from "@/features/auth/application/auth-context";
 import { UserLocationProvider } from "@/core/location/use-user-location";
+import { AppUpdateDialog } from "@/features/app-update/presentation/app-update-dialog";
 import { stopOrphanedNavigationTask } from "@/features/routing/infrastructure/navigation-background-task";
 
 /**
@@ -70,6 +71,7 @@ export default function RootLayout() {
           <AppNavigation />
         </BottomSheetModalProvider>
         <TourismToastHost />
+        <AppUpdateDialog />
       </AppProviders>
     </GestureHandlerRootView>
   );

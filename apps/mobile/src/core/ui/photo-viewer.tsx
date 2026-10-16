@@ -10,7 +10,18 @@ import {
   type ViewToken,
 } from "react-native";
 import { Image } from "expo-image";
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from "react-native-gesture-handler";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { scheduleOnRN } from "react-native-worklets";
 
 import { resolveMediaVariantUrl } from "@/core/api/media-url";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
@@ -29,9 +40,144 @@ export type ViewerPhoto = Readonly<{
 
 const viewabilityConfig = { itemVisiblePercentThreshold: 60 };
 
+const maxZoom = 4;
+const doubleTapZoom = 2.5;
+const zoomTiming = { duration: 180 };
+
 /**
- * Visor de fotografías a pantalla completa. Se desliza entre fotos y, solo si
- * la foto tiene autor, muestra una «i» discreta que revela su nombre.
+ * Foto con zoom: pellizco para ampliar, arrastre para recorrerla ya ampliada
+ * y doble toque para alternar. `onZoomChange` permite al visor bloquear el
+ * deslizado entre fotos mientras la imagen está ampliada.
+ */
+function ZoomablePhoto({
+  description,
+  height,
+  onTap,
+  onZoomChange,
+  uri,
+  width,
+  zoomed,
+}: Readonly<{
+  description: string;
+  height: number;
+  onTap: () => void;
+  onZoomChange: (zoomed: boolean) => void;
+  uri: string;
+  width: number;
+  zoomed: boolean;
+}>) {
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const savedX = useSharedValue(0);
+  const savedY = useSharedValue(0);
+
+  const reset = () => {
+    "worklet";
+    scale.value = withTiming(1, zoomTiming);
+    translateX.value = withTiming(0, zoomTiming);
+    translateY.value = withTiming(0, zoomTiming);
+    savedScale.value = 1;
+    savedX.value = 0;
+    savedY.value = 0;
+    scheduleOnRN(onZoomChange, false);
+  };
+
+  const pinch = Gesture.Pinch()
+    .onUpdate((event) => {
+      scale.value = Math.min(
+        maxZoom,
+        Math.max(1, savedScale.value * event.scale),
+      );
+    })
+    .onEnd(() => {
+      if (scale.value <= 1.05) {
+        reset();
+        return;
+      }
+      savedScale.value = scale.value;
+      scheduleOnRN(onZoomChange, true);
+    });
+
+  const pan = Gesture.Pan()
+    .enabled(zoomed)
+    .onUpdate((event) => {
+      const limitX = (width * scale.value - width) / 2;
+      const limitY = (height * scale.value - height) / 2;
+      translateX.value = Math.min(
+        limitX,
+        Math.max(-limitX, savedX.value + event.translationX),
+      );
+      translateY.value = Math.min(
+        limitY,
+        Math.max(-limitY, savedY.value + event.translationY),
+      );
+    })
+    .onEnd(() => {
+      savedX.value = translateX.value;
+      savedY.value = translateY.value;
+    });
+
+  const doubleTap = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd((event) => {
+      if (savedScale.value > 1) {
+        reset();
+        return;
+      }
+      // Amplía hacia el punto tocado para que quede bajo el dedo.
+      const x = ((width / 2 - event.x) * (doubleTapZoom - 1)) | 0;
+      const y = ((height / 2 - event.y) * (doubleTapZoom - 1)) | 0;
+      scale.value = withTiming(doubleTapZoom, zoomTiming);
+      translateX.value = withTiming(x, zoomTiming);
+      translateY.value = withTiming(y, zoomTiming);
+      savedScale.value = doubleTapZoom;
+      savedX.value = x;
+      savedY.value = y;
+      scheduleOnRN(onZoomChange, true);
+    });
+
+  const singleTap = Gesture.Tap()
+    .requireExternalGestureToFail(doubleTap)
+    .onEnd(() => {
+      scheduleOnRN(onTap);
+    });
+
+  const gesture = Gesture.Race(
+    Gesture.Simultaneous(pinch, pan),
+    Gesture.Exclusive(doubleTap, singleTap),
+  );
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
+  return (
+    <GestureDetector gesture={gesture}>
+      <Animated.View
+        accessibilityLabel={description}
+        accessible
+        style={[{ width, height }, animatedStyle]}
+      >
+        <Image
+          cachePolicy="memory-disk"
+          contentFit="contain"
+          source={{ uri }}
+          style={styles.image}
+        />
+      </Animated.View>
+    </GestureDetector>
+  );
+}
+
+/**
+ * Visor de fotografías a pantalla completa. Se desliza entre fotos, se amplía
+ * con pellizco o doble toque y, solo si la foto tiene autor, muestra una «i» discreta que revela su nombre.
  */
 export function PhotoViewer({
   photos,
@@ -46,6 +192,7 @@ export function PhotoViewer({
   const insets = useSafeAreaInsets();
   const [index, setIndex] = useState(initialIndex);
   const [showAuthor, setShowAuthor] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
   const author = photos[index]?.sourceAuthor?.trim();
 
   const onViewableItemsChanged = ({
@@ -57,6 +204,7 @@ export function PhotoViewer({
     if (first === null || first === undefined) return;
     setIndex(first);
     setShowAuthor(false);
+    setZoomed(false);
   };
 
   return (
@@ -67,7 +215,7 @@ export function PhotoViewer({
       transparent={false}
       visible
     >
-      <View style={styles.root}>
+      <GestureHandlerRootView style={styles.root}>
         <FlatList
           data={photos}
           getItemLayout={(_, position) => ({
@@ -81,19 +229,17 @@ export function PhotoViewer({
           onViewableItemsChanged={onViewableItemsChanged}
           pagingEnabled
           renderItem={({ item }) => (
-            <Pressable
-              accessibilityLabel={item.description ?? "Fotografía del lugar"}
-              onPress={() => setShowAuthor(false)}
-              style={{ width, height }}
-            >
-              <Image
-                cachePolicy="memory-disk"
-                contentFit="contain"
-                source={{ uri: resolveMediaVariantUrl(item.url, "preview") }}
-                style={styles.image}
-              />
-            </Pressable>
+            <ZoomablePhoto
+              description={item.description ?? "Fotografía del lugar"}
+              height={height}
+              onTap={() => setShowAuthor(false)}
+              onZoomChange={setZoomed}
+              uri={resolveMediaVariantUrl(item.url, "preview")}
+              width={width}
+              zoomed={zoomed}
+            />
           )}
+          scrollEnabled={!zoomed}
           showsHorizontalScrollIndicator={false}
           viewabilityConfig={viewabilityConfig}
         />
@@ -146,7 +292,7 @@ export function PhotoViewer({
             </Pressable>
           </View>
         ) : null}
-      </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
