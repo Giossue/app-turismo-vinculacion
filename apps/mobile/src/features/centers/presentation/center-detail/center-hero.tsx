@@ -11,7 +11,7 @@ import {
 import { Defs, LinearGradient, Rect, Stop, Svg } from "react-native-svg";
 
 import { resolveMediaVariantUrl } from "@/core/api/media-url";
-import { PhotoViewer } from "@/core/ui/photo-viewer";
+import { PhotoViewer, type ViewerPhoto } from "@/core/ui/photo-viewer";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
@@ -20,9 +20,8 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
-import type { PublicCenterDetail } from "../../domain/public-center";
 
-type CenterPhoto = PublicCenterDetail["photos"][number];
+type CenterPhoto = ViewerPhoto;
 
 /**
  * Main photo of a center, fading into the surface below it. Tapping it opens

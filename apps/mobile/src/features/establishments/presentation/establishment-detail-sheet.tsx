@@ -15,6 +15,7 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
+import { CenterHero } from "@/features/centers/presentation/center-detail/center-hero";
 import { CenterPhotos } from "@/features/centers/presentation/center-detail/center-photos";
 import { PlaceActions } from "@/features/favorites/presentation/save-action-button";
 import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/saved-center-error-snackbar";
@@ -50,6 +51,13 @@ export function EstablishmentDetailSheet({
   return (
     <TourismBottomSheet onClose={onClose}>
       <TourismSheetScrollView contentStyle={styles.container}>
+        {detail?.photos.length ? (
+          <CenterHero
+            name={establishment.name}
+            photos={detail.photos}
+            style={styles.hero}
+          />
+        ) : null}
         <View style={styles.header}>
           <View style={styles.headerCopy}>
             <Text style={[styles.title, { color: colors.text }]}>
@@ -104,6 +112,7 @@ const styles = StyleSheet.create({
     gap: turismoSpacing.lg,
     paddingBottom: turismoSpacing.xxl,
   },
+  hero: { marginHorizontal: -turismoSpacing.lg },
   header: {
     alignItems: "flex-start",
     flexDirection: "row",

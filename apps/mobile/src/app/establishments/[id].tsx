@@ -11,6 +11,7 @@ import { TourismStateView } from "@/core/ui/tourism-state";
 import {
   turismoMetrics,
   turismoOpacity,
+  turismoRadii,
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
@@ -18,6 +19,7 @@ import {
   buildLoginHref,
   type LoginReturnPath,
 } from "@/features/auth/application/login-href";
+import { CenterHero } from "@/features/centers/presentation/center-detail/center-hero";
 import { CenterPhotos } from "@/features/centers/presentation/center-detail/center-photos";
 import { usePublishedEstablishment } from "@/features/establishments/application/use-published-establishment";
 import type {
@@ -125,6 +127,13 @@ function EstablishmentContent({
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        {detail.photos.length ? (
+          <CenterHero
+            name={detail.nombreComercial}
+            photos={detail.photos}
+            style={styles.hero}
+          />
+        ) : null}
         <View style={styles.header}>
           <View style={styles.headerCopy}>
             <Text style={[styles.title, { color: colors.text }]}>
@@ -173,6 +182,7 @@ const styles = StyleSheet.create({
     paddingBottom: turismoSpacing.xxl,
     paddingTop: turismoSpacing.md,
   },
+  hero: { borderRadius: turismoRadii.md },
   header: {
     alignItems: "flex-start",
     flexDirection: "row",
