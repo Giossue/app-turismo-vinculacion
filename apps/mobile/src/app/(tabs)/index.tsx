@@ -3,6 +3,7 @@ import { StyleSheet, View } from "react-native";
 import { Redirect } from "expo-router";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
+import { hideSplash } from "@/core/ui/splash";
 import { TourismStateView } from "@/core/ui/tourism-state";
 import { useAuth } from "@/features/auth/application/auth-context";
 import {
@@ -32,10 +33,16 @@ export default function HomeScreen() {
     };
   }, []);
 
-  if (
+  const preparing =
     entryChoice === undefined ||
-    (auth.status === "loading" && entryChoice !== "guest")
-  ) {
+    (auth.status === "loading" && entryChoice !== "guest");
+
+  // La pantalla de inicio cubre la preparación; se oculta al estar resuelta.
+  useEffect(() => {
+    if (!preparing) hideSplash();
+  }, [preparing]);
+
+  if (preparing) {
     return (
       <View style={[styles.screen, { backgroundColor: colors.background }]}>
         <TourismStateView message="Preparando Rumbo EC…" variant="loading" />

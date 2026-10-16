@@ -11,6 +11,7 @@ import { ONE_DAY_MS } from "@/core/api/query-keys";
 import { getQueryPersistOptions } from "@/core/api/query-persistence";
 import { useQueryRuntime } from "@/core/api/use-query-runtime";
 import { useTurismoTheme, TurismoThemeProvider } from "@/core/ui/theme-context";
+import { hideSplash, keepSplashVisible } from "@/core/ui/splash";
 import { TourismToastHost } from "@/core/ui/tourism-toast";
 import { TurismoPaperProvider } from "@/core/ui/turismo-paper-provider";
 import { getTurismoColors } from "@/core/ui/tokens";
@@ -25,6 +26,14 @@ import { stopOrphanedNavigationTask } from "@/features/routing/infrastructure/na
  * claims the session well within this window.
  */
 const orphanedNavigationTaskCheckDelayMs = 3_000;
+
+/**
+ * La pantalla de inicio se oculta cuando la pantalla de entrada está lista;
+ * este plazo evita dejarla fija si la app abre directo en otra ruta.
+ */
+const splashSafetyDelayMs = 3_000;
+
+keepSplashVisible();
 
 function AppProviders({ children }: Readonly<{ children: ReactNode }>) {
   useQueryRuntime();
@@ -61,6 +70,11 @@ export default function RootLayout() {
     const timer = setTimeout(() => {
       void stopOrphanedNavigationTask();
     }, orphanedNavigationTaskCheckDelayMs);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(hideSplash, splashSafetyDelayMs);
     return () => clearTimeout(timer);
   }, []);
 
