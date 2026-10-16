@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -10,6 +11,7 @@ import {
 import { Defs, LinearGradient, Rect, Stop, Svg } from "react-native-svg";
 
 import { resolveMediaVariantUrl } from "@/core/api/media-url";
+import { PhotoViewer } from "@/core/ui/photo-viewer";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TurismoIcon } from "@/core/ui/turismo-icons";
 import {
@@ -23,34 +25,43 @@ import type { PublicCenterDetail } from "../../domain/public-center";
 type CenterPhoto = PublicCenterDetail["photos"][number];
 
 /**
- * Main photo of a center, fading into the surface below it. Each screen keeps
- * its own overlay controls in the `leading` and `trailing` slots.
+ * Main photo of a center, fading into the surface below it. Tapping it opens
+ * the full-screen viewer on the cover. Each screen keeps its own overlay
+ * controls in the `leading` and `trailing` slots.
  */
 export function CenterHero({
   leading,
   name,
-  photo,
+  photos,
   style,
   trailing,
 }: Readonly<{
   leading?: ReactNode;
   name: string;
-  photo?: CenterPhoto;
+  photos?: readonly CenterPhoto[];
   style?: StyleProp<ViewStyle>;
   trailing?: ReactNode;
 }>) {
   const colors = useTurismoPalette();
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const photo = photos?.[0];
   return (
     <View style={[styles.hero, style]}>
       {photo ? (
-        <Image
+        <Pressable
+          accessibilityHint="Abre la fotografía a pantalla completa"
           accessibilityLabel={photo.description ?? `Fotografía de ${name}`}
-          accessible
-          cachePolicy="memory-disk"
-          contentFit="cover"
-          source={{ uri: resolveMediaVariantUrl(photo.url, "preview") }}
+          accessibilityRole="imagebutton"
+          onPress={() => setViewerOpen(true)}
           style={styles.image}
-        />
+        >
+          <Image
+            cachePolicy="memory-disk"
+            contentFit="cover"
+            source={{ uri: resolveMediaVariantUrl(photo.url, "preview") }}
+            style={styles.image}
+          />
+        </Pressable>
       ) : (
         <View
           style={[styles.fallback, { backgroundColor: colors.map.background }]}
@@ -94,6 +105,13 @@ export function CenterHero({
           />
         </Svg>
       </View>
+      {viewerOpen && photos?.length ? (
+        <PhotoViewer
+          initialIndex={0}
+          onClose={() => setViewerOpen(false)}
+          photos={photos}
+        />
+      ) : null}
       {leading || trailing ? (
         <View pointerEvents="box-none" style={styles.controls}>
           <View>{leading}</View>

@@ -247,6 +247,51 @@ export class EstablishmentMediaService {
     return { id: mediaId, state: "ELIMINADO" as const };
   }
 
+  /** Mueve una fotografía al primer lugar, que es la portada en la app móvil. */
+  async setCover(
+    actorId: number,
+    id: string,
+    mediaId: number,
+    isAdmin = true,
+    directPublish = false,
+  ) {
+    const establishmentId = parseEstablishmentId(id);
+    await this.dataSource.transaction(async (manager) => {
+      await this.establishment(
+        manager,
+        establishmentId,
+        actorId,
+        isAdmin,
+        directPublish,
+      );
+      const rows = (await manager.query(
+        `SELECT id FROM archivos_establecimiento_turistico
+          WHERE id = $1 AND establecimiento_id = $2 AND estado <> 'ELIMINADO'
+          FOR UPDATE`,
+        [mediaId, establishmentId],
+      )) as Array<{ id: string }>;
+      if (!rows[0])
+        throw new NotFoundException("No se encontró la fotografía.");
+      await manager.query(
+        `UPDATE archivos_establecimiento_turistico a
+            SET orden = ranked.position, updated_at = CURRENT_TIMESTAMP
+           FROM (SELECT id,
+                        ROW_NUMBER() OVER (
+                          ORDER BY (id = $2) DESC, orden NULLS LAST, created_at, id
+                        ) AS position
+                   FROM archivos_establecimiento_turistico
+                  WHERE establecimiento_id = $1 AND estado <> 'ELIMINADO') ranked
+          WHERE a.id = ranked.id`,
+        [establishmentId, mediaId],
+      );
+      await this.audit(manager, establishmentId, actorId, "MODIFICAR", {
+        mediaId,
+        cover: true,
+      });
+    });
+    return { id: mediaId, order: 1 };
+  }
+
   /** Solo fotografías publicadas de catastros publicados y visibles. */
   async publicFile(mediaId: number) {
     const rows = (await this.dataSource.query(
@@ -291,7 +336,7 @@ export class EstablishmentMediaService {
     manager: EntityManager,
     establishmentId: number,
     actorId: number,
-    action: "AGREGAR_MULTIMEDIA" | "ELIMINAR_MULTIMEDIA",
+    action: "AGREGAR_MULTIMEDIA" | "ELIMINAR_MULTIMEDIA" | "MODIFICAR",
     next: unknown,
   ) {
     await manager.query(

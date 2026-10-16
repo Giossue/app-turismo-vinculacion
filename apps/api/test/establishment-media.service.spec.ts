@@ -233,6 +233,49 @@ describe("EstablishmentMediaService", () => {
     );
   });
 
+  it("moves a photo to the first position and audits the change", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([{ id: "8" }])
+      .mockResolvedValueOnce([{ id: "41" }])
+      .mockResolvedValue([]);
+    const service = new EstablishmentMediaService(
+      { transaction: transactional(query) } as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(service.setCover(9, "8", 41)).resolves.toEqual({
+      id: 41,
+      order: 1,
+    });
+    expect(query.mock.calls[2]?.[0]).toContain("ROW_NUMBER()");
+    expect(query.mock.calls[2]?.[1]).toEqual([8, 41]);
+    expect(query.mock.calls[3]?.[1]).toEqual([
+      9,
+      8,
+      "MODIFICAR",
+      JSON.stringify({ mediaId: 41, cover: true }),
+    ]);
+  });
+
+  it("rejects a cover photo that is not in the establishment", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([{ id: "8" }])
+      .mockResolvedValue([]);
+    const service = new EstablishmentMediaService(
+      { transaction: transactional(query) } as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(service.setCover(9, "8", 99)).rejects.toThrow(
+      "No se encontró la fotografía.",
+    );
+    expect(query).toHaveBeenCalledTimes(2);
+  });
+
   it("serves only published photos of visible catastros", async () => {
     const query = vi.fn().mockResolvedValue([]);
     const storage = { get: vi.fn() };

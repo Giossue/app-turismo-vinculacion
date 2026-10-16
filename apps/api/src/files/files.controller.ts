@@ -6,6 +6,7 @@ import {
   Inject,
   Optional,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -101,6 +102,23 @@ export class FilesController {
     };
   }
 
+  @Patch("centers/:code/media/:id/cover")
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
+  async setCover(
+    @Param("code") code: string,
+    @Param("id") id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      data: await this.media.setCover(
+        user.id,
+        code,
+        parseMediaId(id),
+        user.roles.includes("ADMINISTRADOR"),
+      ),
+    };
+  }
+
   @Get("establishments/:id/media")
   @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
   async listEstablishment(
@@ -150,6 +168,23 @@ export class FilesController {
   ) {
     return {
       data: await this.establishmentMedia.remove(
+        user.id,
+        id,
+        parseMediaId(mediaId),
+        user.roles.includes("ADMINISTRADOR"),
+        await this.directPublish(),
+      ),
+    };
+  }
+  @Patch("establishments/:id/media/:mediaId/cover")
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
+  async setEstablishmentCover(
+    @Param("id") id: string,
+    @Param("mediaId") mediaId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return {
+      data: await this.establishmentMedia.setCover(
         user.id,
         id,
         parseMediaId(mediaId),

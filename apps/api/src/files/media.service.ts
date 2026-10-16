@@ -277,6 +277,53 @@ export class MediaService {
     return { id: deleted.id, state: deleted.state };
   }
 
+  /** Mueve una fotografía al primer lugar, que es la portada en la app móvil. */
+  async setCover(
+    actorId: number,
+    code: string,
+    mediaId: number,
+    isAdmin = true,
+  ) {
+    await this.dataSource.transaction(async (manager) => {
+      const rows = (await manager.query(
+        `SELECT a.id, a.centro_turistico_id AS "centerId",
+                a.tipo_archivo_centro_id AS "typeId"
+           FROM archivos_centro_turistico a
+           JOIN centros_turisticos c ON c.id = a.centro_turistico_id
+           JOIN estados_resenia center_state ON center_state.id = c.estado_resenia_id
+           JOIN tipos_archivo_centro_turistico t ON t.id = a.tipo_archivo_centro_id
+          WHERE a.id = $1 AND TRIM(c.codigo_atractivo) = TRIM($2)
+            AND t.codigo = 'FOTOGRAFIA'
+            AND a.estado <> 'ELIMINADO'
+            AND c.eliminado_at IS NULL
+            AND ($3::boolean OR c.responsable_usuario_id = $4)
+            AND ($3::boolean OR center_state.codigo IN ('BORRADOR', 'RECHAZADO'))
+          FOR UPDATE OF a`,
+        [mediaId, code, isAdmin, actorId],
+      )) as Array<{ id: string; centerId: string; typeId: string }>;
+      const file = rows[0];
+      if (!file) throw new NotFoundException("No se encontró la fotografía.");
+      await manager.query(
+        `UPDATE archivos_centro_turistico a
+            SET orden = ranked.position, updated_at = CURRENT_TIMESTAMP
+           FROM (SELECT id,
+                        ROW_NUMBER() OVER (
+                          ORDER BY (id = $3) DESC, orden NULLS LAST, created_at, id
+                        ) AS position
+                   FROM archivos_centro_turistico
+                  WHERE centro_turistico_id = $1 AND tipo_archivo_centro_id = $2
+                    AND estado <> 'ELIMINADO') ranked
+          WHERE a.id = ranked.id`,
+        [file.centerId, file.typeId, mediaId],
+      );
+      await this.audit(manager, file.centerId, actorId, "MODIFICAR", {
+        mediaId,
+        cover: true,
+      });
+    });
+    return { id: mediaId, order: 1 };
+  }
+
   /** Retira del almacenamiento los archivos de una ficha eliminada; los fallos no la deshacen. */
   async removeObjects(keys: readonly string[]) {
     await Promise.all(

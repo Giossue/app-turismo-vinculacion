@@ -79,7 +79,7 @@ export function ExploreCenterSheetContent({
       >
         <CenterHero
           name={center.name}
-          photo={detail?.photos[0]}
+          photos={detail?.photos}
           style={styles.hero}
         />
         <Text style={[styles.title, { color: colors.text }]}>

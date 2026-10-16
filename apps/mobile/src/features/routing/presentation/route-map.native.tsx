@@ -45,6 +45,7 @@ const routeBoundsPadding = { top: 36, right: 28, bottom: 36, left: 28 };
 
 const routeMapImages = {
   "tourism-navigation-mode": require("../../../../assets/images/navigation-mode.png"),
+  "tourism-destination-check": require("../../../../assets/images/destination-check.png"),
 };
 
 export function RouteMap({
@@ -314,11 +315,22 @@ export function RouteMap({
             id="calculated-route-destination"
             paint={{
               "circle-color": colors.primary,
-              "circle-radius": 8,
+              "circle-radius": 11,
               "circle-stroke-color": colors.surface,
               "circle-stroke-width": 3,
             }}
             type="circle"
+          />
+          <Layer
+            filter={["==", ["get", "kind"], "destination"]}
+            id="calculated-route-destination-check"
+            layout={{
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true,
+              "icon-image": "tourism-destination-check",
+              "icon-size": 0.2,
+            }}
+            type="symbol"
           />
         </GeoJSONSource>
         <UserLocationLayers

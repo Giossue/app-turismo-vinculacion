@@ -123,7 +123,7 @@ function CenterDetailContent({
               />
             }
             name={center.name}
-            photo={center.photos[0]}
+            photos={center.photos}
           />
           <View style={styles.detailBody}>
             <Text style={[styles.title, { color: colors.text }]}>
