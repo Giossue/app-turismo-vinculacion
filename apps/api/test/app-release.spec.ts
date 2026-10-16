@@ -53,6 +53,36 @@ describe("app release", () => {
     vi.useRealTimers();
   });
 
+  it("streams the APK from the latest release with its size", async () => {
+    const body = new Response("apk-bytes").body;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        body,
+        headers: new Headers({ "content-length": "9" }),
+      }),
+    );
+    const apk = await new AppReleaseService().openApk(
+      new AbortController().signal,
+    );
+
+    expect(apk?.length).toBe("9");
+    const chunks: Buffer[] = [];
+    for await (const chunk of apk!.stream) chunks.push(chunk as Buffer);
+    expect(Buffer.concat(chunks).toString()).toBe("apk-bytes");
+  });
+
+  it("returns null when the APK cannot be opened", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, body: null }),
+    );
+    await expect(
+      new AppReleaseService().openApk(new AbortController().signal),
+    ).resolves.toBeNull();
+  });
+
   it("returns null when there is no release information", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
     await expect(new AppReleaseService().latest()).resolves.toBeNull();
