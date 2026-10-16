@@ -12,7 +12,7 @@ import { useAppUpdate } from "../application/use-app-update";
 /** Aviso al abrir la app cuando hay una versión publicada más nueva. */
 export function AppUpdateDialog() {
   const colors = useTurismoPalette();
-  const { dismiss, installed, update } = useAppUpdate();
+  const { dismiss, update } = useAppUpdate();
   if (!update) return null;
   return (
     <Modal
@@ -35,18 +35,17 @@ export function AppUpdateDialog() {
           >
             Hay una versión nueva
           </Text>
-          <Text style={[styles.body, { color: colors.textMuted }]}>
-            Ya está disponible la versión {update.version}. Tienes la{" "}
-            {installed}. Descárgala para tener las últimas mejoras.
-          </Text>
           {update.notes ? (
             <Text
-              numberOfLines={6}
-              style={[styles.notes, { color: colors.text }]}
+              numberOfLines={3}
+              style={[styles.body, { color: colors.text }]}
             >
               {update.notes}
             </Text>
           ) : null}
+          <Text style={[styles.latest, { color: colors.textMuted }]}>
+            Última versión: {update.version}
+          </Text>
           <View style={styles.actions}>
             <TourismActionButton
               label="Ahora no"
@@ -84,7 +83,7 @@ const styles = StyleSheet.create({
   },
   title: { ...turismoTypography.heading },
   body: { ...turismoTypography.body },
-  notes: { ...turismoTypography.bodySmall },
+  latest: { ...turismoTypography.bodySmall },
   actions: {
     flexDirection: "row",
     gap: turismoSpacing.sm,

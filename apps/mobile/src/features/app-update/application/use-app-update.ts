@@ -50,5 +50,5 @@ export function useAppUpdate() {
     });
   }, []);
 
-  return { dismiss, installed, update };
+  return { dismiss, update };
 }
