@@ -68,11 +68,6 @@ export default function TabsLayout() {
       onPress: () => router.push("/nearby"),
     },
     {
-      icon: "route",
-      label: m.account.menu.trip,
-      onPress: () => router.push("/trip"),
-    },
-    {
       icon: "download",
       label: m.account.menu.offline,
       onPress: () => openProtected("/offline"),

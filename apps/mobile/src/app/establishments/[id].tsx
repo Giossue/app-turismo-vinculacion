@@ -30,8 +30,6 @@ import { useEstablishmentSaveToggle } from "@/features/establishments/presentati
 import { PlaceActions } from "@/features/favorites/presentation/save-action-button";
 import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/saved-center-error-snackbar";
 import { buildRouteHref } from "@/features/routing/presentation/route-href";
-import { buildEstablishmentTripStop } from "@/features/trip/domain/trip";
-import { useTripToggle } from "@/features/trip/presentation/use-trip-toggle";
 import { shareEstablishment } from "@/features/sharing/application/share-link";
 import { useMessages } from "@/core/i18n/use-language";
 
@@ -123,14 +121,6 @@ function EstablishmentContent({
       buildLoginHref(`/establishments/${detail.id}` as LoginReturnPath),
     ),
   );
-  const trip = useTripToggle(
-    buildEstablishmentTripStop({
-      id: detail.id,
-      latitude: detail.latitude,
-      longitude: detail.longitude,
-      name: detail.nombreComercial,
-    }),
-  );
   const category = detail.categoriaEtiqueta ?? detail.categoria;
 
   return (
@@ -197,7 +187,6 @@ function EstablishmentContent({
             void shareEstablishment(detail.id, detail.nombreComercial)
           }
           save={save}
-          trip={trip}
         />
         <CenterPhotos photos={detail.photos} variant="divided" />
       </ScrollView>

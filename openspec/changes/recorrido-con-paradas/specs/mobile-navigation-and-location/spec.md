@@ -2,22 +2,7 @@
 
 ### Requirement: Recorrido con varias paradas
 
-El móvil SHALL permitir armar un recorrido local de hasta cinco lugares publicados del catálogo, en el orden elegido, y calcular una ruta que pase por todos; la API SHALL aceptar hasta cuatro paradas intermedias válidas antes del destino.
-
-#### Scenario: Agregar un lugar al recorrido
-
-- **WHEN** la persona toca «Agregar al recorrido» en la ficha o la hoja de un centro o establecimiento con coordenadas
-- **THEN** el lugar se agrega al final de «Mi recorrido» y el control indica que ya está incluido
-
-#### Scenario: Recorrido lleno o lugar repetido
-
-- **WHEN** el recorrido ya tiene cinco lugares o el lugar ya está en él
-- **THEN** no se agrega de nuevo y, si está lleno, el control lo explica y queda deshabilitado
-
-#### Scenario: Reordenar y quitar
-
-- **WHEN** la persona sube, baja o quita una parada en «Mi recorrido»
-- **THEN** el orden se actualiza y se conserva en el dispositivo
+La ruta del móvil SHALL admitir hasta cuatro paradas intermedias recibidas en su enlace y calcular una ruta que pase por todas en orden; la API SHALL aceptar hasta cuatro paradas intermedias válidas antes del destino. La app no ofrece por ahora una pantalla para armar recorridos.
 
 #### Scenario: Ruta en orden
 

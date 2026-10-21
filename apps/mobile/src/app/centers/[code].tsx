@@ -25,8 +25,6 @@ import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/save
 import { useCenterOpinions } from "@/features/opinions/application/use-center-opinions";
 import { CenterOpinions } from "@/features/opinions/presentation/center-opinions";
 import { buildRouteHref } from "@/features/routing/presentation/route-href";
-import { buildCenterTripStop } from "@/features/trip/domain/trip";
-import { useTripToggle } from "@/features/trip/presentation/use-trip-toggle";
 import { shareCenter } from "@/features/sharing/application/share-link";
 import { isValidCenterCode } from "@/features/sharing/domain/share-links";
 import { useMessages } from "@/core/i18n/use-language";
@@ -129,7 +127,6 @@ function CenterDetailContent({
   const save = useCenterSaveToggle(center, () =>
     router.push(buildLoginHref(`/centers/${center.code}`)),
   );
-  const trip = useTripToggle(buildCenterTripStop(center));
 
   return (
     <TourismScreenFrame
@@ -172,7 +169,6 @@ function CenterDetailContent({
               }
               onShare={() => void shareCenter(center.code, center.name)}
               save={save}
-              trip={trip}
             />
             <CenterDetailTabs onChange={setActiveTab} value={activeTab} />
             {activeTab === "information" ? (

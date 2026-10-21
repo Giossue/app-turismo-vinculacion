@@ -12,7 +12,6 @@ export const accountEn: Messages["account"] = {
     guestSubtitle: "Sign in or create your account",
     guest: "Guest",
     nearby: "Near me",
-    trip: "My trip",
     offline: "Offline maps",
     settings: "Settings",
   },

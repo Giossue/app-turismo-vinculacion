@@ -10,10 +10,8 @@ uno, sin una vista del orden ni del trayecto completo.
 
 - La API de rutas acepta hasta cuatro paradas intermedias (`waypoints`) antes
   del destino y numera sus llegadas («Llegaste a la parada N»).
-- Las fichas y hojas del mapa de centros y establecimientos ofrecen agregar el
-  lugar a «Mi recorrido» (hasta cinco lugares, sin repetir).
-- «Mi recorrido» (menú) permite ver, reordenar y quitar paradas, vaciar el
-  recorrido y abrir «Cómo llegar en orden»; el último lugar es el destino.
+- ~~«Mi recorrido» y el control «+» en fichas y hojas~~: retirados en la 1.0.9
+  por decisión de la persona usuaria; la ruta conserva el soporte de paradas.
 - La ruta muestra las paradas pendientes en el mapa y en el panel. Durante la
   navegación anuncia cada parada alcanzada, sigue hacia la siguiente y al
   recalcular solo pide las pendientes. La llegada final usa el flujo de

@@ -128,28 +128,4 @@ export const routingEs = {
     signInToUse: "Inicia sesión para usar tus rutas.",
     signInToSave: "Inicia sesión para guardar rutas.",
   },
-  trip: {
-    title: "Mi recorrido",
-    emptyTitle: "Tu recorrido está vacío",
-    empty: (max: number) =>
-      `Toca + en la ficha de un atractivo o establecimiento para agregarlo. Puedes sumar hasta ${max} lugares y recorrerlos en orden.`,
-    summary: (count: number, max: number) =>
-      `${count} de ${max} lugares. La ruta sale desde tu ubicación y pasa por cada parada en este orden.`,
-    openPlace: "Abre la ficha del lugar",
-    finalDestination: "Destino final",
-    stop: (position: number) => `Parada ${position}`,
-    moveUp: (name: string) => `Subir ${name}`,
-    moveDown: (name: string) => `Bajar ${name}`,
-    remove: (name: string) => `Quitar ${name} del recorrido`,
-    add: (name: string) => `Agregar ${name} al recorrido`,
-    full: (max: number) => `El recorrido ya tiene ${max} paradas`,
-    removed: (name: string) => `${name} se quitó del recorrido`,
-    added: (name: string) => `${name} se agregó al recorrido`,
-    nowFinal: (name: string) => `${name} ahora es el destino final`,
-    nowStop: (name: string, position: number) =>
-      `${name} ahora es la parada ${position}`,
-    directionsInOrder: "Cómo llegar en orden",
-    directions: "Cómo llegar",
-    clear: "Vaciar recorrido",
-  },
 };

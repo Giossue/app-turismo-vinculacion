@@ -11,7 +11,6 @@ export const accountEs = {
     guestSubtitle: "Inicia sesión o crea tu cuenta",
     guest: "Invitado",
     nearby: "Cerca de mí",
-    trip: "Mi recorrido",
     offline: "Mapas sin conexión",
     settings: "Configuración",
   },

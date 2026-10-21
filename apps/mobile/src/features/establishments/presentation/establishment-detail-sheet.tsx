@@ -19,8 +19,6 @@ import { CenterHero } from "@/features/centers/presentation/center-detail/center
 import { CenterPhotos } from "@/features/centers/presentation/center-detail/center-photos";
 import { PlaceActions } from "@/features/favorites/presentation/save-action-button";
 import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/saved-center-error-snackbar";
-import { buildEstablishmentTripStop } from "@/features/trip/domain/trip";
-import { useTripToggle } from "@/features/trip/presentation/use-trip-toggle";
 import { shareEstablishment } from "@/features/sharing/application/share-link";
 import { usePublishedEstablishment } from "../application/use-published-establishment";
 import {
@@ -53,14 +51,6 @@ export function EstablishmentDetailSheet({
   const detailQuery = usePublishedEstablishment(establishmentId);
   const detail = detailQuery.data;
   const save = useEstablishmentSaveToggle(establishment, detail, onRequireAuth);
-  const trip = useTripToggle(
-    buildEstablishmentTripStop({
-      id: establishmentId,
-      latitude: establishment.latitude,
-      longitude: establishment.longitude,
-      name: establishment.name,
-    }),
-  );
 
   return (
     <TourismBottomSheet onClose={onClose}>
@@ -103,7 +93,6 @@ export function EstablishmentDetailSheet({
                   void shareEstablishment(establishmentId, establishment.name)
           }
           save={save}
-          trip={trip}
         />
 
         {establishment.id === undefined ? null : detailQuery.isPending &&

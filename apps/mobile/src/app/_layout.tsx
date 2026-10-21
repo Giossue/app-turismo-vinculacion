@@ -125,7 +125,6 @@ function AppNavigation() {
         <Stack.Screen name="establishments/[id]" />
         <Stack.Screen name="route" />
         <Stack.Screen name="nearby" />
-        <Stack.Screen name="trip" />
         <Stack.Screen name="offline" />
         <Stack.Screen name="offline-city" />
         <Stack.Screen name="settings" />

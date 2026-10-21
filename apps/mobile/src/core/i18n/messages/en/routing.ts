@@ -124,28 +124,4 @@ export const routingEn: Messages["routing"] = {
     signInToUse: "Sign in to use your routes.",
     signInToSave: "Sign in to save routes.",
   },
-  trip: {
-    title: "My trip",
-    emptyTitle: "Your trip is empty",
-    empty: (max: number) =>
-      `Tap + on an attraction or business to add it. You can add up to ${max} places and visit them in order.`,
-    summary: (count: number, max: number) =>
-      `${count} of ${max} places. The route starts at your location and goes through each stop in this order.`,
-    openPlace: "Opens the place",
-    finalDestination: "Final destination",
-    stop: (position: number) => `Stop ${position}`,
-    moveUp: (name: string) => `Move ${name} up`,
-    moveDown: (name: string) => `Move ${name} down`,
-    remove: (name: string) => `Remove ${name} from the trip`,
-    add: (name: string) => `Add ${name} to the trip`,
-    full: (max: number) => `The trip already has ${max} stops`,
-    removed: (name: string) => `${name} was removed from the trip`,
-    added: (name: string) => `${name} was added to the trip`,
-    nowFinal: (name: string) => `${name} is now the final destination`,
-    nowStop: (name: string, position: number) =>
-      `${name} is now stop ${position}`,
-    directionsInOrder: "Directions in order",
-    directions: "Directions",
-    clear: "Clear trip",
-  },
 };

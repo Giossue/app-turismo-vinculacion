@@ -14,7 +14,7 @@ devuelve un tramo (`leg`) por par consecutivo, cada uno terminado en un paso
   cambia de forma: los pasos `arrive` intermedios dicen «Llegaste a la parada N».
   El móvil envía solo coordenadas; los nombres de las paradas no salen del
   teléfono.
-- Recorrido local: `features/trip` guarda en AsyncStorage
+- (Retirado en la 1.0.9) Recorrido local: `features/trip` guardaba en AsyncStorage
   (`rumbo-ec-trip-v1`) la lista ordenada de lugares públicos del catálogo
   (centro por código o establecimiento por id, con coordenadas). No contiene
   la ubicación de la persona ni depende de la cuenta.

@@ -201,10 +201,10 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 
 ### Recorridos con varias paradas
 
-- «Mi recorrido» (`features/trip`) guarda en el dispositivo hasta cinco lugares del
-  catálogo en orden; se agregan desde fichas y hojas con el control «+». El último es el
-  destino y los anteriores viajan en el enlace de ruta como `waypoints`
-  (`[[latitud, longitud, nombre], …]`, validado: una lista inválida descarta todas las paradas).
+- La ruta acepta hasta cuatro paradas intermedias en su enlace como `waypoints`
+  (`[[latitud, longitud, nombre], …]`, validado: una lista inválida descarta todas las
+  paradas). La pantalla «Mi recorrido» que las armaba se retiró en la 1.0.9; hoy ninguna
+  pantalla de la app genera enlaces con paradas.
 - La pantalla de ruta lleva las paradas alcanzadas y, al recalcular, pide solo las
   pendientes. `useNavigationSession` deduce de la ruta con qué paradas se pidió (una por
   llegada intermedia), da una parada por alcanzada a 35 m o cuando la guía ya pasó su paso

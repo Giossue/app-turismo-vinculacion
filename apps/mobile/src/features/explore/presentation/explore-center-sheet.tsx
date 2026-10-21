@@ -25,8 +25,6 @@ import { CenterPhotos } from "@/features/centers/presentation/center-detail/cent
 import { CenterRatingSummary } from "@/features/centers/presentation/center-detail/center-rating-summary";
 import { useCenterSaveToggle } from "@/features/centers/presentation/center-detail/use-center-save-toggle";
 import { PlaceActions } from "@/features/favorites/presentation/save-action-button";
-import { buildCenterTripStop } from "@/features/trip/domain/trip";
-import { useTripToggle } from "@/features/trip/presentation/use-trip-toggle";
 import { shareCenter } from "@/features/sharing/application/share-link";
 import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/saved-center-error-snackbar";
 import { useCenterOpinions } from "@/features/opinions/application/use-center-opinions";
@@ -73,7 +71,6 @@ export function ExploreCenterSheetContent({
   const detailQuery = usePublishedCenter(center.code);
   const opinions = useCenterOpinions(center.code);
   const save = useCenterSaveToggle(center, onRequireAuth);
-  const trip = useTripToggle(buildCenterTripStop(center));
   const [activeTab, setActiveTab] = useState<CenterDetailTab>("information");
   const detail = detailQuery.data;
 
@@ -100,7 +97,6 @@ export function ExploreCenterSheetContent({
           onOpenRoute={onOpenRoute}
           onShare={() => void shareCenter(center.code, center.name)}
           save={save}
-          trip={trip}
         />
         {detailQuery.isPending && !detailQuery.isPaused ? (
           <TourismStateView

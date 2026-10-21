@@ -5,13 +5,6 @@ import { TourismIconAction } from "@/core/ui/tourism-map-actions";
 import { turismoMetrics, turismoSpacing } from "@/core/ui/tokens";
 import { useMessages } from "@/core/i18n/use-language";
 
-type TripControl = Readonly<{
-  accessibilityLabel: string;
-  disabled: boolean;
-  inTrip: boolean;
-  toggle: () => void;
-}>;
-
 type SaveControl = Readonly<{
   accessibilityLabel: string;
   saved: boolean;
@@ -26,13 +19,10 @@ export function PlaceActions({
   onOpenRoute,
   onShare,
   save,
-  trip,
 }: Readonly<{
   onOpenRoute: (() => void) | null;
   onShare?: (() => void) | null;
   save: SaveControl | null;
-  /** «Agregar al recorrido»; sin él el lugar no tiene coordenadas o id. */
-  trip?: TripControl | null;
 }>) {
   const m = useMessages();
   return (
@@ -52,16 +42,6 @@ export function PlaceActions({
           icon="bookmark"
           onPress={save.toggle}
           selected={save.saved}
-          style={styles.save}
-        />
-      ) : null}
-      {trip ? (
-        <TourismIconAction
-          accessibilityLabel={trip.accessibilityLabel}
-          disabled={trip.disabled}
-          icon={trip.inTrip ? "check" : "plus"}
-          onPress={trip.toggle}
-          selected={trip.inTrip}
           style={styles.save}
         />
       ) : null}
