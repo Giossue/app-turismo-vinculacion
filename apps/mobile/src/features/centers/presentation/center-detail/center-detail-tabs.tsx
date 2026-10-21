@@ -1,4 +1,5 @@
 import { TourismTabs } from "@/core/ui/tourism-tabs";
+import { useMessages } from "@/core/i18n/use-language";
 
 export type CenterDetailTab = "information" | "opinions" | "photos";
 
@@ -8,12 +9,6 @@ export const centerDetailTabOrder: readonly CenterDetailTab[] = [
   "photos",
 ];
 
-const centerDetailTabs = [
-  { label: "Información", value: "information" },
-  { label: "Opiniones", value: "opinions" },
-  { label: "Fotos", value: "photos" },
-] as const;
-
 /** Información / Opiniones / Fotos tab row of a center detail. */
 export function CenterDetailTabs({
   onChange,
@@ -22,7 +17,10 @@ export function CenterDetailTabs({
   onChange: (tab: CenterDetailTab) => void;
   value: CenterDetailTab;
 }>) {
-  return (
-    <TourismTabs items={centerDetailTabs} onChange={onChange} value={value} />
-  );
+  const labels = useMessages().places.center.tabs;
+  const items = centerDetailTabOrder.map((tab) => ({
+    label: labels[tab],
+    value: tab,
+  }));
+  return <TourismTabs items={items} onChange={onChange} value={value} />;
 }

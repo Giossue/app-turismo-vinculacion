@@ -41,6 +41,9 @@ import {
   turismoTypography,
 } from "./tokens";
 import { turismoHairline } from "./tourism-hairline";
+import { useMessages } from "@/core/i18n/use-language";
+
+export { TourismHeader } from "./tourism-header";
 
 /** One entry of the menu sheet. Its action runs after the sheet closes. */
 export type TourismMenuItem = Readonly<{
@@ -119,39 +122,6 @@ export function useTourismMenu(): TourismMenuContextValue {
   return context;
 }
 
-export function TourismHeader({
-  onBack,
-  title,
-}: Readonly<{ onBack?: () => void; title: string }>) {
-  const colors = useTurismoPalette();
-  return (
-    <View style={styles.header}>
-      {onBack ? (
-        <TourismPressable
-          accessibilityLabel="Volver"
-          accessibilityRole="button"
-          borderlessRipple
-          hitSlop={turismoSpacing.xs}
-          onPress={onBack}
-          style={styles.headerBack}
-        >
-          <TurismoIcon
-            color={colors.text}
-            name="arrowLeft"
-            size={turismoIconSizes.md}
-          />
-        </TourismPressable>
-      ) : null}
-      <Text
-        accessibilityRole="header"
-        style={[styles.headerTitle, { color: colors.text }]}
-      >
-        {title}
-      </Text>
-    </View>
-  );
-}
-
 /** Opening and closing of the menu sheet. */
 const menuTiming = { duration: 250, reduceMotion: ReduceMotion.System };
 
@@ -175,6 +145,7 @@ function TourismMenuSheet({
   ref: Ref<TourismMenuSheetHandle>;
   visible: boolean;
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
@@ -256,7 +227,7 @@ function TourismMenuSheet({
           {/* Separa la X del borde redondeado de la esquina. */}
           <View style={styles.handleInset}>
             <TourismSheetHandle
-              closeLabel="Cerrar menú"
+              closeLabel={m.core.closeMenu}
               onClose={() => closeSheet()}
               showIndicator={false}
             />
@@ -381,14 +352,6 @@ function MenuAction({
 }
 
 const styles = StyleSheet.create({
-  header: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: turismoSpacing.sm,
-    minHeight: turismoMetrics.headerMinHeight,
-  },
-  headerBack: { padding: turismoSpacing.xxs },
-  headerTitle: { ...turismoTypography.title, flex: 1 },
   root: { flex: 1, justifyContent: "flex-end" },
   handleInset: {
     paddingHorizontal: turismoSpacing.xs,

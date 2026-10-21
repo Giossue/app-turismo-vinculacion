@@ -9,6 +9,7 @@ import {
   type OfflineBrowserItem,
   type OfflinePlaceItem,
 } from "./offline-city-browser";
+import { useMessages } from "@/core/i18n/use-language";
 
 /** Details of a downloaded place or published route, inside the sheet. */
 export function OfflineCityDetails({
@@ -18,6 +19,7 @@ export function OfflineCityDetails({
   onRoute: (place: OfflinePlaceItem) => void;
   selected: OfflineBrowserItem;
 }>) {
+  const text = useMessages().offline.details;
   const colors = useTurismoPalette();
   const routeInstructions =
     selected.kind === "route"
@@ -50,30 +52,29 @@ export function OfflineCityDetails({
           ) : null}
           {selected.approximate ? (
             <Text style={[styles.caption, { color: colors.textMuted }]}>
-              Ubicación aproximada.
+              {text.approximate}
             </Text>
           ) : null}
           <TourismActionButton
             icon="route"
-            label="Cómo llegar con internet"
+            label={text.directionsOnline}
             onPress={() => onRoute(selected)}
           />
           <Text style={[styles.caption, { color: colors.textMuted }]}>
-            Este mapa incluye los recorridos publicados de la ciudad. Para
-            calcular un trayecto desde tu ubicación necesitas internet.
+            {text.routesIncluded}
           </Text>
         </>
       ) : (
         <>
           <Text style={[styles.body, { color: colors.text }]}>
-            Recorrido de transporte publicado. Puedes verlo en el mapa. No es
-            una ruta calculada desde tu ubicación.
+            {text.transitRoute}
           </Text>
           {selected.route.durationMinutes !== null ? (
             <Text style={[styles.body, { color: colors.text }]}>
-              Duración{" "}
-              {selected.route.durationEstimated ? "aproximada" : "publicada"}:{" "}
-              {Math.round(selected.route.durationMinutes)} minutos.
+              {text.duration(
+                Math.round(selected.route.durationMinutes),
+                selected.route.durationEstimated,
+              )}
             </Text>
           ) : null}
           {routeInstructions.length ? (
@@ -84,12 +85,11 @@ export function OfflineCityDetails({
             ))
           ) : (
             <Text style={[styles.body, { color: colors.textMuted }]}>
-              Este recorrido no incluye indicaciones publicadas.
+              {text.noDirections}
             </Text>
           )}
           <Text style={[styles.caption, { color: colors.textMuted }]}>
-            El mapa de calles está disponible dentro de la zona descargada. El
-            recorrido puede continuar fuera de esa zona.
+            {text.outsideArea}
           </Text>
         </>
       )}

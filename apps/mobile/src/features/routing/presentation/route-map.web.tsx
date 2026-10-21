@@ -7,8 +7,10 @@ import {
   turismoTypography,
 } from "@/core/ui/tokens";
 import type { RouteMapProps } from "./route-map.types";
+import { useMessages } from "@/core/i18n/use-language";
 
 export function RouteMap(_props: RouteMapProps) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   return (
     <View
@@ -18,7 +20,7 @@ export function RouteMap(_props: RouteMapProps) {
       ]}
     >
       <Text style={[styles.text, { color: colors.textMuted }]}>
-        El mapa de la ruta está disponible en la app para Android e iOS.
+        {m.routing.preview.mapUnavailableWeb}
       </Text>
     </View>
   );

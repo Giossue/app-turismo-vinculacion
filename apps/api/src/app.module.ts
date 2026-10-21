@@ -12,9 +12,11 @@ import { AdminModule } from "./admin/admin.module";
 import { FilesModule } from "./files/files.module";
 import { RoutingModule } from "./routing/routing.module";
 import { EstablishmentsModule } from "./establishments/establishments.module";
+import { SharingModule } from "./sharing/sharing.module";
 import { FavoritesModule } from "./favorites/favorites.module";
 import { OpinionsModule } from "./opinions/opinions.module";
 import { SearchModule } from "./search/search.module";
+import { NearbyModule } from "./nearby/nearby.module";
 
 @Module({
   imports: [
@@ -37,9 +39,11 @@ import { SearchModule } from "./search/search.module";
     FilesModule,
     RoutingModule,
     EstablishmentsModule,
+    SharingModule,
     FavoritesModule,
     OpinionsModule,
     SearchModule,
+    NearbyModule,
   ],
 })
 export class AppModule {}

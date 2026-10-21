@@ -6,9 +6,14 @@ export type RouteCoordinate = Readonly<{
   longitude: number;
 }>;
 
+/** Paradas intermedias: con el destino, un recorrido tiene hasta cinco. */
+export const maxRouteWaypoints = 4;
+
 export type RouteRequest = Readonly<{
   mode: RouteMode;
   origin: RouteCoordinate;
+  /** Paradas intermedias en orden de visita, antes del destino. */
+  waypoints?: readonly RouteCoordinate[];
   destination: RouteCoordinate;
 }>;
 

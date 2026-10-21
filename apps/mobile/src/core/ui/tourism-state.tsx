@@ -1,9 +1,17 @@
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { useEffect } from "react";
+import {
+  AccessibilityInfo,
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { useTurismoPalette } from "./theme-context";
 import { TourismActionButton, TourismSurface } from "./tourism-controls";
 import { TurismoIcon, type TurismoIconName } from "./turismo-icons";
 import { turismoIconSizes, turismoSpacing, turismoTypography } from "./tokens";
+import { useMessages } from "@/core/i18n/use-language";
 
 export type TourismStateVariant = "loading" | "error" | "empty";
 
@@ -16,7 +24,8 @@ export type TourismStateVariant = "loading" | "error" | "empty";
  * - `card` wraps the state in a `TourismSurface`.
  *
  * Errors default to the `wifiOff` icon and, with `onAction`, show a retry
- * button labeled `actionLabel` (default `Reintentar`).
+ * button labeled `actionLabel` (default `Reintentar`). Un error nuevo se
+ * anuncia al lector de pantalla, que no lo leería sin mover el foco.
  */
 export function TourismStateView({
   actionIcon,
@@ -39,8 +48,17 @@ export function TourismStateView({
   title?: string;
   variant: TourismStateVariant;
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const compact = layout !== "fill";
+  const announcement =
+    variant === "error"
+      ? [title, message].filter(Boolean).join(". ") || null
+      : null;
+
+  useEffect(() => {
+    if (announcement) AccessibilityInfo.announceForAccessibility(announcement);
+  }, [announcement]);
   const messageStyle = [
     compact ? styles.compactMessage : styles.message,
     { color: colors.textMuted },
@@ -94,7 +112,7 @@ export function TourismStateView({
         <TourismActionButton
           disabled={actionPending}
           icon={actionIcon ?? (variant === "error" ? "refresh" : undefined)}
-          label={actionLabel ?? "Reintentar"}
+          label={actionLabel ?? m.core.retry}
           loading={actionPending}
           mode={compact ? "outlined" : "contained"}
           onPress={onAction}

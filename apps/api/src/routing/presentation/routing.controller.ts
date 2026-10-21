@@ -46,6 +46,19 @@ export class RoutingController {
             longitude: { type: "number", format: "double" },
           },
         },
+        waypoints: {
+          type: "array",
+          maxItems: 4,
+          description: "Paradas intermedias en orden de visita.",
+          items: {
+            type: "object",
+            required: ["latitude", "longitude"],
+            properties: {
+              latitude: { type: "number", format: "double" },
+              longitude: { type: "number", format: "double" },
+            },
+          },
+        },
         destination: {
           type: "object",
           required: ["latitude", "longitude"],
@@ -58,7 +71,9 @@ export class RoutingController {
     },
   })
   @ApiOkResponse({ description: "Ruta calculada sin tráfico en tiempo real." })
-  @ApiBadRequestResponse({ description: "Origen, destino o modo inválido." })
+  @ApiBadRequestResponse({
+    description: "Origen, paradas, destino o modo inválido.",
+  })
   @ApiUnprocessableEntityResponse({
     description: "No existe una ruta posible.",
   })

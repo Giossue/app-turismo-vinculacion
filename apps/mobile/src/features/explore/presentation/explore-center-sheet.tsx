@@ -25,9 +25,13 @@ import { CenterPhotos } from "@/features/centers/presentation/center-detail/cent
 import { CenterRatingSummary } from "@/features/centers/presentation/center-detail/center-rating-summary";
 import { useCenterSaveToggle } from "@/features/centers/presentation/center-detail/use-center-save-toggle";
 import { PlaceActions } from "@/features/favorites/presentation/save-action-button";
+import { buildCenterTripStop } from "@/features/trip/domain/trip";
+import { useTripToggle } from "@/features/trip/presentation/use-trip-toggle";
+import { shareCenter } from "@/features/sharing/application/share-link";
 import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/saved-center-error-snackbar";
 import { useCenterOpinions } from "@/features/opinions/application/use-center-opinions";
 import { CenterOpinions } from "@/features/opinions/presentation/center-opinions";
+import { useMessages } from "@/core/i18n/use-language";
 
 /**
  * Quick center sheet over the map. It opens with the map data and loads the
@@ -64,10 +68,12 @@ export function ExploreCenterSheetContent({
   onOpenRoute,
   onRequireAuth,
 }: Omit<ExploreCenterSheetProps, "onClose">) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const detailQuery = usePublishedCenter(center.code);
   const opinions = useCenterOpinions(center.code);
   const save = useCenterSaveToggle(center, onRequireAuth);
+  const trip = useTripToggle(buildCenterTripStop(center));
   const [activeTab, setActiveTab] = useState<CenterDetailTab>("information");
   const detail = detailQuery.data;
 
@@ -90,18 +96,23 @@ export function ExploreCenterSheetContent({
           style={styles.rating}
           summary={opinions.data?.summary}
         />
-        <PlaceActions onOpenRoute={onOpenRoute} save={save} />
+        <PlaceActions
+          onOpenRoute={onOpenRoute}
+          onShare={() => void shareCenter(center.code, center.name)}
+          save={save}
+          trip={trip}
+        />
         {detailQuery.isPending && !detailQuery.isPaused ? (
           <TourismStateView
             layout="inline"
-            message="Cargando la ficha completa…"
+            message={m.explore.centerSheet.loading}
             variant="loading"
           />
         ) : detailQuery.error || !detail ? (
           <TourismStateView
             actionPending={detailQuery.isFetching}
             layout="inline"
-            message="No pudimos cargar todos los datos de la ficha."
+            message={m.explore.centerSheet.failed}
             onAction={() => void detailQuery.refetch()}
             variant="error"
           />

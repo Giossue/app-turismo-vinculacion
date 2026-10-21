@@ -1,13 +1,12 @@
 import { Alert, Platform } from "react-native";
-
-const title = "¿Iniciar un nuevo chat?";
-const message = "Se borrará la conversación actual.";
+import { messages } from "@/core/i18n/language";
 
 /** Starts a new chat, asking first when the current one has questions. */
 export function confirmNewAgentChat(
   userMessageCount: number,
   onConfirm: () => void,
 ) {
+  const { cancel, confirm, message, title } = messages().agent.confirmNew;
   if (userMessageCount === 0) {
     onConfirm();
     return;
@@ -17,7 +16,7 @@ export function confirmNewAgentChat(
     return;
   }
   Alert.alert(title, message, [
-    { text: "Cancelar", style: "cancel" },
-    { text: "Nuevo chat", style: "destructive", onPress: onConfirm },
+    { text: cancel, style: "cancel" },
+    { text: confirm, style: "destructive", onPress: onConfirm },
   ]);
 }

@@ -9,6 +9,7 @@ import {
 } from "@/core/api/http";
 import { authUserSchema, type AuthUser } from "../domain/auth-user";
 import type { TouristRegistrationInput } from "../domain/registration-options";
+import { messages } from "@/core/i18n/language";
 
 const authResultSchema = z.object({
   data: z.object({
@@ -39,7 +40,11 @@ export function loginMobile(
     `${apiUrl}/auth/mobile/login`,
     { email, password },
     fetcher,
-    "No se pudo iniciar sesión.",
+    messages().account.errors.login,
+    {
+      400: messages().account.errors.invalidData,
+      401: messages().account.errors.invalidCredentials,
+    },
   );
 }
 
@@ -52,7 +57,8 @@ export function registerMobile(
     `${apiUrl}/auth/mobile/register`,
     input,
     fetcher,
-    "No se pudo crear la cuenta.",
+    messages().account.errors.register,
+    { 400: messages().account.errors.invalidData },
   );
 }
 
@@ -65,7 +71,8 @@ export function refreshMobile(
     `${apiUrl}/auth/mobile/refresh`,
     { refreshToken },
     fetcher,
-    "La sesión expiró.",
+    messages().account.errors.expired,
+    { 401: messages().account.errors.expired },
   );
 }
 
@@ -74,7 +81,7 @@ export async function logoutMobile(
   fetcher: Fetcher = fetch,
   apiUrl = getApiUrl(),
 ): Promise<void> {
-  const errorMessage = "No se pudo cerrar la sesión remota.";
+  const errorMessage = messages().account.errors.logoutRemote;
   const response = await sendRequest(`${apiUrl}/auth/mobile/logout`, {
     errorMessage,
     fetcher,
@@ -92,6 +99,7 @@ async function requestAuthResult(
   body: unknown,
   fetcher: Fetcher,
   errorMessage: string,
+  serverMessageFallbacks: Readonly<Partial<Record<number, string>>>,
 ): Promise<AuthResult> {
   const payload = await requestJson(url, authResultSchema, {
     errorMessage,
@@ -101,7 +109,8 @@ async function requestAuthResult(
       headers: jsonContentHeaders,
       method: "POST",
     },
-    invalidMessage: "La sesión no tiene un formato válido.",
+    invalidMessage: messages().account.errors.invalidSession,
+    serverMessageFallbacks,
     useServerMessage: true,
   });
   return payload.data;

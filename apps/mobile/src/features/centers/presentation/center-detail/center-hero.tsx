@@ -20,6 +20,7 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
+import { useMessages } from "@/core/i18n/use-language";
 
 type CenterPhoto = ViewerPhoto;
 
@@ -41,6 +42,7 @@ export function CenterHero({
   style?: StyleProp<ViewStyle>;
   trailing?: ReactNode;
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const [viewerOpen, setViewerOpen] = useState(false);
   const photo = photos?.[0];
@@ -48,8 +50,10 @@ export function CenterHero({
     <View style={[styles.hero, style]}>
       {photo ? (
         <Pressable
-          accessibilityHint="Abre la fotografía a pantalla completa"
-          accessibilityLabel={photo.description ?? `Fotografía de ${name}`}
+          accessibilityHint={m.places.center.photo.openHint}
+          accessibilityLabel={
+            photo.description ?? m.places.center.photo.of(name)
+          }
           accessibilityRole="imagebutton"
           onPress={() => setViewerOpen(true)}
           style={styles.image}
@@ -71,7 +75,7 @@ export function CenterHero({
             size={turismoIconSizes.xl}
           />
           <Text style={[styles.fallbackText, { color: colors.textMuted }]}>
-            Sin fotografía principal
+            {m.places.center.photo.none}
           </Text>
         </View>
       )}

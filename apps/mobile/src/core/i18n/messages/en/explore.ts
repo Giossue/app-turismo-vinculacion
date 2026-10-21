@@ -1,0 +1,91 @@
+import type { Messages } from "../es";
+
+export const exploreEn: Messages["explore"] = {
+  locate: {
+    recenter: "Center the map on my location again",
+    locating: "Getting your location",
+    enable: "Turn on location",
+  },
+  pointOfInterest: "Point of interest",
+  agentPlace: {
+    backToAgent: "Back to the assistant",
+    fallbackTitle: "Attraction",
+    directions: "Directions",
+    loadFailed: "We couldn't load the full details.",
+    loading: "Loading the full details…",
+    locality: "Locality",
+    distance: "Distance",
+    address: "Address",
+    phone: "Phone",
+    noLocation: "This place doesn't have a precise location to create a route.",
+  },
+  agentSheet: {
+    close: "Close tourism assistant",
+    newChat: "New conversation",
+  },
+  centerSheet: {
+    loading: "Loading the full details…",
+    failed: "We couldn't load all the details.",
+  },
+  filters: {
+    label: "Map filters",
+    tourism: "Tourism",
+    more: "More",
+    moreTitle: "More places",
+    moreSubtitle: "Choose what you want to see on the map.",
+  },
+  actions: {
+    openAgent: "Open tourism assistant",
+    removePlace: "Remove place from the map",
+    directions: "Directions",
+    retryMap: "We couldn't update the attractions. Try again",
+    offline: "Offline: showing your downloaded maps",
+  },
+  search: {
+    cancelled: "The search was cancelled.",
+    failed: "We couldn't update the search.",
+    invalid: "The search has an invalid format.",
+    modes: {
+      all: "All",
+      centers: "Attractions",
+      establishments: "Services",
+      geographic: "Places",
+    },
+    fieldLabel: {
+      all: "Search attractions, services and places",
+      centers: "Search attractions",
+      establishments: "Search services",
+      geographic: "Search places and addresses",
+    },
+    placeholder: "Search here",
+    backToMap: "Back to the map",
+    filters: "Search filters",
+    country: "All of Ecuador",
+    area: "In this area",
+    kinds: {
+      center: "Attraction",
+      establishment: "Service",
+      geographic: "Place",
+      poi: "Point of interest",
+      route: "Trail",
+    },
+    offlineWithCities: (cities: string) =>
+      `Online search unavailable. You can only search your downloaded maps: ${cities}.`,
+    offlineNoCities:
+      "Online search unavailable. No downloaded maps cover this search.",
+    searching: "Searching",
+    retryOnline: "Try again when you're online.",
+    emptyHint:
+      "Try another name or type of place, or widen the search to All of Ecuador.",
+    failedTitle: "We couldn't complete the search",
+    emptyTitle: "No matches found",
+    recent: "Recent searches",
+    clearRecent: "Clear recent searches",
+    clear: "Clear",
+    repeat: (query: string) => `Search again for ${query}`,
+    minLength: "Type at least two characters to search.",
+    offlineMap: (city: string) => `Downloaded map · ${city}`,
+    openOffline: "Opens this place on the downloaded map",
+    showOnMap: "Shows this place on the map",
+  },
+};

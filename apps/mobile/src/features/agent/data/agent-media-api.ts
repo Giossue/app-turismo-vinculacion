@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getApiUrl } from "@/core/api/api-url";
 import { requestJson } from "@/core/api/http";
 import type { AuthorizedFetcher } from "@/features/auth/data/auth-api";
+import { messages } from "@/core/i18n/language";
 
 type Upload = Readonly<{ uri: string; mimeType: string; name: string }>;
 
@@ -34,9 +35,9 @@ export async function transcribeAgentAudio(
     {
       fetcher: request,
       timeoutMs: 60_000,
-      errorMessage: "No se pudo transcribir el audio.",
+      errorMessage: messages().agent.errors.transcribe,
       useServerMessage: true,
-      invalidMessage: "La transcripción no tiene el formato esperado.",
+      invalidMessage: messages().agent.errors.transcribeInvalid,
       init: { method: "POST", body: fileForm(upload), signal },
     },
   );

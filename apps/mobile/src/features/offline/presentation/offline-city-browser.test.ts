@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { OfflineCityManifest } from "../domain/offline-city";
 import {
   filterOfflineBrowserItems,
-  formatOfflineMapSize,
   getOfflineBrowserItems,
   getOfflineRouteInstructions,
   mergeOfflineCities,
@@ -131,12 +130,6 @@ describe("downloaded city browser", () => {
     expect(mergeOfflineCities([unpublished], [manifest])).toEqual([
       unpublished,
     ]);
-  });
-  it("does not fabricate a size when the native pack does not report it", () => {
-    expect(formatOfflineMapSize(null)).toBeNull();
-    expect(formatOfflineMapSize(Number.NaN)).toBeNull();
-    expect(formatOfflineMapSize(-1)).toBeNull();
-    expect(formatOfflineMapSize(1024 * 1024)).toBe("1 MB de mapa");
   });
   it("shows published text from strings and instruction objects without fabricating missing directions", () => {
     expect(

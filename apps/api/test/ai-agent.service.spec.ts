@@ -140,6 +140,17 @@ describe("AiAgentService", () => {
     ).toBe(false);
   });
 
+  it("accepts the interface language of the mobile app", () => {
+    const input = { message: "Where can I eat?", history: [] };
+    expect(agentChatSchema.parse({ ...input, language: "en" }).language).toBe(
+      "en",
+    );
+    expect(agentChatSchema.parse(input).language).toBeUndefined();
+    expect(
+      agentChatSchema.safeParse({ ...input, language: "fr" }).success,
+    ).toBe(false);
+  });
+
   it("recognizes nearby intent without turning the phrase into a text search", () => {
     expect(hasNearbyIntent("Lo que haya cerca de mí")).toBe(true);
     expect(hasNearbyIntent("qué puedo visitar alrededor")).toBe(true);

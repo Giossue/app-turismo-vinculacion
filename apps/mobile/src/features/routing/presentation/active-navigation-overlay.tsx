@@ -1,5 +1,6 @@
+import type { Href } from "expo-router";
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { AccessibilityInfo, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { formatDistance } from "@/core/format/distance";
@@ -22,9 +23,19 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
+import {
+  arrivalAutoCloseSeconds,
+  useArrivalAutoClose,
+} from "../application/use-arrival-auto-close";
 import type { NavigationGuidance } from "../domain/navigation-guidance";
 import type { CalculatedRoute } from "../domain/routing";
+import type { NearbyCenter } from "@/features/nearby/presentation/nearby-href";
+import { ArrivalPlaceActions } from "./arrival-place-actions";
+import type { RoutePlace } from "./route-href";
 import { getRouteStepIcon } from "./route-step-icon";
+import { useMessages } from "@/core/i18n/use-language";
+import { messages } from "@/core/i18n/language";
+import { getStepInstruction } from "../domain/route-instruction-text";
 
 /** The arrival time only needs minute precision. */
 const clockRefreshMs = 30_000;
@@ -32,6 +43,10 @@ const clockRefreshMs = 30_000;
 const guidanceCardMinHeight = turismoMetrics.controlMd + turismoSpacing.xxl;
 
 type ActiveNavigationOverlayProps = Readonly<{
+  /** Arrival starts a countdown that closes navigation through `onStop`. */
+  arrived: boolean;
+  /** Punto de llegada, para ver lugares cercanos al terminar. */
+  arrivalPoint: NearbyCenter;
   guidance: NavigationGuidance | null;
   isFollowing: boolean;
   isRecalculating: boolean;
@@ -39,9 +54,13 @@ type ActiveNavigationOverlayProps = Readonly<{
   notice: string | null;
   /** Height of the bottom bar, to keep map controls above it. */
   onBottomInsetChange?: (height: number) => void;
+  /** Abre otra pantalla desde las acciones de llegada. */
+  onOpenPlace: (href: Href) => void;
   onRecenter: () => void;
   onStop: () => void;
   onRetryRoute?: () => void;
+  /** Lugar del catálogo; sin él solo se ofrece ver lugares cercanos. */
+  place: RoutePlace | null;
   remainingDistanceMeters: number | null;
   remainingDurationSeconds: number | null;
   route: CalculatedRoute;
@@ -52,29 +71,42 @@ type ActiveNavigationOverlayProps = Readonly<{
  * a bottom bar with close, remaining time/distance/ETA and recenter.
  */
 export function ActiveNavigationOverlay({
+  arrivalPoint,
+  arrived,
   guidance,
   isFollowing,
   isRecalculating,
   message,
   notice,
   onBottomInsetChange,
+  onOpenPlace,
   onRecenter,
   onStop,
   onRetryRoute,
+  place,
   remainingDistanceMeters,
   remainingDurationSeconds,
   route,
 }: ActiveNavigationOverlayProps) {
   const colors = useTurismoPalette();
+  const text = useMessages().routing.overlay;
   const insets = useSafeAreaInsets();
   const now = useNow(clockRefreshMs);
+  const arrivalSecondsLeft = useArrivalAutoClose(arrived, onStop);
+  // El contador cambia cada segundo; el lector lo anuncia una sola vez.
+  useEffect(() => {
+    if (!arrived) return;
+    AccessibilityInfo.announceForAccessibility(
+      messages().routing.overlay.closesInLabel(arrivalAutoCloseSeconds),
+    );
+  }, [arrived]);
   const firstStep = route.steps[0];
   const activeGuidance: NavigationGuidance | null =
     guidance ??
     (firstStep
       ? {
           distanceMeters: firstStep.distanceMeters,
-          instruction: firstStep.instruction,
+          instruction: getStepInstruction(route, 0),
           stepIndex: 0,
         }
       : null);
@@ -84,6 +116,9 @@ export function ActiveNavigationOverlay({
   const nextStep = activeGuidance
     ? route.steps[activeGuidance.stepIndex + 1]
     : undefined;
+  const nextStepInstruction = activeGuidance
+    ? getStepInstruction(route, activeGuidance.stepIndex + 1)
+    : "";
   const remainingDistance =
     remainingDistanceMeters ?? Math.max(0, route.distanceMeters);
   const remainingDuration =
@@ -91,8 +126,11 @@ export function ActiveNavigationOverlay({
   // A status message or a recalculation replaces the maneuver details.
   const showManeuverDetails = !isRecalculating && !message;
   const instruction = isRecalculating
-    ? "Recalculando ruta…"
-    : (message ?? activeGuidance?.instruction ?? "Siguiendo tu ubicación…");
+    ? text.recalculating
+    : (message ?? activeGuidance?.instruction ?? text.following);
+  const arrivalClock = formatClockTime(
+    now + Math.max(0, remainingDuration) * 1000,
+  );
   const idleControlStyle = {
     backgroundColor: colors.background,
     borderColor: colors.textFaint,
@@ -108,6 +146,8 @@ export function ActiveNavigationOverlay({
           style={[styles.guidanceCard, { backgroundColor: colors.primarySoft }]}
         >
           <View
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
             style={[styles.guidanceIcon, { backgroundColor: colors.primary }]}
           >
             <TurismoIcon
@@ -125,8 +165,23 @@ export function ActiveNavigationOverlay({
             </Text>
             {activeGuidance && showManeuverDetails ? (
               <Text style={[styles.caption, { color: colors.textMuted }]}>
-                En {formatDistance(activeGuidance.distanceMeters)}
+                {text.inDistance(formatDistance(activeGuidance.distanceMeters))}
               </Text>
+            ) : null}
+            {arrivalSecondsLeft !== null ? (
+              <Text
+                accessibilityLabel={text.closesInLabel(arrivalSecondsLeft)}
+                style={[styles.countdown, { color: colors.primaryStrong }]}
+              >
+                {text.closesIn(arrivalSecondsLeft)}
+              </Text>
+            ) : null}
+            {arrivalSecondsLeft !== null ? (
+              <ArrivalPlaceActions
+                destination={arrivalPoint}
+                onOpen={onOpenPlace}
+                place={place}
+              />
             ) : null}
             {notice ? (
               <Text
@@ -140,7 +195,7 @@ export function ActiveNavigationOverlay({
               <TourismActionButton
                 disabled={isRecalculating}
                 icon="refresh"
-                label="Actualizar ruta"
+                label={text.updateRoute}
                 mode="outlined"
                 onPress={onRetryRoute}
               />
@@ -149,12 +204,16 @@ export function ActiveNavigationOverlay({
         </View>
 
         {nextStep && showManeuverDetails ? (
-          <View style={[styles.nextStep, { backgroundColor: colors.primary }]}>
+          <View
+            accessible
+            accessibilityLabel={text.thenLabel(nextStepInstruction)}
+            style={[styles.nextStep, { backgroundColor: colors.primary }]}
+          >
             <Text style={[styles.nextLabel, { color: colors.onPrimary }]}>
-              Luego
+              {text.then}
             </Text>
             <Text style={[styles.nextText, { color: colors.onPrimary }]}>
-              {nextStep.instruction}
+              {nextStepInstruction}
             </Text>
           </View>
         ) : null}
@@ -174,25 +233,30 @@ export function ActiveNavigationOverlay({
       >
         <TourismGlassFill material="regular" />
         <TourismIconAction
-          accessibilityLabel="Cerrar navegación"
+          accessibilityLabel={text.close}
           icon="close"
           onPress={onStop}
           style={idleControlStyle}
         />
-        <View style={styles.summary}>
+        <View
+          accessible
+          accessibilityLabel={text.summaryLabel(
+            formatDurationSeconds(remainingDuration),
+            formatDistance(remainingDistance),
+            arrivalClock,
+          )}
+          style={styles.summary}
+        >
           <Text style={[styles.summaryValue, { color: colors.primaryStrong }]}>
             {formatDurationSeconds(remainingDuration)}
           </Text>
           <Text style={[styles.summaryMeta, { color: colors.textMuted }]}>
-            {formatDistance(remainingDistance)} ·{" "}
-            {formatClockTime(now + Math.max(0, remainingDuration) * 1000)}
+            {formatDistance(remainingDistance)} · {arrivalClock}
           </Text>
         </View>
         <TourismIconAction
           accessibilityLabel={
-            isFollowing
-              ? "Siguiendo mi ubicación"
-              : "Centrar y seguir mi ubicación"
+            isFollowing ? text.followingLocation : text.recenter
           }
           icon="locate"
           onPress={onRecenter}
@@ -241,6 +305,7 @@ const styles = StyleSheet.create({
   guidanceCopy: { flex: 1, gap: turismoSpacing.xxs, minWidth: 0 },
   guidanceText: { ...turismoTypography.heading, flexShrink: 1, minWidth: 0 },
   caption: { ...turismoTypography.caption },
+  countdown: { ...turismoTypography.label },
   nextStep: {
     alignItems: "center",
     alignSelf: "flex-start",

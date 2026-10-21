@@ -4,7 +4,7 @@ import { ZodError } from "zod";
 import { ApiError } from "@/core/api/http";
 import { agentResponseSchema } from "../domain/agent";
 import {
-  AGENT_INVALID_FORMAT_MESSAGE,
+  agentApiMessages,
   askTourismAgentStream,
   buildAgentRequestBody,
 } from "./agent-api";
@@ -123,7 +123,7 @@ describe("askTourismAgentStream", () => {
     );
     await expect(
       askTourismAgentStream("Hola", [], vi.fn(), { apiUrl, fetcher }),
-    ).rejects.toThrow(AGENT_INVALID_FORMAT_MESSAGE);
+    ).rejects.toThrow(agentApiMessages.invalid);
   });
 
   it("reconstructs fragmented SSE events and forwards cumulative text", async () => {
@@ -187,7 +187,7 @@ describe("askTourismAgentStream", () => {
         "X-Turismo-Agent-Card-Locations": "1",
       },
       method: "POST",
-      signal: undefined,
+      signal: expect.any(AbortSignal),
     });
   });
 
@@ -213,7 +213,7 @@ describe("askTourismAgentStream", () => {
       fetcher,
     });
     await expect(request).rejects.toBeInstanceOf(ApiError);
-    await expect(request).rejects.toThrow(AGENT_INVALID_FORMAT_MESSAGE);
+    await expect(request).rejects.toThrow(agentApiMessages.invalid);
   });
 
   it("surfaces the agent's error events", async () => {
@@ -305,8 +305,9 @@ describe("askTourismAgentStream abort handling", () => {
         fetcher,
         signal: controller.signal,
       }),
-    ).rejects.toThrow("respuesta incompleta");
-    expect(cancelled).toHaveBeenCalledTimes(1);
+    ).rejects.toMatchObject({ name: "AbortError" });
+    // The response that arrives after the abort still releases its body.
+    await vi.waitFor(() => expect(cancelled).toHaveBeenCalledTimes(1));
     expect(onText).not.toHaveBeenCalled();
   });
 

@@ -9,6 +9,7 @@
 | FCM/APNs                      | notificaciones móviles                          | credenciales server-side                                       | notifications       |
 | Correo                        | verificación y recuperación                     | credenciales server-side                                       | auth                |
 | Clima                         | pronóstico y alertas                            | API server-side                                                | alerts              |
+| Sentry                        | errores y cierres del móvil (ADR-0006)          | DSN público opcional; token de source maps solo en el build    | mobile              |
 
 ## Reglas
 
@@ -22,6 +23,12 @@
 - Webhooks autenticados, con protección contra replay e idempotencia.
 - La búsqueda de entidades propias no depende de Photon: PostgreSQL sigue siendo la fuente
   de verdad para centros y catastros publicados.
+
+## Reporte de errores
+
+Sentry es opcional: sin `EXPO_PUBLIC_SENTRY_DSN` el móvil no lo inicializa. Los reportes
+son anónimos y pasan por el filtro de privacidad descrito en
+`docs/quality/observability.md`; si Sentry no responde, la app continúa sin cambios.
 
 ## Archivos
 

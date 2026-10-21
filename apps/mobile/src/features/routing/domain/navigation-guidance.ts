@@ -1,7 +1,9 @@
 import { getDistanceMeters, toRadians } from "@/core/geo/distance";
 import type { GeoCoordinate } from "@/core/geo/types";
 import { formatDistance } from "@/core/format/distance";
+import { getStepInstruction } from "./route-instruction-text";
 import type { CalculatedRoute } from "./routing";
+import { messages } from "@/core/i18n/language";
 
 const metersPerDegreeLatitude = 111_320;
 
@@ -102,7 +104,7 @@ export function getNavigationGuidance(
     if (stepIndex === route.steps.length - 1 || normalizedProgress < stepEnd) {
       return {
         distanceMeters: Math.max(0, stepEnd - normalizedProgress),
-        instruction: step.instruction,
+        instruction: getStepInstruction(route, stepIndex),
         stepIndex,
       };
     }
@@ -118,7 +120,7 @@ export function getNavigationNotification(
 ): NavigationNotification {
   if (!guidance) {
     return {
-      body: "Navegación activa. Abre la app para ver la ruta.",
+      body: messages().routing.notification.active,
       key: "active",
     };
   }
@@ -131,8 +133,11 @@ export function getNavigationNotification(
   return {
     body:
       guidance.distanceMeters <= 5
-        ? `Ahora: ${guidance.instruction}`
-        : `En ${distance}: ${guidance.instruction}`,
+        ? messages().routing.notification.now(guidance.instruction)
+        : messages().routing.notification.inDistance(
+            distance,
+            guidance.instruction,
+          ),
     key: `${guidance.stepIndex}:${distance}:${guidance.instruction}`,
   };
 }
@@ -231,4 +236,18 @@ function projectPoint(
       ((pointX - startX) * deltaX + (pointY - startY) * deltaY) / squaredLength,
     ),
   );
+}
+
+/** Aviso al llegar con la app oculta; con la app visible lo anuncia la voz. */
+export function getArrivalNotificationContent() {
+  const text = messages().routing.notification;
+  return { body: text.arrived, title: text.appName };
+}
+
+/**
+ * La tarea de fondo también recibe ubicaciones con la app visible; en ese
+ * caso la pantalla ya muestra y anuncia la llegada.
+ */
+export function shouldNotifyArrival(appState: string): boolean {
+  return appState !== "active";
 }

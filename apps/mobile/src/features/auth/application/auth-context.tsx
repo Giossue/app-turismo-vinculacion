@@ -28,6 +28,7 @@ import {
 import type { AuthStatus, AuthUser } from "../domain/auth-user";
 import type { TouristRegistrationInput } from "../domain/registration-options";
 import { MobileSession, type AccountSessionScope } from "./mobile-session";
+import { messages } from "@/core/i18n/language";
 
 /** El perfil puede estar autenticado sin access token durante el uso sin conexión. */
 export type AuthContextValue = Readonly<{
@@ -92,10 +93,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       await session.logout();
     } catch (error) {
       // El aviso permanece aunque AuthGate ya haya retirado la pantalla privada.
-      showTourismToast(
-        "Cerramos el acceso, pero no pudimos borrar la sesión del dispositivo.",
-        "help",
-      );
+      showTourismToast(messages().account.errors.localLogout, "help");
       throw error;
     }
   }, [session]);

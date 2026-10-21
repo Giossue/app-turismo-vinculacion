@@ -335,7 +335,15 @@ describe("admin section contract", () => {
     ).toContain("fecha de declaratoria");
   });
 
-  it("marks conservation incomplete until both components have a state", () => {
+  it("marks conservation incomplete until both components are evaluated", () => {
+    expect(
+      getAdminSectionProgress({
+        schemaVersion: 1,
+        response: "SI",
+        conservation: { attraction: { state: "CONSERVADO" } },
+      }),
+    ).toBe("INCOMPLETA");
+    // An explicit unknown (null) state is a valid evaluation and stays null.
     expect(
       getAdminSectionProgress({
         schemaVersion: 1,
@@ -345,7 +353,7 @@ describe("admin section contract", () => {
           environment: { state: null },
         },
       }),
-    ).toBe("INCOMPLETA");
+    ).toBe("COMPLETA");
   });
 
   it("validates hygiene, safety and contingency records", () => {

@@ -39,10 +39,11 @@ describe("requestJson", () => {
     ).resolves.toEqual({ data: { name: "Guaranda" } });
     expect(fetcher).toHaveBeenCalledWith("http://api.test/places/1", {
       headers: { Accept: "application/json" },
+      signal: expect.any(AbortSignal),
     });
   });
 
-  it("calls the fetcher without init when none is given", async () => {
+  it("only adds the deadline signal when no init is given", async () => {
     const fetcher = vi
       .fn()
       .mockResolvedValue(jsonResponse({ data: { name: "Guaranda" } }));
@@ -51,7 +52,33 @@ describe("requestJson", () => {
       ...messages,
       fetcher,
     });
-    expect(fetcher).toHaveBeenCalledWith("http://api.test/places/1");
+    expect(fetcher).toHaveBeenCalledWith("http://api.test/places/1", {
+      signal: expect.any(AbortSignal),
+    });
+  });
+
+  it("aborts the transport and reports the failure after the deadline", async () => {
+    vi.useFakeTimers();
+    try {
+      let transportSignal: AbortSignal | undefined;
+      const fetcher = vi.fn((_url: RequestInfo | URL, init?: RequestInit) => {
+        transportSignal = init?.signal ?? undefined;
+        return new Promise<Response>(() => undefined);
+      });
+      const request = requestJson("http://api.test", schema, {
+        ...messages,
+        fetcher,
+        timeoutMs: 1_000,
+      }).catch((cause: unknown) => cause);
+
+      await vi.advanceTimersByTimeAsync(1_000);
+      const error = await request;
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).message).toBe(messages.errorMessage);
+      expect(transportSignal?.aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("hides network failures behind the user-facing message", async () => {

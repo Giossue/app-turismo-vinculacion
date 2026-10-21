@@ -25,8 +25,10 @@ import {
   buildLoginHref,
   type LoginReturnPath,
 } from "@/features/auth/application/login-href";
+import { useMessages } from "@/core/i18n/use-language";
 
 export default function TabsLayout() {
+  const m = useMessages();
   const router = useRouter();
   const auth = useAuth();
   const insets = useSafeAreaInsets();
@@ -46,28 +48,38 @@ export default function TabsLayout() {
 
   const profile: TourismMenuProfile = auth.user
     ? {
-        accessibilityLabel: `Abrir perfil de ${auth.user.name}`,
+        accessibilityLabel: m.account.menu.openProfile(auth.user.name),
         initials: buildInitials(auth.user.name),
         onPress: () => openProtected("/profile"),
         subtitle: auth.user.email,
         title: auth.user.name,
       }
     : {
-        accessibilityLabel: "Iniciar sesión para abrir el perfil",
+        accessibilityLabel: m.account.menu.signInToOpenProfile,
         onPress: () => openProtected("/profile"),
-        subtitle: "Inicia sesión o crea tu cuenta",
-        title: "Invitado",
+        subtitle: m.account.menu.guestSubtitle,
+        title: m.account.menu.guest,
       };
 
   const menuItems: readonly TourismMenuItem[] = [
     {
+      icon: "mapPinned",
+      label: m.account.menu.nearby,
+      onPress: () => router.push("/nearby"),
+    },
+    {
+      icon: "route",
+      label: m.account.menu.trip,
+      onPress: () => router.push("/trip"),
+    },
+    {
       icon: "download",
-      label: "Mapas sin conexión",
+      label: m.account.menu.offline,
       onPress: () => openProtected("/offline"),
     },
     {
       icon: "settings",
-      label: "Configuración",
+      label: m.account.menu.settings,
       onPress: () => router.push("/settings"),
     },
   ];
@@ -99,6 +111,7 @@ function buildInitials(name: string): string {
 }
 
 function PrimaryTabs() {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const { width } = useWindowDimensions();
   return (
@@ -128,8 +141,8 @@ function PrimaryTabs() {
       // se ve por debajo.
       tabBar={() => <PrimaryTabBar />}
     >
-      <Tabs.Screen name="index" options={{ title: "Explorar" }} />
-      <Tabs.Screen name="saved" options={{ title: "Guardados" }} />
+      <Tabs.Screen name="index" options={{ title: m.account.tabs.explore }} />
+      <Tabs.Screen name="saved" options={{ title: m.account.tabs.saved }} />
     </Tabs>
   );
 }
@@ -139,6 +152,7 @@ function PrimaryTabs() {
  * historial); Menú no es una pantalla: abre la hoja del menú.
  */
 function PrimaryTabBar() {
+  const m = useMessages();
   const router = useRouter();
   const pathname = usePathname();
   const auth = useAuth();
@@ -151,14 +165,14 @@ function PrimaryTabBar() {
         {
           icon: "map",
           key: "explore",
-          label: "Explorar",
+          label: m.account.tabs.explore,
           onPress: () => router.replace("/"),
           selected: pathname === "/",
         },
         {
           icon: "bookmark",
           key: "saved",
-          label: "Guardados",
+          label: m.account.tabs.saved,
           // Sin cuenta se pasa por el login, que vuelve a Guardados.
           onPress: () =>
             auth.status === "anonymous"
@@ -169,7 +183,7 @@ function PrimaryTabBar() {
         {
           icon: "menu",
           key: "menu",
-          label: "Menú",
+          label: m.account.tabs.menu,
           onPress: menu.openMenu,
         },
       ]}

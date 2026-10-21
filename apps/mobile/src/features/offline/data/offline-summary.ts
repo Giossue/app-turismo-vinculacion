@@ -6,6 +6,7 @@ import type {
 
 export function summarizeOfflineManifest(
   manifest: OfflineCityManifest,
+  contentSizeBytes?: number,
 ): OfflineCitySummary {
   const { download } = manifest;
   return {
@@ -26,6 +27,7 @@ export function summarizeOfflineManifest(
           bounds: download.bounds,
         }
       : undefined,
+    contentSizeBytes,
   };
 }
 

@@ -24,8 +24,9 @@
 - Se consume desde el backend mediante un puerto para preservar la posibilidad de cambiar
   proveedor y proteger credenciales de servicios privilegiados.
 - Las rutas calculadas online se exponen mediante `POST /api/v1/routing/route`, que recibe
-  origen, destino y `mode` (`car`, `bicycle` o `foot`) y devuelve distancia, duración,
-  geometría GeoJSON e indicaciones.
+  origen, destino, `mode` (`car`, `bicycle` o `foot`) y, opcionalmente, hasta cuatro
+  `waypoints` (paradas intermedias en orden), y devuelve distancia, duración, geometría
+  GeoJSON e indicaciones. Las llegadas intermedias se anuncian como «Llegaste a la parada N».
 - En producción, el adaptador usa los servicios privados `osrm-car`, `osrm-bicycle` y
   `osrm-foot` dentro de `dokploy-network`. El móvil nunca conoce sus nombres ni sus puertos.
 - El agente consulta estimaciones de llegada mediante OSRM Table, con un origen
@@ -129,8 +130,12 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   tarea del sistema, la sesión persistida, la notificación foreground y la voz, y el estado
   visible se reinicia; antes de iniciarla no hay seguimiento que limpiar. Si la tarea
   persistente no puede iniciarse tras activarla, la navegación continúa con la app abierta y lo avisa en
-  pantalla. Al llegar al destino, el modo activo conserva su pantalla y muestra el estado de
-  llegada hasta que la persona lo cierre explícitamente. Minimizar la app o cambiar temporalmente
+  pantalla. Al llegar al destino, el modo activo muestra el estado de
+  llegada con una cuenta regresiva de 60 s y se cierra solo al terminarla (la `X` lo cierra
+  antes). Si la ruta lleva a un centro o establecimiento del catálogo (`placeKind`/`placeId`
+  en el enlace), la llegada ofrece guardarlo, ver su ficha y, en centros, sus opiniones;
+  todo destino ofrece «Cerca», que abre «Cerca de mí» alrededor del destino (`latitude`,
+  `longitude` y `name` validados en el enlace, sin pedir el GPS). Abrir otra pantalla cierra antes la navegación y guardar no detiene la cuenta. Minimizar la app o cambiar temporalmente
   de aplicación no equivale a cancelar:
   mientras la navegación siga activa, la tarea continúa bajo las condiciones permitidas por
   Android. La tarea también comprueba la distancia al destino cuando recibe una ubicación en
@@ -193,6 +198,20 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   ubicación actual: las muestras con precisión superior a 100 m se descartan y las
   indicaciones esperan una lectura aceptable. La posición persistida solo permite que el
   servicio conserve continuidad y no se dibuja ni recalcula hasta recibir un punto fresco.
+
+### Recorridos con varias paradas
+
+- «Mi recorrido» (`features/trip`) guarda en el dispositivo hasta cinco lugares del
+  catálogo en orden; se agregan desde fichas y hojas con el control «+». El último es el
+  destino y los anteriores viajan en el enlace de ruta como `waypoints`
+  (`[[latitud, longitud, nombre], …]`, validado: una lista inválida descarta todas las paradas).
+- La pantalla de ruta lleva las paradas alcanzadas y, al recalcular, pide solo las
+  pendientes. `useNavigationSession` deduce de la ruta con qué paradas se pidió (una por
+  llegada intermedia), da una parada por alcanzada a 35 m o cuando la guía ya pasó su paso
+  `arrive`, la anuncia por voz y solo acepta la llegada al destino al completar todas.
+- La sesión persistida guarda `arrivalArmed`: la tarea de fondo no sigue el avance entre
+  paradas y no cierra la sesión mientras queden; la llegada final se detecta al volver a la app.
+- Las rutas guardadas y los enlaces compartidos no conservan paradas.
 
 ## Rendimiento del mapa
 

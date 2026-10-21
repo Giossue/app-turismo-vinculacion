@@ -77,7 +77,7 @@ describe("searchPublicPlaces", () => {
     expect(result.items[0]?.relevance).toBe(400);
   });
 
-  it("passes cancellation through unchanged", async () => {
+  it("propagates cancellation to the transport", async () => {
     const controller = new AbortController();
     const aborted = new DOMException("Stopped", "AbortError");
     const fetcher = vi.fn(
@@ -94,7 +94,8 @@ describe("searchPublicPlaces", () => {
       signal: controller.signal,
     });
     controller.abort();
-    await expect(request).rejects.toBe(aborted);
-    expect(fetcher.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
+    // TanStack Query only needs an AbortError; the transport is aborted too.
+    await expect(request).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
   });
 });

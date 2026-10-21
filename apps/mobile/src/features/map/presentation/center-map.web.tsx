@@ -8,24 +8,25 @@ import {
   turismoTypography,
 } from "@/core/ui/tokens";
 import type { CenterMapProps } from "./center-map.types";
+import { useMessages } from "@/core/i18n/use-language";
 
 export function CenterMap({ centers }: CenterMapProps) {
+  const m = useMessages();
   const colors = useTurismoMapPalette();
   // This placeholder has no camera or visible geographic area to report.
   return (
     <View
-      accessibilityLabel="Mapa disponible en la aplicación móvil"
+      accessibilityLabel={m.map.webLabel}
       style={[
         styles.container,
         { backgroundColor: colors.primarySoft, borderColor: colors.border },
       ]}
     >
       <Text style={[styles.title, { color: colors.primaryStrong }]}>
-        Mapa móvil
+        {m.map.webTitle}
       </Text>
       <Text style={[styles.body, { color: colors.textMuted }]}>
-        El mapa interactivo MapLibre se muestra en el Development Build móvil.
-        Hay {centers.length} atractivo(s) publicados.
+        {m.map.webBody(centers.length)}
       </Text>
     </View>
   );

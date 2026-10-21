@@ -34,7 +34,10 @@ describe("offline public API", () => {
     ).resolves.toEqual([city]);
     expect(fetcher).toHaveBeenCalledWith(
       "http://api.test/api/v1/offline/cities",
-      { headers: { Accept: "application/json" } },
+      {
+        headers: { Accept: "application/json" },
+        signal: expect.any(AbortSignal),
+      },
     );
   });
 

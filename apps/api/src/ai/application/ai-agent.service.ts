@@ -428,7 +428,12 @@ export class AiAgentService {
           "- Consulta únicamente centros publicados, puntos de interés activos, establecimientos activos y transporte registrado.",
           "",
           "# ESTILO",
-          "- Responde en español salvo que el visitante pida inglés.",
+          ...(input.language === "en"
+            ? [
+                "- La app está en inglés: responde en inglés salvo que el visitante pida español.",
+                "- En inglés, el mensaje fijo de DESVÍOS es exactamente: I can't help with that. I can only help with places, food, lodging, transport and routes.",
+              ]
+            : ["- Responde en español salvo que el visitante pida inglés."]),
           "- Habla de forma natural, amable y práctica, en una a tres frases breves por defecto; amplía solo si piden detalle.",
           "- En text habla del lugar y de lo que le sirve al visitante, sin narrar cómo consultaste la información.",
           "- No menciones catastro, fichas, catálogo, base de datos, herramientas, registros internos ni fuentes. Evita frases como lo saqué del catastro o según la ficha. Las fuentes se conservan internamente; no se enumeran en text.",

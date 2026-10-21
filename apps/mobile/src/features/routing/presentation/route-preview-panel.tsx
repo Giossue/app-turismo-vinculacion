@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import type { GeoCoordinate } from "@/core/geo/types";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismActionButton } from "@/core/ui/tourism-controls";
 import { turismoGlassBorderWidth } from "@/core/ui/tourism-glass";
@@ -16,6 +17,7 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
+import { shareRoute } from "@/features/sharing/application/share-link";
 import type { CalculatedRoute, RouteMode } from "../domain/routing";
 import { getRouteModeOption } from "./route-mode-options";
 import {
@@ -27,6 +29,7 @@ import {
   RoutePrimaryAction,
   RouteSteps,
 } from "./route-preview-sections";
+import { useMessages } from "@/core/i18n/use-language";
 
 /** Same timing as the map sheets of Explore. */
 const panelAnimationDurationMs = 250;
@@ -41,6 +44,8 @@ export type RoutePreviewPanelProps = Readonly<{
   backgroundTrackingEnabled?: boolean;
   /** Why the opt-in could not be honoured on the last start. */
   backgroundTrackingNotice?: string | null;
+  /** Sin coordenadas del destino no se ofrece compartir la ruta. */
+  destination?: GeoCoordinate | null;
   destinationName: string;
   expanded: boolean;
   isCalculating: boolean;
@@ -63,6 +68,8 @@ export type RoutePreviewPanelProps = Readonly<{
   startDisabled?: boolean;
   startingNavigation: boolean;
   savedRoute?: boolean;
+  /** Paradas pendientes de un recorrido antes del destino, en orden. */
+  stopNames?: readonly string[];
 }>;
 
 /**
@@ -73,6 +80,7 @@ export type RoutePreviewPanelProps = Readonly<{
 export function RoutePreviewPanel({
   backgroundTrackingEnabled = false,
   backgroundTrackingNotice = null,
+  destination = null,
   destinationName,
   expanded,
   isCalculating,
@@ -92,7 +100,10 @@ export function RoutePreviewPanel({
   startDisabled = false,
   startingNavigation,
   savedRoute = false,
+  stopNames = [],
 }: RoutePreviewPanelProps) {
+  const m = useMessages();
+  const text = m.routing.preview;
   const colors = useTurismoPalette();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
@@ -145,12 +156,8 @@ export function RoutePreviewPanel({
   const handle = (
     <View style={styles.handle}>
       <TourismSheetHandle
-        closeLabel="Cerrar ruta"
-        indicatorAccessibilityLabel={
-          expanded
-            ? "Contraer detalles de la ruta"
-            : "Expandir detalles de la ruta"
-        }
+        closeLabel={text.close}
+        indicatorAccessibilityLabel={expanded ? text.collapse : text.expand}
         indicatorExpanded={expanded}
         onClose={onClose}
         onIndicatorPress={() => onExpandedChange(!expanded)}
@@ -160,7 +167,9 @@ export function RoutePreviewPanel({
   const title = (
     <View style={styles.titleCopy}>
       <Text style={[styles.eyebrow, { color: colors.textMuted }]}>
-        Ruta hacia {destinationName}
+        {stopNames.length > 0
+          ? text.tripTo(destinationName, text.stopCount(stopNames.length))
+          : text.routeTo(destinationName)}
       </Text>
     </View>
   );
@@ -236,9 +245,30 @@ export function RoutePreviewPanel({
         {route && routeError && !savedRoute && !isCalculating ? (
           <TourismActionButton
             icon="refresh"
-            label="Actualizar ruta"
+            label={m.routing.overlay.updateRoute}
             mode="outlined"
             onPress={onCalculateRoute}
+          />
+        ) : null}
+        {stopNames.length > 0 ? (
+          <Text style={[styles.compactMessage, { color: colors.textMuted }]}>
+            {text.passesThrough(
+              stopNames
+                .map((name, index) => `${index + 1}. ${name}`)
+                .join(", "),
+              destinationName,
+            )}
+          </Text>
+        ) : null}
+        {/* El enlace compartido lleva solo el destino, no las paradas. */}
+        {destination && stopNames.length === 0 ? (
+          <TourismActionButton
+            icon="share"
+            label={text.share}
+            mode="outlined"
+            onPress={() =>
+              void shareRoute({ ...destination, name: destinationName }, mode)
+            }
           />
         ) : null}
         {route && !isCalculating ? <RouteSteps route={route} /> : null}

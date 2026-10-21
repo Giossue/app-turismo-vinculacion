@@ -35,4 +35,23 @@ describe("route source", () => {
     expect(getRemoteRouteRequest({ ...input, destination: null })).toBeNull();
     expect(getRemoteRouteRequest({ ...input, requested: false })).toBeNull();
   });
+
+  it("sends only the coordinates of pending trip stops", () => {
+    const stop = { latitude: -1.6, longitude: -79.01, name: "Mirador" };
+    expect(
+      getRemoteRouteRequest({
+        saved: false,
+        requested: true,
+        mode: "car",
+        origin,
+        destination,
+        waypoints: [stop],
+      }),
+    ).toEqual({
+      mode: "car",
+      origin,
+      waypoints: [{ latitude: -1.6, longitude: -79.01 }],
+      destination,
+    });
+  });
 });

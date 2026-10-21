@@ -3,6 +3,7 @@ import type { TurismoIconName } from "@/core/ui/turismo-icons";
 import type { PublicCenter } from "@/features/centers/domain/public-center";
 import { getEstablishmentKey } from "@/features/establishments/domain/establishment";
 import type { OfflineCity, OfflineCityManifest } from "../domain/offline-city";
+import { messages } from "@/core/i18n/language";
 
 export type OfflinePlaceItem = Readonly<{
   kind: "place";
@@ -69,7 +70,7 @@ export function getOfflineBrowserItems(
       kind: "place",
       key: `poi:${poi.key}`,
       name: poi.name,
-      subtitle: poi.category ?? "Punto de interés",
+      subtitle: poi.category ?? messages().offline.city.pointOfInterest,
       description: poi.description,
       address: null,
       phone: null,
@@ -121,13 +122,6 @@ export function filterOfflineBrowserItems(
     );
     return terms.every((term) => searchable.includes(term));
   });
-}
-
-export function formatOfflineMapSize(
-  bytes: number | null | undefined,
-): string | null {
-  if (bytes == null || !Number.isFinite(bytes) || bytes < 0) return null;
-  return `${(bytes / (1024 * 1024)).toLocaleString("es", { maximumFractionDigits: 1 })} MB de mapa`;
 }
 
 /** Display only text supplied by the published route; never infer maneuvers. */

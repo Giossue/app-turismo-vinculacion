@@ -15,16 +15,14 @@ import type {
   OfflineSearchCoverage,
   SearchSuggestionItem,
 } from "../domain/search-suggestion";
+import { useMessages } from "@/core/i18n/use-language";
 
-const kinds: Record<
-  SearchSuggestionItem["kind"],
-  { icon: TurismoIconName; label: string }
-> = {
-  center: { icon: "landmark", label: "Atractivo" },
-  establishment: { icon: "store", label: "Servicio" },
-  geographic: { icon: "mapPin", label: "Lugar" },
-  poi: { icon: "mapPinned", label: "Punto de interés" },
-  route: { icon: "route", label: "Recorrido" },
+const kindIcons: Record<SearchSuggestionItem["kind"], TurismoIconName> = {
+  center: "landmark",
+  establishment: "store",
+  geographic: "mapPin",
+  poi: "mapPinned",
+  route: "route",
 };
 
 /** Unified live matches; the keyboard does not intercept result selection. */
@@ -57,6 +55,7 @@ export function SearchSuggestionsPanel({
   query: string;
   searchError: unknown;
 }>) {
+  const text = useMessages().explore.search;
   const colors = useTurismoPalette();
   const hasQuery = query.trim().length >= 2;
   const showHistory = !query.trim() && history.length > 0;
@@ -89,14 +88,16 @@ export function SearchSuggestionsPanel({
               style={[styles.notice, { color: colors.textMuted }]}
             >
               {offlineCoverage.length
-                ? `Búsqueda en línea no disponible. Solo puedes buscar en tus mapas descargados: ${offlineCoverage.map((city) => city.name).join(", ")}.`
-                : "Búsqueda en línea no disponible. No hay mapas descargados con cobertura para esta búsqueda."}
+                ? text.offlineWithCities(
+                    offlineCoverage.map((city) => city.name).join(", "),
+                  )
+                : text.offlineNoCities}
             </Text>
           ) : null}
           {hasQuery && isSearching ? (
             <TourismStateView
               layout="inline"
-              title="Buscando opciones"
+              title={text.searching}
               variant="loading"
             />
           ) : null}
@@ -115,17 +116,9 @@ export function SearchSuggestionsPanel({
           {hasQuery && !isSearching && !items.length ? (
             <TourismStateView
               layout="inline"
-              message={
-                unavailable
-                  ? "Intenta nuevamente cuando tengas conexión."
-                  : "Prueba otro nombre, tipo de lugar o amplía la búsqueda a Todo Ecuador."
-              }
+              message={unavailable ? text.retryOnline : text.emptyHint}
               onAction={unavailable ? onRetry : undefined}
-              title={
-                unavailable
-                  ? "No pudimos completar la búsqueda"
-                  : "No encontramos coincidencias"
-              }
+              title={unavailable ? text.failedTitle : text.emptyTitle}
               variant={unavailable ? "error" : "empty"}
             />
           ) : null}
@@ -136,10 +129,10 @@ export function SearchSuggestionsPanel({
                   accessibilityRole="header"
                   style={[styles.title, { color: colors.textMuted }]}
                 >
-                  Búsquedas recientes
+                  {text.recent}
                 </Text>
                 <Pressable
-                  accessibilityLabel="Borrar búsquedas recientes"
+                  accessibilityLabel={text.clearRecent}
                   accessibilityRole="button"
                   onPress={onClearHistory}
                   style={styles.clear}
@@ -147,13 +140,13 @@ export function SearchSuggestionsPanel({
                   <Text
                     style={[styles.clearText, { color: colors.primaryStrong }]}
                   >
-                    Borrar
+                    {text.clear}
                   </Text>
                 </Pressable>
               </View>
               {history.map((recentQuery) => (
                 <Pressable
-                  accessibilityLabel={`Repetir búsqueda ${recentQuery}`}
+                  accessibilityLabel={text.repeat(recentQuery)}
                   accessibilityRole="button"
                   key={recentQuery}
                   onPress={() => onRecentPress(recentQuery)}
@@ -182,7 +175,7 @@ export function SearchSuggestionsPanel({
           ) : null}
           {!hasQuery ? (
             <Text style={[styles.notice, { color: colors.textMuted }]}>
-              Escribe al menos dos caracteres para buscar.
+              {text.minLength}
             </Text>
           ) : null}
         </>
@@ -202,18 +195,13 @@ function SearchSuggestionRow({
 }>) {
   const colors = useTurismoPalette();
 
-  const kind = kinds[item.kind];
+  const text = useMessages().explore.search;
+  const kind = { icon: kindIcons[item.kind], label: text.kinds[item.kind] };
   const meta = [kind.label, item.subtitle].filter(Boolean).join(" · ");
-  const localLabel = item.offline
-    ? `Mapa descargado · ${item.offline.cityName}`
-    : "";
+  const localLabel = item.offline ? text.offlineMap(item.offline.cityName) : "";
   return (
     <Pressable
-      accessibilityHint={
-        item.offline
-          ? "Abre este lugar en el mapa descargado"
-          : "Muestra este lugar en el mapa"
-      }
+      accessibilityHint={item.offline ? text.openOffline : text.showOnMap}
       accessibilityLabel={[item.title, meta, localLabel]
         .filter(Boolean)
         .join(", ")}

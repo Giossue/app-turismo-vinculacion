@@ -13,6 +13,8 @@ export function isRouteMode(value: unknown): value is RouteMode {
 export type RouteRequest = Readonly<{
   mode: RouteMode;
   origin: GeoCoordinate;
+  /** Paradas intermedias en orden de visita; se omite si no hay. */
+  waypoints?: readonly GeoCoordinate[];
   destination: GeoCoordinate;
 }>;
 

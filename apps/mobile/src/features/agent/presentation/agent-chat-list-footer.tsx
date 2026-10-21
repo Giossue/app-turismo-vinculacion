@@ -4,8 +4,9 @@ import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismOptionRow } from "@/core/ui/tourism-option-row";
 import { TourismActionButton } from "@/core/ui/tourism-controls";
 import { turismoSpacing, turismoTypography } from "@/core/ui/tokens";
-import { agentStarterPrompts } from "../domain/agent-conversation";
+import { getAgentStarterPrompts } from "../domain/agent-conversation";
 import { AgentThinkingIndicator } from "./agent-thinking-indicator";
+import { useMessages } from "@/core/i18n/use-language";
 
 /**
  * Tail of the message list: starter prompts, thinking indicator, retry and
@@ -26,12 +27,13 @@ export function AgentChatListFooter({
   onSend: (text: string) => void;
   showStarters: boolean;
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   return (
     <View style={styles.footer}>
       {showStarters ? (
         <View style={styles.starters}>
-          {agentStarterPrompts.map((prompt) => (
+          {getAgentStarterPrompts().map((prompt) => (
             <TourismOptionRow
               compact
               icon={prompt.icon}
@@ -45,9 +47,9 @@ export function AgentChatListFooter({
       {awaitingText ? <AgentThinkingIndicator /> : null}
       {canRetry ? (
         <TourismActionButton
-          accessibilityLabel="Reintentar la última pregunta"
+          accessibilityLabel={m.agent.retryLabel}
           compact
-          label="Reintentar"
+          label={m.agent.retry}
           onPress={onRetry}
           style={styles.retry}
         />

@@ -13,6 +13,7 @@ import {
   turismoTypography,
 } from "@/core/ui/tokens";
 import type { MapPlaceMarker } from "@/features/map/presentation/center-map.types";
+import { useMessages } from "@/core/i18n/use-language";
 
 /**
  * Tarjeta del lugar geográfico elegido en la búsqueda (sin ficha propia):
@@ -29,6 +30,7 @@ export function ExplorePlaceCard({
   onRoute: () => void;
   place: MapPlaceMarker;
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const tabBarInset = useTourismTabBarInset();
   return (
@@ -60,7 +62,7 @@ export function ExplorePlaceCard({
             ) : null}
           </View>
           <TourismIconAction
-            accessibilityLabel="Quitar lugar del mapa"
+            accessibilityLabel={m.explore.actions.removePlace}
             icon="close"
             onPress={onClose}
             variant="ghost"
@@ -68,7 +70,7 @@ export function ExplorePlaceCard({
         </View>
         <TourismActionButton
           icon="navigation"
-          label="Cómo llegar"
+          label={m.explore.actions.directions}
           onPress={onRoute}
         />
       </TourismSurface>

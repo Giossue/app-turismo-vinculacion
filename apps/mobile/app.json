@@ -2,7 +2,7 @@
   "expo": {
     "name": "Rumbo EC",
     "slug": "rumbo-ec",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "rumbo-ec",
@@ -20,7 +20,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "ec.edu.ueb.turismovinculacion.software",
-      "versionCode": 8,
+      "versionCode": 9,
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
@@ -31,6 +31,30 @@
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "api.maps.devs-ueb.tech",
+              "pathPrefix": "/c/"
+            },
+            {
+              "scheme": "https",
+              "host": "api.maps.devs-ueb.tech",
+              "pathPrefix": "/e/"
+            },
+            {
+              "scheme": "https",
+              "host": "api.maps.devs-ueb.tech",
+              "pathPrefix": "/r"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
       ]
     },
     "web": {
@@ -55,6 +79,13 @@
           "isIosBackgroundLocationEnabled": true,
           "locationAlwaysAndWhenInUsePermission": "Permitir que Rumbo EC use tu ubicación durante una navegación activa, incluso al cambiar de aplicación.",
           "locationWhenInUsePermission": "Permitir que Rumbo EC use tu ubicación para mostrar tu posición en el mapa y calcular rutas."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#176B4D",
+          "icon": "./assets/images/android-icon-monochrome.png"
         }
       ],
       "@maplibre/maplibre-react-native",

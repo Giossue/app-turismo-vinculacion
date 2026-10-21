@@ -12,6 +12,7 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
+import { useMessages } from "@/core/i18n/use-language";
 
 type PlacePhoto = Readonly<{
   id: number;
@@ -30,6 +31,7 @@ export function CenterPhotos({
   photos: readonly PlacePhoto[];
   variant: "card" | "divided";
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const [page, setPage] = useState(0);
   const [opened, setOpened] = useState<number | null>(null);
@@ -49,15 +51,16 @@ export function CenterPhotos({
       <View style={styles.grid}>
         {visible.map((photo) => (
           <Pressable
-            accessibilityHint="Abre la fotografía a pantalla completa"
+            accessibilityHint={m.places.center.photo.openHint}
+            accessibilityLabel={
+              photo.description ?? m.places.center.photo.generic
+            }
             accessibilityRole="imagebutton"
             key={photo.id}
             onPress={() => setOpened(photos.indexOf(photo))}
             style={[styles.tile, { backgroundColor: colors.surfaceMuted }]}
           >
             <Image
-              accessibilityLabel={photo.description ?? "Fotografía del lugar"}
-              accessible
               cachePolicy="memory-disk"
               contentFit="cover"
               recyclingKey={String(photo.id)}
@@ -92,14 +95,14 @@ export function CenterPhotos({
           <TourismActionButton
             compact
             disabled={currentPage === 0}
-            label="Fotos anteriores"
+            label={m.places.center.photo.previous}
             mode="outlined"
             onPress={() => setPage(currentPage - 1)}
           />
           <TourismActionButton
             compact
             disabled={(currentPage + 1) * pageSize >= photos.length}
-            label="Fotos siguientes"
+            label={m.places.center.photo.next}
             mode="outlined"
             onPress={() => setPage(currentPage + 1)}
           />

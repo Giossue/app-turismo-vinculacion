@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { AgentCard, AgentMessage } from "./agent";
 import {
   agentIntroMessage,
-  agentStarterPrompts,
+  getAgentStarterPrompts,
   buildAgentHistory,
   countAgentUserMessages,
   getRetryableAgentTurn,
@@ -316,13 +316,13 @@ describe("agent chat message limit", () => {
 
 describe("agent starter prompts", () => {
   it("does not offer the retired planning feature", () => {
-    expect(agentStarterPrompts.map((prompt) => prompt.text)).not.toContain(
+    expect(getAgentStarterPrompts().map((prompt) => prompt.text)).not.toContain(
       "Arma un plan para mi día",
     );
   });
 
   it("are valid questions for the agent", () => {
-    for (const prompt of agentStarterPrompts) {
+    for (const prompt of getAgentStarterPrompts()) {
       expect(prompt.text.trim()).toBe(prompt.text);
       expect(prompt.text.length).toBeLessThanOrEqual(AGENT_MESSAGE_MAX_LENGTH);
     }

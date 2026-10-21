@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { useUserLocation } from "@/core/location/use-user-location";
+import { messages } from "@/core/i18n/language";
 
 /**
  * GPS session for Explore. The location is only requested when the tourist
@@ -44,9 +45,9 @@ export function useExploreLocationFocus() {
     showLocateAction: !locationFocused,
     locateLabel:
       status === "ready"
-        ? "Volver a centrar el mapa en mi ubicación"
+        ? messages().explore.locate.recenter
         : status === "requesting"
-          ? "Obteniendo tu ubicación"
-          : "Activar ubicación",
+          ? messages().explore.locate.locating
+          : messages().explore.locate.enable,
   };
 }

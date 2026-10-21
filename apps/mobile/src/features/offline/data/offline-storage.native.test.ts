@@ -64,7 +64,24 @@ describe("native city manifest storage", () => {
       { payload_json: JSON.stringify({ city: { slug: "other" } }) },
     ]);
     await expect(listStoredOfflineManifests()).resolves.toEqual([manifest]);
+    // The city list reads SQLite JSON1 summaries instead of full manifests;
+    // the query already skips rows whose payload is not valid JSON.
+    mocks.all.mockResolvedValueOnce([
+      {
+        summary_json: JSON.stringify({
+          city: manifest.city,
+          package: manifest.package,
+          bounds: null,
+          download: null,
+          counts: { centers: 0, establishments: 0, pois: 0, routes: 0 },
+        }),
+      },
+      { summary_json: JSON.stringify({ city: { slug: "other" } }) },
+    ]);
     await expect(listStoredOfflineCities()).resolves.toEqual(["guaranda"]);
+    expect(mocks.all).toHaveBeenLastCalledWith(
+      expect.stringContaining("WHERE json_valid(payload_json)"),
+    );
   });
   it("uses bound parameters when reading and deleting a city", async () => {
     mocks.first.mockResolvedValue({ payload_json: JSON.stringify(manifest) });

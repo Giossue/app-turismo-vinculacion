@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { routeModes } from "../domain/routing";
-import { getRouteModeOption, routeModeOptions } from "./route-mode-options";
+import { getRouteModeOption, getRouteModeOptions } from "./route-mode-options";
 import { getRouteStepIcon, type RouteStep } from "./route-step-icon";
 
 function step(type: string, modifier: string | null = null): RouteStep {
@@ -16,7 +16,7 @@ function step(type: string, modifier: string | null = null): RouteStep {
 
 describe("route mode options", () => {
   it("offers every route mode once, in order", () => {
-    expect(routeModeOptions.map((option) => option.value)).toEqual([
+    expect(getRouteModeOptions().map((option) => option.value)).toEqual([
       ...routeModes,
     ]);
   });

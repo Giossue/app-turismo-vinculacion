@@ -7,15 +7,17 @@ import { useAuth } from "../application/auth-context";
 import { useAuthForm } from "../application/use-auth-form";
 import { emptyLoginForm, loginFormSchema } from "../domain/auth-forms";
 import { AuthFormActions } from "./auth-form-actions";
+import { useMessages } from "@/core/i18n/use-language";
 
 export function LoginForm({
   onSignedIn,
   onSwitchMode,
 }: Readonly<{ onSignedIn: () => void; onSwitchMode: () => void }>) {
+  const m = useMessages();
   const auth = useAuth();
   const passwordRef = useRef<TextInput>(null);
   const form = useAuthForm({
-    fallbackError: "No se pudo iniciar sesión.",
+    fallbackError: m.account.errors.login,
     initialValues: emptyLoginForm,
     onSubmit: async ({ email, password }) => {
       await auth.login(email, password);
@@ -32,7 +34,7 @@ export function LoginForm({
         autoCorrect={false}
         error={form.fieldErrors.email}
         keyboardType="email-address"
-        label="Correo electrónico"
+        label={m.account.login.email}
         onChangeText={(value) => form.setValue("email", value)}
         onSubmitEditing={() => passwordRef.current?.focus()}
         placeholder="tu@correo.com"
@@ -47,10 +49,10 @@ export function LoginForm({
         autoComplete="current-password"
         autoCorrect={false}
         error={form.fieldErrors.password}
-        label="Contraseña"
+        label={m.account.login.password}
         onChangeText={(value) => form.setValue("password", value)}
         onSubmitEditing={() => void form.submit()}
-        placeholder="Tu contraseña"
+        placeholder={m.account.login.passwordPlaceholder}
         ref={passwordRef}
         required
         returnKeyType="go"
@@ -63,10 +65,10 @@ export function LoginForm({
         error={form.formError}
         onSubmit={() => void form.submit()}
         onSwitchMode={onSwitchMode}
-        submitLabel="Iniciar sesión"
+        submitLabel={m.account.login.signIn}
         submitting={form.submitting}
-        submittingLabel="Iniciando sesión…"
-        switchLabel="¿Aún no tienes cuenta? Crear cuenta"
+        submittingLabel={m.account.login.signingIn}
+        switchLabel={m.account.login.switchToRegister}
       />
     </View>
   );

@@ -19,15 +19,18 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
+import { useMessages } from "@/core/i18n/use-language";
 
 const accountHeroImage = require("@/assets/images/account-hero.webp");
 
-const benefits: readonly Readonly<{ icon: TurismoIconName; label: string }>[] =
-  [
-    { icon: "bookmark", label: "Guarda tus\nlugares favoritos" },
-    { icon: "map", label: "Accede a rutas\npersonalizadas" },
-    { icon: "bot", label: "Accede a un\nagente IA turístico" },
-  ];
+const benefits: readonly Readonly<{
+  icon: TurismoIconName;
+  key: "saved" | "routes" | "agent";
+}>[] = [
+  { icon: "bookmark", key: "saved" },
+  { icon: "map", key: "routes" },
+  { icon: "bot", key: "agent" },
+];
 
 /**
  * Identity entry: hero image, benefits and the three ways in. Render it
@@ -44,6 +47,7 @@ export function AccountEntry({
   onGuest: () => void;
   onLogin: () => void;
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const { height } = useWindowDimensions();
   const heroHeight = Math.min(
@@ -69,7 +73,7 @@ export function AccountEntry({
       >
         <View pointerEvents="none" style={styles.heroShade} />
         <View style={styles.headerOverlay}>
-          <TourismHeader onBack={onBack} title="Cuenta" />
+          <TourismHeader onBack={onBack} title={m.account.login.account} />
         </View>
       </ImageBackground>
 
@@ -83,7 +87,10 @@ export function AccountEntry({
           accessibilityRole="header"
           style={[styles.title, { color: colors.text }]}
         >
-          Descubre <Text style={{ color: colors.primaryStrong }}>Ecuador</Text>
+          {m.account.login.discover}{" "}
+          <Text style={{ color: colors.primaryStrong }}>
+            {m.account.login.country}
+          </Text>
         </Text>
 
         <View style={styles.benefits}>
@@ -103,7 +110,7 @@ export function AccountEntry({
                 />
               </View>
               <Text style={[styles.benefitText, { color: colors.textMuted }]}>
-                {benefit.label}
+                {m.account.login.benefits[benefit.key]}
               </Text>
             </View>
           ))}
@@ -111,20 +118,20 @@ export function AccountEntry({
 
         <View style={styles.actions}>
           <TourismActionButton
-            label="Iniciar sesión"
+            label={m.account.login.signIn}
             onPress={onLogin}
             size="lg"
             trailingIcon="chevronRight"
           />
           <TourismActionButton
-            label="Crear cuenta"
+            label={m.account.login.createAccount}
             mode="outlined"
             onPress={onCreateAccount}
             size="lg"
             trailingIcon="chevronRight"
           />
           <TourismActionButton
-            label="Explorar como invitado"
+            label={m.account.login.guest}
             mode="ghost"
             onPress={onGuest}
           />

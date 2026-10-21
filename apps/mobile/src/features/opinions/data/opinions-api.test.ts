@@ -58,7 +58,10 @@ describe("opinions API", () => {
     ).resolves.toMatchObject({ total: 1, items: [{ authorName: "Ana" }] });
     expect(fetcher).toHaveBeenCalledWith(
       "http://api.test/api/v1/centers/CENTER-1/opinions?limit=20&offset=40",
-      { headers: { Accept: "application/json" }, signal: undefined },
+      {
+        headers: { Accept: "application/json" },
+        signal: expect.any(AbortSignal),
+      },
     );
   });
 
@@ -93,6 +96,7 @@ describe("opinions API", () => {
         body: JSON.stringify({ comment: "Un comentario útil." }),
         headers: { "content-type": "application/json" },
         method: "POST",
+        signal: expect.any(AbortSignal),
       },
     );
   });
@@ -116,6 +120,7 @@ describe("opinions API", () => {
         body: JSON.stringify({ rating: 4, comment: "Buena visita." }),
         headers: { "content-type": "application/json" },
         method: "PATCH",
+        signal: expect.any(AbortSignal),
       },
     );
   });

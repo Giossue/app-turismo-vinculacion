@@ -1,6 +1,6 @@
 import type { GeoCoordinate } from "../geo/types";
 import {
-  locationUnavailableMessages,
+  getLocationUnavailableMessage,
   type LocationUnavailableReason,
 } from "./location-availability";
 
@@ -21,7 +21,7 @@ export function toUnavailableState(
   return {
     ...current,
     coordinate: null,
-    message: locationUnavailableMessages[reason],
+    message: getLocationUnavailableMessage(reason),
     status: reason === "services-disabled" ? "disabled" : "denied",
   };
 }

@@ -7,6 +7,7 @@ import {
   getEstablishmentMapGroup,
 } from "@/features/establishments/domain/establishment-groups";
 import type { ExploreMapFilter } from "../domain/explore-map-filter";
+import { useMessages } from "@/core/i18n/use-language";
 
 const primaryGroups = establishmentMapGroups.filter((group) => group.primary);
 
@@ -25,6 +26,7 @@ export function ExploreFilterChips({
   onChange: (filter: ExploreMapFilter) => void;
   onMore: () => void;
 }>) {
+  const m = useMessages();
   const selectedGroup =
     filter?.kind === "establishments" ? filter.group : undefined;
   const moreGroup =
@@ -34,7 +36,7 @@ export function ExploreFilterChips({
 
   return (
     <ScrollView
-      accessibilityLabel="Filtros del mapa"
+      accessibilityLabel={m.explore.filters.label}
       contentContainerStyle={styles.chips}
       horizontal
       showsHorizontalScrollIndicator={false}
@@ -43,7 +45,7 @@ export function ExploreFilterChips({
       <TourismChoiceChip
         glass
         icon="landmark"
-        label="Turismo"
+        label={m.explore.filters.tourism}
         onPress={() => onChange({ kind: "tourism" })}
         selected={filter?.kind === "tourism"}
       />
@@ -71,7 +73,7 @@ export function ExploreFilterChips({
       <TourismChoiceChip
         glass
         icon="sliders"
-        label="Ver más"
+        label={m.explore.filters.more}
         onPress={onMore}
         selected={false}
       />

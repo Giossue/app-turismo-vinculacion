@@ -11,6 +11,7 @@ import type {
   NearbyEstablishmentsResult,
   PublicEstablishmentDetail,
 } from "../domain/establishment";
+import { messages } from "@/core/i18n/language";
 
 export const establishmentSchema = z.object({
   id: z.number().int().positive().optional(),
@@ -69,10 +70,10 @@ export async function getPublishedEstablishment(
     `${apiUrl}/establishments/${id}`,
     detailSchema,
     {
-      errorMessage: "No pudimos cargar el establecimiento.",
+      errorMessage: messages().places.establishment.errors.detail,
       fetcher,
       init: { headers: acceptJsonHeaders, signal },
-      invalidMessage: "El establecimiento no tiene el formato esperado.",
+      invalidMessage: messages().places.establishment.errors.detailInvalid,
     },
   );
   return payload.data;
@@ -98,10 +99,10 @@ export async function getNearbyEstablishments(
     `${apiUrl}/establishments/nearby?${params}`,
     responseSchema,
     {
-      errorMessage: "No pudimos buscar establecimientos turísticos.",
+      errorMessage: messages().places.establishment.errors.nearby,
       fetcher,
       init: { headers: acceptJsonHeaders, signal },
-      invalidMessage: "El catastro no tiene el formato esperado.",
+      invalidMessage: messages().places.establishment.errors.nearbyInvalid,
     },
   );
   return payload.data;

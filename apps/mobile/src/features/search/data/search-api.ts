@@ -12,6 +12,7 @@ import {
   isValidSearchBounds,
   type SearchFilters,
 } from "../domain/search-suggestion";
+import { messages } from "@/core/i18n/language";
 
 const resultSchema = z.object({
   kind: z.enum(["center", "establishment", "geographic"]),
@@ -76,10 +77,10 @@ export async function searchPublicPlaces(
     `${apiUrl}/search?${params}`,
     responseSchema,
     {
-      errorMessage: "No pudimos actualizar la búsqueda.",
+      errorMessage: messages().explore.search.failed,
       fetcher,
       init: { headers: acceptJsonHeaders, signal },
-      invalidMessage: "La búsqueda tiene un formato inválido.",
+      invalidMessage: messages().explore.search.invalid,
     },
   );
   return {

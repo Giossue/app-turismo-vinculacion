@@ -19,12 +19,16 @@ import { CenterHero } from "@/features/centers/presentation/center-detail/center
 import { CenterPhotos } from "@/features/centers/presentation/center-detail/center-photos";
 import { PlaceActions } from "@/features/favorites/presentation/save-action-button";
 import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/saved-center-error-snackbar";
+import { buildEstablishmentTripStop } from "@/features/trip/domain/trip";
+import { useTripToggle } from "@/features/trip/presentation/use-trip-toggle";
+import { shareEstablishment } from "@/features/sharing/application/share-link";
 import { usePublishedEstablishment } from "../application/use-published-establishment";
 import {
   getEstablishmentLabel,
   type PublicMapEstablishment,
 } from "../domain/establishment";
 import { useEstablishmentSaveToggle } from "./use-establishment-save-toggle";
+import { useMessages } from "@/core/i18n/use-language";
 
 /**
  * Registry establishment over the map. It opens with the pin data; when the
@@ -42,11 +46,21 @@ export function EstablishmentDetailSheet({
   onOpenRoute: () => void;
   onRequireAuth: () => void;
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const categoryLabel = getEstablishmentLabel(establishment);
-  const detailQuery = usePublishedEstablishment(establishment.id);
+  const establishmentId = establishment.id;
+  const detailQuery = usePublishedEstablishment(establishmentId);
   const detail = detailQuery.data;
   const save = useEstablishmentSaveToggle(establishment, detail, onRequireAuth);
+  const trip = useTripToggle(
+    buildEstablishmentTripStop({
+      id: establishmentId,
+      latitude: establishment.latitude,
+      longitude: establishment.longitude,
+      name: establishment.name,
+    }),
+  );
 
   return (
     <TourismBottomSheet onClose={onClose}>
@@ -71,22 +85,32 @@ export function EstablishmentDetailSheet({
 
         <TourismInfoRow
           icon="mapPin"
-          label="Ubicación"
+          label={m.places.establishment.location}
           value={
             detail?.direccion ??
             (establishment.approximate
-              ? "Punto de referencia aproximado"
-              : "Coordenadas registradas")
+              ? m.places.establishment.approximate
+              : m.places.establishment.registeredCoordinates)
           }
         />
 
-        <PlaceActions onOpenRoute={onOpenRoute} save={save} />
+        <PlaceActions
+          onOpenRoute={onOpenRoute}
+          onShare={
+            establishmentId === undefined
+              ? null
+              : () =>
+                  void shareEstablishment(establishmentId, establishment.name)
+          }
+          save={save}
+          trip={trip}
+        />
 
         {establishment.id === undefined ? null : detailQuery.isPending &&
           !detailQuery.isPaused ? (
           <TourismStateView
             layout="inline"
-            message="Cargando fotografías…"
+            message={m.places.establishment.loadingPhotos}
             variant="loading"
           />
         ) : detail ? (
@@ -96,7 +120,7 @@ export function EstablishmentDetailSheet({
           <TourismStateView
             actionPending={detailQuery.isFetching}
             layout="inline"
-            message="No pudimos cargar las fotografías."
+            message={m.places.establishment.photosFailed}
             onAction={() => void detailQuery.refetch()}
             variant="error"
           />

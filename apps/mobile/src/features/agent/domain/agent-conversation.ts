@@ -6,12 +6,15 @@ import {
   type AgentHistoryItem,
   type AgentMessage,
 } from "./agent";
+import { messages } from "@/core/i18n/language";
 
 export const agentIntroMessage: AgentMessage = {
   id: "assistant-intro",
   kind: "intro",
   role: "assistant",
-  text: "¡Hola! Soy tu guía turístico. ¿Qué estás buscando?",
+  get text() {
+    return messages().agent.intro;
+  },
 };
 
 /** A common first question; tapping it sends its text as the message. */
@@ -21,12 +24,15 @@ export type AgentStarterPrompt = Readonly<{
 }>;
 
 /** Offered under the greeting until the first question is sent. */
-export const agentStarterPrompts: readonly AgentStarterPrompt[] = [
-  { icon: "landmark", text: "¿Qué lugares turísticos puedo visitar?" },
-  { icon: "restaurant", text: "¿Dónde puedo comer?" },
-  { icon: "hotel", text: "¿Dónde puedo hospedarme?" },
-  { icon: "mapPin", text: "¿Qué hay cerca de mí?" },
-];
+export function getAgentStarterPrompts(): readonly AgentStarterPrompt[] {
+  const text = messages().agent.starters;
+  return [
+    { icon: "landmark", text: text.visit },
+    { icon: "restaurant", text: text.eat },
+    { icon: "hotel", text: text.stay },
+    { icon: "mapPin", text: text.nearby },
+  ];
+}
 
 /** The starter prompts stay until the conversation has a question. */
 export function showsAgentStarterPrompts(
@@ -36,8 +42,9 @@ export function showsAgentStarterPrompts(
 }
 
 /** Shown when a failure has no user-safe message of its own. */
-export const agentFallbackErrorMessage =
-  "Ahora no puedo responder. Inténtalo de nuevo.";
+export function getAgentFallbackErrorMessage(): string {
+  return messages().agent.fallbackError;
+}
 
 export function countAgentUserMessages(
   messages: readonly AgentMessage[],

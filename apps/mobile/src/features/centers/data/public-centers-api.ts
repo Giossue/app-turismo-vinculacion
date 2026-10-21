@@ -16,6 +16,7 @@ import type {
   PublicCenter,
   PublicCenterDetail,
 } from "../domain/public-center";
+import { messages } from "@/core/i18n/language";
 
 export const publicCenterSchema = z.object({
   code: z.string().min(1),
@@ -96,10 +97,10 @@ export async function getPublishedCenters(
     `${apiUrl}/centers${query.size ? `?${query}` : ""}`,
     listSchema,
     {
-      errorMessage: "No fue posible cargar los atractivos turísticos.",
+      errorMessage: messages().places.center.errors.list,
       fetcher,
       init: { headers: acceptJsonHeaders },
-      invalidMessage: "La respuesta turística no tiene el formato esperado.",
+      invalidMessage: messages().places.center.errors.invalid,
     },
   );
   return payload.data;
@@ -128,9 +129,7 @@ export async function getPublishedMapCenters(
       (page.data.length === 0 && offset < page.meta.total) ||
       (page.data.length > 0 && newCodes.length === 0)
     ) {
-      throw new ApiError(
-        "No fue posible completar los atractivos de esta zona.",
-      );
+      throw new ApiError(messages().places.center.errors.incompleteZone);
     }
     for (const center of page.data) seenCodes.add(center.code);
     centers.push(...page.data);
@@ -150,8 +149,8 @@ export async function getPublishedMapCenterPage(
   query.set("limit", "100");
   query.set("offset", String(offset));
   const page = await requestJson(`${apiUrl}/centers?${query}`, mapPageSchema, {
-    errorMessage: "No fue posible cargar los atractivos de esta zona.",
-    invalidMessage: "La respuesta turística no tiene el formato esperado.",
+    errorMessage: messages().places.center.errors.zone,
+    invalidMessage: messages().places.center.errors.invalid,
     fetcher,
     init: { headers: acceptJsonHeaders, signal },
   });
@@ -161,14 +160,14 @@ export async function getPublishedMapCenterPage(
     page.data.length > page.meta.limit ||
     (page.data.length === 0 && offset < page.meta.total)
   ) {
-    throw new ApiError("No fue posible completar los atractivos de esta zona.");
+    throw new ApiError(messages().places.center.errors.incompleteZone);
   }
   return page;
 }
 
 function assertNotAborted(signal?: AbortSignal): void {
   if (!signal?.aborted) return;
-  const error = new Error("La consulta fue cancelada.");
+  const error = new Error(messages().places.center.errors.cancelled);
   error.name = "AbortError";
   throw error;
 }
@@ -201,11 +200,11 @@ export async function getPublishedCenter(
     `${apiUrl}/centers/${encodeURIComponent(code)}`,
     detailResponseSchema,
     {
-      errorMessage: "No fue posible cargar la ficha turística.",
+      errorMessage: messages().places.center.errors.detail,
       fetcher,
       init: { headers: acceptJsonHeaders },
-      invalidMessage: "La ficha turística no tiene el formato esperado.",
-      statusMessages: { 404: "El atractivo ya no está disponible." },
+      invalidMessage: messages().places.center.errors.detailInvalid,
+      statusMessages: { 404: messages().places.center.errors.gone },
     },
   );
   return payload.data;
@@ -219,10 +218,10 @@ export async function getDiscoveryCatalog(
     `${apiUrl}/centers/catalogs/discovery`,
     catalogSchema,
     {
-      errorMessage: "No fue posible cargar los filtros.",
+      errorMessage: messages().places.center.errors.filters,
       fetcher,
       init: { headers: acceptJsonHeaders },
-      invalidMessage: "Los filtros no tienen el formato esperado.",
+      invalidMessage: messages().places.center.errors.filtersInvalid,
     },
   );
   return payload.data;

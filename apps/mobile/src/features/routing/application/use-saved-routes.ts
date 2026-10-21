@@ -15,6 +15,7 @@ import {
   SavedRouteStorageError,
   type SavedCalculatedRouteInput,
 } from "../data/saved-routes-storage";
+import { messages } from "@/core/i18n/language";
 
 const savedRoutesQueryKey = ["saved-calculated-routes"] as const;
 
@@ -53,7 +54,9 @@ export function useSaveCalculatedRoute() {
     networkMode: "always",
     mutationFn: (input: SavedCalculatedRouteInput) => {
       if (auth.status !== "authenticated" || !auth.user) {
-        throw new SavedRouteStorageError("Inicia sesión para guardar rutas.");
+        throw new SavedRouteStorageError(
+          messages().routing.errors.signInToSave,
+        );
       }
       return saveCalculatedRoute(auth.user.id, input);
     },
@@ -75,7 +78,7 @@ export function useDeleteSavedCalculatedRoute() {
     networkMode: "always",
     mutationFn: (key: string) => {
       if (auth.status !== "authenticated" || !auth.user) {
-        throw new SavedRouteStorageError("Inicia sesión para usar tus rutas.");
+        throw new SavedRouteStorageError(messages().routing.errors.signInToUse);
       }
       return deleteSavedCalculatedRoute(auth.user.id, key);
     },

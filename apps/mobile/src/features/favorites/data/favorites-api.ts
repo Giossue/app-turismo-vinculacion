@@ -7,6 +7,7 @@ import { publicCenterSchema } from "@/features/centers/data/public-centers-api";
 import type { PublicCenter } from "@/features/centers/domain/public-center";
 import { establishmentSchema } from "@/features/establishments/data/establishments-api";
 import type { SavedEstablishment } from "@/features/establishments/domain/establishment";
+import { messages } from "@/core/i18n/language";
 
 const listSchema = z.object({ data: z.array(publicCenterSchema) });
 const centerSchema = z.object({ data: publicCenterSchema });
@@ -16,9 +17,9 @@ export async function listRemoteSavedCenters(
   apiUrl = getApiUrl(),
 ): Promise<readonly PublicCenter[]> {
   const payload = await requestJson(`${apiUrl}/favorites/centers`, listSchema, {
-    errorMessage: "No se pudieron cargar tus guardados.",
+    errorMessage: messages().community.saved.errors.list,
     fetcher: request,
-    invalidMessage: "Los guardados no tienen el formato esperado.",
+    invalidMessage: messages().community.saved.errors.invalid,
   });
   return payload.data;
 }
@@ -32,10 +33,10 @@ export async function saveRemoteCenter(
     `${apiUrl}/favorites/centers/${encodeURIComponent(code)}`,
     centerSchema,
     {
-      errorMessage: "No se pudo guardar el lugar.",
+      errorMessage: messages().community.saved.errors.save,
       fetcher: request,
       init: { method: "PUT" },
-      invalidMessage: "El guardado no tiene el formato esperado.",
+      invalidMessage: messages().community.saved.errors.itemInvalid,
     },
   );
   return payload.data;
@@ -46,7 +47,7 @@ export async function removeRemoteCenter(
   request: AuthorizedFetcher,
   apiUrl = getApiUrl(),
 ): Promise<void> {
-  const errorMessage = "No se pudo quitar el lugar guardado.";
+  const errorMessage = messages().community.saved.errors.remove;
   const response = await sendRequest(
     `${apiUrl}/favorites/centers/${encodeURIComponent(code)}`,
     { errorMessage, fetcher: request, init: { method: "DELETE" } },
@@ -72,9 +73,9 @@ export async function listRemoteSavedEstablishments(
     `${apiUrl}/favorites/establishments`,
     establishmentListSchema,
     {
-      errorMessage: "No se pudieron cargar tus guardados.",
+      errorMessage: messages().community.saved.errors.list,
       fetcher: request,
-      invalidMessage: "Los guardados no tienen el formato esperado.",
+      invalidMessage: messages().community.saved.errors.invalid,
     },
   );
   return payload.data;
@@ -89,10 +90,10 @@ export async function saveRemoteEstablishment(
     `${apiUrl}/favorites/establishments/${id}`,
     establishmentItemSchema,
     {
-      errorMessage: "No se pudo guardar el establecimiento.",
+      errorMessage: messages().community.saved.errors.saveEstablishment,
       fetcher: request,
       init: { method: "PUT" },
-      invalidMessage: "El guardado no tiene el formato esperado.",
+      invalidMessage: messages().community.saved.errors.itemInvalid,
     },
   );
   return payload.data;
@@ -103,7 +104,7 @@ export async function removeRemoteEstablishment(
   request: AuthorizedFetcher,
   apiUrl = getApiUrl(),
 ): Promise<void> {
-  const errorMessage = "No se pudo quitar el establecimiento guardado.";
+  const errorMessage = messages().community.saved.errors.removeEstablishment;
   const response = await sendRequest(
     `${apiUrl}/favorites/establishments/${id}`,
     { errorMessage, fetcher: request, init: { method: "DELETE" } },

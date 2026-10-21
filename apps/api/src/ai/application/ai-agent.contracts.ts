@@ -58,6 +58,8 @@ export const agentChatSchema = z
       .default([]),
     location: agentLocationSchema.optional(),
     conversationId: z.uuid().optional(),
+    /** Idioma de la interfaz del móvil; sin él se responde en español. */
+    language: z.enum(["es", "en"]).optional(),
   })
   .strict();
 

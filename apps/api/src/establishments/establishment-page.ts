@@ -36,13 +36,23 @@ h1{margin:0 0 4px;font-size:1.5rem}
 dl{margin:16px 0}dt{font-size:.8rem;color:#5b6b63}dd{margin:0 0 12px}
 a.btn{display:block;text-align:center;padding:14px;border-radius:12px;margin-top:10px;font-weight:600;text-decoration:none}
 a.primary{background:#176b4d;color:#fff}a.secondary{background:#e3efe9;color:#176b4d}
+.download{margin:16px 0 0;text-align:center;color:#5b6b63}.download a{color:#176b4d;font-weight:600}
 `;
 
-function page(title: string, content: string): string {
+/** Pie común: quien no tiene la app puede descargarla desde aquí. */
+const DOWNLOAD_FOOTER = `<p class="download">¿No tienes Rumbo EC? <a href="/descargar">Descarga la app</a></p>`;
+
+/** Página pública mínima; los enlaces compartidos (`/c`, `/r`) la reutilizan. */
+export function renderPublicPage(title: string, content: string): string {
   return `<!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escapeHtml(title)}</title><style>${STYLE}</style></head>
-<body><main>${content}</main></body></html>`;
+<body><main>${content}${DOWNLOAD_FOOTER}</main></body></html>`;
+}
+
+/** Enlace «Cómo llegar» de Google Maps para quien abre la página sin la app. */
+export function directionsLink(latitude: number, longitude: number): string {
+  return `<a class="btn secondary" href="https://www.google.com/maps/dir/?api=1&amp;destination=${latitude},${longitude}">Cómo llegar</a>`;
 }
 
 export function renderEstablishmentPage(data: EstablishmentPageData): string {
@@ -57,9 +67,9 @@ export function renderEstablishmentPage(data: EstablishmentPageData): string {
     .join("");
   const directions =
     data.latitude !== null && data.longitude !== null
-      ? `<a class="btn secondary" href="https://www.google.com/maps/dir/?api=1&amp;destination=${data.latitude},${data.longitude}">Cómo llegar</a>`
+      ? directionsLink(data.latitude, data.longitude)
       : "";
-  return page(
+  return renderPublicPage(
     data.nombreComercial,
     `<div class="card">${
       photo ? `<img src="${escapeHtml(photo.url)}" alt="">` : ""
@@ -72,7 +82,7 @@ ${directions}</div></div>`,
 }
 
 export function renderEstablishmentNotFound(): string {
-  return page(
+  return renderPublicPage(
     "Establecimiento no encontrado",
     `<div class="card"><div class="body"><h1>No encontramos este establecimiento</h1>
 <p>Puede que ya no esté publicado.</p></div></div>`,

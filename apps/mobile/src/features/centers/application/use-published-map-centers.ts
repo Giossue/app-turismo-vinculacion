@@ -16,6 +16,7 @@ import {
 } from "../data/public-centers-api";
 import { quantizeMapBounds } from "../domain/map-bounds-cell";
 import type { CenterFilters, PublicCenter } from "../domain/public-center";
+import { messages } from "@/core/i18n/language";
 
 const emptyFilters: CenterFilters = {};
 
@@ -168,9 +169,7 @@ function createMapPageVerifier() {
       page.data.length > 0 &&
       page.data.every((center) => seen.has(center.code))
     )
-      throw new ApiError(
-        "No fue posible completar los atractivos de esta zona.",
-      );
+      throw new ApiError(messages().places.center.errors.incompleteZone);
     for (const center of page.data) seen.add(center.code);
   };
 }

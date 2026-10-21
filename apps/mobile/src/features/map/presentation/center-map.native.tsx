@@ -51,6 +51,7 @@ import { useMapCameraFocus } from "./use-map-camera-focus";
 import { useMapLifecycle } from "./use-map-lifecycle";
 import { useMapViewportPublisher } from "./use-map-viewport-publisher";
 import { UserLocationLayers } from "./user-location-layers";
+import { useMessages } from "@/core/i18n/use-language";
 
 /** Center priorities are recomputed per center: wait for the camera to rest. */
 const viewportCenterDebounceMs = 150;
@@ -94,6 +95,7 @@ function getEstablishmentFilter(
 }
 
 export function CenterMap(props: CenterMapProps) {
+  const m = useMessages();
   const {
     attributionInset,
     centers,
@@ -244,7 +246,7 @@ export function CenterMap(props: CenterMapProps) {
   return (
     <View style={styles.container}>
       <MapLibreMap
-        accessibilityLabel="Mapa con atractivos turísticos publicados"
+        accessibilityLabel={m.map.label}
         compass={false}
         attribution={false}
         androidView="texture"

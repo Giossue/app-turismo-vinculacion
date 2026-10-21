@@ -1,5 +1,6 @@
 import * as Location from "expo-location";
 import { Linking, Platform } from "react-native";
+import { messages } from "@/core/i18n/language";
 
 /**
  * - `permission-blocked`: there is no foreground permission and the system
@@ -20,13 +21,19 @@ export type LocationUnavailableReason = Exclude<
 >;
 
 /** Copy shown by the shared location session for each unavailable state. */
-export const locationUnavailableMessages: Readonly<
-  Record<LocationUnavailableReason, string>
-> = {
-  "permission-blocked": "Activa el permiso de ubicación desde Ajustes.",
-  "permission-denied": "Necesitamos permiso para mostrar tu posición.",
-  "services-disabled": "Activa el GPS para encontrar tu posición.",
-};
+export function getLocationUnavailableMessage(
+  reason: LocationUnavailableReason,
+): string {
+  const text = messages().core.location;
+  switch (reason) {
+    case "permission-blocked":
+      return text.permissionBlocked;
+    case "permission-denied":
+      return text.permissionDenied;
+    case "services-disabled":
+      return text.servicesDisabled;
+  }
+}
 
 type LocationAvailabilityOptions = Readonly<{
   /** Ask the system to turn the provider on (Android dialog, iOS Ajustes). */

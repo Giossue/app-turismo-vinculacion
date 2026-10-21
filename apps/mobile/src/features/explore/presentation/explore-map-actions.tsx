@@ -5,6 +5,7 @@ import {
 } from "@/features/map/presentation/map-action-column";
 import type { MapBearingStore } from "@/features/map/presentation/map-bearing-store";
 import { MapCompass } from "@/features/map/presentation/map-compass";
+import { useMessages } from "@/core/i18n/use-language";
 
 /** Compass, agent and "my location" buttons at the bottom right of Explore. */
 export function ExploreMapActions({
@@ -31,6 +32,7 @@ export function ExploreMapActions({
   onResetNorth: () => void;
   showLocate: boolean;
 }>) {
+  const m = useMessages();
   return (
     <MapActionColumn
       landscape={landscape}
@@ -42,7 +44,7 @@ export function ExploreMapActions({
           style={mapActionStyle}
         />,
         <TourismIconAction
-          accessibilityLabel="Abrir agente turístico"
+          accessibilityLabel={m.explore.actions.openAgent}
           icon="bot"
           key="agent"
           onPress={onOpenAgent}

@@ -3,26 +3,10 @@ import type {
   NavigationGuidance,
   RouteRemainingMetrics,
 } from "./navigation-guidance";
+import { liveMessages } from "@/core/i18n/language";
 
-export const navigationMessages = {
-  arrived: "Has llegado a tu destino.",
-  backgroundNotificationDenied:
-    "Sin permiso de notificaciones la navegación seguirá solo mientras la app esté abierta.",
-  backgroundPermissionDenied:
-    "Sin permiso de ubicación «Siempre» la navegación seguirá solo mientras la app esté abierta.",
-  backgroundUnavailable:
-    "La navegación seguirá solo mientras la app esté abierta: no pudimos activar el seguimiento al cambiar de aplicación.",
-  offRoute: "Te alejaste de la ruta; buscando un nuevo trayecto.",
-  offRouteWithoutReroute:
-    "Te alejaste del trazado. Vuelve a la ruta para continuar; no se recalcula automáticamente.",
-  permissionMissing: "Necesitamos permiso de ubicación para navegar.",
-  refining: "Ajustando tu ubicación con el GPS…",
-  resuming: "Actualizando tu ubicación…",
-  servicesDisabled: "Activa el GPS para iniciar la navegación.",
-  startFailed: "No pudimos iniciar el seguimiento de ubicación.",
-  trackingLost:
-    "No pudimos seguir tu ubicación. Revisa el GPS e inténtalo de nuevo.",
-} as const;
+/** Mensajes de estado de la navegación en el idioma activo. */
+export const navigationMessages = liveMessages((all) => all.routing.session);
 
 export type NavigationSessionState = Readonly<{
   /** Sticky until navigation stops: arrival keeps its own message. */

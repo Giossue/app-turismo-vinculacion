@@ -37,6 +37,8 @@ consentimiento separado, retención, descarga/borrado y evaluación de impacto.
 ## Almacenamiento
 
 - No guardar cada punto GPS en logs o analítica.
+- Los reportes de errores del móvil (Sentry, ADR-0006) son anónimos y eliminan
+  coordenadas, query de URLs, cuerpos de peticiones, correos y tokens antes de enviarse.
 - Para estadísticas usar agregación y reducción de precisión.
 - Preferencias de lugar no deben revelar trayectorias detalladas.
 - El usuario puede revocar consentimiento y borrar datos asociados.

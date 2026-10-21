@@ -1,10 +1,9 @@
-import { Stack, useNavigation, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { Stack, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { StyleSheet } from "react-native";
 
 import type { GeoCoordinate } from "@/core/geo/types";
 import { useUserLocation } from "@/core/location/use-user-location";
-import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismGlassScope } from "@/core/ui/tourism-glass";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
@@ -16,8 +15,9 @@ import { useBackgroundTrackingPreference } from "@/features/routing/application/
 import { useCalculatedRoute } from "@/features/routing/application/use-calculated-route";
 import { useNavigationFollow } from "@/features/routing/application/use-navigation-follow";
 import { useNavigationRoute } from "@/features/routing/application/use-navigation-route";
+import { useNavigationRouteRetry } from "@/features/routing/application/use-navigation-route-retry";
 import { useNavigationSession } from "@/features/routing/application/use-navigation-session";
-import type { PersistedNavigationLocation } from "@/features/routing/data/navigation-session-storage";
+import { useRouteNavigationControls } from "@/features/routing/application/use-route-navigation-controls";
 import { useRouteScreenParams } from "@/features/routing/application/use-route-screen-params";
 import { useSavedCalculatedRoute } from "@/features/routing/application/use-saved-routes";
 import { getRouteErrorMessage } from "@/features/routing/data/routing-api";
@@ -27,16 +27,22 @@ import {
 } from "@/features/routing/data/saved-routes-storage";
 import {
   getRemoteRouteRequest,
-  savedRouteNavigationNotice,
+  getSavedRouteNavigationNotice,
 } from "@/features/routing/domain/route-source";
+import {
+  getNextStopNotice,
+  type RouteWaypoint,
+} from "@/features/routing/domain/route-stops";
 import type { RouteMode } from "@/features/routing/domain/routing";
 import { ActiveNavigationOverlay } from "@/features/routing/presentation/active-navigation-overlay";
 import { RouteMap } from "@/features/routing/presentation/route-map";
 import { RoutePreviewPanel } from "@/features/routing/presentation/route-preview-panel";
 import type { ParsedRouteSearchParams } from "@/features/routing/presentation/route-href";
+import { useMessages } from "@/core/i18n/use-language";
 
 /** Load a chosen saved route before mounting anything that can request GPS. */
 export default function RouteScreen() {
+  const m = useMessages();
   const params = useRouteScreenParams();
   const auth = useAuth();
   const router = useRouter();
@@ -51,12 +57,12 @@ export default function RouteScreen() {
   }
   if (auth.status === "anonymous") {
     return (
-      <TourismScreenFrame onBack={close} title="Ruta guardada">
+      <TourismScreenFrame onBack={close} title={m.routing.screen.savedTitle}>
         <TourismStateView
           actionIcon="user"
-          actionLabel="Iniciar sesión"
+          actionLabel={m.routing.screen.signIn}
           icon="navigation"
-          message="Inicia sesión con la cuenta que guardó esta ruta en el dispositivo."
+          message={m.routing.screen.savedSignIn}
           onAction={() => router.push(buildLoginHref("/route"))}
           variant="empty"
         />
@@ -65,9 +71,9 @@ export default function RouteScreen() {
   }
   if (auth.status === "loading" || savedQuery.isPending) {
     return (
-      <TourismScreenFrame onBack={close} title="Ruta guardada">
+      <TourismScreenFrame onBack={close} title={m.routing.screen.savedTitle}>
         <TourismStateView
-          message="Abriendo el recorrido guardado en este dispositivo…"
+          message={m.routing.screen.savedOpening}
           variant="loading"
         />
       </TourismScreenFrame>
@@ -75,18 +81,18 @@ export default function RouteScreen() {
   }
   if (!savedQuery.data) {
     return (
-      <TourismScreenFrame onBack={close} title="Ruta guardada">
+      <TourismScreenFrame onBack={close} title={m.routing.screen.savedTitle}>
         <TourismStateView
           icon="navigation"
           message={
             savedQuery.error
               ? describeSavedRouteError(savedQuery.error)
-              : "La ruta pudo haberse eliminado o estar guardada en otra cuenta."
+              : m.routing.screen.savedMissing
           }
           onAction={
             savedQuery.error ? () => void savedQuery.refetch() : undefined
           }
-          title="No pudimos abrir esta ruta"
+          title={m.routing.screen.savedOpenFailed}
           variant="error"
         />
       </TourismScreenFrame>
@@ -120,39 +126,51 @@ function RouteScreenContent({
   params: ParsedRouteSearchParams;
   savedRoute: SavedCalculatedRoute | null;
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const auth = useAuth();
   const router = useRouter();
-  const navigation = useNavigation();
   const destination = savedRoute?.destination ?? params.destination;
   const destinationName = savedRoute?.destinationName ?? params.destinationName;
   const initialMode = savedRoute?.mode ?? params.mode;
+  // Una ruta guardada conserva su trazado; las paradas solo vienen del enlace.
+  const waypoints = savedRoute ? noWaypoints : params.waypoints;
+  // `reached`: paradas ya alcanzadas. `requestedFrom`: primera parada que
+  // incluye la ruta pedida; al recalcular se piden solo las pendientes.
+  const [tripProgress, setTripProgress] = useState({
+    reached: 0,
+    requestedFrom: 0,
+  });
+  const pendingWaypoints = waypoints.slice(tripProgress.reached);
   const [mode, setMode] = useState<RouteMode>(initialMode);
   const [origin, setOrigin] = useState<GeoCoordinate | null>(
     savedRoute?.origin ?? null,
   );
   const [routeRequested, setRouteRequested] = useState(false);
-  const [navigationActive, setNavigationActive] = useState(false);
-  const [startLocation, setStartLocation] =
-    useState<PersistedNavigationLocation | null>(null);
-  const [startingNavigation, setStartingNavigation] = useState(false);
-  const [retryingRoute, setRetryingRoute] = useState(false);
-  const [backgroundTrackingEnabled, setBackgroundTrackingEnabled] =
-    useState(false);
   // Persisted opt-in: only when on are background permissions requested.
   const backgroundPreference = useBackgroundTrackingPreference();
   const [previewExpanded, setPreviewExpanded] = useState(true);
   const [mapBottomInset, setMapBottomInset] = useState(0);
-  // Guards double taps before the `startingNavigation` render lands.
-  const startInFlightRef = useRef(false);
-  const startAttemptRef = useRef(0);
-  const retryInFlightRef = useRef(false);
   const {
     accuracy: locationAccuracy,
     message: locationMessage,
     requestLocation,
     status: locationStatus,
   } = useUserLocation();
+  const controls = useRouteNavigationControls({
+    backgroundPreference,
+    locationAccuracy,
+    onStopped: () => setPreviewExpanded(true),
+    requestLocation,
+  });
+  const { navigationActive } = controls;
+  const startRouteFrom = (coordinate: GeoCoordinate) => {
+    setOrigin(coordinate);
+    setTripProgress((progress) => ({
+      ...progress,
+      requestedFrom: progress.reached,
+    }));
+  };
   const follow = useNavigationFollow(navigationActive);
 
   const request = getRemoteRouteRequest({
@@ -161,6 +179,7 @@ function RouteScreenContent({
     origin,
     requested: routeRequested,
     saved: savedRoute !== null,
+    waypoints: waypoints.slice(tripProgress.requestedFrom),
   });
   const routeQuery = useCalculatedRoute(request);
   const isCalculating = request !== null && routeQuery.isFetching;
@@ -170,42 +189,39 @@ function RouteScreenContent({
   );
   const routeError =
     routeQuery.isPaused && !routeQuery.data
-      ? "Conéctate para calcular una ruta nueva."
+      ? m.routing.screen.offline
       : routeQuery.error
         ? getRouteErrorMessage(routeQuery.error)
         : null;
 
   const navigationSession = useNavigationSession({
     active: navigationActive,
-    backgroundEnabled: backgroundTrackingEnabled,
+    backgroundEnabled: controls.backgroundTrackingEnabled,
     destination,
     isRecalculating: isCalculating,
     mode,
-    onReroute: (nextOrigin) => {
-      setOrigin(nextOrigin);
-    },
+    onReroute: startRouteFrom,
+    onStopReached: () =>
+      setTripProgress((progress) => ({
+        ...progress,
+        reached: progress.reached + 1,
+      })),
+    waypoints,
+    arrivalArmed: pendingWaypoints.length === 0,
     route,
     // One failed remote attempt keeps the current route without repeatedly
     // contacting an unavailable service as GPS positions change.
     reroutingEnabled: savedRoute === null && !routeQuery.isError,
-    initialLocation: startLocation,
+    initialLocation: controls.startLocation,
   });
-
-  // `blur` fires when another screen covers this one, never on a bare
-  // unmount; leaving the screen ends an active navigation.
-  useEffect(
-    () =>
-      navigation.addListener("blur", () => {
-        startAttemptRef.current += 1;
-        setNavigationActive(false);
-      }),
-    [navigation],
-  );
-
-  // Back cancels a start still waiting for GPS; active navigation uses its X.
-  useScreenBackHandler(() => {
-    if (startingNavigation) startAttemptRef.current += 1;
-    return navigationActive;
+  const routeRetry = useNavigationRouteRetry({
+    beginAttempt: controls.beginAttempt,
+    enabled:
+      !savedRoute && destination !== null && navigationActive && !isCalculating,
+    origin,
+    refetch: routeQuery.refetch,
+    requestLocation,
+    setOrigin: startRouteFrom,
   });
 
   useEffect(() => {
@@ -237,7 +253,7 @@ function RouteScreenContent({
   ]);
 
   const closeRoute = () => {
-    startAttemptRef.current += 1;
+    controls.cancelPending();
     if (router.canGoBack()) {
       router.back();
     } else {
@@ -260,103 +276,18 @@ function RouteScreenContent({
     setRouteRequested(true);
   };
 
-  /**
-   * Only with the opt-in on, asks for the permissions to keep following the
-   * route outside the app. A refusal leaves the navigation in the foreground
-   * and `backgroundPreference.notice` says so.
-   */
-  const enableBackgroundTracking = async (isCancelled: () => boolean) => {
-    const outcome = await backgroundPreference.request(isCancelled);
-    if (!isCancelled()) setBackgroundTrackingEnabled(outcome.enabled);
-  };
-
-  const handleStartNavigation = async () => {
-    if (!destination || !route || isCalculating || navigationActive) return;
-    if (startInFlightRef.current) return;
-
-    if (auth.status !== "authenticated") {
-      if (auth.status === "anonymous") {
-        router.push(buildLoginHref("/route"));
-      }
-      return;
-    }
-
-    const attempt = ++startAttemptRef.current;
-    const isCancelled = () =>
-      attempt !== startAttemptRef.current || !navigation.isFocused();
-    startInFlightRef.current = true;
-    setStartingNavigation(true);
-    try {
-      // La sesión pide su propia lectura fresca al arrancar: aquí basta la
-      // última posición válida del proveedor para no esperar dos veces al GPS.
-      const coordinate = await requestLocation();
-      if (!coordinate || isCancelled()) return;
-      await enableBackgroundTracking(isCancelled);
-      if (isCancelled()) return;
-      setStartLocation({
-        accuracy: locationAccuracy,
-        coordinate,
-        timestamp: Date.now(),
-      });
-      setNavigationActive(true);
-    } finally {
-      startInFlightRef.current = false;
-      setStartingNavigation(false);
-    }
-  };
-
-  const handleStopNavigation = () => {
-    startAttemptRef.current += 1;
-    setPreviewExpanded(true);
-    setNavigationActive(false);
-    setStartLocation(null);
-    setBackgroundTrackingEnabled(false);
-  };
-
-  const handleRetryNavigationRoute = async () => {
-    if (
-      savedRoute ||
-      !destination ||
-      !navigationActive ||
-      isCalculating ||
-      retryInFlightRef.current
-    )
-      return;
-    retryInFlightRef.current = true;
-    setRetryingRoute(true);
-    const attempt = ++startAttemptRef.current;
-    try {
-      const coordinate = await requestLocation({ forceRefresh: true });
-      if (
-        !coordinate ||
-        attempt !== startAttemptRef.current ||
-        !navigation.isFocused()
-      )
-        return;
-      if (
-        origin?.latitude === coordinate.latitude &&
-        origin.longitude === coordinate.longitude
-      ) {
-        await routeQuery.refetch();
-      } else {
-        setOrigin(coordinate);
-      }
-    } finally {
-      retryInFlightRef.current = false;
-      setRetryingRoute(false);
-    }
-  };
-
-  const navigationNotice = savedRoute ? savedRouteNavigationNotice : routeError;
+  const navigationNotice = savedRoute
+    ? getSavedRouteNavigationNotice()
+    : routeError;
   const authLoading = auth.status === "loading";
 
   if (!destination) {
     return (
-      <TourismScreenFrame onBack={closeRoute} title="Cómo llegar">
+      <TourismScreenFrame onBack={closeRoute} title={m.routing.screen.title}>
         <TourismStateView
           icon="mapPin"
-          message="Vuelve a la ficha del lugar y elige «Cómo llegar» otra vez."
-          title="No encontramos el destino de esta ruta"
+          message={m.routing.screen.missingDestination}
+          title={m.routing.screen.missingDestinationTitle}
           variant="error"
         />
       </TourismScreenFrame>
@@ -381,6 +312,7 @@ function RouteScreenContent({
           }
           origin={origin}
           route={route}
+          waypoints={pendingWaypoints}
         />
       }
       style={[styles.screen, { backgroundColor: colors.map.background }]}
@@ -392,6 +324,7 @@ function RouteScreenContent({
         <RoutePreviewPanel
           backgroundTrackingEnabled={backgroundPreference.optedIn}
           backgroundTrackingNotice={backgroundPreference.notice}
+          destination={destination}
           destinationName={destinationName}
           expanded={previewExpanded}
           isCalculating={isCalculating}
@@ -411,32 +344,45 @@ function RouteScreenContent({
           onHeightChange={setMapBottomInset}
           onBackgroundTrackingChange={backgroundPreference.setOptedIn}
           onModeChange={setMode}
-          onStartNavigation={() => void handleStartNavigation()}
+          onStartNavigation={() =>
+            void controls.start(
+              destination !== null && route !== null && !isCalculating,
+            )
+          }
           route={route}
           routeError={routeError}
           savedRoute={savedRoute !== null}
           startDisabled={authLoading}
-          startingNavigation={startingNavigation}
+          startingNavigation={controls.startingNavigation}
+          stopNames={pendingWaypoints.map((stop) => stop.name)}
         />
       ) : route ? (
         <ActiveNavigationOverlay
           guidance={navigationSession.nextInstruction}
           isFollowing={follow.following}
-          isRecalculating={isCalculating || retryingRoute}
+          arrivalPoint={{ coordinate: destination, name: destinationName }}
+          arrived={navigationSession.arrived}
+          isRecalculating={isCalculating || routeRetry.retrying}
           message={navigationSession.message}
           notice={
             navigationSession.backgroundNotice ??
             backgroundPreference.notice ??
-            navigationNotice
+            navigationNotice ??
+            getNextStopNotice(pendingWaypoints, waypoints.length)
           }
           onBottomInsetChange={setMapBottomInset}
           onRecenter={() => follow.setFollowing(true)}
-          onStop={handleStopNavigation}
+          onOpenPlace={(href) => {
+            controls.stop();
+            router.push(href);
+          }}
+          onStop={controls.stop}
           onRetryRoute={
             !savedRoute && routeQuery.isError
-              ? () => void handleRetryNavigationRoute()
+              ? () => void routeRetry.retry()
               : undefined
           }
+          place={savedRoute ? null : params.place}
           remainingDistanceMeters={navigationSession.remainingDistanceMeters}
           remainingDurationSeconds={navigationSession.remainingDurationSeconds}
           route={route}
@@ -445,6 +391,8 @@ function RouteScreenContent({
     </TourismGlassScope>
   );
 }
+
+const noWaypoints: readonly RouteWaypoint[] = [];
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },

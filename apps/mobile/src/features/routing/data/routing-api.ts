@@ -7,6 +7,7 @@ import {
   type CalculatedRoute,
   type RouteRequest,
 } from "../domain/routing";
+import { messages } from "@/core/i18n/language";
 
 export const calculatedRouteSchema = z.object({
   mode: z.enum(routeModes),
@@ -33,22 +34,23 @@ export const calculatedRouteSchema = z.object({
 
 const routeResponseSchema = z.object({ data: calculatedRouteSchema });
 
-const routeErrorMessage = "No pudimos calcular la ruta.";
-
 /** User-facing copy for a failed route calculation; never raw error text. */
 export function getRouteErrorMessage(error: unknown): string {
-  return error instanceof ApiError ? error.message : routeErrorMessage;
+  return error instanceof ApiError
+    ? error.message
+    : messages().routing.errors.calculate;
 }
 
 export async function calculateRoute(
   request: RouteRequest,
   { apiUrl = getApiUrl(), fetcher, signal }: ApiRequestOptions = {},
 ): Promise<CalculatedRoute> {
+  const text = messages().routing.errors;
   const payload = await requestJson(
     `${apiUrl}/routing/route`,
     routeResponseSchema,
     {
-      errorMessage: routeErrorMessage,
+      errorMessage: text.calculate,
       timeoutMs: 30_000,
       fetcher,
       init: {
@@ -60,10 +62,10 @@ export async function calculateRoute(
         body: JSON.stringify(request),
         signal,
       },
-      invalidMessage: "La respuesta de rutas no tiene el formato esperado.",
+      invalidMessage: text.invalidResponse,
       statusMessages: {
-        422: "No encontramos una ruta posible entre esos puntos.",
-        503: "El servicio de rutas no está disponible ahora.",
+        422: text.noRoute,
+        503: text.unavailable,
       },
     },
   );

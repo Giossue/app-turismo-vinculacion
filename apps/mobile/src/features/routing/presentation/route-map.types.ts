@@ -21,4 +21,6 @@ export type RouteMapProps = Readonly<{
   onUserInteraction?: () => void;
   origin: GeoCoordinate | null;
   route: CalculatedRoute | null;
+  /** Paradas intermedias pendientes de un recorrido, en orden. */
+  waypoints?: readonly GeoCoordinate[];
 }>;

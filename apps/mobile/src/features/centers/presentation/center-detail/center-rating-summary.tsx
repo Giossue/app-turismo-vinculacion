@@ -18,6 +18,7 @@ import {
 } from "@/core/ui/tokens";
 import type { OpinionRatingSummary } from "@/features/opinions/domain/opinion";
 import { formatRating } from "../../domain/center-format";
+import { useMessages } from "@/core/i18n/use-language";
 
 /**
  * Average rating chip that opens the opinions tab. Renders nothing until the
@@ -33,16 +34,16 @@ export function CenterRatingSummary({
   summary?: OpinionRatingSummary;
 }>) {
   const colors = useTurismoPalette();
+  const text = useMessages().places.center.rating;
   if (!summary || summary.averageRating === null || summary.total === 0) {
     return null;
   }
   const rating = formatRating(summary.averageRating);
-  const opinionLabel = summary.total === 1 ? "opinión" : "opiniones";
 
   return (
     <Pressable
-      accessibilityHint="Ver opiniones"
-      accessibilityLabel={`${rating} de 5 estrellas, ${summary.total} ${opinionLabel}`}
+      accessibilityHint={text.viewOpinions}
+      accessibilityLabel={text.label(rating, summary.total)}
       accessibilityRole="button"
       hitSlop={turismoMetrics.chipHitSlop}
       onPress={onPress}
@@ -56,7 +57,7 @@ export function CenterRatingSummary({
       <TurismoIcon color={colors.warm} name="star" size={turismoIconSizes.sm} />
       <Text style={[styles.value, { color: colors.text }]}>{rating}</Text>
       <Text style={[styles.count, { color: colors.textMuted }]}>
-        ({summary.total} {opinionLabel})
+        ({text.count(summary.total)})
       </Text>
     </Pressable>
   );

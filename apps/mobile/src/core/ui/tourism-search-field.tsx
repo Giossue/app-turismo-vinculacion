@@ -17,6 +17,7 @@ import {
   useTourismGlassBorderColor,
 } from "./tourism-glass";
 import { TourismPressable } from "./tourism-pressable";
+import { useMessages } from "@/core/i18n/use-language";
 
 // The clear icon keeps its compact look; hitSlop extends it to a 44dp target.
 const searchClearHitSlop =
@@ -46,6 +47,7 @@ export function TourismSearchField({
   placeholder: string;
   value: string;
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const glassBorderColor = useTourismGlassBorderColor(colors.border);
   const inputRef = useRef<TextInput>(null);
@@ -103,7 +105,7 @@ export function TourismSearchField({
       />
       {value && onClear ? (
         <TourismPressable
-          accessibilityLabel="Limpiar búsqueda"
+          accessibilityLabel={m.core.clearSearch}
           accessibilityRole="button"
           borderlessRipple
           hitSlop={searchClearHitSlop}

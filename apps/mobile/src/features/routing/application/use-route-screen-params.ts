@@ -16,7 +16,10 @@ export function useRouteScreenParams(): ParsedRouteSearchParams {
     destinationLongitude,
     destinationName,
     mode,
+    placeId,
+    placeKind,
     savedRouteKey,
+    waypoints,
   } = useLocalSearchParams<RouteSearchParams>();
   // React Compiler memoizes the result on these values, so the
   // destination keeps its identity across renders.
@@ -25,6 +28,9 @@ export function useRouteScreenParams(): ParsedRouteSearchParams {
     destinationLongitude,
     destinationName,
     mode,
+    placeId,
+    placeKind,
     savedRouteKey,
+    waypoints,
   });
 }

@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import {
   formatRouteInstruction,
+  formatStopArrivalInstruction,
   type RouteInstructionInput,
 } from "../domain/route-instructions";
 import {
@@ -86,7 +87,11 @@ export class OsrmRoutingClient implements RoutingProvider {
     signal?: AbortSignal,
   ): Promise<CalculatedRoute> {
     const baseUrl = this.getBaseUrl(request.mode);
-    const coordinates = [request.origin, request.destination]
+    const coordinates = [
+      request.origin,
+      ...(request.waypoints ?? []),
+      request.destination,
+    ]
       .map(({ longitude, latitude }) => `${longitude},${latitude}`)
       .join(";");
     const url = new URL(
@@ -130,14 +135,20 @@ export class OsrmRoutingClient implements RoutingProvider {
         distanceMeters: route.distance,
         durationSeconds: route.duration,
         geometry: route.geometry,
-        steps: route.legs.flatMap((leg) =>
+        steps: route.legs.flatMap((leg, legIndex) =>
           leg.steps.map((step) => {
             const instructionInput = {
               name: step.name,
               maneuver: step.maneuver,
             } satisfies RouteInstructionInput;
+            // Cada tramo termina en «arrive»; solo el último es el destino.
+            const isStopArrival =
+              step.maneuver.type === "arrive" &&
+              legIndex < route.legs.length - 1;
             return {
-              instruction: formatRouteInstruction(instructionInput),
+              instruction: isStopArrival
+                ? formatStopArrivalInstruction(legIndex + 1)
+                : formatRouteInstruction(instructionInput),
               distanceMeters: step.distance,
               durationSeconds: step.duration,
               name: step.name.trim() || null,

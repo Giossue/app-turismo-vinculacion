@@ -8,9 +8,11 @@ import {
   turismoTypography,
 } from "@/core/ui/tokens";
 import { useAppUpdate } from "../application/use-app-update";
+import { useMessages } from "@/core/i18n/use-language";
 
 /** Aviso al abrir la app cuando hay una versión publicada más nueva. */
 export function AppUpdateDialog() {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const { dismiss, update } = useAppUpdate();
   if (!update) return null;
@@ -33,7 +35,7 @@ export function AppUpdateDialog() {
             accessibilityRole="header"
             style={[styles.title, { color: colors.text }]}
           >
-            Hay una versión nueva
+            {m.account.update.title}
           </Text>
           {update.notes ? (
             <Text
@@ -44,16 +46,16 @@ export function AppUpdateDialog() {
             </Text>
           ) : null}
           <Text style={[styles.latest, { color: colors.textMuted }]}>
-            Última versión: {update.version}
+            {m.account.update.latest(update.version)}
           </Text>
           <View style={styles.actions}>
             <TourismActionButton
-              label="Ahora no"
+              label={m.account.update.later}
               mode="ghost"
               onPress={dismiss}
             />
             <TourismActionButton
-              label="Actualizar"
+              label={m.account.update.update}
               onPress={() => {
                 void Linking.openURL(update.downloadUrl);
                 dismiss();

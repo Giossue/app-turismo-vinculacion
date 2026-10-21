@@ -17,6 +17,7 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "./tokens";
+import { useMessages } from "@/core/i18n/use-language";
 
 /**
  * Date input backed by the native calendar: Android opens its dialog and
@@ -29,7 +30,7 @@ export function TourismDateField({
   maximumDate,
   minimumDate,
   onChange,
-  placeholder = "Selecciona una fecha",
+  placeholder,
   required = false,
   value,
 }: Readonly<{
@@ -43,6 +44,7 @@ export function TourismDateField({
   value: Date | null;
 }>) {
   const colors = useTurismoPalette();
+  const m = useMessages();
   const [open, setOpen] = useState(false);
   const pickerValue = clampDate(value ?? maximumDate, minimumDate, maximumDate);
   const close = () => setOpen(false);
@@ -61,7 +63,7 @@ export function TourismDateField({
         accessibilityLabel={
           value
             ? `${label}: ${formatLongDate(value)}`
-            : `Elegir ${label.toLowerCase()}`
+            : m.core.chooseDate(label)
         }
         accessibilityRole="button"
         onPress={() => setOpen(true)}
@@ -84,7 +86,7 @@ export function TourismDateField({
             { color: value ? colors.text : colors.textFaint },
           ]}
         >
-          {value ? formatLongDate(value) : placeholder}
+          {value ? formatLongDate(value) : (placeholder ?? m.core.selectDate)}
         </Text>
       </TourismPressable>
       {error ? <TourismFieldError message={error} /> : null}
@@ -123,7 +125,7 @@ export function TourismDateField({
                   {label}
                 </Text>
                 <TourismIconAction
-                  accessibilityLabel="Cerrar selector de fecha"
+                  accessibilityLabel={m.core.closeDatePicker}
                   icon="close"
                   onPress={close}
                   variant="ghost"
@@ -138,7 +140,7 @@ export function TourismDateField({
                 onValueChange={handleValueChange}
                 value={pickerValue}
               />
-              <TourismActionButton label="Listo" onPress={close} />
+              <TourismActionButton label={m.core.done} onPress={close} />
             </View>
           </View>
         </Modal>

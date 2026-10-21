@@ -8,6 +8,7 @@ import {
 } from "@/features/establishments/domain/establishment";
 import type { OfflineCityManifest } from "@/features/offline/domain/offline-city";
 import type { ExploreMapFilter } from "./explore-map-filter";
+import { messages } from "@/core/i18n/language";
 
 /** Pin drawn from a downloaded city (same shape as the map's `LocalMapPlace`). */
 export type ExploreOfflinePlace = Readonly<{
@@ -74,7 +75,7 @@ export function buildExploreOfflineMap(
       add(`poi:${poi.key}`, {
         name: poi.name,
         category: poi.category,
-        categoryLabel: poi.category ?? "Punto de interés",
+        categoryLabel: poi.category ?? messages().explore.pointOfInterest,
         latitude: poi.latitude,
         longitude: poi.longitude,
         approximate: false,

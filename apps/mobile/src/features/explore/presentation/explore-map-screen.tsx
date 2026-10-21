@@ -182,7 +182,11 @@ export function ExploreMapScreen() {
     mode: RouteMode,
   ) => {
     overlay.closeAgent();
-    router.push(buildRouteHref(destination, mode));
+    const place =
+      destination.type === "center" && destination.code
+        ? ({ kind: "center", code: destination.code } as const)
+        : null;
+    router.push(buildRouteHref({ ...destination, place }, mode));
   };
   // Search picks go through the same camera focus as tapping a pin.
   const selectSearchPlace = (place: PublicSearchResult) => {
@@ -372,7 +376,12 @@ export function ExploreMapScreen() {
               center={selectedCenter}
               key={selectedCenter.code}
               onClose={closeDetail}
-              onOpenRoute={() => openRoute(selectedCenter)}
+              onOpenRoute={() =>
+                openRoute({
+                  ...selectedCenter,
+                  place: { kind: "center", code: selectedCenter.code },
+                })
+              }
               onRequireAuth={openAuth}
             />
           ) : null}
@@ -381,7 +390,14 @@ export function ExploreMapScreen() {
               establishment={current.establishment}
               key={getEstablishmentKey(current.establishment)}
               onClose={closeDetail}
-              onOpenRoute={() => openRoute(current.establishment)}
+              onOpenRoute={() => {
+                const { id } = current.establishment;
+                openRoute({
+                  ...current.establishment,
+                  place:
+                    id === undefined ? null : { kind: "establishment", id },
+                });
+              }}
               onRequireAuth={openAuth}
             />
           ) : null}

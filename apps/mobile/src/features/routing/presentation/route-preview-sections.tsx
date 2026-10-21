@@ -28,8 +28,10 @@ import {
   turismoTypography,
 } from "@/core/ui/tokens";
 import type { CalculatedRoute, RouteMode } from "../domain/routing";
-import { routeModeOptions } from "./route-mode-options";
+import { getRouteModeOptions } from "./route-mode-options";
 import { getRouteStepIcon } from "./route-step-icon";
+import { useMessages } from "@/core/i18n/use-language";
+import { getStepInstruction } from "../domain/route-instruction-text";
 
 /** Rows keep room for two lines of instruction next to the step icon. */
 const stepRowMinHeight = turismoMetrics.controlSm + turismoSpacing.md;
@@ -41,7 +43,7 @@ export function RouteModeTabs({
   return (
     <TourismTabs
       fill
-      items={routeModeOptions}
+      items={getRouteModeOptions()}
       onChange={onChange}
       value={mode}
     />
@@ -64,11 +66,12 @@ export function RouteOverview({
 
 /** One green spinner; its label is announced without visible loading copy. */
 export function RouteLoading() {
+  const m = useMessages();
   return (
     <View style={styles.loading}>
       <TourismStateView
         layout="inline"
-        title="Cargando ruta"
+        title={m.routing.preview.loading}
         variant="loading"
       />
     </View>
@@ -114,8 +117,6 @@ export function RouteNotice({ message }: Readonly<{ message: string }>) {
   );
 }
 
-const backgroundTrackingLabel = "Seguir en segundo plano";
-
 /**
  * Explicit opt-in to background tracking. The explanation sits next to the
  * option; the system permission prompts only appear when navigation starts
@@ -133,21 +134,21 @@ export function RouteBackgroundTrackingToggle({
   notice: string | null;
   onChange: (enabled: boolean) => void;
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   return (
     <TourismSurface style={styles.toggleCard}>
       <View style={styles.toggleRow}>
         <View style={styles.toggleCopy}>
           <Text style={[styles.toggleLabel, { color: colors.text }]}>
-            {backgroundTrackingLabel}
+            {m.routing.preview.backgroundTracking}
           </Text>
           <Text style={[styles.caption, { color: colors.textMuted }]}>
-            Mantiene las indicaciones al cambiar de app o apagar la pantalla. Al
-            iniciar se pedirá el permiso de ubicación «Siempre».
+            {m.routing.preview.backgroundTrackingHelp}
           </Text>
         </View>
         <Switch
-          accessibilityLabel={backgroundTrackingLabel}
+          accessibilityLabel={m.routing.preview.backgroundTracking}
           accessibilityRole="switch"
           accessibilityState={{ checked: enabled, disabled }}
           disabled={disabled}
@@ -170,16 +171,17 @@ export function RouteBackgroundTrackingToggle({
 }
 
 export function RouteSteps({ route }: Readonly<{ route: CalculatedRoute }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const hasSteps = route.steps.length > 0;
   return (
     <View style={styles.stepsSection}>
-      <TourismSectionTitle>Pasos</TourismSectionTitle>
+      <TourismSectionTitle>{m.routing.preview.steps}</TourismSectionTitle>
       <View style={styles.stepsList}>
         <RouteStepRow
           icon="locate"
           showConnector={hasSteps}
-          title="Tu ubicación"
+          title={m.routing.preview.yourLocation}
           tone="origin"
         />
         {hasSteps ? (
@@ -189,13 +191,13 @@ export function RouteSteps({ route }: Readonly<{ route: CalculatedRoute }>) {
               key={`${step.instruction}-${index}`}
               showConnector={index < route.steps.length - 1}
               subtitle={formatDistance(step.distanceMeters)}
-              title={step.instruction}
+              title={getStepInstruction(route, index)}
               tone="maneuver"
             />
           ))
         ) : (
           <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-            No hay indicaciones detalladas para este trayecto.
+            {m.routing.preview.noSteps}
           </Text>
         )}
       </View>
@@ -222,8 +224,10 @@ function RouteStepRow({
       ? { background: colors.map.locationSoft, foreground: colors.map.location }
       : { background: colors.primarySoft, foreground: colors.primaryStrong };
   return (
-    <View style={styles.stepRow}>
+    <View accessible style={styles.stepRow}>
       <View
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
         style={[styles.stepIcon, { backgroundColor: iconColors.background }]}
       >
         <TurismoIcon
@@ -273,15 +277,16 @@ export function RoutePrimaryAction({
   startingNavigation: boolean;
   style?: StyleProp<ViewStyle>;
 }>) {
+  const text = useMessages().routing.preview;
   const { fontScale } = useWindowDimensions();
   const enlargedText = fontScale > 1;
   if (hasRoute) {
     return (
       <TourismActionButton
-        accessibilityLabel="Iniciar navegación"
+        accessibilityLabel={text.start}
         disabled={startingNavigation || startDisabled}
         icon="navigation"
-        label={enlargedText ? "Navegar" : "Iniciar navegación"}
+        label={enlargedText ? text.startShort : text.start}
         loading={startingNavigation || startDisabled}
         onPress={onStartNavigation}
         style={style}
@@ -289,15 +294,15 @@ export function RoutePrimaryAction({
     );
   }
   const actionLabel = locationRequesting
-    ? "Obteniendo ubicación…"
+    ? text.locating
     : routeError
-      ? "Reintentar ruta"
-      : "Calcular ruta";
+      ? text.retryRoute
+      : text.calculate;
   const shortActionLabel = locationRequesting
-    ? "Ubicando…"
+    ? text.locatingShort
     : routeError
-      ? "Reintentar"
-      : "Calcular";
+      ? text.retryShort
+      : text.calculateShort;
   return (
     <TourismActionButton
       accessibilityLabel={actionLabel}

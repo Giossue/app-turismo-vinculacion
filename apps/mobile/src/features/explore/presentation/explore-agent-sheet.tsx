@@ -18,6 +18,7 @@ import { useAuth } from "@/features/auth/application/auth-context";
 import { AgentChatContent } from "@/features/agent/presentation/agent-chat-content";
 import type { RouteMode } from "@/features/routing/domain/routing";
 import { AgentPlaceSheet, type AgentPlaceSelection } from "./agent-place-sheet";
+import { useMessages } from "@/core/i18n/use-language";
 
 const sheetEdges: readonly Edge[] = ["top", "bottom"];
 
@@ -46,6 +47,7 @@ function ExploreAgentSheetInner({
   onStartRoute,
   open,
 }: ExploreAgentSheetProps) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const sheetRef = useRef<BottomSheetModal>(null);
   const presentedRef = useRef(false);
@@ -81,10 +83,10 @@ function ExploreAgentSheetInner({
             style={[styles.safeArea, { backgroundColor: colors.surface }]}
           >
             <TourismSheetHandle
-              closeLabel="Cerrar agente turístico"
+              closeLabel={m.explore.agentSheet.close}
               leadingAction={
                 <TourismIconAction
-                  accessibilityLabel="Nueva conversación"
+                  accessibilityLabel={m.explore.agentSheet.newChat}
                   icon="plus"
                   onPress={() =>
                     confirmNewAgentChat(

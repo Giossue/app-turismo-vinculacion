@@ -11,6 +11,7 @@ import { Platform } from "react-native";
 import { ApiError } from "@/core/api/http";
 import { useAuth } from "@/features/auth/application/auth-context";
 import { transcribeAgentAudio } from "../data/agent-media-api";
+import { messages } from "@/core/i18n/language";
 
 /**
  * AAC in an .m4a file on every platform. `LOW_QUALITY` records 8 kHz AMR in a
@@ -108,10 +109,7 @@ export function useAgentVoiceInput({
       const permission = await AudioModule.requestRecordingPermissionsAsync();
       if (!activeRef.current) return;
       if (!permission.granted) {
-        onStatus(
-          "Sin permiso de micrófono puedes seguir escribiendo tu pregunta.",
-          true,
-        );
+        onStatus(messages().agent.voiceErrors.permission, true);
         onWorkingChange(false);
         return;
       }
@@ -160,10 +158,7 @@ export function useAgentVoiceInput({
         } else if (heardSpeech && elapsed - quietSince >= endSilenceMs) {
           finishRef.current(true);
         } else if (!heardSpeech && elapsed >= noSpeechTimeoutMs) {
-          finishRef.current(
-            false,
-            "No te escuché. Toca el micrófono para intentarlo de nuevo.",
-          );
+          finishRef.current(false, messages().agent.voiceErrors.silence);
         }
       }, pollMs);
     } catch (failure) {
@@ -171,10 +166,7 @@ export function useAgentVoiceInput({
       if (recordingModeSet) await restorePlaybackAudioMode();
       if (__DEV__) console.warn("Agent voice recording failed", failure);
       if (activeRef.current) {
-        onStatus(
-          "No se pudo iniciar el micrófono. Puedes escribir tu pregunta.",
-          true,
-        );
+        onStatus(messages().agent.voiceErrors.start, true);
         onWorkingChange(false);
       }
     }
@@ -198,15 +190,12 @@ export function useAgentVoiceInput({
       await restorePlaybackAudioMode();
       if (!transcribe) return;
       if (!uri) {
-        onStatus(
-          "No se pudo obtener la grabación. Puedes escribir tu pregunta.",
-          true,
-        );
+        onStatus(messages().agent.voiceErrors.recording, true);
         return;
       }
       const file = new File(uri);
       if (file.size > 5 * 1024 * 1024) {
-        onStatus("El audio supera 5 MB. Graba una pregunta más corta.", true);
+        onStatus(messages().agent.voiceErrors.tooLarge, true);
         return;
       }
       const controller = new AbortController();
@@ -222,11 +211,7 @@ export function useAgentVoiceInput({
       );
       if (activeRef.current && !controller.signal.aborted) {
         if (text.trim()) onTranscriptRef.current(text.trim());
-        else
-          onStatus(
-            "No entendí el audio. Inténtalo de nuevo o escribe tu pregunta.",
-            true,
-          );
+        else onStatus(messages().agent.voiceErrors.notUnderstood, true);
       }
     } catch (failure) {
       // `recorder.stop()` may have thrown before the mode was restored.
@@ -241,7 +226,7 @@ export function useAgentVoiceInput({
         onStatus(
           failure instanceof ApiError
             ? failure.message
-            : "No se pudo transcribir el audio. Puedes escribir tu pregunta.",
+            : messages().agent.voiceErrors.transcribe,
           true,
         );
       }

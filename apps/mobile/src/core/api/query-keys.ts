@@ -13,6 +13,8 @@ export const queryKeys = {
   centerOpinions: ["center-opinions", "pages-v1"],
   discoveryCatalog: ["discovery-catalog"],
   nearbyEstablishments: ["nearby-establishments"],
+  // Derivada del GPS: solo en memoria, nunca en `persistedQueryKeys`.
+  nearbyPlaces: ["nearby-places"],
   offlineCities: ["offline-cities"],
   offlineStoredCities: ["offline-stored-cities"],
   ownOpinion: ["own-center-opinion"],

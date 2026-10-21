@@ -1,0 +1,82 @@
+import type { Messages } from "../es";
+
+export const agentEn: Messages["agent"] = {
+  intro: "Hi! I'm your tourism guide. What are you looking for?",
+  starters: {
+    visit: "Which tourist places can I visit?",
+    eat: "Where can I eat?",
+    stay: "Where can I stay?",
+    nearby: "What's near me?",
+  },
+  fallbackError: "I can't answer right now. Please try again.",
+  stopped: "Answer stopped.",
+  interrupted: "Answer interrupted.",
+  needsLocation:
+    "I need your location to search near you or estimate travel times. Tap “Use my location”.",
+  locationDenied:
+    "I couldn't get your location. Check the permissions and turn on the phone's location.",
+  locationFailed: "I couldn't get your location. Please try again.",
+  defaultReply: "Here are some options.",
+  useLocation: "Use my location",
+  useLocationLabel: "Use my location to repeat the question",
+  limitReached: (max: number) =>
+    `You reached ${max} messages. Start a new chat to continue.`,
+  newChat: "New chat",
+  counterLabel: (count: number, max: number) =>
+    `${count} of ${max} messages sent`,
+  counter: (count: number, max: number) => `${count}/${max} messages`,
+  cancelRecording: "Cancel recording",
+  finishRecording: "Finish and send question",
+  inputLabel: "Write a question for the assistant",
+  placeholderLimit: "Start a new chat",
+  placeholderTranscribing: "Transcribing…",
+  placeholderSending: "Asking…",
+  placeholder: "Ask something…",
+  stop: "Stop answer",
+  send: "Send message",
+  voice: "Ask by voice",
+  retryLabel: "Retry the last question",
+  retry: "Try again",
+  stopReading: "Stop reading the answer",
+  listen: "Listen to the answer",
+  noCategory: "No category",
+  noLocation: "Location unavailable",
+  fromYou: "From your location · approx.",
+  view: "View",
+  viewPlace: (name: string) => `View ${name}`,
+  openHint: "Opens the details without closing the chat",
+  thinking: "The assistant is preparing an answer",
+  listening: "Listening. Speak and pause to send.",
+  travel: {
+    caption: "Estimated times from your approximate location",
+    car: "Car",
+    foot: "Walk",
+    bicycle: "Bike",
+    noRoute: "No route",
+    unavailable: "Unavailable",
+  },
+  voiceErrors: {
+    permission:
+      "Without microphone permission you can keep typing your question.",
+    silence: "I didn't hear you. Tap the microphone to try again.",
+    start: "We couldn't start the microphone. You can type your question.",
+    recording: "We couldn't get the recording. You can type your question.",
+    tooLarge: "The audio is over 5 MB. Record a shorter question.",
+    notUnderstood:
+      "I didn't understand the audio. Try again or type your question.",
+    transcribe: "We couldn't transcribe the audio. You can type your question.",
+  },
+  confirmNew: {
+    title: "Start a new chat?",
+    message: "The current conversation will be deleted.",
+    cancel: "Cancel",
+    confirm: "New chat",
+  },
+  errors: {
+    unavailable: "The assistant isn't available right now.",
+    invalid: "The assistant returned an answer with an invalid format.",
+    incomplete: "The assistant returned an incomplete answer.",
+    transcribe: "We couldn't transcribe the audio.",
+    transcribeInvalid: "The transcription has an unexpected format.",
+  },
+};

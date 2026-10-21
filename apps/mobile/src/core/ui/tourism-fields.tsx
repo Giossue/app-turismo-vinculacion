@@ -17,6 +17,7 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "./tokens";
+import { useMessages } from "@/core/i18n/use-language";
 
 /** Visible label of a form control; required fields end with an asterisk. */
 export function TourismFieldLabel({
@@ -75,6 +76,7 @@ export function TourismTextField({
   secure = false,
   ...inputProps
 }: Readonly<TourismTextFieldProps>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const [revealed, setRevealed] = useState(false);
 
@@ -109,7 +111,7 @@ export function TourismTextField({
         {secure ? (
           <TourismPressable
             accessibilityLabel={
-              revealed ? "Ocultar contraseña" : "Mostrar contraseña"
+              revealed ? m.core.hidePassword : m.core.showPassword
             }
             accessibilityRole="button"
             borderlessRipple

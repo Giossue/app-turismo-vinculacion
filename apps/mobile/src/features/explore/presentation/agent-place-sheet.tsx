@@ -22,6 +22,7 @@ import type {
 } from "@/features/agent/domain/agent";
 import type { RouteMode } from "@/features/routing/domain/routing";
 import { ExploreCenterSheetContent } from "./explore-center-sheet";
+import { useMessages } from "@/core/i18n/use-language";
 
 export type AgentPlaceSelection =
   AgentCard | Readonly<{ type: "center-code"; code: string }>;
@@ -54,6 +55,7 @@ export function AgentPlaceSheet({
   onRequireAuth,
   onStartRoute,
 }: AgentPlaceSheetProps) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const sheetRef = useRef<BottomSheetModal>(null);
   const presentedRef = useRef(false);
@@ -95,7 +97,10 @@ export function AgentPlaceSheet({
       stackBehavior="push"
     >
       <BottomSheetView style={styles.sheet}>
-        <TourismSheetHandle closeLabel="Volver al agente" onClose={onClose} />
+        <TourismSheetHandle
+          closeLabel={m.explore.agentPlace.backToAgent}
+          onClose={onClose}
+        />
         {selection?.type === "center" || selection?.type === "center-code" ? (
           <AgentCenterDetails
             code={selection.code}
@@ -125,6 +130,7 @@ function AgentCenterDetails({
   onRequireAuth: () => void;
   onStartRoute: AgentPlaceSheetProps["onStartRoute"];
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const query = usePublishedCenter(code);
 
@@ -152,7 +158,7 @@ function AgentCenterDetails({
   return (
     <TourismSheetScrollView contentStyle={styles.content}>
       <Text style={[styles.title, { color: colors.text }]}>
-        {fallback?.name ?? "Ficha turística"}
+        {fallback?.name ?? m.explore.agentPlace.fallbackTitle}
       </Text>
       {fallback ? (
         <>
@@ -162,7 +168,7 @@ function AgentCenterDetails({
           </Text>
           <TourismActionButton
             icon="route"
-            label="Cómo llegar"
+            label={m.explore.agentPlace.directions}
             onPress={() =>
               onStartRoute(
                 {
@@ -183,8 +189,8 @@ function AgentCenterDetails({
         layout="inline"
         message={
           query.error
-            ? "No pudimos cargar la ficha completa."
-            : "Cargando la ficha completa…"
+            ? m.explore.agentPlace.loadFailed
+            : m.explore.agentPlace.loading
         }
         onAction={query.error ? () => void query.refetch() : undefined}
         variant={query.error ? "error" : "loading"}
@@ -200,6 +206,7 @@ function AgentOtherPlaceDetails({
   card: Exclude<AgentCard, { type: "center" }>;
   onStartRoute: AgentPlaceSheetProps["onStartRoute"];
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const distance = formatOptionalDistance(card.distanceMeters);
   const destination: AgentRouteDestination | null =
@@ -221,27 +228,35 @@ function AgentOtherPlaceDetails({
       <Text style={[styles.body, { color: colors.text }]}>{card.summary}</Text>
       <TourismInfoRow
         icon="mapPin"
-        label="Localidad"
+        label={m.explore.agentPlace.locality}
         value={card.localityName}
       />
       {distance ? (
-        <TourismInfoRow icon="locate" label="Distancia" value={distance} />
+        <TourismInfoRow
+          icon="locate"
+          label={m.explore.agentPlace.distance}
+          value={distance}
+        />
       ) : null}
       {card.type === "establishment" && card.address ? (
-        <TourismInfoRow icon="mapPin" label="Dirección" value={card.address} />
+        <TourismInfoRow
+          icon="mapPin"
+          label={m.explore.agentPlace.address}
+          value={card.address}
+        />
       ) : null}
       {card.type === "establishment" && card.phone ? (
-        <TourismInfoRow label="Teléfono" value={card.phone} />
+        <TourismInfoRow label={m.explore.agentPlace.phone} value={card.phone} />
       ) : null}
       {destination ? (
         <TourismActionButton
           icon="route"
-          label="Cómo llegar"
+          label={m.explore.agentPlace.directions}
           onPress={() => onStartRoute(destination, "car")}
         />
       ) : (
         <Text style={[styles.body, { color: colors.textMuted }]}>
-          Este lugar no tiene una ubicación precisa para crear una ruta.
+          {m.explore.agentPlace.noLocation}
         </Text>
       )}
     </TourismSheetScrollView>

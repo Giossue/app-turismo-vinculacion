@@ -15,10 +15,12 @@ import { chooseGuestAccess } from "@/features/auth/data/auth-entry-storage";
 import { AccountEntry } from "@/features/auth/presentation/account-entry";
 import { LoginForm } from "@/features/auth/presentation/login-form";
 import { RegisterForm } from "@/features/auth/presentation/register-form";
+import { useMessages } from "@/core/i18n/use-language";
 
 type AuthMode = "entry" | "login" | "register";
 
 export default function LoginScreen() {
+  const m = useMessages();
   const router = useRouter();
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const [mode, setMode] = useState<AuthMode>("entry");
@@ -58,7 +60,11 @@ export default function LoginScreen() {
   if (mode === "entry") {
     return (
       <TurismoSchemeScope scheme="dark">
-        <TourismScreenFrame fullBleed showHeader={false} title="Cuenta">
+        <TourismScreenFrame
+          fullBleed
+          showHeader={false}
+          title={m.account.login.account}
+        >
           <StatusBar style="light" />
           <AccountEntry
             onBack={returnTo ? handleBack : undefined}
@@ -74,7 +80,11 @@ export default function LoginScreen() {
   return (
     <TourismScreenFrame
       onBack={handleBack}
-      title={mode === "register" ? "Crear cuenta" : "Iniciar sesión"}
+      title={
+        mode === "register"
+          ? m.account.login.createAccount
+          : m.account.login.signIn
+      }
     >
       <KeyboardAvoidingView behavior="padding" style={styles.flex}>
         <ScrollView

@@ -20,6 +20,8 @@ import {
 } from "../domain/agent-text";
 import { AgentActionList } from "./agent-action-list";
 import { AgentResultCard, getAgentCardKey } from "./agent-result-card";
+import { useMessages } from "@/core/i18n/use-language";
+import { getAppLocale } from "@/core/i18n/language";
 
 /** A user question or an agent answer with cards and optional location access. */
 export function AgentMessageBubble({
@@ -33,6 +35,7 @@ export function AgentMessageBubble({
   onRequestLocation: () => void;
   requestingLocation: boolean;
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const fromUser = message.role === "user";
   const visibleText = fromUser
@@ -63,7 +66,7 @@ export function AgentMessageBubble({
     speakingRef.current = true;
     setSpeaking(true);
     Speech.speak(plainAgentText(visibleText).slice(0, 3_000), {
-      language: "es-EC",
+      language: getAppLocale(),
       onDone: markStopped,
       onStopped: markStopped,
       onError: markStopped,
@@ -123,7 +126,7 @@ export function AgentMessageBubble({
           {!fromUser && !message.kind ? (
             <TourismPressable
               accessibilityLabel={
-                speaking ? "Detener lectura de respuesta" : "Escuchar respuesta"
+                speaking ? m.agent.stopReading : m.agent.listen
               }
               accessibilityRole="button"
               accessibilityState={{ selected: speaking }}

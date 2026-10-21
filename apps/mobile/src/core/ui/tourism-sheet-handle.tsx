@@ -15,6 +15,7 @@ import {
   turismoRadii,
   turismoSpacing,
 } from "./tokens";
+import { useMessages } from "@/core/i18n/use-language";
 
 /**
  * Asa estándar de toda sheet o panel inferior: la barra de arrastre al centro
@@ -23,7 +24,7 @@ import {
  * ejemplo, para expandir o contraer el panel de ruta).
  */
 export function TourismSheetHandle({
-  closeLabel = "Cerrar",
+  closeLabel,
   indicatorAccessibilityLabel,
   indicatorExpanded,
   hideForLandscapeKeyboard = false,
@@ -50,6 +51,7 @@ export function TourismSheetHandle({
   /** Sin barra de arrastre, para paneles fijos que solo se cierran con la X. */
   showIndicator?: boolean;
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const { width, height } = useWindowDimensions();
   const [keyboardVisible, setKeyboardVisible] = useState(() =>
@@ -100,7 +102,7 @@ export function TourismSheetHandle({
         indicator
       )}
       <TourismIconAction
-        accessibilityLabel={closeLabel}
+        accessibilityLabel={closeLabel ?? m.core.close}
         icon="close"
         onPress={onClose}
         style={[styles.close, insetClose && styles.closeInset]}

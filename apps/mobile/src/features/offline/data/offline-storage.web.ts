@@ -48,7 +48,18 @@ export async function listStoredOfflineManifests(): Promise<
 }
 
 export async function listStoredOfflineSummaries() {
-  return (await listStoredOfflineManifests()).map(summarizeOfflineManifest);
+  const values = await AsyncStorage.multiGet(await listStoredKeys());
+  return values.flatMap(([, value]) => {
+    const manifest = value ? parseStoredOfflineManifest(value) : null;
+    return manifest && value
+      ? [
+          summarizeOfflineManifest(
+            manifest,
+            new TextEncoder().encode(value).length,
+          ),
+        ]
+      : [];
+  });
 }
 
 export async function listStoredOfflineCenterRecords(code?: string) {

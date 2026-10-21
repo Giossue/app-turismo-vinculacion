@@ -30,6 +30,7 @@ const sessionKey = "rumbo-ec-active-navigation-v1";
 
 const snapshot: NavigationSessionSnapshot = {
   active: true,
+  arrivalArmed: true,
   destination: { latitude: -1.594, longitude: -79 },
   mode: "car",
   route: {
@@ -187,5 +188,26 @@ describe("navigation session storage", () => {
     expect(restored.status === "found" && restored.snapshot).not.toHaveProperty(
       "origin",
     );
+  });
+
+  it("arms the arrival by default for sessions stored before trips", async () => {
+    const { arrivalArmed: _ignored, ...legacy } = snapshot;
+    values.set(sessionKey, JSON.stringify(legacy));
+
+    await expect(loadNavigationSession()).resolves.toMatchObject({
+      snapshot: { arrivalArmed: true },
+      status: "found",
+    });
+  });
+
+  it("keeps the arrival disarmed while trip stops remain", () => {
+    expect(
+      buildNavigationSnapshot({
+        arrivalArmed: false,
+        destination: snapshot.destination,
+        mode: "car",
+        route: snapshot.route,
+      }).arrivalArmed,
+    ).toBe(false);
   });
 });

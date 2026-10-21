@@ -8,6 +8,7 @@ import type {
   PublicEstablishmentDetail,
   PublicMapEstablishment,
 } from "../domain/establishment";
+import { messages } from "@/core/i18n/language";
 
 /**
  * Saved state of a registry establishment, mirroring `useCenterSaveToggle`:
@@ -37,7 +38,7 @@ export function useEstablishmentSaveToggle(
     }),
     mutation,
     onRequireAuth,
-    saveLabel: "Guardar establecimiento",
+    saveLabel: messages().places.establishment.save,
     saved,
   });
 

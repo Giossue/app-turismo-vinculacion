@@ -1,4 +1,4 @@
-import { appLocale } from "./locale";
+import { getAppLocale } from "./locale";
 
 /** Formats a travel duration as `<1 min`, `25 min`, `2 h` or `1 h 5 min`. */
 export function formatDurationSeconds(seconds: number): string {
@@ -12,7 +12,7 @@ export function formatDurationSeconds(seconds: number): string {
 
 /** Formats a timestamp as a local wall-clock time, for example `14:05`. */
 export function formatClockTime(time: number | Date): string {
-  return new Date(time).toLocaleTimeString(appLocale, {
+  return new Date(time).toLocaleTimeString(getAppLocale(), {
     hour: "2-digit",
     minute: "2-digit",
   });

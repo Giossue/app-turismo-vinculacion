@@ -29,10 +29,11 @@ import {
 import type { CalculatedRoute } from "../domain/routing";
 import type { RouteMapProps } from "./route-map.types";
 import { turismoMapLayerStyle } from "@/core/ui/tokens";
+import { useMessages } from "@/core/i18n/use-language";
 
 type EndpointProperties = Readonly<{
   heading?: number;
-  kind: "origin" | "destination" | "current";
+  kind: "origin" | "destination" | "current" | "stop";
 }>;
 
 const navigationCameraLeadMeters = 30;
@@ -41,6 +42,7 @@ const recenterDurationMs = 400;
 const fitBoundsDurationMs = 450;
 const navigationPitch = 60;
 const navigationZoom = 19;
+const noWaypoints: readonly GeoCoordinate[] = [];
 const routeBoundsPadding = { top: 36, right: 28, bottom: 36, left: 28 };
 
 const routeMapImages = {
@@ -59,7 +61,9 @@ export function RouteMap({
   onUserInteraction,
   origin,
   route,
+  waypoints = noWaypoints,
 }: RouteMapProps) {
+  const m = useMessages();
   const cameraRef = useRef<CameraRef>(null);
   const mapRef = useRef<MapRef>(null);
   const { scheme } = useTurismoTheme();
@@ -122,10 +126,20 @@ export function RouteMap({
         ...(origin && !navigationActive
           ? [pointFeature(origin, { kind: "origin" as const })]
           : []),
+        ...waypoints.map((stop) =>
+          pointFeature(stop, { kind: "stop" as const }),
+        ),
         pointFeature(destination, { kind: "destination" as const }),
       ],
     }),
-    [currentLocation, destination, navigationActive, navigationHeading, origin],
+    [
+      currentLocation,
+      destination,
+      navigationActive,
+      navigationHeading,
+      origin,
+      waypoints,
+    ],
   );
   const bounds = useMemo(
     () => getRouteBounds(route, origin, destination),
@@ -239,7 +253,7 @@ export function RouteMap({
   return (
     <View style={styles.container}>
       <MapLibreMap
-        accessibilityLabel="Mapa de la ruta calculada"
+        accessibilityLabel={m.routing.preview.mapLabel}
         attribution={false}
         androidView="texture"
         compass={false}
@@ -309,6 +323,17 @@ export function RouteMap({
               "icon-size": turismoMapLayerStyle.navigationArrowScale,
             }}
             type="symbol"
+          />
+          <Layer
+            filter={["==", ["get", "kind"], "stop"]}
+            id="calculated-route-stops"
+            paint={{
+              "circle-color": colors.surface,
+              "circle-radius": 8,
+              "circle-stroke-color": colors.primary,
+              "circle-stroke-width": 4,
+            }}
+            type="circle"
           />
           <Layer
             filter={["==", ["get", "kind"], "destination"]}

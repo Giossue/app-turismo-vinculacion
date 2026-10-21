@@ -10,6 +10,7 @@ import type {
   OfflineCityManifest,
   OfflineCitySummary,
 } from "../domain/offline-city";
+import { messages } from "@/core/i18n/language";
 
 const latitudeSchema = z.number().min(-90).max(90);
 const longitudeSchema = z.number().min(-180).max(180);
@@ -114,10 +115,10 @@ export async function getOfflineCities(
   apiUrl = getApiUrl(),
 ): Promise<readonly OfflineCity[]> {
   const payload = await requestJson(`${apiUrl}/offline/cities`, citiesSchema, {
-    errorMessage: "No pudimos cargar las ciudades offline.",
+    errorMessage: messages().offline.errors.cities,
     fetcher,
     init: { headers: acceptJsonHeaders },
-    invalidMessage: "El catálogo offline no es válido.",
+    invalidMessage: messages().offline.errors.citiesInvalid,
   });
   return payload.data;
 }
@@ -131,11 +132,11 @@ export async function getOfflineCityManifest(
     `${apiUrl}/offline/cities/${encodeURIComponent(slug)}/manifest`,
     manifestResponseSchema,
     {
-      errorMessage: "Esta ciudad aún no tiene paquete offline.",
+      errorMessage: messages().offline.errors.manifest,
       timeoutMs: 60_000,
       fetcher,
       init: { headers: acceptJsonHeaders },
-      invalidMessage: "El manifiesto offline no es válido.",
+      invalidMessage: messages().offline.errors.manifestInvalid,
     },
   );
   return payload.data;
@@ -166,6 +167,12 @@ const offlineCitySummarySchema = z.object({
   download: offlineCityManifestSchema.shape.download
     .unwrap()
     .omit({ mapStyles: true })
+    .nullish()
+    .transform((value) => value ?? undefined),
+  contentSizeBytes: z
+    .number()
+    .int()
+    .nonnegative()
     .nullish()
     .transform((value) => value ?? undefined),
 });

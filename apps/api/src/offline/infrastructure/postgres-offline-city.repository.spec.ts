@@ -225,7 +225,9 @@ describe("offline city public snapshot", () => {
     expect(sql).toContain("e.estado_revision = 'PUBLICADO'");
     expect(sql).toContain("er.codigo = 'PUBLICADO'");
     // Any change, including unpublishing, raises the version.
-    expect(sql).toContain("FLOOR(EXTRACT(EPOCH FROM content.changed_at))");
+    expect(sql).toContain(
+      "FLOOR(EXTRACT(EPOCH FROM content.changed_at) * 1000)",
+    );
     expect(sql).toContain("MAX(e.updated_at)");
     expect(sql).toContain("MAX(z.updated_at)");
     expect(sql).toContain("MAX(version.updated_at)");

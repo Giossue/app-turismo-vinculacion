@@ -50,6 +50,7 @@ describe("getPublishedCenters", () => {
     ).resolves.toHaveLength(1);
     expect(fetcher).toHaveBeenCalledWith("http://api.test/api/v1/centers", {
       headers: { Accept: "application/json" },
+      signal: expect.any(AbortSignal),
     });
   });
 
@@ -78,7 +79,10 @@ describe("getPublishedCenters", () => {
     ).resolves.toHaveLength(0);
     expect(fetcher).toHaveBeenCalledWith(
       "http://api.test/api/v1/centers?q=mirador",
-      { headers: { Accept: "application/json" } },
+      {
+        headers: { Accept: "application/json" },
+        signal: expect.any(AbortSignal),
+      },
     );
   });
 });
@@ -140,7 +144,8 @@ describe("getPublishedMapCenters", () => {
       expect(query.get("west")).toBe("-79.02");
       expect(query.get("north")).toBe("-1.58");
       expect(query.get("categoryCode")).toBe("AN");
-      expect(init?.signal).toBe(signal);
+      // Each page gets its own deadline signal that also follows `signal`.
+      expect(init?.signal).toBeInstanceOf(AbortSignal);
     }
   });
 

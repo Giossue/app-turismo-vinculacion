@@ -13,8 +13,7 @@ import type {
   AccountSessionScope,
 } from "@/features/auth/application/mobile-session";
 import type { AuthorizedFetcher } from "@/features/auth/data/auth-api";
-
-const signInRequired = "Inicia sesión para usar tus guardados.";
+import { messages } from "@/core/i18n/language";
 
 export function getSavedCollectionQueryOptions<TItem>(
   baseKey: QueryKey,
@@ -26,9 +25,17 @@ export function getSavedCollectionQueryOptions<TItem>(
     queryKey: [...baseKey, scope?.userId ?? "anonymous"],
     queryFn: async ({ signal }) => {
       if (!scope) return [];
-      requireCurrentAccount(auth, scope, signInRequired);
+      requireCurrentAccount(
+        auth,
+        scope,
+        messages().community.saved.signInRequired,
+      );
       const items = await list(withRequestSignal(auth.request, signal));
-      requireCurrentAccount(auth, scope, signInRequired);
+      requireCurrentAccount(
+        auth,
+        scope,
+        messages().community.saved.signInRequired,
+      );
       return items;
     },
     enabled: scope !== null,
@@ -79,16 +86,32 @@ export function getSavedCollectionMutationOptions<
     networkMode: "always",
     meta: { accountId: scope?.userId, sessionGeneration: scope?.generation },
     mutationFn: async (variables) => {
-      requireCurrentAccount(auth, scope, signInRequired);
+      requireCurrentAccount(
+        auth,
+        scope,
+        messages().community.saved.signInRequired,
+      );
       const item = operations.getItem(variables);
       if (variables.currentlySaved) await operations.remove(item, auth.request);
       else await operations.save(item, auth.request);
-      requireCurrentAccount(auth, scope, signInRequired);
+      requireCurrentAccount(
+        auth,
+        scope,
+        messages().community.saved.signInRequired,
+      );
     },
     onMutate: async (variables) => {
-      const currentScope = requireCurrentAccount(auth, scope, signInRequired);
+      const currentScope = requireCurrentAccount(
+        auth,
+        scope,
+        messages().community.saved.signInRequired,
+      );
       await client.cancelQueries({ queryKey, exact: true });
-      requireCurrentAccount(auth, currentScope, signInRequired);
+      requireCurrentAccount(
+        auth,
+        currentScope,
+        messages().community.saved.signInRequired,
+      );
       const previous = client.getQueryData<readonly TItem[]>(queryKey);
       const optimistic = operations.apply(
         previous ?? [],

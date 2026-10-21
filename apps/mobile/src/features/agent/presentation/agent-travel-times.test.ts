@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import type { AgentTravelTime } from "../domain/agent";
 import {
-  AGENT_TRAVEL_TIMES_CAPTION,
   getAgentTravelTimeRows,
   getAgentTravelTimesAccessibilityLabel,
 } from "./agent-travel-times";
+import { messages } from "@/core/i18n/language";
 
 describe("agent travel time presentation", () => {
   it("shows route estimates in car, foot and bicycle order", () => {
@@ -55,7 +55,7 @@ describe("agent travel time presentation", () => {
       "11 min",
     ]);
     expect(getAgentTravelTimesAccessibilityLabel(estimates)).toBe(
-      `${AGENT_TRAVEL_TIMES_CAPTION}. Carro: No disponible. A pie: Sin ruta. Bici: 11 min`,
+      `${messages().agent.travel.caption}. Carro: No disponible. A pie: Sin ruta. Bici: 11 min`,
     );
   });
 

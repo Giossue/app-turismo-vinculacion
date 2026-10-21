@@ -4,6 +4,7 @@ import {
   useSavedCenters,
 } from "@/features/favorites/application/use-saved-centers";
 import type { PublicCenter } from "../../domain/public-center";
+import { messages } from "@/core/i18n/language";
 
 /**
  * Saved state of `center` for the signed-in tourist. Guests are sent to
@@ -25,7 +26,7 @@ export function useCenterSaveToggle(
     buildVariables: (currentlySaved) => ({ center, currentlySaved }),
     mutation,
     onRequireAuth,
-    saveLabel: "Guardar centro turístico",
+    saveLabel: messages().places.center.save,
     saved,
   });
 }

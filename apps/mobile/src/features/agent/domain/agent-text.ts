@@ -1,3 +1,5 @@
+import { messages } from "@/core/i18n/language";
+
 export type AgentTextPart = Readonly<{ value: string; strong: boolean }>;
 
 /** The agent may use Markdown emphasis; keep other text and line breaks intact. */
@@ -71,7 +73,7 @@ export function getAgentVisibleText(
     .join("\n")
     .replace(/\n(?:[ \t]*\n){2,}/g, "\n\n")
     .trim();
-  return visible || "Aquí tienes algunas opciones.";
+  return visible || messages().agent.defaultReply;
 }
 
 function normalizePlaceName(value: string): string {

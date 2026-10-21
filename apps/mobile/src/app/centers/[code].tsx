@@ -25,12 +25,29 @@ import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/save
 import { useCenterOpinions } from "@/features/opinions/application/use-center-opinions";
 import { CenterOpinions } from "@/features/opinions/presentation/center-opinions";
 import { buildRouteHref } from "@/features/routing/presentation/route-href";
+import { buildCenterTripStop } from "@/features/trip/domain/trip";
+import { useTripToggle } from "@/features/trip/presentation/use-trip-toggle";
+import { shareCenter } from "@/features/sharing/application/share-link";
+import { isValidCenterCode } from "@/features/sharing/domain/share-links";
+import { useMessages } from "@/core/i18n/use-language";
 
 export default function CenterDetailScreen() {
+  const m = useMessages();
   const router = useRouter();
-  const params = useLocalSearchParams<{ code?: string | string[] }>();
-  const code = firstSearchParam(params.code) ?? "";
-  const goBack = () => router.back();
+  const params = useLocalSearchParams<{
+    code?: string | string[];
+    tab?: string | string[];
+  }>();
+  // El código puede llegar desde un enlace compartido: solo se aceptan
+  // códigos alfanuméricos antes de consultar la API.
+  const rawCode = firstSearchParam(params.code) ?? "";
+  const code = isValidCenterCode(rawCode) ? rawCode : "";
+  // Al llegar a un destino, «Opinar» abre la ficha en su pestaña de opiniones.
+  const initialTab: CenterDetailTab =
+    firstSearchParam(params.tab) === "opinions" ? "opinions" : "information";
+  // Abierta desde un enlace compartido no hay pantalla previa: vuelve al mapa.
+  const goBack = () =>
+    router.canGoBack() ? router.back() : router.replace("/");
   const {
     data: center,
     error,
@@ -44,8 +61,8 @@ export default function CenterDetailScreen() {
     return (
       <CenterStateFrame onBack={goBack}>
         <TourismStateView
-          message="El enlace no indica qué atractivo abrir."
-          title="No encontramos esta ficha."
+          message={m.places.center.missingCode}
+          title={m.places.center.notFound}
           variant="error"
         />
       </CenterStateFrame>
@@ -55,10 +72,7 @@ export default function CenterDetailScreen() {
   if (isPending && !isPaused) {
     return (
       <CenterStateFrame onBack={goBack}>
-        <TourismStateView
-          message="Abriendo ficha turística…"
-          variant="loading"
-        />
+        <TourismStateView message={m.places.center.opening} variant="loading" />
       </CenterStateFrame>
     );
   }
@@ -69,14 +83,20 @@ export default function CenterDetailScreen() {
         <TourismStateView
           actionPending={isFetching}
           onAction={() => void refetch()}
-          title="No pudimos abrir la ficha."
+          title={m.places.center.openFailed}
           variant="error"
         />
       </CenterStateFrame>
     );
   }
 
-  return <CenterDetailContent center={center} onBack={goBack} />;
+  return (
+    <CenterDetailContent
+      center={center}
+      initialTab={initialTab}
+      onBack={goBack}
+    />
+  );
 }
 
 /** Loading and error states keep a header so iOS users can always go back. */
@@ -84,8 +104,9 @@ function CenterStateFrame({
   children,
   onBack,
 }: Readonly<{ children: ReactNode; onBack: () => void }>) {
+  const m = useMessages();
   return (
-    <TourismScreenFrame onBack={onBack} title="Ficha turística">
+    <TourismScreenFrame onBack={onBack} title={m.places.center.title}>
       {children}
     </TourismScreenFrame>
   );
@@ -93,21 +114,28 @@ function CenterStateFrame({
 
 function CenterDetailContent({
   center,
+  initialTab,
   onBack,
-}: Readonly<{ center: PublicCenterDetail; onBack: () => void }>) {
+}: Readonly<{
+  center: PublicCenterDetail;
+  initialTab: CenterDetailTab;
+  onBack: () => void;
+}>) {
+  const m = useMessages();
   const router = useRouter();
   const colors = useTurismoPalette();
-  const [activeTab, setActiveTab] = useState<CenterDetailTab>("information");
+  const [activeTab, setActiveTab] = useState<CenterDetailTab>(initialTab);
   const opinions = useCenterOpinions(center.code);
   const save = useCenterSaveToggle(center, () =>
     router.push(buildLoginHref(`/centers/${center.code}`)),
   );
+  const trip = useTripToggle(buildCenterTripStop(center));
 
   return (
     <TourismScreenFrame
       includeBottomInset={false}
       showHeader={false}
-      title="Ficha turística"
+      title={m.places.center.title}
     >
       <ScrollView
         contentContainerStyle={styles.content}
@@ -117,7 +145,7 @@ function CenterDetailContent({
           <CenterHero
             leading={
               <TourismIconAction
-                accessibilityLabel="Volver a explorar"
+                accessibilityLabel={m.places.center.backToExplore}
                 icon="arrowLeft"
                 onPress={onBack}
               />
@@ -134,8 +162,17 @@ function CenterDetailContent({
               summary={opinions.data?.summary}
             />
             <PlaceActions
-              onOpenRoute={() => router.push(buildRouteHref(center))}
+              onOpenRoute={() =>
+                router.push(
+                  buildRouteHref({
+                    ...center,
+                    place: { kind: "center", code: center.code },
+                  }),
+                )
+              }
+              onShare={() => void shareCenter(center.code, center.name)}
               save={save}
+              trip={trip}
             />
             <CenterDetailTabs onChange={setActiveTab} value={activeTab} />
             {activeTab === "information" ? (

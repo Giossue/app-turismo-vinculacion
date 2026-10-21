@@ -93,4 +93,6 @@ export type OfflineCitySummary = Readonly<{
     routes: number;
   }>;
   download?: Omit<NonNullable<OfflineCityManifest["download"]>, "mapStyles">;
+  /** Bytes of the stored content (places, routes, styles); tiles apart. */
+  contentSizeBytes?: number;
 }>;

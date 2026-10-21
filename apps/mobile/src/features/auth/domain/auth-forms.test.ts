@@ -5,7 +5,7 @@ import {
   emptyRegistrationForm,
   getFieldErrors,
   loginFormSchema,
-  passwordRequirementMessage,
+  getPasswordRequirementMessage,
   PASSWORD_MAX_LENGTH,
   registrationFormSchema,
 } from "./auth-forms";
@@ -74,7 +74,7 @@ describe("registration form", () => {
       email: "Escribe un correo electrónico válido.",
       gender: "Selecciona tu género.",
       name: "Escribe tu nombre.",
-      password: passwordRequirementMessage,
+      password: getPasswordRequirementMessage(),
     });
   });
 

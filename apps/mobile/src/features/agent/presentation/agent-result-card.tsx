@@ -14,6 +14,7 @@ import {
   getAgentTravelTimeRows,
   getAgentTravelTimesAccessibilityLabel,
 } from "./agent-travel-times";
+import { useMessages } from "@/core/i18n/use-language";
 
 export function getAgentCardKey(card: AgentCard): string {
   return card.type === "center"
@@ -26,19 +27,20 @@ export function AgentResultCard({
   card,
   onOpenCard,
 }: Readonly<{ card: AgentCard; onOpenCard: (card: AgentCard) => void }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const travelTimeRows = getAgentTravelTimeRows(card.travelTimes);
   const travelTimesLabel = getAgentTravelTimesAccessibilityLabel(
     card.travelTimes,
   );
-  const category = card.category?.trim() || "Sin categoría";
+  const category = card.category?.trim() || m.agent.noCategory;
   const location =
     [
       card.type !== "poi" ? card.address?.trim() : null,
       card.localityName?.trim(),
     ]
       .filter(Boolean)
-      .join(" - ") || "Ubicación no disponible";
+      .join(" - ") || m.agent.noLocation;
 
   const content = (
     <>
@@ -60,7 +62,7 @@ export function AgentResultCard({
       {travelTimeRows.length > 0 && (
         <View style={styles.travelTimes}>
           <Text style={[styles.caption, { color: colors.textMuted }]}>
-            Desde tu ubicación · aprox.
+            {m.agent.fromYou}
           </Text>
           <View style={styles.travelTimeList}>
             {travelTimeRows.map((row) => (
@@ -78,15 +80,17 @@ export function AgentResultCard({
           </View>
         </View>
       )}
-      <Text style={[styles.link, { color: colors.primaryStrong }]}>Ver</Text>
+      <Text style={[styles.link, { color: colors.primaryStrong }]}>
+        {m.agent.view}
+      </Text>
     </>
   );
 
   return (
     <TourismPressable
-      accessibilityHint="Abre los detalles sin cerrar el chat"
+      accessibilityHint={m.agent.openHint}
       accessibilityLabel={[
-        `Ver ${card.name}`,
+        m.agent.viewPlace(card.name),
         category,
         location,
         travelTimesLabel,

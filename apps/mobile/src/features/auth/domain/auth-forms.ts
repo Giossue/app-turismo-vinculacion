@@ -7,6 +7,7 @@ import {
   type TouristGender,
   type TouristRegistrationInput,
 } from "./registration-options";
+import { messages } from "@/core/i18n/language";
 
 // Limits mirror the API's LoginDto and RegisterDto (apps/api/src/auth).
 const LOGIN_PASSWORD_MIN_LENGTH = 8;
@@ -17,25 +18,29 @@ const NAME_MAX_LENGTH = 150;
 const EMAIL_MAX_LENGTH = 254;
 
 /** Shown as helper text under the password of a new account. */
-export const passwordRequirementMessage = `La contraseña debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres.`;
+export function getPasswordRequirementMessage(): string {
+  return messages().account.validation.passwordRequirement(PASSWORD_MIN_LENGTH);
+}
+
+// Los mensajes se resuelven al validar para seguir el idioma activo.
+const v = () => messages().account.validation;
 
 // Trimming happens only here: the API receives the parsed values.
 const emailSchema = z
   .string()
   .trim()
-  .min(1, "Escribe tu correo electrónico.")
-  .max(EMAIL_MAX_LENGTH, "El correo electrónico es demasiado largo.")
-  .pipe(z.email({ error: "Escribe un correo electrónico válido." }));
+  .min(1, { error: () => v().emailRequired })
+  .max(EMAIL_MAX_LENGTH, { error: () => v().emailTooLong })
+  .pipe(z.email({ error: () => v().emailInvalid }));
 
 export const loginFormSchema = z.object({
   email: emailSchema,
   password: z
     .string()
-    .min(1, "Escribe tu contraseña.")
-    .min(
-      LOGIN_PASSWORD_MIN_LENGTH,
-      `La contraseña tiene al menos ${LOGIN_PASSWORD_MIN_LENGTH} caracteres.`,
-    ),
+    .min(1, { error: () => v().passwordRequired })
+    .min(LOGIN_PASSWORD_MIN_LENGTH, {
+      error: () => v().passwordLoginMin(LOGIN_PASSWORD_MIN_LENGTH),
+    }),
 });
 
 export const registrationFormSchema = z
@@ -43,24 +48,25 @@ export const registrationFormSchema = z
     name: z
       .string()
       .trim()
-      .min(NAME_MIN_LENGTH, "Escribe tu nombre.")
-      .max(NAME_MAX_LENGTH, "El nombre es demasiado largo."),
+      .min(NAME_MIN_LENGTH, { error: () => v().nameRequired })
+      .max(NAME_MAX_LENGTH, { error: () => v().nameTooLong }),
     email: emailSchema,
-    gender: z.enum(touristGenderOptions, { error: "Selecciona tu género." }),
+    gender: z.enum(touristGenderOptions, { error: () => v().genderRequired }),
     birthDate: z
-      .date({ error: "Selecciona tu fecha de nacimiento." })
-      .refine((date) => isValidBirthDate(date), "Fecha inválida."),
+      .date({ error: () => v().birthDateRequired })
+      .refine((date) => isValidBirthDate(date), {
+        error: () => v().birthDateInvalid,
+      }),
     password: z
       .string()
-      .min(PASSWORD_MIN_LENGTH, passwordRequirementMessage)
-      .max(
-        PASSWORD_MAX_LENGTH,
-        `La contraseña no puede superar ${PASSWORD_MAX_LENGTH} caracteres.`,
-      ),
+      .min(PASSWORD_MIN_LENGTH, { error: getPasswordRequirementMessage })
+      .max(PASSWORD_MAX_LENGTH, {
+        error: () => v().passwordTooLong(PASSWORD_MAX_LENGTH),
+      }),
     passwordConfirmation: z.string(),
   })
   .refine((values) => values.password === values.passwordConfirmation, {
-    message: "Las contraseñas no coinciden.",
+    error: () => v().passwordMismatch,
     path: ["passwordConfirmation"],
   })
   .transform(

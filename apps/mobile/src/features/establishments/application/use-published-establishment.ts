@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { isApiUnavailableError } from "@/core/api/http";
 import { queryKeys } from "@/core/api/query-keys";
 import { getPublishedEstablishment } from "../data/establishments-api";
+import { messages } from "@/core/i18n/language";
 
 /**
  * Detail (photos) of a registry establishment. Pins without an id (offline
@@ -14,7 +15,7 @@ export function usePublishedEstablishment(id: number | undefined) {
     queryKey: [...queryKeys.publishedEstablishment, id],
     queryFn: ({ signal }) => {
       if (id === undefined)
-        throw new Error("Establecimiento sin identificador.");
+        throw new Error(messages().places.establishment.missingIdError);
       return getPublishedEstablishment(id, { signal });
     },
     enabled: id !== undefined,

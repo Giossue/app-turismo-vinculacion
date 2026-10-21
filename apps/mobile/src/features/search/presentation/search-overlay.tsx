@@ -31,6 +31,7 @@ import {
   type SearchModeFieldProps,
 } from "./search-mode-field";
 import { SearchSuggestionsPanel } from "./search-suggestions-panel";
+import { useMessages } from "@/core/i18n/use-language";
 
 const overlayEdges: readonly Edge[] = ["top", "bottom"];
 
@@ -70,6 +71,7 @@ export function SearchOverlay({
   scope: SearchScope;
   searchError: unknown;
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const { width, height, fontScale } = useWindowDimensions();
   const [keyboardVisible, setKeyboardVisible] = useState(() =>
@@ -107,7 +109,7 @@ export function SearchOverlay({
         >
           <View style={styles.header}>
             <TourismIconAction
-              accessibilityLabel="Volver al mapa"
+              accessibilityLabel={m.explore.search.backToMap}
               icon="arrowLeft"
               onPress={onClose}
               style={styles.back}
@@ -118,7 +120,7 @@ export function SearchOverlay({
             </View>
             {compact ? (
               <TourismIconAction
-                accessibilityLabel="Filtros de búsqueda"
+                accessibilityLabel={m.explore.search.filters}
                 icon="sliders"
                 onPress={Keyboard.dismiss}
                 variant="ghost"
@@ -137,13 +139,13 @@ export function SearchOverlay({
                   />
                   <View style={styles.scope}>
                     <TourismChoiceChip
-                      label="Todo Ecuador"
+                      label={m.explore.search.country}
                       onPress={() => onScopeChange("country")}
                       selected={scope === "country"}
                     />
                     <TourismChoiceChip
                       disabled={!areaAvailable}
-                      label="En esta zona"
+                      label={m.explore.search.area}
                       onPress={() => onScopeChange("area")}
                       selected={scope === "area"}
                     />

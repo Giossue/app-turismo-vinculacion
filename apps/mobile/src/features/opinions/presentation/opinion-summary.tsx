@@ -11,6 +11,7 @@ import {
 import { formatRating } from "@/features/centers/domain/center-format";
 import type { PublicOpinionPage } from "../domain/opinion";
 import { OpinionRatingStars } from "./opinion-stars";
+import { useMessages } from "@/core/i18n/use-language";
 
 type RatingDistribution = PublicOpinionPage["summary"]["distribution"];
 
@@ -20,6 +21,7 @@ const ratingLevels = ["5", "4", "3", "2", "1"] as const;
 export function OpinionSummary({
   summary,
 }: Readonly<{ summary: PublicOpinionPage["summary"] | undefined }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const average = summary?.averageRating ?? null;
   const count = summary?.total ?? 0;
@@ -35,7 +37,7 @@ export function OpinionSummary({
           </Text>
           <OpinionRatingStars rating={average} />
           <Text style={[styles.meta, { color: colors.textMuted }]}>
-            {count} {count === 1 ? "opinión" : "opiniones"}
+            {m.community.opinions.count(count)}
           </Text>
         </View>
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -48,6 +50,7 @@ export function OpinionSummary({
 function RatingBars({
   distribution,
 }: Readonly<{ distribution: RatingDistribution }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const total = Object.values(distribution).reduce(
     (sum, value) => sum + value,
@@ -59,7 +62,10 @@ function RatingBars({
         const share = total ? distribution[level] / total : 0;
         return (
           <View
-            accessibilityLabel={`${level} estrellas: ${Math.round(share * 100)}%`}
+            accessibilityLabel={m.community.opinions.distribution(
+              level,
+              Math.round(share * 100),
+            )}
             accessible
             key={level}
             style={styles.distributionRow}

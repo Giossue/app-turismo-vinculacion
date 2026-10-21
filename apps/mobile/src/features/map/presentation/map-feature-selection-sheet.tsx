@@ -12,6 +12,7 @@ import {
 } from "@/features/establishments/domain/establishment";
 import { getEstablishmentPin } from "@/features/establishments/presentation/establishment-pins";
 import type { MapFeatureSelection } from "../domain/map-feature-selection";
+import { useMessages } from "@/core/i18n/use-language";
 
 /** Tarjetas creadas al abrir; el resto se crea de a este número al bajar. */
 const optionsBatchSize = 5;
@@ -25,6 +26,7 @@ export function MapFeatureSelectionSheet({
   onClose: () => void;
   onSelect: (selection: MapFeatureSelection) => void;
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
 
   return (
@@ -37,10 +39,10 @@ export function MapFeatureSelectionSheet({
           <View style={styles.header}>
             <View style={styles.headerCopy}>
               <Text style={[styles.title, { color: colors.text }]}>
-                Varios lugares aquí
+                {m.map.several}
               </Text>
               <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-                Selecciona cuál quieres abrir.
+                {m.map.chooseOne}
               </Text>
             </View>
           </View>
@@ -71,6 +73,7 @@ function SelectionOption({
   onPress,
   selection,
 }: Readonly<{ onPress: () => void; selection: MapFeatureSelection }>) {
+  const m = useMessages();
   const isCenter = selection.kind === "center";
   const category = isCenter
     ? selection.center.category
@@ -78,17 +81,13 @@ function SelectionOption({
 
   return (
     <TourismOptionRow
-      accessibilityHint={
-        isCenter
-          ? "Abre la ficha del centro turístico"
-          : "Abre la ficha del punto de interés"
-      }
+      accessibilityHint={isCenter ? m.map.openCenter : m.map.openPoint}
       icon={getSelectionIcon(selection)}
       onPress={onPress}
       subtitle={
         isCenter
-          ? `Centro turístico · ${category}`
-          : `Punto de interés · ${category ?? "Establecimiento turístico"}`
+          ? m.map.centerSubtitle(category ?? "")
+          : m.map.pointSubtitle(category ?? null)
       }
       title={isCenter ? selection.center.name : selection.establishment.name}
     />

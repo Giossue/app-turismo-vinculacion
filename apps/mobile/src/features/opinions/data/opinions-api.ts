@@ -15,6 +15,7 @@ import {
   type OwnOpinionState,
   type PublicOpinionPage,
 } from "../domain/opinion";
+import { messages } from "@/core/i18n/language";
 
 const listSchema = z.object({ data: publicOpinionPageSchema });
 const ownSchema = z.object({ data: ownOpinionStateSchema.nullable() });
@@ -34,10 +35,10 @@ export async function listCenterOpinions(
     `${apiUrl}/centers/${encodeURIComponent(code)}/opinions?${query}`,
     listSchema,
     {
-      errorMessage: "No se pudieron cargar las opiniones.",
+      errorMessage: messages().community.opinions.errors.list,
       fetcher,
       init: { headers: acceptJsonHeaders, signal },
-      invalidMessage: "Las opiniones no tienen el formato esperado.",
+      invalidMessage: messages().community.opinions.errors.listInvalid,
     },
   );
   return payload.data;
@@ -52,9 +53,9 @@ export async function getMyCenterOpinion(
     `${apiUrl}/opinions/me/centers/${encodeURIComponent(code)}`,
     ownSchema,
     {
-      errorMessage: "No se pudo cargar tu opinión.",
+      errorMessage: messages().community.opinions.errors.own,
       fetcher: request,
-      invalidMessage: "El estado de tu opinión no tiene el formato esperado.",
+      invalidMessage: messages().community.opinions.errors.ownInvalid,
     },
   );
   return payload.data;
@@ -89,7 +90,7 @@ async function submitCenterOpinion(
     `${apiUrl}/opinions/centers/${encodeURIComponent(code)}`,
     submittedSchema,
     {
-      errorMessage: "No se pudo guardar tu opinión.",
+      errorMessage: messages().community.opinions.errors.save,
       fetcher: request,
       init: {
         body: JSON.stringify({
@@ -101,7 +102,12 @@ async function submitCenterOpinion(
         headers: { "content-type": "application/json" },
         method,
       },
-      invalidMessage: "La API no devolvió el estado de tu opinión.",
+      invalidMessage: messages().community.opinions.errors.saveInvalid,
+      serverMessageFallbacks: {
+        400: messages().community.opinions.errors.invalid,
+        404: messages().community.opinions.errors.notFound,
+        409: messages().community.opinions.errors.conflict,
+      },
       useServerMessage: true,
     },
   );

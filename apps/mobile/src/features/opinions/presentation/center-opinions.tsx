@@ -26,6 +26,7 @@ import { OPINIONS_PAGE_SIZE, getOpinionKey } from "../domain/opinion";
 import { OpinionComposer } from "./opinion-composer";
 import { OpinionListItem } from "./opinion-list-item";
 import { OpinionSummary } from "./opinion-summary";
+import { useMessages } from "@/core/i18n/use-language";
 
 // The API lists opinions newest first, so "Recientes" is the head of it.
 const recentOpinionsCount = 3;
@@ -39,6 +40,8 @@ export function CenterOpinions({
   code: string;
   onRequireAuth?: () => void;
 }>) {
+  const m = useMessages();
+  const text = useMessages().community.opinions;
   const colors = useTurismoPalette();
   const router = useRouter();
   const auth = useAuth();
@@ -121,7 +124,7 @@ export function CenterOpinions({
   async function submit() {
     const normalizedComment = comment.trim();
     if (rating === null && !normalizedComment) {
-      setFormError("Selecciona una calificación o escribe un comentario.");
+      setFormError(text.ratingOrComment);
       return;
     }
     setFormError(null);
@@ -135,11 +138,7 @@ export function CenterOpinions({
       setRating(null);
       setComment("");
     } catch (cause) {
-      setFormError(
-        cause instanceof ApiError
-          ? cause.message
-          : "No se pudo enviar la opinión.",
-      );
+      setFormError(cause instanceof ApiError ? cause.message : text.sendFailed);
     }
   }
 
@@ -153,7 +152,7 @@ export function CenterOpinions({
       onChangeRating={setRating}
       onSubmit={() => void submit()}
       rating={rating}
-      title={formMode === "edit" ? "Editar mi opinión" : "Escribe una opinión"}
+      title={formMode === "edit" ? text.editTitle : text.createTitle}
     />
   );
 
@@ -165,12 +164,12 @@ export function CenterOpinions({
       {opinions.data?.total ? (
         <View style={styles.filters}>
           <TourismChoiceChip
-            label="Todas"
+            label={text.all}
             onPress={() => setReviewFilter("all")}
             selected={reviewFilter === "all"}
           />
           <TourismChoiceChip
-            label="Recientes"
+            label={text.recent}
             onPress={() => setReviewFilter("recent")}
             selected={reviewFilter === "recent"}
           />
@@ -180,18 +179,14 @@ export function CenterOpinions({
       {opinions.isPending && !opinions.isPaused ? (
         <TourismStateView
           layout="inline"
-          message="Cargando opiniones…"
+          message={text.loading}
           variant="loading"
         />
       ) : (opinions.isError || opinions.isPaused) && !opinions.data ? (
         <TourismStateView
           actionPending={opinions.isFetching}
           layout="card"
-          message={
-            opinions.isPaused
-              ? "Conéctate para consultar las opiniones."
-              : "No pudimos cargar las opiniones."
-          }
+          message={opinions.isPaused ? text.offline : text.loadFailed}
           onAction={() => void opinions.refetch()}
           variant="error"
         />
@@ -220,7 +215,7 @@ export function CenterOpinions({
           {currentPage > 0 ? (
             <TourismActionButton
               compact
-              label="Opiniones anteriores"
+              label={text.previous}
               mode="outlined"
               onPress={() => setPage(currentPage - 1)}
             />
@@ -229,7 +224,7 @@ export function CenterOpinions({
             <TourismActionButton
               compact
               disabled={opinions.isFetching}
-              label="Opiniones siguientes"
+              label={text.next}
               loading={opinions.isFetchingNextPage}
               mode="outlined"
               onPress={() => void nextPage()}
@@ -238,7 +233,7 @@ export function CenterOpinions({
           {opinions.isError || opinions.isPaused ? (
             <TourismStateView
               layout="inline"
-              message="No pudimos actualizar las opiniones. Las ya cargadas siguen disponibles."
+              message={text.updateFailed}
               onAction={() =>
                 void (opinions.isFetchNextPageError
                   ? opinions.fetchNextPage()
@@ -254,14 +249,14 @@ export function CenterOpinions({
       {auth.status === "anonymous" ? (
         <TourismSurface style={styles.notice}>
           <Text style={[styles.noticeTitle, { color: colors.text }]}>
-            Comparte tu experiencia
+            {text.shareTitle}
           </Text>
           <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-            Inicia sesión para calificar y escribir una opinión.
+            {text.shareBody}
           </Text>
           <TourismActionButton
             compact
-            label="Escribir una opinión"
+            label={text.write}
             onPress={requireAuth}
           />
         </TourismSurface>
@@ -270,20 +265,18 @@ export function CenterOpinions({
         // a second one; wait for it instead of flashing the form.
         <TourismStateView
           layout="inline"
-          message="Consultando tu opinión…"
+          message={text.checkingOwn}
           variant="loading"
         />
       ) : authenticated && (own.error || own.isPaused) ? (
         <TourismSurface style={styles.notice}>
           <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-            {own.isPaused
-              ? "Conéctate para consultar tu opinión."
-              : "No pudimos consultar tu opinión."}
+            {own.isPaused ? text.ownOffline : text.ownFailed}
           </Text>
           <TourismActionButton
             compact
             icon="refresh"
-            label="Reintentar"
+            label={m.core.retry}
             mode="outlined"
             onPress={() => void own.refetch()}
           />
@@ -291,42 +284,42 @@ export function CenterOpinions({
       ) : authenticated && ownState?.pending ? (
         <TourismSurface style={styles.notice}>
           <Text style={[styles.noticeTitle, { color: colors.text }]}>
-            Tu opinión está en revisión
+            {text.pendingTitle}
           </Text>
           <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-            La versión enviada será visible cuando un administrador la apruebe.
+            {text.pendingBody}
           </Text>
           {ownState.current ? (
             <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-              Mientras tanto, tu versión publicada anterior permanece visible.
+              {text.pendingPrevious}
             </Text>
           ) : null}
         </TourismSurface>
       ) : authenticated && ownState?.lastRejected ? (
         <TourismSurface style={styles.notice}>
           <Text style={[styles.noticeTitle, { color: colors.text }]}>
-            La última versión fue rechazada
+            {text.rejectedTitle}
           </Text>
           {ownState.lastRejected.reason ? (
             <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-              Motivo: {ownState.lastRejected.reason}
+              {text.rejectedReason(ownState.lastRejected.reason)}
             </Text>
           ) : null}
           {ownState.current ? (
             <>
               <Text style={[styles.noticeText, { color: colors.textMuted }]}>
-                Tu versión anterior sigue publicada.
+                {text.previousPublished}
               </Text>
               <TourismActionButton
                 compact
-                label="Editar mi opinión"
+                label={text.edit}
                 onPress={startEdit}
               />
             </>
           ) : (
             <TourismActionButton
               compact
-              label="Escribir otra opinión"
+              label={text.writeAnother}
               onPress={startCreate}
             />
           )}

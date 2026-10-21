@@ -17,7 +17,11 @@ import {
   getNavigationGuidance,
   getNavigationNotification,
   hasArrivedAtDestination,
+  shouldNotifyArrival,
 } from "../domain/navigation-guidance";
+import { notifyNavigationArrival } from "./arrival-notification";
+import { messages } from "@/core/i18n/language";
+import { initLanguage } from "@/core/i18n/use-language";
 
 const navigationLocationTaskName = "rumbo-ec-navigation-location";
 
@@ -92,6 +96,9 @@ function enqueueBackgroundFix(
 async function handleBackgroundFix(
   location: PersistedNavigationLocation,
 ): Promise<void> {
+  // Sin pantallas montadas el idioma aún no se resolvió; la notificación
+  // debe usar el mismo idioma que la app.
+  await initLanguage();
   const session = await loadNavigationSession();
   // A storage error may be transient: keep the service and retry next fix.
   if (session.status === "unreadable") return;
@@ -112,10 +119,16 @@ async function handleBackgroundFix(
     return;
   }
 
-  const { destination, route } = session.snapshot;
-  if (hasArrivedAtDestination(location.coordinate, destination)) {
+  const { arrivalArmed, destination, route } = session.snapshot;
+  if (
+    arrivalArmed &&
+    hasArrivedAtDestination(location.coordinate, destination)
+  ) {
     await markNavigationArrived();
     await stopNavigationLocationTask();
+    if (shouldNotifyArrival(AppState.currentState)) {
+      await notifyNavigationArrival();
+    }
     return;
   }
 
@@ -231,7 +244,7 @@ export function startNavigationLocationTask(): Promise<void> {
 
   startTaskPromise = (async () => {
     if (!(await TaskManager.isAvailableAsync())) {
-      throw new Error("El seguimiento en segundo plano no está disponible.");
+      throw new Error(messages().routing.notification.backgroundUnavailable);
     }
 
     if (
@@ -296,10 +309,9 @@ function getNavigationLocationTaskOptions(
     foregroundService: {
       killServiceOnDestroy: false,
       notificationBody:
-        notificationBody ??
-        "Siguiendo tu ubicación durante la navegación activa.",
+        notificationBody ?? messages().routing.notification.tracking,
       notificationColor: turismoFixedColors.brand,
-      notificationTitle: "Rumbo EC",
+      notificationTitle: messages().routing.notification.appName,
     },
     pausesUpdatesAutomatically: false,
     showsBackgroundLocationIndicator: true,

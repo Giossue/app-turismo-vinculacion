@@ -204,13 +204,19 @@ Antes de crear una utilidad o un componente nuevo, reutilizar estos módulos del
 - `src/core/geo`: `GeoCoordinate`, `GeoBounds`, `GeoBoundingBox`, `getDistanceMeters`
   (haversine), `offsetCoordinate`, `normalizeLongitude` y `getCoordinateBounds` (sin
   `Math.min(...spread)`).
-- `src/core/format`: `appLocale` (`es-EC`), `formatDistance`/`formatOptionalDistance`,
-  `formatDurationSeconds`, `formatClockTime`, `toIsoDate`, `formatLongDate` y
-  `formatRelativeDate`.
+- `src/core/i18n`: textos de la interfaz en español e inglés (ADR-0007). En pantallas,
+  `useMessages()`; en dominio, datos y tareas, `messages()`; para constantes que deben seguir
+  el idioma, `liveMessages()`. Ningún texto visible se escribe fuera de
+  `core/i18n/messages`; el inglés debe tener las mismas claves que el español.
+- `src/core/format`: `getAppLocale()` (`es-EC` o `en-US`), `formatDistance`/
+  `formatOptionalDistance`, `formatDurationSeconds`, `formatClockTime`, `toIsoDate`,
+  `formatLongDate` y `formatRelativeDate`.
 - `src/core/api/http.ts`: `requestJson`, `sendRequest`, `assertResponseOk`,
   `parseJsonResponse`, `readApiErrorMessage`, `ApiError` e `isApiUnavailableError`. Los
-  clientes `features/*/data/*-api.ts` los usan para que la UI nunca muestre errores de red o
-  de JSON en inglés; las opciones de transporte se pasan como `{ apiUrl, fetcher, signal }`.
+  clientes `features/*/data/*-api.ts` los usan para que la UI nunca muestre errores técnicos
+  de red o de JSON; las opciones de transporte se pasan como `{ apiUrl, fetcher, signal }`.
+  Con `useServerMessage`, en inglés se usa `serverMessageFallbacks` por estado HTTP en lugar
+  del mensaje en español de la API.
 - `src/core/api/query-keys.ts`: prefijos de claves de TanStack Query, `ONE_DAY_MS` y las
   políticas de persistencia y de cierre de sesión. `query-cache-persister.ts` ordena y
   cancela escrituras; `optimistic-query-persistence.ts` conserva colecciones confirmadas
@@ -602,7 +608,8 @@ Véase `product/features/offline-maps/`.
   primer plano sin una pantalla de ruta montada que posea la navegación, la tarea la termina
   para no dejar una notificación imposible de cerrar. La tarea comprueba también la llegada
   mientras la app está en segundo plano y detiene el seguimiento persistente al alcanzar el
-  destino; un error transitorio al leer la sesión no la detiene. La
+  destino; si la app sigue oculta y hay permiso, publica una notificación local de llegada
+  (`expo-notifications`, canal `navigation-arrival`, sin push); un error transitorio al leer la sesión no la detiene. La
   misma notificación foreground muestra la próxima maniobra y distancia redondeada; solo la
   tarea la actualiza y únicamente cuando cambia ese contenido. Android 13 o posterior puede permitir que el
   usuario la descarte, así que el servicio vuelve a publicar el mismo registro en la siguiente

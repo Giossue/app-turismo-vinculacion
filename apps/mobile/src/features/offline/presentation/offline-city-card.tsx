@@ -15,7 +15,13 @@ import {
   turismoTypography,
 } from "@/core/ui/tokens";
 import type { OfflineCity, OfflineCitySummary } from "../domain/offline-city";
-import { formatOfflineMapSize } from "./offline-city-browser";
+import {
+  formatOfflineStorageUsage,
+  formatOfflineUpdatedAt,
+  getOfflineStorageUsage,
+  hasNewerOfflinePackage,
+} from "./offline-storage-usage";
+import { useMessages } from "@/core/i18n/use-language";
 
 /**
  * A city of the offline catalog with its download action. `progress` is set
@@ -43,11 +49,16 @@ export function OfflineCityCard({
   stored: boolean;
   storedManifest?: OfflineCitySummary;
 }>) {
+  const text = useMessages().offline.card;
   const colors = useTurismoPalette();
   const downloading = progress !== null;
-  const mapSize = formatOfflineMapSize(
-    storedManifest?.download?.resourceSizeBytes,
-  );
+  const storageDetails = storedManifest
+    ? [
+        formatOfflineStorageUsage(getOfflineStorageUsage(storedManifest)),
+        formatOfflineUpdatedAt(storedManifest.download?.savedAt),
+      ].filter(Boolean)
+    : [];
+  const updateAvailable = hasNewerOfflinePackage(city, storedManifest);
   return (
     <TourismSurface style={styles.card}>
       <View style={styles.heading}>
@@ -64,26 +75,24 @@ export function OfflineCityCard({
             {city.canton} · {city.province}
           </Text>
         </View>
-        {stored ? <TourismBadge>Disponible</TourismBadge> : null}
+        {stored ? (
+          <TourismBadge>
+            {updateAvailable ? text.updateAvailable : text.available}
+          </TourismBadge>
+        ) : null}
       </View>
-      {storedManifest && (mapSize || storedManifest.download?.savedAt) ? (
+      {storageDetails.length ? (
         <Text style={[styles.caption, { color: colors.textMuted }]}>
-          {[
-            mapSize,
-            storedManifest.download?.savedAt
-              ? `Descargado el ${new Date(storedManifest.download.savedAt).toLocaleDateString("es")}`
-              : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
+          {storageDetails.join(" · ")}
+        </Text>
+      ) : null}
+      {updateAvailable ? (
+        <Text style={[styles.caption, { color: colors.primaryStrong }]}>
+          {text.newerVersion}
         </Text>
       ) : null}
       {stored && onOpen ? (
-        <TourismActionButton
-          icon="map"
-          label="Abrir ciudad descargada"
-          onPress={onOpen}
-        />
+        <TourismActionButton icon="map" label={text.open} onPress={onOpen} />
       ) : null}
       {city.package ? (
         stored ? (
@@ -91,16 +100,16 @@ export function OfflineCityCard({
             <TourismActionButton
               disabled={disabled}
               icon="refresh"
-              label={downloading ? `Actualizando ${progress}%` : "Actualizar"}
+              label={downloading ? text.updating(progress) : text.update}
               loading={downloading}
-              mode="outlined"
+              mode={updateAvailable ? "contained" : "outlined"}
               onPress={onDownload}
               style={styles.secondaryAction}
             />
             {onRemove ? (
               <TourismActionButton
                 disabled={disabled && !removing}
-                label="Borrar"
+                label={text.remove}
                 loading={removing}
                 mode="ghost"
                 onPress={onRemove}
@@ -112,16 +121,14 @@ export function OfflineCityCard({
           <TourismActionButton
             disabled={disabled}
             icon="download"
-            label={
-              downloading ? `Descargando ${progress}%` : "Descargar ciudad"
-            }
+            label={downloading ? text.downloading(progress) : text.download}
             loading={downloading}
             onPress={onDownload}
           />
         )
       ) : (
         <Text style={[styles.caption, { color: colors.textFaint }]}>
-          Esta ciudad aún no tiene lugares publicados para descargar.
+          {text.noPackage}
         </Text>
       )}
     </TourismSurface>

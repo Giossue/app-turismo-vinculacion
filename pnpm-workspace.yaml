@@ -4,8 +4,10 @@ packages:
 
 # Aprobaciones explícitas de scripts de dependencias para desarrollo local.
 # Se bloquea Scarf porque no es necesario para compilar ni ejecutar la plataforma.
+# Sentry CLI descarga su binario para subir source maps en builds con token.
 allowBuilds:
   '@scarf/scarf': false
+  '@sentry/cli': true
   argon2: true
   esbuild: true
   unrs-resolver: true

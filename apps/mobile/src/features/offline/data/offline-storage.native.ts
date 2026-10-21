@@ -98,6 +98,7 @@ export async function listStoredOfflineSummaries(): Promise<
       'city', json_extract(payload_json, '$.city'),
       'package', json_extract(payload_json, '$.package'),
       'bounds', json_extract(payload_json, '$.bounds'),
+      'contentSizeBytes', length(CAST(payload_json AS BLOB)),
       'download', json_remove(CASE WHEN json_type(payload_json, '$.download') = 'object' THEN json_extract(payload_json, '$.download') ELSE NULL END, '$.mapStyles'),
       'counts', json_object(
         'centers', COALESCE(json_array_length(payload_json, '$.centers'), 0),

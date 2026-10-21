@@ -12,6 +12,7 @@ import {
   turismoTypography,
 } from "@/core/ui/tokens";
 import type { NearbyEstablishmentsResult } from "../domain/establishment";
+import { useMessages } from "@/core/i18n/use-language";
 
 /** Body of the map sheet listing the tourism registry near the tourist. */
 export function EstablishmentResultsSheet({
@@ -33,6 +34,7 @@ export function EstablishmentResultsSheet({
   onRetry: () => void;
   query: string;
 }>) {
+  const text = useMessages().places.establishment.results;
   const colors = useTurismoPalette();
   const effective = data?.effectiveLocality;
   const settled = !isFetching && !error && data;
@@ -45,19 +47,19 @@ export function EstablishmentResultsSheet({
         <View style={styles.headerCopy}>
           <Text style={[styles.query, { color: colors.text }]}>{query}</Text>
           <Text style={[styles.caption, { color: colors.textMuted }]}>
-            Catastro turístico
+            {text.caption}
           </Text>
         </View>
       </View>
 
       {!hasLocation ? (
         <TourismStateView
-          actionLabel="Usar mi ubicación"
+          actionLabel={text.useLocation}
           icon="locate"
           layout="card"
-          message="La usamos solo para ordenar el catastro cercano y encontrar la ciudad con resultados."
+          message={text.locationWhy}
           onAction={onRequestLocation}
-          title="Necesitamos tu ubicación"
+          title={text.locationNeeded}
           variant="empty"
         />
       ) : null}
@@ -65,7 +67,7 @@ export function EstablishmentResultsSheet({
       {isFetching ? (
         <TourismStateView
           layout="inline"
-          message="Buscando establecimientos…"
+          message={text.searching}
           variant="loading"
         />
       ) : null}
@@ -73,9 +75,9 @@ export function EstablishmentResultsSheet({
       {error ? (
         <TourismStateView
           layout="card"
-          message="Conservamos el mapa disponible. Inténtalo de nuevo."
+          message={text.keepMap}
           onAction={onRetry}
-          title="No pudimos consultar el catastro."
+          title={text.failed}
           variant="error"
         />
       ) : null}
@@ -83,17 +85,14 @@ export function EstablishmentResultsSheet({
       {settled && data.fallbackApplied && effective ? (
         <TourismSurface style={styles.fallbackCard}>
           <Text style={[styles.fallbackTitle, { color: colors.text }]}>
-            Mostramos opciones en {effective.name}
+            {text.fallbackTitle(effective.name)}
           </Text>
           <Text style={[styles.caption, { color: colors.textMuted }]}>
-            No encontramos resultados en{" "}
-            {data.requestedLocalityName ?? "tu localidad"}. Esta es la ciudad
-            más cercana con establecimientos de esta actividad.
+            {text.fallbackBody(data.requestedLocalityName ?? null)}
           </Text>
           {effective.distanceMeters !== null ? (
             <TourismBadge>
-              {formatDistance(effective.distanceMeters)} desde la localidad
-              consultada
+              {text.fallbackDistance(formatDistance(effective.distanceMeters))}
             </TourismBadge>
           ) : null}
         </TourismSurface>
@@ -102,8 +101,8 @@ export function EstablishmentResultsSheet({
       {settled && data.items.length === 0 ? (
         <TourismStateView
           layout="card"
-          message="Prueba con otra actividad, por ejemplo alimentación, alojamiento o transporte."
-          title={`No encontramos establecimientos con “${query}”.`}
+          message={text.emptyHint}
+          title={text.empty(query)}
           variant="empty"
         />
       ) : null}

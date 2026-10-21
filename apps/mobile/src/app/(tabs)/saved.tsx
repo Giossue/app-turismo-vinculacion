@@ -26,12 +26,14 @@ import {
   useSavedEstablishments,
 } from "@/features/favorites/application/use-saved-establishments";
 import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/saved-center-error-snackbar";
+import { useMessages } from "@/core/i18n/use-language";
 
 export default function SavedScreen() {
+  const m = useMessages();
   return (
     <TourismGlassScope
       backdrop={
-        <AuthGate returnTo="/saved" tab title="Guardados">
+        <AuthGate returnTo="/saved" tab title={m.community.saved.title}>
           {() => <SavedCenterList />}
         </AuthGate>
       }
@@ -41,6 +43,7 @@ export default function SavedScreen() {
 }
 
 function SavedCenterList() {
+  const m = useMessages();
   const router = useRouter();
   const savedCenters = useSavedCenters();
   const savedMutation = useSavedCenterMutation();
@@ -73,12 +76,12 @@ function SavedCenterList() {
           if (!savedCenters.data) void savedCenters.refetch();
           if (!savedEstablishments.data) void savedEstablishments.refetch();
         }}
-        title="No pudimos abrir tus guardados."
-        message={paused ? "Conéctate para cargar tus guardados." : undefined}
+        title={m.community.saved.openFailed}
+        message={paused ? m.community.saved.offline : undefined}
         variant="error"
       />
     ) : (
-      <TourismStateView message="Cargando tus guardados…" variant="loading" />
+      <TourismStateView message={m.community.saved.loading} variant="loading" />
     );
   }
 
@@ -89,11 +92,11 @@ function SavedCenterList() {
       <>
         <TourismStateView
           actionIcon="map"
-          actionLabel="Explorar"
+          actionLabel={m.community.saved.explore}
           icon="bookmark"
-          message="Abre una ficha turística y toca el marcador para conservarla aquí."
+          message={m.community.saved.emptyHint}
           onAction={() => router.replace("/")}
-          title="Aún no tienes guardados"
+          title={m.community.saved.emptyTitle}
           variant="empty"
         />
         <SavedCenterErrorSnackbar mutation={failedMutation} />
@@ -108,7 +111,7 @@ function SavedCenterList() {
       <SectionList
         sections={[
           {
-            title: "Centros turísticos",
+            title: m.community.saved.centers,
             data: centers.map((center) => ({
               key: `center:${center.code}`,
               title: center.name,
@@ -123,7 +126,7 @@ function SavedCenterList() {
             })),
           },
           {
-            title: "Establecimientos",
+            title: m.community.saved.establishments,
             data: establishments.map((establishment) => ({
               key: `establishment:${establishment.id}`,
               title: establishment.nombreComercial,
@@ -189,6 +192,7 @@ function SavedPlaceRow({
   subtitle?: string;
   title: string;
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const copy = (
     <View style={styles.rowCopy}>
@@ -212,7 +216,7 @@ function SavedPlaceRow({
     >
       {onOpen ? (
         <TourismPressable
-          accessibilityLabel={`Abrir ${title}`}
+          accessibilityLabel={m.community.saved.open(title)}
           accessibilityRole="button"
           onPress={onOpen}
           style={styles.rowMain}
@@ -223,7 +227,7 @@ function SavedPlaceRow({
         <View style={styles.rowMain}>{copy}</View>
       )}
       <TourismPressable
-        accessibilityLabel={`Quitar ${title} de guardados`}
+        accessibilityLabel={m.community.saved.remove(title)}
         accessibilityRole="button"
         borderlessRipple
         hitSlop={turismoSpacing.xs}

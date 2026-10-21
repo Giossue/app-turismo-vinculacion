@@ -20,6 +20,11 @@ import {
   navigationSessionReducer,
   type NavigationSessionState,
 } from "../domain/navigation-session-state";
+import {
+  countReachedStops,
+  getRouteStops,
+  type RouteWaypoint,
+} from "../domain/route-stops";
 import type { CalculatedRoute, RouteMode } from "../domain/routing";
 import {
   buildNavigationSnapshot,
@@ -35,10 +40,13 @@ import {
   startNavigationLocationTask,
   stopNavigationLocationTask,
 } from "../infrastructure/navigation-background-task";
+import { getSpeechLanguage, messages } from "@/core/i18n/language";
+import { getStepInstruction } from "../domain/route-instruction-text";
 
 const offRouteThresholdMeters = 60;
 const rerouteCooldownMs = 12_000;
 const voiceTriggerDistanceMeters = 180;
+const noRouteStops: readonly RouteWaypoint[] = [];
 
 type NavigationSessionOptions = Readonly<{
   active: boolean;
@@ -50,6 +58,18 @@ type NavigationSessionOptions = Readonly<{
   route: CalculatedRoute | null;
   /** Saved routes and a failed remote recalculation keep the current trace. */
   reroutingEnabled?: boolean;
+  /**
+   * Paradas intermedias del recorrido, en orden. La ruta solo incluye las que
+   * quedaban al pedirla; la llegada al destino cuenta cuando se alcanzaron.
+   */
+  waypoints?: readonly RouteWaypoint[];
+  /** Cada parada alcanzada, en orden; la pantalla lleva el avance total. */
+  onStopReached?: (stop: RouteWaypoint) => void;
+  /**
+   * La tarea de fondo puede cerrar la sesión al llegar al destino. Falso
+   * mientras queden paradas: la tarea no sigue el avance entre paradas.
+   */
+  arrivalArmed?: boolean;
   /**
    * Posición ya validada al pulsar «Iniciar navegación». Dibuja la flecha y
    * anuncia el primer paso sin esperar la primera entrega del watcher.
@@ -80,6 +100,9 @@ export function useNavigationSession({
   onReroute,
   route,
   reroutingEnabled = true,
+  waypoints = noRouteStops,
+  onStopReached,
+  arrivalArmed = true,
   initialLocation = null,
 }: NavigationSessionOptions): NavigationSessionState {
   const { setForegroundTrackingSuspended } = useUserLocationActions();
@@ -100,6 +123,8 @@ export function useNavigationSession({
   const announcedStepRef = useRef(-1);
   const spokenRouteKeyRef = useRef<string | null>(null);
   const arrivedRef = useRef(false);
+  // Paradas de `routeStops` ya alcanzadas con la ruta actual.
+  const stopsReachedRef = useRef(0);
   const lastFixAtRef = useRef(0);
   const speechRequestRef = useRef(0);
   const ownsSessionRef = useRef(false);
@@ -121,9 +146,9 @@ export function useNavigationSession({
   useEffect(() => {
     if (!active || !backgroundEnabled || !route || !destination) return;
     sessionSavedRef.current = saveNavigationSession(
-      buildNavigationSnapshot({ destination, mode, route }),
+      buildNavigationSnapshot({ arrivalArmed, destination, mode, route }),
     );
-  }, [active, backgroundEnabled, destination, mode, route]);
+  }, [active, arrivalArmed, backgroundEnabled, destination, mode, route]);
 
   useEffect(() => {
     if (!active || !route) return;
@@ -134,6 +159,8 @@ export function useNavigationSession({
     // GPS fix before announcing the maneuver for the actual position.
     cancelSpeech(speechRequestRef);
     announcedStepRef.current = -1;
+    // Una ruta nueva se pidió solo con las paradas pendientes.
+    stopsReachedRef.current = 0;
   }, [active, route]);
 
   const processFix = useEffectEvent((location: PersistedNavigationLocation) => {
@@ -145,16 +172,18 @@ export function useNavigationSession({
     lastFixAtRef.current = location.timestamp;
 
     const { coordinate } = location;
+    const routeStops = getRouteStops(route, waypoints);
     const remaining = route
       ? getRouteRemainingMetrics(route, coordinate)
       : null;
     if (
       !arrivedRef.current &&
+      stopsReachedRef.current >= routeStops.length &&
       destination &&
       hasArrivedAtDestination(coordinate, destination)
     ) {
       arrivedRef.current = true;
-      replaceSpeech(speechRequestRef, ["Has llegado a tu destino"]);
+      replaceSpeech(speechRequestRef, [messages().routing.speech.arrived]);
     }
     if (arrivedRef.current || !route) {
       dispatch({
@@ -174,6 +203,25 @@ export function useNavigationSession({
       outsideTrace && !reroutingEnabled
         ? null
         : getNavigationGuidance(route, coordinate);
+    const pendingStops = routeStops.slice(stopsReachedRef.current);
+    const reachedStops =
+      pendingStops.length > 0 && !outsideTrace
+        ? pendingStops.slice(
+            0,
+            countReachedStops({
+              coordinate,
+              guidanceStepIndex: guidance?.stepIndex ?? null,
+              pendingStops,
+              reachedOnRoute: stopsReachedRef.current,
+              route,
+            }),
+          )
+        : [];
+    stopsReachedRef.current += reachedStops.length;
+    const lastReachedStop = reachedStops.at(-1);
+    const stopSpeech = lastReachedStop
+      ? [messages().routing.speech.stopReached(lastReachedStop.name)]
+      : [];
     // The first reliable fix always announces the current step, wherever it
     // lands on the trace; later steps wait until the maneuver is close.
     if (
@@ -182,12 +230,15 @@ export function useNavigationSession({
       (announcedStepRef.current === -1 ||
         guidance.distanceMeters <= voiceTriggerDistanceMeters)
     ) {
-      replaceSpeech(
-        speechRequestRef,
-        getSpeechInstructions(route, guidance.stepIndex),
-      );
+      replaceSpeech(speechRequestRef, [
+        ...stopSpeech,
+        ...getSpeechInstructions(route, guidance.stepIndex),
+      ]);
       announcedStepRef.current = guidance.stepIndex;
+    } else if (stopSpeech.length > 0) {
+      replaceSpeech(speechRequestRef, stopSpeech);
     }
+    for (const stop of reachedStops) onStopReached?.(stop);
 
     const now = Date.now();
     const requestReroute =
@@ -216,6 +267,7 @@ export function useNavigationSession({
       announcedStepRef.current = -1;
       spokenRouteKeyRef.current = null;
       arrivedRef.current = false;
+      stopsReachedRef.current = 0;
       lastFixAtRef.current = 0;
       cancelSpeech(speechRequestRef);
       // Clear first so a queued background fix finds no session and stops.
@@ -394,7 +446,7 @@ function replaceSpeech(
         const text = message.trim();
         if (!text) continue;
         Speech.speak(text, {
-          language: "es-ES",
+          language: getSpeechLanguage(),
           rate: 0.95,
         });
       }
@@ -410,11 +462,12 @@ function getSpeechInstructions(
   route: CalculatedRoute,
   stepIndex: number,
 ): readonly string[] {
-  const currentInstruction = route.steps[stepIndex]?.instruction;
+  const currentInstruction = getStepInstruction(route, stepIndex);
   if (!currentInstruction) return [];
 
-  const nextInstruction = route.steps[stepIndex + 1]?.instruction;
+  const speech = messages().routing.speech;
+  const nextInstruction = getStepInstruction(route, stepIndex + 1);
   return nextInstruction && nextInstruction !== currentInstruction
-    ? [`Ahora: ${currentInstruction}`, `Luego: ${nextInstruction}`]
-    : [`Ahora: ${currentInstruction}`];
+    ? [speech.now(currentInstruction), speech.then(nextInstruction)]
+    : [speech.now(currentInstruction)];
 }

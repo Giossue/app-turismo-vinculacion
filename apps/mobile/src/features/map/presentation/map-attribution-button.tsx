@@ -7,6 +7,7 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
+import { useMessages } from "@/core/i18n/use-language";
 
 /** Resting opacity: the "i" stays legible without competing with the map. */
 const idleOpacity = 0.9;
@@ -21,11 +22,12 @@ export function MapAttributionButton({
   left?: number;
   onPress: () => void;
 }>) {
+  const m = useMessages();
   const colors = useTurismoMapPalette();
 
   return (
     <Pressable
-      accessibilityLabel="Ver atribución del mapa"
+      accessibilityLabel={m.map.attribution}
       accessibilityRole="button"
       hitSlop={turismoSpacing.xs}
       onPress={onPress}

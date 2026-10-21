@@ -51,9 +51,17 @@ async function bootstrap(): Promise<void> {
     methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
   });
-  // `/e/:id` (QR) y `/descargar` (landing de la app) quedan en la raíz: enlaces cortos.
+  // `/e/:id` (QR), `/c/:code` y `/r` (enlaces compartidos) y `/descargar`
+  // (landing de la app) quedan en la raíz: enlaces cortos.
   app.setGlobalPrefix("api/v1", {
-    exclude: ["e/:id", "descargar", "descargar/rumbo-ec.apk"],
+    exclude: [
+      ".well-known/assetlinks.json",
+      "e/:id",
+      "c/:code",
+      "r",
+      "descargar",
+      "descargar/rumbo-ec.apk",
+    ],
   });
   app.useGlobalPipes(
     new ValidationPipe({

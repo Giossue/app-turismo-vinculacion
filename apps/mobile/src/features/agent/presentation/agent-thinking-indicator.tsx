@@ -16,18 +16,20 @@ import {
   turismoRadii,
   turismoSpacing,
 } from "@/core/ui/tokens";
+import { useMessages } from "@/core/i18n/use-language";
 
 const dotDurationMs = 420;
 const dotDelaysMs = [0, 160, 320] as const;
 
 /** Shown until the first words of an answer arrive. */
 export function AgentThinkingIndicator() {
+  const m = useMessages();
   const colors = useTurismoPalette();
 
   return (
     <View
       accessible
-      accessibilityLabel="El agente está preparando una respuesta"
+      accessibilityLabel={m.agent.thinking}
       accessibilityLiveRegion="polite"
       accessibilityRole="progressbar"
       style={styles.row}

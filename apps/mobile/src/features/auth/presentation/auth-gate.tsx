@@ -6,6 +6,7 @@ import { TourismStateView } from "@/core/ui/tourism-state";
 import type { LoginReturnPath } from "../application/login-href";
 import { useRequireAuth } from "../application/use-require-auth";
 import type { AuthUser } from "../domain/auth-user";
+import { useMessages } from "@/core/i18n/use-language";
 
 /**
  * Secondary screen that requires a tourist account. It renders the shared
@@ -16,7 +17,7 @@ import type { AuthUser } from "../domain/auth-user";
  */
 export function AuthGate({
   children,
-  loadingMessage = "Preparando tu cuenta turística…",
+  loadingMessage,
   returnTo,
   tab = false,
   title,
@@ -28,6 +29,7 @@ export function AuthGate({
   tab?: boolean;
   title: string;
 }>) {
+  const m = useMessages();
   const router = useRouter();
   const access = useRequireAuth(returnTo);
 
@@ -45,7 +47,10 @@ export function AuthGate({
           {access.status === "redirect" ? (
             <Redirect href={access.loginHref} />
           ) : null}
-          <TourismStateView message={loadingMessage} variant="loading" />
+          <TourismStateView
+            message={loadingMessage ?? m.account.login.preparingAccount}
+            variant="loading"
+          />
         </>
       )}
     </TourismScreenFrame>

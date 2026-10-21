@@ -46,6 +46,7 @@ import { AgentMessageBubble } from "./agent-message-bubble";
 import { confirmNewAgentChat } from "./confirm-new-agent-chat";
 import { AgentVoiceListening } from "./agent-voice-listening";
 import { useAgentVoiceInput } from "./agent-voice-input";
+import { useMessages } from "@/core/i18n/use-language";
 
 /** A chat holds a few dozen bubbles at most; render most of them at once. */
 const initialMessagesToRender = 16;
@@ -61,6 +62,7 @@ export function AgentChatContent({
   conversation: ReturnType<typeof useAgentConversation>;
   onOpenCard: (card: AgentCard) => void;
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const { fontScale, height, width } = useWindowDimensions();
   const [composerContentHeight, setComposerContentHeight] = useState(0);
@@ -212,11 +214,10 @@ export function AgentChatContent({
             accessibilityLiveRegion="polite"
             style={[styles.limitText, { color: colors.textMuted }]}
           >
-            Llegaste a {AGENT_MAX_USER_MESSAGES} mensajes. Inicia un nuevo chat
-            para continuar.
+            {m.agent.limitReached(AGENT_MAX_USER_MESSAGES)}
           </Text>
           <TourismActionButton
-            label="Nuevo chat"
+            label={m.agent.newChat}
             onPress={() =>
               confirmNewAgentChat(conversation.userMessageCount, () => {
                 setMediaStatus(null);
@@ -241,10 +242,16 @@ export function AgentChatContent({
       ) : null}
       {compactKeyboard ? null : (
         <Text
-          accessibilityLabel={`${conversation.userMessageCount} de ${AGENT_MAX_USER_MESSAGES} mensajes enviados`}
+          accessibilityLabel={m.agent.counterLabel(
+            conversation.userMessageCount,
+            AGENT_MAX_USER_MESSAGES,
+          )}
           style={[styles.counter, { color: colors.textMuted }]}
         >
-          {conversation.userMessageCount}/{AGENT_MAX_USER_MESSAGES} mensajes
+          {m.agent.counter(
+            conversation.userMessageCount,
+            AGENT_MAX_USER_MESSAGES,
+          )}
         </Text>
       )}
       <TourismSurface
@@ -256,7 +263,7 @@ export function AgentChatContent({
         {voice.recording ? (
           <>
             <TourismIconAction
-              accessibilityLabel="Cancelar grabación"
+              accessibilityLabel={m.agent.cancelRecording}
               icon="close"
               onPress={() => void voice.cancel()}
               variant="ghost"
@@ -268,7 +275,7 @@ export function AgentChatContent({
               />
             </View>
             <TourismIconAction
-              accessibilityLabel="Terminar y enviar pregunta"
+              accessibilityLabel={m.agent.finishRecording}
               icon="send"
               onPress={() => void voice.finish()}
               selected
@@ -280,7 +287,7 @@ export function AgentChatContent({
             espacio lo reserva `keyboardStyle`. */}
             <View style={styles.composerField}>
               <TextInput
-                accessibilityLabel="Escribe una consulta al agente"
+                accessibilityLabel={m.agent.inputLabel}
                 disableFullscreenUI
                 editable={
                   !conversation.limitReached &&
@@ -296,12 +303,12 @@ export function AgentChatContent({
                 }
                 placeholder={
                   conversation.limitReached
-                    ? "Inicia un nuevo chat"
+                    ? m.agent.placeholderLimit
                     : voice.processing
-                      ? "Transcribiendo…"
+                      ? m.agent.placeholderTranscribing
                       : conversation.sending
-                        ? "Consultando…"
-                        : "Pregunta algo…"
+                        ? m.agent.placeholderSending
+                        : m.agent.placeholder
                 }
                 placeholderTextColor={colors.textFaint}
                 style={[
@@ -313,13 +320,13 @@ export function AgentChatContent({
             </View>
             {conversation.sending ? (
               <TourismIconAction
-                accessibilityLabel="Detener respuesta"
+                accessibilityLabel={m.agent.stop}
                 icon="close"
                 onPress={conversation.cancel}
               />
             ) : conversation.draft.trim() ? (
               <TourismIconAction
-                accessibilityLabel="Enviar mensaje"
+                accessibilityLabel={m.agent.send}
                 disabled={!canSend}
                 icon="send"
                 onPress={sendDraft}
@@ -327,7 +334,7 @@ export function AgentChatContent({
               />
             ) : (
               <TourismIconAction
-                accessibilityLabel="Preguntar por voz"
+                accessibilityLabel={m.agent.voice}
                 disabled={!canUseVoice}
                 icon="microphone"
                 onPress={() => {

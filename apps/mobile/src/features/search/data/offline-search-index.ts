@@ -9,6 +9,7 @@ import {
   type PreparedSearchDocument,
   type PreparedSearchQuery,
 } from "../domain/search-relevance";
+import { messages } from "@/core/i18n/language";
 
 type IndexedPlace = Readonly<{
   item: OfflineBrowserItem;
@@ -70,7 +71,7 @@ export async function prepareOfflineSearchIndex(
   const items = getOfflineBrowserItems(manifest);
   for (let start = 0; start < items.length; start += 250) {
     if (signal.aborted) {
-      const error = new Error("La búsqueda fue cancelada.");
+      const error = new Error(messages().explore.search.cancelled);
       error.name = "AbortError";
       throw error;
     }
@@ -80,7 +81,7 @@ export async function prepareOfflineSearchIndex(
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
   }
   if (signal.aborted) {
-    const error = new Error("La búsqueda fue cancelada.");
+    const error = new Error(messages().explore.search.cancelled);
     error.name = "AbortError";
     throw error;
   }

@@ -1,0 +1,91 @@
+/** Mapa de Explorar, búsqueda y filtros. */
+export const exploreEs = {
+  locate: {
+    recenter: "Volver a centrar el mapa en mi ubicación",
+    locating: "Obteniendo tu ubicación",
+    enable: "Activar ubicación",
+  },
+  pointOfInterest: "Punto de interés",
+  agentPlace: {
+    backToAgent: "Volver al agente",
+    fallbackTitle: "Ficha turística",
+    directions: "Cómo llegar",
+    loadFailed: "No pudimos cargar la ficha completa.",
+    loading: "Cargando la ficha completa…",
+    locality: "Localidad",
+    distance: "Distancia",
+    address: "Dirección",
+    phone: "Teléfono",
+    noLocation:
+      "Este lugar no tiene una ubicación precisa para crear una ruta.",
+  },
+  agentSheet: {
+    close: "Cerrar agente turístico",
+    newChat: "Nueva conversación",
+  },
+  centerSheet: {
+    loading: "Cargando la ficha completa…",
+    failed: "No pudimos cargar todos los datos de la ficha.",
+  },
+  filters: {
+    label: "Filtros del mapa",
+    tourism: "Turismo",
+    more: "Ver más",
+    moreTitle: "Más lugares",
+    moreSubtitle: "Elige qué quieres ver en el mapa.",
+  },
+  actions: {
+    openAgent: "Abrir agente turístico",
+    removePlace: "Quitar lugar del mapa",
+    directions: "Cómo llegar",
+    retryMap: "No pudimos actualizar los atractivos. Reintentar",
+    offline: "Sin conexión: mostrando tus mapas descargados",
+  },
+  search: {
+    cancelled: "La búsqueda fue cancelada.",
+    failed: "No pudimos actualizar la búsqueda.",
+    invalid: "La búsqueda tiene un formato inválido.",
+    modes: {
+      all: "Todo",
+      centers: "Atractivos",
+      establishments: "Servicios",
+      geographic: "Lugares",
+    },
+    fieldLabel: {
+      all: "Buscar atractivos, servicios y lugares",
+      centers: "Buscar atractivos",
+      establishments: "Buscar servicios",
+      geographic: "Buscar lugares y direcciones",
+    },
+    placeholder: "Buscar aquí",
+    backToMap: "Volver al mapa",
+    filters: "Filtros de búsqueda",
+    country: "Todo Ecuador",
+    area: "En esta zona",
+    kinds: {
+      center: "Atractivo",
+      establishment: "Servicio",
+      geographic: "Lugar",
+      poi: "Punto de interés",
+      route: "Recorrido",
+    },
+    offlineWithCities: (cities: string) =>
+      `Búsqueda en línea no disponible. Solo puedes buscar en tus mapas descargados: ${cities}.`,
+    offlineNoCities:
+      "Búsqueda en línea no disponible. No hay mapas descargados con cobertura para esta búsqueda.",
+    searching: "Buscando opciones",
+    retryOnline: "Intenta nuevamente cuando tengas conexión.",
+    emptyHint:
+      "Prueba otro nombre, tipo de lugar o amplía la búsqueda a Todo Ecuador.",
+    failedTitle: "No pudimos completar la búsqueda",
+    emptyTitle: "No encontramos coincidencias",
+    recent: "Búsquedas recientes",
+    clearRecent: "Borrar búsquedas recientes",
+    clear: "Borrar",
+    repeat: (query: string) => `Repetir búsqueda ${query}`,
+    minLength: "Escribe al menos dos caracteres para buscar.",
+    offlineMap: (city: string) => `Mapa descargado · ${city}`,
+    openOffline: "Abre este lugar en el mapa descargado",
+    showOnMap: "Muestra este lugar en el mapa",
+  },
+};

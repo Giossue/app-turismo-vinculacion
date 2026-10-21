@@ -20,6 +20,7 @@ import {
 } from "@/features/search/presentation/search-mode-field";
 import type { ExploreMapFilter } from "../domain/explore-map-filter";
 import { ExploreFilterChips } from "./explore-filter-chips";
+import { useMessages } from "@/core/i18n/use-language";
 
 const topEdges: readonly Edge[] = ["top"];
 
@@ -53,6 +54,7 @@ export function ExploreTopBar({
   refreshing: boolean;
   searchActive: boolean;
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   return (
     <SafeAreaView
@@ -67,7 +69,7 @@ export function ExploreTopBar({
           </View>
           {mapError && !refreshing ? (
             <TourismIconAction
-              accessibilityLabel="No pudimos actualizar los atractivos. Reintentar"
+              accessibilityLabel={m.explore.actions.retryMap}
               icon="refresh"
               onPress={onRetryMap}
               variant="glass"
@@ -92,7 +94,7 @@ export function ExploreTopBar({
           >
             <TourismGlassFill />
             <Text style={[styles.offlineText, { color: colors.text }]}>
-              Sin conexión: mostrando tus mapas descargados
+              {m.explore.actions.offline}
             </Text>
           </View>
         ) : null}

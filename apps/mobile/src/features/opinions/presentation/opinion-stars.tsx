@@ -9,6 +9,8 @@ import {
   turismoSpacing,
 } from "@/core/ui/tokens";
 import { formatRating } from "@/features/centers/domain/center-format";
+import { useMessages } from "@/core/i18n/use-language";
+import { messages } from "@/core/i18n/language";
 
 const starValues = [1, 2, 3, 4, 5] as const;
 
@@ -52,10 +54,11 @@ export function OpinionRatingInput({
   onChange: (rating: number | null) => void;
   rating: number | null;
 }>) {
+  const text = useMessages().community.opinions;
   const colors = useTurismoPalette();
   return (
     <View
-      accessibilityLabel="Calificación"
+      accessibilityLabel={text.rating}
       accessibilityRole="radiogroup"
       style={[styles.stars, styles.inputStars]}
     >
@@ -64,12 +67,8 @@ export function OpinionRatingInput({
         const lit = value <= (rating ?? 0);
         return (
           <TourismPressable
-            accessibilityHint={
-              checked ? "Toca de nuevo para quitar la calificación." : undefined
-            }
-            accessibilityLabel={
-              value === 1 ? "1 estrella" : `${value} estrellas`
-            }
+            accessibilityHint={checked ? text.tapToClear : undefined}
+            accessibilityLabel={text.stars(value)}
             accessibilityRole="radio"
             accessibilityState={{ checked, disabled }}
             borderlessRipple
@@ -93,11 +92,12 @@ export function OpinionRatingInput({
 }
 
 function describeRating(rating: number | null): string {
-  if (rating === null) return "Sin calificación";
+  const text = messages().community.opinions;
+  if (rating === null) return text.noRating;
   const value = Number.isInteger(rating)
     ? String(rating)
     : formatRating(rating);
-  return `Calificación: ${value} de 5`;
+  return text.ratingValue(value);
 }
 
 const styles = StyleSheet.create({

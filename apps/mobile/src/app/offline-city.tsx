@@ -7,9 +7,11 @@ import { TourismStateView } from "@/core/ui/tourism-state";
 import { useRequireAuth } from "@/features/auth/application/use-require-auth";
 import { getStoredOfflineManifest } from "@/features/offline/data/offline-storage";
 import { OfflineCityBrowser } from "@/features/offline/presentation/offline-city-browser-screen";
+import { useMessages } from "@/core/i18n/use-language";
 
 /** Explicit local browser: opening/searching a package never needs the API. */
 export default function OfflineCityScreen() {
+  const m = useMessages();
   const router = useRouter();
   const params = useLocalSearchParams<{
     slug?: string | string[];
@@ -31,12 +33,12 @@ export default function OfflineCityScreen() {
 
   if (access.status !== "authenticated") {
     return (
-      <TourismScreenFrame title="Ciudad descargada" onBack={close}>
+      <TourismScreenFrame title={m.offline.city.title} onBack={close}>
         {access.status === "redirect" ? (
           <Redirect href={access.loginHref} />
         ) : null}
         <TourismStateView
-          message="Preparando tus mapas guardados…"
+          message={m.offline.city.preparing}
           variant="loading"
         />
       </TourismScreenFrame>
@@ -45,22 +47,17 @@ export default function OfflineCityScreen() {
 
   if (slug && query.isPending) {
     return (
-      <TourismScreenFrame title="Ciudad descargada" onBack={close}>
-        <TourismStateView
-          message="Abriendo el mapa guardado…"
-          variant="loading"
-        />
+      <TourismScreenFrame title={m.offline.city.title} onBack={close}>
+        <TourismStateView message={m.offline.city.opening} variant="loading" />
       </TourismScreenFrame>
     );
   }
   if (!query.data) {
     return (
-      <TourismScreenFrame title="Ciudad descargada" onBack={close}>
+      <TourismScreenFrame title={m.offline.city.title} onBack={close}>
         <TourismStateView
           message={
-            query.error
-              ? "No pudimos leer esta descarga. Inténtalo de nuevo."
-              : "Esta ciudad no está guardada en el dispositivo."
+            query.error ? m.offline.city.readFailed : m.offline.city.notStored
           }
           onAction={
             query.error

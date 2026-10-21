@@ -3,16 +3,9 @@ import type { TurismoIconName } from "@/core/ui/turismo-icons";
 import type { RouteMode } from "@/features/routing/domain/routing";
 import { getRouteModeOption } from "@/features/routing/presentation/route-mode-options";
 import type { AgentTravelTime } from "../domain/agent";
-
-export const AGENT_TRAVEL_TIMES_CAPTION =
-  "Tiempos estimados desde tu ubicación aproximada";
+import { messages } from "@/core/i18n/language";
 
 const displayModes = ["car", "foot", "bicycle"] as const;
-const labels: Readonly<Record<RouteMode, string>> = {
-  car: "Carro",
-  foot: "A pie",
-  bicycle: "Bici",
-};
 
 type AgentTravelTimeRow = Readonly<{
   mode: RouteMode;
@@ -33,13 +26,13 @@ export function getAgentTravelTimeRows(
       {
         mode,
         icon: getRouteModeOption(mode).icon,
-        label: labels[mode],
+        label: messages().agent.travel[mode],
         value:
           estimate.status === "available"
             ? formatDurationSeconds(estimate.durationSeconds)
             : estimate.status === "no_route"
-              ? "Sin ruta"
-              : "No disponible",
+              ? messages().agent.travel.noRoute
+              : messages().agent.travel.unavailable,
       },
     ];
   });
@@ -51,6 +44,6 @@ export function getAgentTravelTimesAccessibilityLabel(
 ): string {
   const rows = getAgentTravelTimeRows(estimates);
   return rows.length
-    ? `${AGENT_TRAVEL_TIMES_CAPTION}. ${rows.map((row) => `${row.label}: ${row.value}`).join(". ")}`
+    ? `${messages().agent.travel.caption}. ${rows.map((row) => `${row.label}: ${row.value}`).join(". ")}`
     : "";
 }

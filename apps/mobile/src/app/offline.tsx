@@ -18,13 +18,19 @@ import { useOfflineCityRemoval } from "@/features/offline/application/use-offlin
 import { useStoredOfflineCities } from "@/features/offline/application/use-stored-offline-cities";
 import { OfflineCityCard } from "@/features/offline/presentation/offline-city-card";
 import { mergeOfflineCities } from "@/features/offline/presentation/offline-city-browser";
+import {
+  formatOfflineStorageSize,
+  getOfflineStorageTotal,
+} from "@/features/offline/presentation/offline-storage-usage";
+import { useMessages } from "@/core/i18n/use-language";
 
 export default function OfflineMapsScreen() {
+  const m = useMessages();
   return (
     <AuthGate
-      loadingMessage="Preparando tus mapas sin conexión…"
+      loadingMessage={m.offline.preparing}
       returnTo="/offline"
-      title="Mapas sin conexión"
+      title={m.offline.title}
     >
       {() => <OfflineCityList />}
     </AuthGate>
@@ -32,6 +38,7 @@ export default function OfflineMapsScreen() {
 }
 
 function OfflineCityList() {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const router = useRouter();
   const citiesQuery = useOfflineCities();
@@ -56,6 +63,9 @@ function OfflineCityList() {
       ),
     };
   }, [citiesQuery.data, storedQuery.summaries]);
+  const storedTotal = formatOfflineStorageSize(
+    getOfflineStorageTotal(storedQuery.summaries),
+  );
   const busy = downloads.size > 0 || removal.isPending;
   const error = downloadError ?? removal.error;
 
@@ -70,9 +80,17 @@ function OfflineCityList() {
       }
       showsVerticalScrollIndicator={false}
       sections={[
-        { title: "Mapas descargados", stored: true, data: stored },
         {
-          title: stored.length ? "Descargar otro mapa" : "Ciudades disponibles",
+          title: m.offline.downloaded,
+          caption: storedTotal ? m.offline.onDevice(storedTotal) : null,
+          stored: true,
+          data: stored,
+        },
+        {
+          title: stored.length
+            ? m.offline.downloadAnother
+            : m.offline.available,
+          caption: null,
           stored: false,
           data: available,
         },
@@ -84,12 +102,19 @@ function OfflineCityList() {
       stickySectionHeadersEnabled={false}
       ItemSeparatorComponent={() => <View style={styles.separator} />}
       renderSectionHeader={({ section }) => (
-        <Text
-          accessibilityRole="header"
-          style={[styles.heading, { color: colors.text }]}
-        >
-          {section.title}
-        </Text>
+        <View style={styles.sectionHeader}>
+          <Text
+            accessibilityRole="header"
+            style={[styles.heading, { color: colors.text }]}
+          >
+            {section.title}
+          </Text>
+          {section.caption ? (
+            <Text style={[styles.caption, { color: colors.textMuted }]}>
+              {section.caption}
+            </Text>
+          ) : null}
+        </View>
       )}
       renderItem={({ item: city, section }) => (
         <OfflineCityCard
@@ -134,7 +159,7 @@ function OfflineCityList() {
             <TourismStateView
               actionPending={storedQuery.isFetching}
               layout="card"
-              message="No pudimos revisar las ciudades guardadas en este dispositivo."
+              message={m.offline.storedFailed}
               onAction={() => void storedQuery.refetch()}
               variant="error"
             />
@@ -148,7 +173,7 @@ function OfflineCityList() {
           !available.length ? (
             <TourismStateView
               layout="inline"
-              message="Cargando mapas disponibles…"
+              message={m.offline.loadingAvailable}
               variant="loading"
             />
           ) : (citiesQuery.error || citiesQuery.isPaused) &&
@@ -156,7 +181,7 @@ function OfflineCityList() {
             <TourismStateView
               actionPending={citiesQuery.isFetching}
               layout="inline"
-              message="Conéctate a internet para consultar otras ciudades. Tus descargas siguen disponibles arriba."
+              message={m.offline.availableOffline}
               onAction={() => void citiesQuery.refetch()}
               variant="error"
             />
@@ -164,7 +189,7 @@ function OfflineCityList() {
             <TourismStateView
               icon="mapPin"
               layout="inline"
-              message="Aún no hay mapas de ciudades disponibles para descargar."
+              message={m.offline.noneAvailable}
               variant="empty"
             />
           )}
@@ -181,5 +206,10 @@ const styles = StyleSheet.create({
   },
   separator: { height: turismoSpacing.md },
   errorText: { ...turismoTypography.caption },
-  heading: { ...turismoTypography.heading, paddingVertical: turismoSpacing.md },
+  caption: { ...turismoTypography.caption },
+  sectionHeader: {
+    gap: turismoSpacing.xxs,
+    paddingVertical: turismoSpacing.md,
+  },
+  heading: { ...turismoTypography.heading },
 });

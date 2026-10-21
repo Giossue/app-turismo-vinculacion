@@ -6,6 +6,7 @@ import {
   getNavigationNotification,
   getRouteRemainingMetrics,
   hasArrivedAtDestination,
+  shouldNotifyArrival,
 } from "./navigation-guidance";
 import type { CalculatedRoute } from "./routing";
 
@@ -99,5 +100,13 @@ describe("navigation guidance", () => {
         destination,
       ),
     ).toBe(false);
+  });
+});
+
+describe("arrival notification", () => {
+  it("notifies only while the app is hidden", () => {
+    expect(shouldNotifyArrival("background")).toBe(true);
+    expect(shouldNotifyArrival("inactive")).toBe(true);
+    expect(shouldNotifyArrival("active")).toBe(false);
   });
 });

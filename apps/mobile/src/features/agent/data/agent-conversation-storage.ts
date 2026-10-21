@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { readJson, removeJson, writeJson } from "@/core/storage/json-storage";
 import { agentMessageSchema, type AgentMessage } from "../domain/agent";
+import { messages as getMessages } from "@/core/i18n/language";
 
 const storageKeyPrefix = "rumbo-ec-agent-chat-v1";
 
@@ -50,8 +51,6 @@ export async function removeStoredAgentConversation(
   await removeJson(storageKey(userId));
 }
 
-const interruptedText = "Respuesta interrumpida.";
-
 /** Turns a streaming or missing answer into a retryable error bubble. */
 export function closeInterruptedAnswer(
   messages: readonly AgentMessage[],
@@ -62,7 +61,7 @@ export function closeInterruptedAnswer(
           id: message.id,
           kind: "error",
           role: "assistant",
-          text: interruptedText,
+          text: getMessages().agent.interrupted,
         }
       : message,
   );
@@ -74,7 +73,7 @@ export function closeInterruptedAnswer(
           id: `assistant-interrupted-${last.id}`,
           kind: "error",
           role: "assistant",
-          text: interruptedText,
+          text: getMessages().agent.interrupted,
         },
       ]
     : closed;

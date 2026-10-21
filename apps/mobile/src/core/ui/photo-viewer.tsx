@@ -30,6 +30,8 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
+import { describeViewerPhoto } from "./photo-viewer-label";
+import { useMessages } from "@/core/i18n/use-language";
 
 export type ViewerPhoto = Readonly<{
   id: number;
@@ -188,6 +190,7 @@ export function PhotoViewer({
   initialIndex: number;
   onClose: () => void;
 }>) {
+  const m = useMessages();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [index, setIndex] = useState(initialIndex);
@@ -228,9 +231,13 @@ export function PhotoViewer({
           keyExtractor={(photo) => String(photo.id)}
           onViewableItemsChanged={onViewableItemsChanged}
           pagingEnabled
-          renderItem={({ item }) => (
+          renderItem={({ item, index: position }) => (
             <ZoomablePhoto
-              description={item.description ?? "Fotografía del lugar"}
+              description={describeViewerPhoto(
+                item.description,
+                position,
+                photos.length,
+              )}
               height={height}
               onTap={() => setShowAuthor(false)}
               onZoomChange={setZoomed}
@@ -244,7 +251,7 @@ export function PhotoViewer({
           viewabilityConfig={viewabilityConfig}
         />
         <Pressable
-          accessibilityLabel="Cerrar fotografía"
+          accessibilityLabel={m.core.photo.close}
           accessibilityRole="button"
           hitSlop={turismoSpacing.sm}
           onPress={onClose}
@@ -257,6 +264,7 @@ export function PhotoViewer({
         </Pressable>
         {photos.length > 1 ? (
           <Text
+            accessibilityLabel={m.core.photo.position(index + 1, photos.length)}
             style={[styles.counter, { top: insets.top + turismoSpacing.md }]}
           >
             {index + 1} / {photos.length}
@@ -271,13 +279,13 @@ export function PhotoViewer({
             ]}
           >
             {showAuthor ? (
-              <Text style={styles.author}>Foto: {author}</Text>
+              <Text style={styles.author}>{m.core.photo.author(author)}</Text>
             ) : (
               <View />
             )}
             <Pressable
               accessibilityLabel={
-                showAuthor ? "Ocultar autor de la foto" : "Ver autor de la foto"
+                showAuthor ? m.core.photo.hideAuthor : m.core.photo.showAuthor
               }
               accessibilityRole="button"
               hitSlop={turismoSpacing.sm}

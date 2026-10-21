@@ -9,6 +9,7 @@ import { useTurismoPalette } from "@/core/ui/theme-context";
 import { turismoSpacing, turismoTypography } from "@/core/ui/tokens";
 import { establishmentMapGroups } from "@/features/establishments/domain/establishment-groups";
 import type { ExploreMapFilter } from "../domain/explore-map-filter";
+import { useMessages } from "@/core/i18n/use-language";
 
 const moreGroups = establishmentMapGroups.filter((group) => !group.primary);
 
@@ -22,6 +23,7 @@ export function ExploreMoreFiltersSheet({
   onClose: () => void;
   onSelect: (filter: ExploreMapFilter) => void;
 }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const selectedGroup =
     filter?.kind === "establishments" ? filter.group : undefined;
@@ -34,10 +36,10 @@ export function ExploreMoreFiltersSheet({
             accessibilityRole="header"
             style={[styles.title, { color: colors.text }]}
           >
-            Más lugares
+            {m.explore.filters.moreTitle}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-            Elige qué quieres ver en el mapa.
+            {m.explore.filters.moreSubtitle}
           </Text>
         </View>
         {moreGroups.map((group) => (

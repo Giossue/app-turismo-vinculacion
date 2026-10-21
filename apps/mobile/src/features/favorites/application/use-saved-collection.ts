@@ -13,12 +13,9 @@ import {
   getSavedCollectionQueryOptions,
   type SavedCollectionOperations,
 } from "./saved-collection-options";
+import { liveMessages } from "@/core/i18n/language";
 
-export const savedCollectionLabels = {
-  removeLabel: "Quitar de guardados",
-  signInRequired: "Inicia sesión para usar tus guardados.",
-  updateFailed: "No pudimos actualizar tus guardados.",
-} as const;
+export const savedCollectionLabels = liveMessages((all) => all.community.saved);
 
 /** Colección de la cuenta actual, con cancelación y acceso sin conexión. */
 export function useSavedCollection<TItem>(

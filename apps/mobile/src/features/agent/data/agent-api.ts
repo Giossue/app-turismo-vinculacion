@@ -18,6 +18,7 @@ import {
   type AgentLocation,
   type AgentResponse,
 } from "../domain/agent";
+import { getLanguage, liveMessages } from "@/core/i18n/language";
 
 const streamEventSchema = z.discriminatedUnion("type", [
   z
@@ -46,14 +47,12 @@ const requestSchema = z
     history: z.array(agentHistoryItemSchema).max(AGENT_HISTORY_MAX_ITEMS),
     location: agentLocationSchema.optional(),
     conversationId: z.uuid().optional(),
+    language: z.enum(["en"]).optional(),
   })
   .strict();
 
-const AGENT_UNAVAILABLE_MESSAGE =
-  "El agente no está disponible en este momento.";
-export const AGENT_INVALID_FORMAT_MESSAGE =
-  "El agente devolvió una respuesta con formato inválido.";
-const incompleteMessage = "El agente devolvió una respuesta incompleta.";
+/** Mensajes de error del agente en el idioma activo. */
+export const agentApiMessages = liveMessages((all) => all.agent.errors);
 
 /**
  * `fetcher` should be the authenticated `request` from `useAuth()`.
@@ -78,6 +77,8 @@ export function buildAgentRequestBody(
     history,
     location: location ? approximateLocation(location) : undefined,
     conversationId,
+    // Solo se envía en inglés: el español es el idioma por defecto del agente.
+    language: getLanguage() === "en" ? "en" : undefined,
   });
 }
 
@@ -100,7 +101,7 @@ export async function askTourismAgentStream(
   }: AgentRequestOptions = {},
 ): Promise<AgentResponse> {
   const response = await sendRequest(`${apiUrl}/ai/chat/stream`, {
-    errorMessage: AGENT_UNAVAILABLE_MESSAGE,
+    errorMessage: agentApiMessages.unavailable,
     timeoutMs: 30_000,
     fetcher,
     init: {
@@ -117,8 +118,10 @@ export async function askTourismAgentStream(
       signal,
     },
   });
-  await assertResponseOk(response, { errorMessage: AGENT_UNAVAILABLE_MESSAGE });
-  if (!response.body) throw new ApiError(AGENT_INVALID_FORMAT_MESSAGE);
+  await assertResponseOk(response, {
+    errorMessage: agentApiMessages.unavailable,
+  });
+  if (!response.body) throw new ApiError(agentApiMessages.invalid);
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -143,10 +146,10 @@ export async function askTourismAgentStream(
     try {
       payload = JSON.parse(data);
     } catch {
-      throw new ApiError(AGENT_INVALID_FORMAT_MESSAGE);
+      throw new ApiError(agentApiMessages.invalid);
     }
     const parsed = streamEventSchema.safeParse(payload);
-    if (!parsed.success) throw new ApiError(AGENT_INVALID_FORMAT_MESSAGE);
+    if (!parsed.success) throw new ApiError(agentApiMessages.invalid);
 
     if (parsed.data.type === "text-delta") {
       await onText(parsed.data.text);
@@ -198,7 +201,7 @@ export async function askTourismAgentStream(
     await reader.cancel(error).catch(() => undefined);
     // Un corte de red a mitad de la respuesta no debe mostrar texto técnico.
     if (error instanceof TypeError) {
-      throw new ApiError(AGENT_UNAVAILABLE_MESSAGE, { cause: error });
+      throw new ApiError(agentApiMessages.unavailable, { cause: error });
     }
     throw error;
   } finally {
@@ -206,7 +209,7 @@ export async function askTourismAgentStream(
     reader.releaseLock();
   }
 
-  if (!answer) throw new ApiError(incompleteMessage);
+  if (!answer) throw new ApiError(agentApiMessages.incomplete);
   return answer;
 }
 

@@ -11,16 +11,19 @@ import { turismoSpacing } from "@/core/ui/tokens";
 import { useAuth } from "@/features/auth/application/auth-context";
 import type { AuthUser } from "@/features/auth/domain/auth-user";
 import { AuthGate } from "@/features/auth/presentation/auth-gate";
+import { useMessages } from "@/core/i18n/use-language";
 
 export default function ProfileScreen() {
+  const m = useMessages();
   return (
-    <AuthGate returnTo="/profile" title="Perfil">
+    <AuthGate returnTo="/profile" title={m.account.profile.title}>
       {(user) => <ProfileContent user={user} />}
     </AuthGate>
   );
 }
 
 function ProfileContent({ user }: Readonly<{ user: AuthUser }>) {
+  const m = useMessages();
   const { logout } = useAuth();
   const logoutPendingRef = useRef(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -49,20 +52,24 @@ function ProfileContent({ user }: Readonly<{ user: AuthUser }>) {
         showsVerticalScrollIndicator={false}
       >
         <TourismSurface style={styles.account}>
-          <TourismInfoRow label="Nombre" value={user.name} />
-          <TourismInfoRow label="Correo electrónico" value={user.email} />
+          <TourismInfoRow label={m.account.profile.name} value={user.name} />
+          <TourismInfoRow label={m.account.profile.email} value={user.email} />
         </TourismSurface>
         <TourismActionButton
           disabled={signingOut}
           icon="logOut"
-          label={signingOut ? "Cerrando sesión…" : "Cerrar sesión"}
+          label={
+            signingOut
+              ? m.account.profile.signingOut
+              : m.account.profile.signOut
+          }
           loading={signingOut}
           mode="outlined"
           onPress={() => void handleLogout()}
         />
       </ScrollView>
       <TourismSnackbar
-        message="No se pudo cerrar la sesión. Inténtalo de nuevo."
+        message={m.account.profile.signOutFailed}
         onDismiss={() => setLogoutError(false)}
         visible={logoutError}
       />

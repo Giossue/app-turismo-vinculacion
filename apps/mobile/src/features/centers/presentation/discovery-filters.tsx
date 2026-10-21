@@ -5,6 +5,7 @@ import { TourismChoiceChip } from "@/core/ui/tourism-controls";
 import { turismoSpacing } from "@/core/ui/tokens";
 import type { CenterFilters } from "../domain/public-center";
 import { uniqueByCode } from "../domain/unique-by-code";
+import { useMessages } from "@/core/i18n/use-language";
 
 export type DiscoveryFilterValues = Omit<CenterFilters, "text">;
 
@@ -30,6 +31,7 @@ export function FilterChips({
   onChange: (value: string | undefined) => void;
   trailing?: ReactNode;
 }>) {
+  const m = useMessages();
   if (!options.length && !trailing) return null;
   const uniqueOptions = uniqueByCode(options);
   return (
@@ -42,7 +44,7 @@ export function FilterChips({
     >
       <TourismChoiceChip
         glass={glass}
-        label="Todo"
+        label={m.places.searchResults.all}
         onPress={() => onChange(undefined)}
         selected={!selected}
       />

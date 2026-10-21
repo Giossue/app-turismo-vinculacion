@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getLanguage, messages } from "@/core/i18n/language";
 
 export type Fetcher = (
   input: RequestInfo | URL,
@@ -61,6 +62,11 @@ type ResponseErrorOptions = Readonly<{
   statusMessages?: Readonly<Partial<Record<number, string>>>;
   /** Prefer the API's `{ error: { message } }` body over `errorMessage`. */
   useServerMessage?: boolean;
+  /**
+   * La API redacta sus mensajes en español. En otro idioma se usan estos
+   * textos por estado HTTP (o `errorMessage`) en lugar del mensaje del servidor.
+   */
+  serverMessageFallbacks?: Readonly<Partial<Record<number, string>>>;
 }>;
 
 export type SendRequestOptions = Readonly<{
@@ -107,8 +113,12 @@ export async function sendRequest(
 ): Promise<Response> {
   const { errorMessage, fetcher = fetch } = options;
   try {
-    return await withTransportDeadline(options, (init) =>
-      init === undefined ? fetcher(url) : fetcher(url, init),
+    return await withTransportDeadline(
+      options,
+      (init) => (init === undefined ? fetcher(url) : fetcher(url, init)),
+      // Algunos fetch de React Native ignoran la señal una vez abierto el
+      // cuerpo; una respuesta que llega tras cancelar no debe seguir leyendo.
+      (response) => void response.body?.cancel().catch(() => undefined),
     );
   } catch (error) {
     if (isAbortError(error) || error instanceof ApiError) throw error;
@@ -121,6 +131,7 @@ export async function assertResponseOk(
   response: Response,
   {
     errorMessage,
+    serverMessageFallbacks,
     statusMessages,
     useServerMessage = false,
   }: ResponseErrorOptions,
@@ -128,9 +139,11 @@ export async function assertResponseOk(
   if (response.ok) return;
   const message =
     statusMessages?.[response.status] ??
-    (useServerMessage
+    (useServerMessage && getLanguage() === "es"
       ? await readApiErrorMessage(response, errorMessage)
-      : errorMessage);
+      : useServerMessage
+        ? (serverMessageFallbacks?.[response.status] ?? errorMessage)
+        : errorMessage);
   throw new ApiError(message, { status: response.status });
 }
 
@@ -176,6 +189,7 @@ export async function requestJson<T>(
 async function withTransportDeadline<T>(
   { init, fetcher, timeoutMs = 12_000, errorMessage }: SendRequestOptions,
   operation: (init: RequestInit | undefined) => Promise<T>,
+  discardLate?: (value: T) => void,
 ): Promise<T> {
   if (timeoutMs === 0) return operation(init);
   const signals = [
@@ -185,12 +199,16 @@ async function withTransportDeadline<T>(
     ]),
   ];
   const controller = new AbortController();
+  let limited = false;
   let rejectLimit!: (error: Error) => void;
   const limit = new Promise<never>((_, reject) => {
-    rejectLimit = reject;
+    rejectLimit = (error) => {
+      limited = true;
+      reject(error);
+    };
   });
   const cancel = () => {
-    const error = new Error("La solicitud fue cancelada.");
+    const error = new Error(messages().core.requestCancelled);
     error.name = "AbortError";
     rejectLimit(error);
     controller.abort(error);
@@ -205,10 +223,15 @@ async function withTransportDeadline<T>(
   try {
     const aborted = signals.some((signal) => signal.aborted);
     if (aborted) cancel();
-    return await Promise.race([
-      limit,
-      aborted ? limit : operation({ ...init, signal: controller.signal }),
-    ]);
+    if (aborted) return await limit;
+    const pending = operation({ ...init, signal: controller.signal });
+    void pending.then(
+      (value) => {
+        if (limited) discardLate?.(value);
+      },
+      () => undefined,
+    );
+    return await Promise.race([limit, pending]);
   } finally {
     clearTimeout(timer);
     for (const signal of signals) signal.removeEventListener("abort", cancel);

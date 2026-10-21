@@ -12,7 +12,7 @@ import { useAuth } from "../application/auth-context";
 import { useAuthForm } from "../application/use-auth-form";
 import {
   emptyRegistrationForm,
-  passwordRequirementMessage,
+  getPasswordRequirementMessage,
   registrationFormSchema,
 } from "../domain/auth-forms";
 import { getBirthDateBounds } from "../domain/birth-date";
@@ -21,11 +21,13 @@ import {
   type TouristGender,
 } from "../domain/registration-options";
 import { AuthFormActions } from "./auth-form-actions";
+import { useMessages } from "@/core/i18n/use-language";
+import { messages } from "@/core/i18n/language";
 
-const genderOptions: readonly TourismRadioOption<TouristGender>[] =
+const getGenderOptions = (): readonly TourismRadioOption<TouristGender>[] =>
   touristGenderOptions.map((gender) => ({
     icon: gender === "Masculino" ? "genderMale" : "genderFemale",
-    label: gender,
+    label: messages().account.login.genders[gender],
     value: gender,
   }));
 
@@ -33,12 +35,13 @@ export function RegisterForm({
   onSignedIn,
   onSwitchMode,
 }: Readonly<{ onSignedIn: () => void; onSwitchMode: () => void }>) {
+  const m = useMessages();
   const auth = useAuth();
   const emailRef = useRef<TextInput>(null);
   const confirmationRef = useRef<TextInput>(null);
   const { maximumDate, minimumDate } = getBirthDateBounds();
   const form = useAuthForm({
-    fallbackError: "No se pudo crear la cuenta.",
+    fallbackError: m.account.errors.register,
     initialValues: emptyRegistrationForm,
     onSubmit: async (input) => {
       await auth.register(input);
@@ -53,10 +56,10 @@ export function RegisterForm({
         autoCapitalize="words"
         autoComplete="name"
         error={form.fieldErrors.name}
-        label="Nombre completo"
+        label={m.account.login.name}
         onChangeText={(value) => form.setValue("name", value)}
         onSubmitEditing={() => emailRef.current?.focus()}
-        placeholder="Tu nombre"
+        placeholder={m.account.login.namePlaceholder}
         required
         returnKeyType="next"
         submitBehavior="submit"
@@ -69,9 +72,9 @@ export function RegisterForm({
         autoCorrect={false}
         error={form.fieldErrors.email}
         keyboardType="email-address"
-        label="Correo electrónico"
+        label={m.account.login.email}
         onChangeText={(value) => form.setValue("email", value)}
-        placeholder="tu@correo.com"
+        placeholder={m.account.login.emailPlaceholder}
         ref={emailRef}
         required
         returnKeyType="done"
@@ -80,15 +83,15 @@ export function RegisterForm({
       />
       <TourismRadioGroup
         error={form.fieldErrors.gender}
-        label="Género"
+        label={m.account.login.gender}
         onChange={(value) => form.setValue("gender", value)}
-        options={genderOptions}
+        options={getGenderOptions()}
         required
         value={form.values.gender}
       />
       <TourismDateField
         error={form.fieldErrors.birthDate}
-        label="Fecha de nacimiento"
+        label={m.account.login.birthDate}
         maximumDate={maximumDate}
         minimumDate={minimumDate}
         onChange={(date) => form.setValue("birthDate", date)}
@@ -100,11 +103,11 @@ export function RegisterForm({
         autoComplete="new-password"
         autoCorrect={false}
         error={form.fieldErrors.password}
-        helper={passwordRequirementMessage}
-        label="Contraseña"
+        helper={getPasswordRequirementMessage()}
+        label={m.account.login.password}
         onChangeText={(value) => form.setValue("password", value)}
         onSubmitEditing={() => confirmationRef.current?.focus()}
-        placeholder="Tu contraseña"
+        placeholder={m.account.login.passwordPlaceholder}
         required
         returnKeyType="next"
         secure
@@ -117,10 +120,10 @@ export function RegisterForm({
         autoComplete="new-password"
         autoCorrect={false}
         error={form.fieldErrors.passwordConfirmation}
-        label="Repetir contraseña"
+        label={m.account.login.passwordConfirmation}
         onChangeText={(value) => form.setValue("passwordConfirmation", value)}
         onSubmitEditing={() => void form.submit()}
-        placeholder="Repite tu contraseña"
+        placeholder={m.account.login.passwordConfirmationPlaceholder}
         ref={confirmationRef}
         required
         returnKeyType="go"
@@ -133,10 +136,10 @@ export function RegisterForm({
         error={form.formError}
         onSubmit={() => void form.submit()}
         onSwitchMode={onSwitchMode}
-        submitLabel="Crear cuenta"
+        submitLabel={m.account.login.createAccount}
         submitting={form.submitting}
-        submittingLabel="Creando cuenta…"
-        switchLabel="¿Ya tienes cuenta? Iniciar sesión"
+        submittingLabel={m.account.login.creatingAccount}
+        switchLabel={m.account.login.switchToLogin}
       />
     </View>
   );

@@ -30,16 +30,22 @@ import { useEstablishmentSaveToggle } from "@/features/establishments/presentati
 import { PlaceActions } from "@/features/favorites/presentation/save-action-button";
 import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/saved-center-error-snackbar";
 import { buildRouteHref } from "@/features/routing/presentation/route-href";
+import { buildEstablishmentTripStop } from "@/features/trip/domain/trip";
+import { useTripToggle } from "@/features/trip/presentation/use-trip-toggle";
+import { shareEstablishment } from "@/features/sharing/application/share-link";
+import { useMessages } from "@/core/i18n/use-language";
 
 /**
  * Abre un establecimiento del catastro por su id. Es el destino del código QR
  * que se pega en el local (`/establishments/<id>`).
  */
 export default function EstablishmentScreen() {
+  const m = useMessages();
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const rawId = firstSearchParam(params.id) ?? "";
-  const id = /^\d+$/.test(rawId) ? Number(rawId) : undefined;
+  // También llega desde enlaces compartidos: solo ids numéricos acotados.
+  const id = /^\d{1,12}$/.test(rawId) ? Number(rawId) : undefined;
   const goBack = () =>
     router.canGoBack() ? router.back() : router.replace("/");
   const { data, error, isFetching, isPending, isPaused, refetch } =
@@ -49,8 +55,8 @@ export default function EstablishmentScreen() {
     return (
       <StateFrame onBack={goBack}>
         <TourismStateView
-          message="El código QR no indica qué establecimiento abrir."
-          title="No encontramos este establecimiento."
+          message={m.places.establishment.missingId}
+          title={m.places.establishment.notFound}
           variant="error"
         />
       </StateFrame>
@@ -60,7 +66,7 @@ export default function EstablishmentScreen() {
     return (
       <StateFrame onBack={goBack}>
         <TourismStateView
-          message="Abriendo establecimiento…"
+          message={m.places.establishment.opening}
           variant="loading"
         />
       </StateFrame>
@@ -71,9 +77,9 @@ export default function EstablishmentScreen() {
       <StateFrame onBack={goBack}>
         <TourismStateView
           actionPending={isFetching}
-          message="Puede que ya no esté publicado o que no tengas conexión."
+          message={m.places.establishment.openFailedHint}
           onAction={() => void refetch()}
-          title="No pudimos abrir el establecimiento."
+          title={m.places.establishment.openFailed}
           variant="error"
         />
       </StateFrame>
@@ -86,8 +92,9 @@ function StateFrame({
   children,
   onBack,
 }: Readonly<{ children: ReactNode; onBack: () => void }>) {
+  const m = useMessages();
   return (
-    <TourismScreenFrame onBack={onBack} title="Establecimiento">
+    <TourismScreenFrame onBack={onBack} title={m.places.establishment.title}>
       {children}
     </TourismScreenFrame>
   );
@@ -97,6 +104,7 @@ function EstablishmentContent({
   detail,
   onBack,
 }: Readonly<{ detail: PublicEstablishmentDetail; onBack: () => void }>) {
+  const m = useMessages();
   const router = useRouter();
   const colors = useTurismoPalette();
   const hasLocation = detail.latitude !== null && detail.longitude !== null;
@@ -115,12 +123,20 @@ function EstablishmentContent({
       buildLoginHref(`/establishments/${detail.id}` as LoginReturnPath),
     ),
   );
+  const trip = useTripToggle(
+    buildEstablishmentTripStop({
+      id: detail.id,
+      latitude: detail.latitude,
+      longitude: detail.longitude,
+      name: detail.nombreComercial,
+    }),
+  );
   const category = detail.categoriaEtiqueta ?? detail.categoria;
 
   return (
     <TourismScreenFrame
       onBack={onBack}
-      title="Establecimiento"
+      title={m.places.establishment.title}
       includeBottomInset={false}
     >
       <ScrollView
@@ -142,17 +158,26 @@ function EstablishmentContent({
             {category ? <TourismBadge>{category}</TourismBadge> : null}
           </View>
         </View>
-        <TourismInfoRow label="Actividad" value={detail.actividad} />
+        <TourismInfoRow
+          label={m.places.establishment.activity}
+          value={detail.actividad}
+        />
         {detail.clasificacion ? (
-          <TourismInfoRow label="Tipo" value={detail.clasificacion} />
+          <TourismInfoRow
+            label={m.places.establishment.type}
+            value={detail.clasificacion}
+          />
         ) : null}
         <TourismInfoRow
           icon="mapPin"
-          label="Ubicación"
+          label={m.places.establishment.location}
           value={detail.direccion ?? detail.localityName}
         />
         {detail.telefono ? (
-          <TourismInfoRow label="Teléfono" value={detail.telefono} />
+          <TourismInfoRow
+            label={m.places.establishment.phone}
+            value={detail.telefono}
+          />
         ) : null}
         <PlaceActions
           onOpenRoute={
@@ -163,11 +188,16 @@ function EstablishmentContent({
                       latitude: detail.latitude as number,
                       longitude: detail.longitude as number,
                       name: detail.nombreComercial,
+                      place: { kind: "establishment", id: detail.id },
                     }),
                   )
               : null
           }
+          onShare={() =>
+            void shareEstablishment(detail.id, detail.nombreComercial)
+          }
           save={save}
+          trip={trip}
         />
         <CenterPhotos photos={detail.photos} variant="divided" />
       </ScrollView>

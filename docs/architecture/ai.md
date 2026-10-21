@@ -16,7 +16,9 @@ pregunta -> policy/rate limit -> herramientas del backend
 ```
 
 La integración expone `POST /api/v1/ai/chat` como JSON estructurado y
-`POST /api/v1/ai/chat/stream` como SSE para el chat móvil. El backend usa AI SDK Core
+`POST /api/v1/ai/chat/stream` como SSE para el chat móvil. El móvil envía `language: "en"`
+cuando su interfaz está en inglés; el servidor indica entonces responder en inglés (y el
+mensaje fijo de desvíos en inglés). Sin el campo se responde en español. El backend usa AI SDK Core
 (`streamText` + `Output.object`) y selecciona OpenAI o Anthropic con `AI_PROVIDER` y
 `AI_MODEL`; las claves `OPENAI_API_KEY` y `ANTHROPIC_API_KEY` nunca llegan a la aplicación
 móvil. La respuesta final contiene `text`, `cards`, `actions` y

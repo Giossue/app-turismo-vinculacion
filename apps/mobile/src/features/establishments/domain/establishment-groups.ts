@@ -1,4 +1,5 @@
 import type { TurismoIconName } from "@/core/ui/turismo-icons";
+import { messages } from "@/core/i18n/language";
 
 /**
  * Grupos de establecimientos que el mapa puede filtrar. Las claves son el
@@ -9,31 +10,81 @@ import type { TurismoIconName } from "@/core/ui/turismo-icons";
 export const establishmentMapGroups = [
   {
     key: "restaurants",
-    label: "Restaurantes",
+    get label() {
+      return messages().places.establishment.groups.restaurants;
+    },
     icon: "restaurant",
     primary: true,
   },
-  { key: "cafes", label: "Cafeterías", icon: "coffee", primary: true },
-  { key: "lodging", label: "Alojamiento", icon: "hotel", primary: true },
-  { key: "bars", label: "Bares", icon: "wine", primary: true },
+  {
+    key: "cafes",
+    get label() {
+      return messages().places.establishment.groups.cafes;
+    },
+    icon: "coffee",
+    primary: true,
+  },
+  {
+    key: "lodging",
+    get label() {
+      return messages().places.establishment.groups.lodging;
+    },
+    icon: "hotel",
+    primary: true,
+  },
+  {
+    key: "bars",
+    get label() {
+      return messages().places.establishment.groups.bars;
+    },
+    icon: "wine",
+    primary: true,
+  },
   {
     key: "agencies",
-    label: "Agencias de viaje",
+    get label() {
+      return messages().places.establishment.groups.agencies;
+    },
     icon: "briefcase",
     primary: false,
   },
-  { key: "guides", label: "Guías de turismo", icon: "flag", primary: false },
-  { key: "events", label: "Eventos", icon: "calendar", primary: false },
-  { key: "recreation", label: "Recreación", icon: "ticket", primary: false },
+  {
+    key: "guides",
+    get label() {
+      return messages().places.establishment.groups.guides;
+    },
+    icon: "flag",
+    primary: false,
+  },
+  {
+    key: "events",
+    get label() {
+      return messages().places.establishment.groups.events;
+    },
+    icon: "calendar",
+    primary: false,
+  },
+  {
+    key: "recreation",
+    get label() {
+      return messages().places.establishment.groups.recreation;
+    },
+    icon: "ticket",
+    primary: false,
+  },
   {
     key: "community",
-    label: "Turismo comunitario",
+    get label() {
+      return messages().places.establishment.groups.community;
+    },
     icon: "users",
     primary: false,
   },
   {
     key: "transport",
-    label: "Transporte turístico",
+    get label() {
+      return messages().places.establishment.groups.transport;
+    },
     icon: "bus",
     primary: false,
   },

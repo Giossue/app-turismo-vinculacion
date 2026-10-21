@@ -14,7 +14,7 @@ import {
 } from "../data/agent-conversation-storage";
 import type { AgentMessage, AgentResponse } from "../domain/agent";
 import {
-  agentFallbackErrorMessage,
+  getAgentFallbackErrorMessage,
   agentIntroMessage,
   countAgentUserMessages,
   hasAgentMessageLimit,
@@ -22,6 +22,7 @@ import {
   getRetryableAgentTurn,
   shouldShareAgentLocation,
 } from "../domain/agent-conversation";
+import { messages as getMessages } from "@/core/i18n/language";
 
 /**
  * One chat with the tourism agent: the bubbles and the streaming answer.
@@ -91,7 +92,7 @@ export function useAgentConversation() {
         id: answerId,
         kind: "error",
         role: "assistant",
-        text: "Respuesta detenida.",
+        text: getMessages().agent.stopped,
       });
       messagesRef.current = next;
       setMessages(next);
@@ -226,7 +227,7 @@ export function useAgentConversation() {
           upsertMessage(current, {
             id: answerId,
             role: "assistant",
-            text: "Necesito tu ubicación para buscar cerca de ti o calcular tiempos. Toca «Usar mi ubicación».",
+            text: getMessages().agent.needsLocation,
             actions: [{ type: "request_location" }],
           }),
         );
@@ -259,7 +260,9 @@ export function useAgentConversation() {
         kind: "error",
         role: "assistant",
         text:
-          error instanceof ApiError ? error.message : agentFallbackErrorMessage,
+          error instanceof ApiError
+            ? error.message
+            : getAgentFallbackErrorMessage(),
       };
       updateMessages((current) => upsertMessage(current, failure));
     } finally {
@@ -297,17 +300,13 @@ export function useAgentConversation() {
       if (!mountedRef.current || requestId !== locationRequestIdRef.current)
         return;
       if (!position) {
-        setLocationFeedback(
-          "No pude obtener tu ubicación. Revisa los permisos y activa la ubicación del teléfono.",
-        );
+        setLocationFeedback(getMessages().agent.locationDenied);
         return;
       }
       void sendTurn(question.text, answerId, position);
     } catch {
       if (mountedRef.current && requestId === locationRequestIdRef.current) {
-        setLocationFeedback(
-          "No pude obtener tu ubicación. Vuelve a intentarlo.",
-        );
+        setLocationFeedback(getMessages().agent.locationFailed);
       }
     } finally {
       if (mountedRef.current && requestId === locationRequestIdRef.current) {

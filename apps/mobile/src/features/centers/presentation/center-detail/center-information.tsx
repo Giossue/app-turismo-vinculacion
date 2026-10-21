@@ -7,6 +7,7 @@ import { formatAdmissionPrice } from "../../domain/center-format";
 import type { PublicCenterDetail } from "../../domain/public-center";
 import { CenterEmptyText } from "./center-empty-text";
 import { CenterTags } from "./center-tags";
+import { useMessages } from "@/core/i18n/use-language";
 
 /**
  * "Información" tab of a center: description, place data, admission and tag
@@ -20,60 +21,57 @@ export function CenterInformation({
   detail: PublicCenterDetail;
   variant: "card" | "divided";
 }>) {
+  const t = useMessages().places.center.info;
   const colors = useTurismoPalette();
   const { admission } = detail;
   return (
     <View style={styles.sections}>
       {detail.description ? (
-        <TourismSection icon="circleHelp" title="Descripción" variant={variant}>
+        <TourismSection
+          icon="circleHelp"
+          title={t.description}
+          variant={variant}
+        >
           <Text style={[styles.description, { color: colors.text }]}>
             {detail.description}
           </Text>
         </TourismSection>
       ) : null}
-      <TourismSection
-        icon="mapPinned"
-        title="Información del lugar"
-        variant={variant}
-      >
+      <TourismSection icon="mapPinned" title={t.place} variant={variant}>
         {detail.touristZone ? (
-          <TourismInfoRow label="Zona turística" value={detail.touristZone} />
+          <TourismInfoRow label={t.touristZone} value={detail.touristZone} />
         ) : null}
-        <TourismInfoRow label="Categoría" value={detail.category} />
-        <TourismInfoRow label="Tipo" value={detail.type} />
+        <TourismInfoRow label={t.category} value={detail.category} />
+        <TourismInfoRow label={t.type} value={detail.type} />
         {detail.subtype ? (
-          <TourismInfoRow label="Subtipo" value={detail.subtype} />
+          <TourismInfoRow label={t.subtype} value={detail.subtype} />
         ) : null}
         {detail.address ? (
-          <TourismInfoRow label="Dirección" value={detail.address} />
+          <TourismInfoRow label={t.address} value={detail.address} />
         ) : null}
         {detail.altitudeMeters !== null ? (
           <TourismInfoRow
-            label="Altitud"
-            value={`${detail.altitudeMeters} msnm`}
+            label={t.altitude}
+            value={t.altitudeValue(detail.altitudeMeters)}
           />
         ) : null}
       </TourismSection>
-      <TourismSection
-        icon="calendar"
-        title="Ingreso y horario"
-        variant={variant}
-      >
+      <TourismSection icon="calendar" title={t.admission} variant={variant}>
         {admission ? (
           <>
             <TourismInfoRow
-              label="Acceso"
+              label={t.access}
               value={`${admission.type} · ${admission.attention}`}
             />
             {admission.opensAt || admission.closesAt ? (
               <TourismInfoRow
-                label="Horario"
+                label={t.hours}
                 value={`${admission.opensAt ?? "--:--"} – ${admission.closesAt ?? "--:--"}`}
               />
             ) : null}
             {admission.priceFrom !== null || admission.priceTo !== null ? (
               <TourismInfoRow
-                label="Precio"
+                label={t.price}
                 value={formatAdmissionPrice(
                   admission.priceFrom,
                   admission.priceTo,
@@ -82,29 +80,27 @@ export function CenterInformation({
             ) : null}
           </>
         ) : (
-          <CenterEmptyText>
-            No hay información de ingreso registrada.
-          </CenterEmptyText>
+          <CenterEmptyText>{t.noAdmission}</CenterEmptyText>
         )}
       </TourismSection>
       <CenterTags
-        emptyText="No hay actividades registradas."
+        emptyText={t.noActivities}
         icon="compass"
-        title="Actividades"
+        title={t.activities}
         values={detail.activities}
         variant={variant}
       />
       <CenterTags
-        emptyText="No hay información de accesibilidad registrada."
+        emptyText={t.noAccessibility}
         icon="locate"
-        title="Accesibilidad"
+        title={t.accessibility}
         values={detail.accessibility}
         variant={variant}
       />
       <CenterTags
-        emptyText="No hay facilidades registradas."
+        emptyText={t.noFacilities}
         icon="map"
-        title="Facilidades"
+        title={t.facilities}
         values={detail.facilities}
         variant={variant}
       />

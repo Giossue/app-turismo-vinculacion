@@ -33,6 +33,7 @@ import {
   type OfflinePlaceItem,
 } from "./offline-city-browser";
 import { OfflineCityDetails } from "./offline-city-details";
+import { useMessages } from "@/core/i18n/use-language";
 
 /** Local city browser: map, search and sheets read only the stored manifest. */
 export function OfflineCityBrowser({
@@ -44,6 +45,7 @@ export function OfflineCityBrowser({
   onBack: () => void;
   initialItemKey?: string;
 }>) {
+  const m = useMessages();
   const router = useRouter();
   const colors = useTurismoPalette();
   const { scheme } = useTurismoTheme();
@@ -190,20 +192,18 @@ export function OfflineCityBrowser({
         <View style={styles.screen}>
           <View style={styles.search}>
             <TourismSearchField
-              accessibilityLabel="Buscar entre los lugares y rutas descargados"
+              accessibilityLabel={m.offline.city.searchLabel}
               onChangeText={setSearch}
               onClear={() => setSearch("")}
-              placeholder="Buscar lugares y rutas descargados"
+              placeholder={m.offline.city.searchPlaceholder}
               value={search}
             />
             <Text style={[styles.caption, { color: colors.textMuted }]}>
-              Ciudad descargada · {places.length} lugares ·{" "}
-              {manifest.routes.length} recorridos
+              {m.offline.city.summary(places.length, manifest.routes.length)}
             </Text>
             {!manifest.download ? (
               <Text style={[styles.caption, { color: colors.textMuted }]}>
-                Actualiza esta descarga con internet para guardar el estilo del
-                mapa y los nuevos lugares.
+                {m.offline.city.legacy}
               </Text>
             ) : null}
           </View>
@@ -242,7 +242,7 @@ export function OfflineCityBrowser({
             />
             <View style={styles.locate}>
               <TourismIconAction
-                accessibilityLabel="Mostrar mi ubicación en la ciudad descargada"
+                accessibilityLabel={m.offline.city.locate}
                 disabled={location.status === "requesting"}
                 icon="locate"
                 onPress={() => void locate()}
@@ -267,7 +267,7 @@ export function OfflineCityBrowser({
             ListEmptyComponent={
               <TourismStateView
                 layout="inline"
-                message="No hay lugares o rutas descargados que coincidan."
+                message={m.offline.city.noMatches}
                 variant="empty"
               />
             }
@@ -314,7 +314,7 @@ export function OfflineCityBrowser({
           <TourismBottomSheet onClose={() => setLocalChoices(null)}>
             <TourismSheetScrollView contentStyle={styles.details}>
               <Text style={[styles.title, { color: colors.text }]}>
-                Varios lugares aquí
+                {m.offline.city.severalPlaces}
               </Text>
               {localChoices.map((place) => (
                 <TourismOptionRow

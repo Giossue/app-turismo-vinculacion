@@ -27,6 +27,11 @@ export type PersistedNavigationLocation = Readonly<{
  */
 export type NavigationSessionSnapshot = Readonly<{
   active: boolean;
+  /**
+   * Falso mientras queden paradas intermedias: la tarea de fondo no sigue el
+   * avance entre paradas y no debe dar por terminado el recorrido.
+   */
+  arrivalArmed: boolean;
   destination: GeoCoordinate;
   mode: RouteMode;
   route: CalculatedRoute;
@@ -60,6 +65,8 @@ const coordinateSchema = z.object({
 // `lastRerouteAt`; `z.object` strips them.
 const navigationSessionSnapshotSchema = z.object({
   active: z.boolean(),
+  // Las sesiones anteriores a los recorridos no tenían paradas.
+  arrivalArmed: z.boolean().default(true),
   destination: coordinateSchema,
   mode: z.enum(routeModes),
   route: calculatedRouteSchema,
@@ -82,17 +89,27 @@ let writeQueue: Promise<boolean> = Promise.resolve(true);
 
 export function buildNavigationSnapshot(
   {
+    arrivalArmed = true,
     destination,
     mode,
     route,
   }: Readonly<{
+    arrivalArmed?: boolean;
     destination: GeoCoordinate;
     mode: RouteMode;
     route: CalculatedRoute;
   }>,
   now: number = Date.now(),
 ): NavigationSessionSnapshot {
-  return { active: true, destination, mode, route, updatedAt: now, version: 1 };
+  return {
+    active: true,
+    arrivalArmed,
+    destination,
+    mode,
+    route,
+    updatedAt: now,
+    version: 1,
+  };
 }
 
 /**

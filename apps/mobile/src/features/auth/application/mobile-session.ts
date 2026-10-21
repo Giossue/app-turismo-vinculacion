@@ -12,6 +12,7 @@ import {
   shouldRetryAfterUnauthorized,
 } from "../domain/authorized-request-policy";
 import type { TouristRegistrationInput } from "../domain/registration-options";
+import { messages } from "@/core/i18n/language";
 
 export type SessionResult = Readonly<{
   accessToken: string;
@@ -57,7 +58,7 @@ type SessionDependencies = Readonly<{
 }>;
 
 export function sessionCancelledError(): Error {
-  const error = new Error("La sesión de esta solicitud ya no está activa.");
+  const error = new Error(messages().account.errors.sessionInactive);
   error.name = "AbortError";
   return error;
 }

@@ -59,3 +59,8 @@ export function formatRouteInstruction(step: RouteInstructionInput): string {
       return name ? `Sigue por ${name}` : "Continúa hacia tu destino";
   }
 }
+
+/** Llegada a una parada intermedia de un recorrido (numerada desde 1). */
+export function formatStopArrivalInstruction(stopNumber: number): string {
+  return `Llegaste a la parada ${stopNumber}`;
+}

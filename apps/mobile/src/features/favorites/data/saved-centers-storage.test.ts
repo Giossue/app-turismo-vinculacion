@@ -81,7 +81,7 @@ describe("legacy saved centers", () => {
     expect(request).toHaveBeenCalledTimes(2);
     expect(request).toHaveBeenCalledWith(
       `http://api.test/api/v1/favorites/centers/${firstCenter.code}`,
-      { method: "PUT" },
+      { method: "PUT", signal: expect.any(AbortSignal) },
     );
     expect(values.has(storageKey)).toBe(false);
 

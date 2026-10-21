@@ -6,6 +6,7 @@ import {
   turismoSpacing,
   turismoTypography,
 } from "@/core/ui/tokens";
+import { useMessages } from "@/core/i18n/use-language";
 
 /** Relative bar heights; the microphone level scales them all. */
 const barShape = [0.45, 0.8, 1, 0.7, 0.5] as const;
@@ -17,12 +18,13 @@ export function AgentVoiceListening({
   elapsedMs,
   level,
 }: Readonly<{ elapsedMs: number; level: number }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const seconds = Math.floor(elapsedMs / 1000);
   const time = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
   return (
     <View
-      accessibilityLabel="Escuchando. Habla y haz una pausa para enviar."
+      accessibilityLabel={m.agent.listening}
       accessibilityLiveRegion="polite"
       style={styles.row}
     >

@@ -1,3 +1,5 @@
+import { messages } from "@/core/i18n/language";
+
 /** Formats an average rating with one decimal and a comma, e.g. `4,3`. */
 export function formatRating(value: number): string {
   return value.toFixed(1).replace(".", ",");
@@ -12,5 +14,7 @@ export function formatAdmissionPrice(
     return `$${from.toFixed(2)} – $${to.toFixed(2)}`;
   }
   const value = from ?? to;
-  return value === null ? "No registrado" : `$${value.toFixed(2)}`;
+  return value === null
+    ? messages().places.center.info.priceMissing
+    : `$${value.toFixed(2)}`;
 }

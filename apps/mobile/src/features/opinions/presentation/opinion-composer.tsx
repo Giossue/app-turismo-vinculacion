@@ -13,6 +13,7 @@ import {
 import { turismoSpacing, turismoTypography } from "@/core/ui/tokens";
 import { OPINION_COMMENT_MAX_LENGTH } from "../domain/opinion";
 import { OpinionRatingInput } from "./opinion-stars";
+import { useMessages } from "@/core/i18n/use-language";
 
 /** Rating and comment of a new or edited opinion, sent to moderation. */
 export function OpinionComposer({
@@ -36,6 +37,7 @@ export function OpinionComposer({
   rating: number | null;
   title: string;
 }>) {
+  const text = useMessages().community.opinions;
   const colors = useTurismoPalette();
   return (
     <TourismSurface style={styles.composer}>
@@ -46,7 +48,7 @@ export function OpinionComposer({
         {title}
       </Text>
       <View style={styles.field}>
-        <TourismFieldLabel label="Calificación" />
+        <TourismFieldLabel label={text.rating} />
         <OpinionRatingInput
           disabled={loading}
           onChange={onChangeRating}
@@ -54,13 +56,13 @@ export function OpinionComposer({
         />
       </View>
       <TourismTextField
-        accessibilityLabel="Comentario de la opinión"
+        accessibilityLabel={text.commentLabel}
         editable={!loading}
-        label="Descripción"
+        label={text.description}
         maxLength={OPINION_COMMENT_MAX_LENGTH}
         multiline
         onChangeText={onChangeComment}
-        placeholder="Cuenta qué te pareció este lugar…"
+        placeholder={text.placeholder}
         value={comment}
       />
       {error ? <TourismFieldError message={error} /> : null}
@@ -68,7 +70,7 @@ export function OpinionComposer({
         {onCancel ? (
           <TourismActionButton
             compact
-            label="Cancelar"
+            label={text.cancel}
             mode="outlined"
             onPress={onCancel}
           />
@@ -76,7 +78,7 @@ export function OpinionComposer({
         <TourismActionButton
           compact
           disabled={loading}
-          label={loading ? "Enviando…" : "Enviar a revisión"}
+          label={loading ? text.sending : text.submit}
           loading={loading}
           onPress={onSubmit}
         />

@@ -5,6 +5,7 @@ import { getApiUrl } from "@/core/api/api-url";
 import { requestJson } from "@/core/api/http";
 import { getTurismoMapColors, type TurismoColorScheme } from "@/core/ui/tokens";
 import { basemapFillRules, basemapPalettes } from "./basemap-palette";
+import { messages } from "@/core/i18n/language";
 
 const styleCache = new Map<TurismoColorScheme, StyleSpecification>();
 const pendingStyles = new Map<
@@ -100,8 +101,8 @@ async function fetchSelfHostedMapStyles(styleUrl: string) {
     z.custom<StyleSpecification>(isValidBasemapStyle),
     {
       timeoutMs: 10_000,
-      errorMessage: "No pudimos preparar el mapa base.",
-      invalidMessage: "El mapa base no tiene el formato esperado.",
+      errorMessage: messages().map.errors.basemap,
+      invalidMessage: messages().map.errors.basemapInvalid,
     },
   );
   return {

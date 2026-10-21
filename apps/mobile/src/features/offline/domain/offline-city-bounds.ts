@@ -1,6 +1,7 @@
 import { getCoordinateBounds } from "@/core/geo/bounds";
 import type { GeoBoundingBox } from "@/core/geo/types";
 import type { OfflineCityManifest } from "./offline-city";
+import { messages } from "@/core/i18n/language";
 
 const fallbackCityRadiusDegrees = 0.12;
 
@@ -21,9 +22,7 @@ export function getOfflineCityBounds(
   }
   const { longitude, latitude } = manifest.city;
   if (longitude === null || latitude === null) {
-    throw new Error(
-      "La ciudad no tiene límites disponibles para descargar el mapa.",
-    );
+    throw new Error(messages().offline.errors.bounds);
   }
   return [
     Math.max(-180, longitude - fallbackCityRadiusDegrees),

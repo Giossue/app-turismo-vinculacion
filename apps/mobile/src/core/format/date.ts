@@ -1,4 +1,6 @@
-import { appLocale } from "./locale";
+import { messages } from "@/core/i18n/language";
+
+import { getAppLocale } from "./locale";
 
 const dayMs = 24 * 60 * 60 * 1000;
 
@@ -11,7 +13,7 @@ export function toIsoDate(date: Date): string {
 
 /** Formats a date as `3 de febrero de 1998`. */
 export function formatLongDate(date: Date): string {
-  return date.toLocaleDateString(appLocale, {
+  return date.toLocaleDateString(getAppLocale(), {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -23,21 +25,22 @@ export function formatRelativeDate(iso: string, now = Date.now()): string {
   const timestamp = new Date(iso).getTime();
   if (Number.isNaN(timestamp)) return "";
 
+  const text = messages().core.relative;
   const elapsed = now - timestamp;
-  if (elapsed <= 0) return "Ahora";
+  if (elapsed <= 0) return text.now;
 
   const days = Math.floor(elapsed / dayMs);
-  if (days === 0) return "Hoy";
-  if (days < 7) return `Hace ${days} ${days === 1 ? "día" : "días"}`;
+  if (days === 0) return text.today;
+  if (days < 7) return text.days(days);
 
   const weeks = Math.floor(days / 7);
-  if (weeks < 5) return `Hace ${weeks} ${weeks === 1 ? "semana" : "semanas"}`;
+  if (weeks < 5) return text.weeks(weeks);
 
   const months = Math.floor(days / 30);
   if (months < 12) {
-    return `Hace ${months} ${months === 1 ? "mes" : "meses"}`;
+    return text.months(months);
   }
 
   const years = Math.floor(days / 365);
-  return `Hace ${years} ${years === 1 ? "año" : "años"}`;
+  return text.years(years);
 }

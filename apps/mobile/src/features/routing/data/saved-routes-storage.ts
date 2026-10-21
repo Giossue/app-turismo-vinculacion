@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { GeoCoordinate } from "@/core/geo/types";
 import type { CalculatedRoute, RouteMode } from "../domain/routing";
 import { calculatedRouteSchema } from "./routing-api";
+import { messages } from "@/core/i18n/language";
 
 const savedRoutesStoragePrefix = "rumbo-ec-saved-routes-v1";
 export const savedCalculatedRouteLimit = 20;
@@ -77,9 +78,7 @@ export async function listSavedCalculatedRoutes(
   try {
     raw = await AsyncStorage.getItem(key);
   } catch {
-    throw new SavedRouteStorageError(
-      "No pudimos leer tus rutas guardadas. Inténtalo otra vez.",
-    );
+    throw new SavedRouteStorageError(messages().routing.errors.savedRead);
   }
   if (raw === null) return [];
 
@@ -120,9 +119,7 @@ export function saveCalculatedRoute(
   return enqueueWrite(async () => {
     const parsed = savedRouteInputSchema.safeParse(input);
     if (!parsed.success || !Number.isSafeInteger(savedAt) || savedAt < 0) {
-      throw new SavedRouteStorageError(
-        "Esta ruta no tiene datos válidos para guardarla.",
-      );
+      throw new SavedRouteStorageError(messages().routing.errors.savedInvalid);
     }
     // A failed read propagates: never replace unreadable storage with [].
     const existing = await listSavedCalculatedRoutes(userId);
@@ -154,12 +151,12 @@ export function deleteSavedCalculatedRoute(
 export function describeSavedRouteError(error: unknown): string {
   return error instanceof SavedRouteStorageError
     ? error.message
-    : "No pudimos guardar la ruta en este dispositivo.";
+    : messages().routing.errors.savedSave;
 }
 
 function getStorageKey(userId: number): string {
   if (!Number.isSafeInteger(userId) || userId <= 0) {
-    throw new SavedRouteStorageError("Inicia sesión para usar tus rutas.");
+    throw new SavedRouteStorageError(messages().routing.errors.signInToUse);
   }
   return `${savedRoutesStoragePrefix}-${userId}`;
 }
@@ -192,9 +189,7 @@ async function writeRoutes(
       JSON.stringify({ routes, version: 1 }),
     );
   } catch {
-    throw new SavedRouteStorageError(
-      "No pudimos actualizar tus rutas en este dispositivo. Revisa el espacio disponible.",
-    );
+    throw new SavedRouteStorageError(messages().routing.errors.savedUpdate);
   }
 }
 

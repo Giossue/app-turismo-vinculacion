@@ -28,6 +28,7 @@ import {
   buildSearchResultItems,
   type SearchResultItem,
 } from "./search-result-items";
+import { useMessages } from "@/core/i18n/use-language";
 
 type CategoryOption = Readonly<{ code: string; name: string }>;
 
@@ -68,6 +69,7 @@ export function SearchResultsSheet({
   sortByDistance: boolean;
   userLocation: GeoCoordinate | null;
 }>) {
+  const text = useMessages().places.searchResults;
   const colors = useTurismoPalette();
   const { height, width } = useWindowDimensions();
   const items = buildSearchResultItems({
@@ -84,14 +86,14 @@ export function SearchResultsSheet({
         <Text style={[styles.query, { color: colors.text }]}>{query}</Text>
       </View>
       <FilterChips
-        label="Categorías de búsqueda turística"
+        label={text.categories}
         onChange={onCategoryChange}
         options={categories}
         selected={selectedCategory}
         trailing={
           userLocation ? (
             <TourismChoiceChip
-              label="Cerca de mí"
+              label={text.nearMe}
               onPress={onToggleSortByDistance}
               selected={sortByDistance}
             />
@@ -101,24 +103,24 @@ export function SearchResultsSheet({
       {isFetching ? (
         <TourismStateView
           layout="inline"
-          message="Buscando atractivos turísticos…"
+          message={text.searching}
           variant="loading"
         />
       ) : null}
       {error ? (
         <TourismStateView
           layout="card"
-          message="Conservamos el mapa disponible. Inténtalo de nuevo."
+          message={text.keepMap}
           onAction={onRetry}
-          title="No pudimos actualizar la búsqueda."
+          title={text.failed}
           variant="error"
         />
       ) : null}
       {showResults && items.length === 0 ? (
         <TourismStateView
           layout="card"
-          message="Prueba con otro nombre, categoría o tipo de lugar."
-          title={`No encontramos lugares con “${query}”.`}
+          message={text.emptyHint}
+          title={text.empty(query)}
           variant="empty"
         />
       ) : null}
@@ -159,21 +161,6 @@ function ResultSeparator() {
   return <View style={styles.separator} />;
 }
 
-const placeKindCopy = {
-  center: {
-    hint: "Centra el mapa y abre la ficha turística",
-    label: "Centro turístico publicado",
-  },
-  establishment: {
-    hint: "Centra el mapa y abre la ficha del establecimiento",
-    label: "Catastro publicado",
-  },
-  geographic: {
-    hint: "Centra el mapa en esta ubicación",
-    label: "Ubicación en Ecuador",
-  },
-} as const;
-
 function SearchPlaceCard({
   onPress,
   place,
@@ -182,8 +169,9 @@ function SearchPlaceCard({
   place: PublicSearchResult;
 }>) {
   const colors = useTurismoPalette();
-  const copy = placeKindCopy[place.kind];
-  const subtitle = place.subtitle || "Ecuador";
+  const text = useMessages().places.searchResults;
+  const copy = text.kinds[place.kind];
+  const subtitle = place.subtitle || text.country;
   return (
     <Pressable
       accessibilityHint={copy.hint}
@@ -227,15 +215,16 @@ function SearchResultCard({
   onPress: () => void;
 }>) {
   const colors = useTurismoPalette();
+  const text = useMessages().places.searchResults;
   const distance =
     distanceMeters !== null ? formatDistance(distanceMeters) : null;
   return (
     <Pressable
-      accessibilityHint={placeKindCopy.center.hint}
+      accessibilityHint={text.kinds.center.hint}
       accessibilityLabel={[
         center.name,
         center.category,
-        distance ? `a ${distance}` : null,
+        distance ? text.away(distance) : null,
       ]
         .filter(Boolean)
         .join(", ")}
@@ -261,7 +250,7 @@ function SearchResultCard({
       </Text>
       <View style={styles.resultTags}>
         {center.hierarchy ? (
-          <TourismBadge>Jerarquía {center.hierarchy}</TourismBadge>
+          <TourismBadge>{text.hierarchy(center.hierarchy)}</TourismBadge>
         ) : null}
         {distance ? <TourismBadge>{distance}</TourismBadge> : null}
       </View>
@@ -269,13 +258,13 @@ function SearchResultCard({
         numberOfLines={2}
         style={[styles.resultDescription, { color: colors.textMuted }]}
       >
-        {center.description ?? "Información turística verificada."}
+        {center.description ?? text.verified}
       </Text>
       <View style={styles.resultAction}>
         <Text
           style={[styles.resultActionText, { color: colors.primaryStrong }]}
         >
-          Ver ficha turística
+          {text.viewCenter}
         </Text>
         <TurismoIcon
           color={colors.primaryStrong}

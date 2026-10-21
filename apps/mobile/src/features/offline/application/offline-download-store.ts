@@ -1,4 +1,5 @@
 import { ApiError } from "@/core/api/http";
+import { messages } from "@/core/i18n/language";
 
 /** Progress (0–100) of each city download in flight, by slug. */
 export type OfflineDownloadsSnapshot = ReadonlyMap<string, number>;
@@ -14,9 +15,6 @@ export class OfflineDownloadError extends Error {
     this.name = "OfflineDownloadError";
   }
 }
-
-const genericDownloadMessage =
-  "No pudimos descargar la ciudad. Revisa tu conexión e inténtalo de nuevo.";
 
 const inFlight = new Map<string, Promise<void>>();
 const removals = new Map<string, Promise<void>>();
@@ -34,7 +32,7 @@ export function runOfflineDownload(
 ): Promise<void> {
   if (removals.has(slug)) {
     return Promise.reject(
-      new OfflineDownloadError("Espera a que termine de borrarse esta ciudad."),
+      new OfflineDownloadError(messages().offline.errors.removing),
     );
   }
   const current = inFlight.get(slug);
@@ -60,9 +58,7 @@ export function runOfflineRemoval(
   if (current) return current;
   if (inFlight.has(slug)) {
     return Promise.reject(
-      new OfflineDownloadError(
-        "Espera a que termine la descarga de esta ciudad.",
-      ),
+      new OfflineDownloadError(messages().offline.errors.downloading),
     );
   }
   const removal = Promise.resolve()
@@ -86,7 +82,7 @@ export function getOfflineDownloadsSnapshot(): OfflineDownloadsSnapshot {
 export function getOfflineDownloadErrorMessage(error: unknown): string {
   return error instanceof OfflineDownloadError || error instanceof ApiError
     ? error.message
-    : genericDownloadMessage;
+    : messages().offline.errors.generic;
 }
 
 function setProgress(slug: string, percentage: number): void {

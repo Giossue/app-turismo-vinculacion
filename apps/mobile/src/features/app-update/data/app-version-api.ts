@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { getApiUrl } from "@/core/api/api-url";
 import { acceptJsonHeaders, requestJson, type Fetcher } from "@/core/api/http";
+import { messages } from "@/core/i18n/language";
 
 const latestVersionSchema = z.object({
   data: z
@@ -29,10 +30,10 @@ export async function getLatestAppVersion(
     `${apiUrl}/app/latest`,
     latestVersionSchema,
     {
-      errorMessage: "No fue posible consultar la versión de la app.",
+      errorMessage: messages().account.update.errors.check,
       fetcher,
       init: { headers: acceptJsonHeaders },
-      invalidMessage: "La versión publicada no tiene el formato esperado.",
+      invalidMessage: messages().account.update.errors.invalid,
     },
   );
   if (!payload.data) return null;

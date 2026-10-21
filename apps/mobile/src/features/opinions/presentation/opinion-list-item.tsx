@@ -14,12 +14,14 @@ import {
 } from "@/core/ui/tokens";
 import type { PublicOpinion } from "../domain/opinion";
 import { OpinionRatingStars } from "./opinion-stars";
+import { useMessages } from "@/core/i18n/use-language";
 
 /** A published opinion. `onEdit` is set only for the tourist's own one. */
 export function OpinionListItem({
   onEdit,
   opinion,
 }: Readonly<{ onEdit?: () => void; opinion: PublicOpinion }>) {
+  const m = useMessages();
   const colors = useTurismoPalette();
 
   return (
@@ -57,7 +59,7 @@ export function OpinionListItem({
             ) : null}
             {onEdit ? (
               <TourismPressable
-                accessibilityLabel="Editar mi opinión"
+                accessibilityLabel={m.community.opinions.edit}
                 accessibilityRole="button"
                 borderlessRipple
                 hitSlop={turismoMetrics.chipHitSlop}

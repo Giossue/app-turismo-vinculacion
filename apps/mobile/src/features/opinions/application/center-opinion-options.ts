@@ -17,8 +17,7 @@ import {
   getMyCenterOpinion,
 } from "../data/opinions-api";
 import type { OpinionContent, OwnOpinionState } from "../domain/opinion";
-
-const signInRequired = "Inicia sesión para publicar una opinión.";
+import { messages } from "@/core/i18n/language";
 
 function ownOpinionKey(code: string, userId: number | null) {
   return [...queryKeys.ownOpinion, code, userId ?? "anonymous"];
@@ -34,12 +33,20 @@ export function getOwnCenterOpinionQueryOptions(
     queryKey: ownOpinionKey(code, scope?.userId ?? null),
     queryFn: async ({ signal }) => {
       if (!scope) return null;
-      requireCurrentAccount(auth, scope, signInRequired);
+      requireCurrentAccount(
+        auth,
+        scope,
+        messages().community.opinions.signInRequired,
+      );
       const result = await getMyCenterOpinion(
         code,
         withRequestSignal(auth.request, signal),
       );
-      requireCurrentAccount(auth, scope, signInRequired);
+      requireCurrentAccount(
+        auth,
+        scope,
+        messages().community.opinions.signInRequired,
+      );
       return result;
     },
     enabled: Boolean(code) && enabled && scope !== null,
@@ -77,18 +84,34 @@ export function getCenterOpinionMutationOptions(
     ],
     meta: { accountId: scope?.userId, sessionGeneration: scope?.generation },
     onMutate: async (variables) => {
-      const currentScope = requireCurrentAccount(auth, scope, signInRequired);
+      const currentScope = requireCurrentAccount(
+        auth,
+        scope,
+        messages().community.opinions.signInRequired,
+      );
       const queryKey = ownOpinionKey(variables.code, currentScope.userId);
       await client.cancelQueries({ queryKey, exact: true });
-      requireCurrentAccount(auth, currentScope, signInRequired);
+      requireCurrentAccount(
+        auth,
+        currentScope,
+        messages().community.opinions.signInRequired,
+      );
       return { scope: currentScope, queryKey };
     },
     mutationFn: async ({ code, content, mode }) => {
-      requireCurrentAccount(auth, scope, signInRequired);
+      requireCurrentAccount(
+        auth,
+        scope,
+        messages().community.opinions.signInRequired,
+      );
       const state = await (mode === "edit"
         ? editCenterOpinion(code, content, auth.request)
         : createCenterOpinion(code, content, auth.request));
-      requireCurrentAccount(auth, scope, signInRequired);
+      requireCurrentAccount(
+        auth,
+        scope,
+        messages().community.opinions.signInRequired,
+      );
       return state;
     },
     onSuccess: (state, variables, context) => {

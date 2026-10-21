@@ -25,6 +25,7 @@ import {
   type UserLocationActions,
   type UserLocationStatusValue,
 } from "./user-location-context";
+import { messages } from "@/core/i18n/language";
 
 export {
   useUserLocation,
@@ -115,7 +116,7 @@ export function UserLocationProvider({
         updateState((current) => ({
           ...current,
           accuracy,
-          message: "Ajustando tu ubicación con el GPS…",
+          message: messages().core.location.refining,
           status: current.coordinate ? "ready" : "requesting",
         }));
         return;
@@ -142,8 +143,7 @@ export function UserLocationProvider({
     updateState((current) => ({
       ...current,
       coordinate: null,
-      message:
-        "No pudimos actualizar tu ubicación. Revisa la señal GPS e inténtalo de nuevo.",
+      message: messages().core.location.updateFailed,
       status: "error",
     }));
   }, [stopForegroundTracking, updateState]);
@@ -189,8 +189,7 @@ export function UserLocationProvider({
           updateState((current) => ({
             ...current,
             coordinate: null,
-            message:
-              "No pudimos iniciar el seguimiento de ubicación. Inténtalo de nuevo.",
+            message: messages().core.location.trackingFailed,
             status: "error",
           }));
         }
@@ -245,7 +244,7 @@ export function UserLocationProvider({
               ...current,
               accuracy: null,
               coordinate: null,
-              message: "Buscando una ubicación GPS precisa…",
+              message: messages().core.location.searching,
               status: "requesting",
             }));
           }
@@ -269,7 +268,7 @@ export function UserLocationProvider({
               ...current,
               accuracy,
               coordinate: null,
-              message: "Ajustando tu ubicación con el GPS…",
+              message: messages().core.location.refining,
               status: "requesting",
             }));
             return null;
@@ -296,8 +295,7 @@ export function UserLocationProvider({
           updateState((current) => ({
             ...current,
             coordinate: null,
-            message:
-              "No pudimos obtener tu ubicación. Revisa la señal GPS e inténtalo de nuevo.",
+            message: messages().core.location.readFailed,
             status: "error",
           }));
           return null;

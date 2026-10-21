@@ -15,6 +15,7 @@ import {
 import type { OfflineCity } from "../domain/offline-city";
 import { getOfflineCityBounds } from "../domain/offline-city-bounds";
 import { OfflineDownloadError } from "./offline-download-store";
+import { messages } from "@/core/i18n/language";
 
 /**
  * Downloads the street tiles of a city into a new MapLibre pack and then
@@ -27,29 +28,24 @@ export async function downloadOfflineCity(
   onProgress?: (percentage: number) => void,
 ): Promise<void> {
   if (!city.package) {
-    throw new OfflineDownloadError("La ciudad no tiene un paquete publicado.");
+    throw new OfflineDownloadError(messages().offline.errors.noPackage);
   }
 
   const manifest = await getOfflineCityManifest(city.slug);
   if (manifest.city.slug !== city.slug) {
-    throw new OfflineDownloadError(
-      "El paquete recibido no corresponde a esta ciudad.",
-    );
+    throw new OfflineDownloadError(messages().offline.errors.wrongPackage);
   }
   const previous = await getStoredOfflineManifest(city.slug);
   if (previous && manifest.package.version < previous.package.version) {
-    throw new OfflineDownloadError(
-      "La ciudad ya tiene una versión más reciente descargada.",
-    );
+    throw new OfflineDownloadError(messages().offline.errors.newerStored);
   }
   let styles: Awaited<ReturnType<typeof loadOfflineMapStyles>>;
   try {
     styles = await loadOfflineMapStyles();
   } catch (error) {
-    throw new OfflineDownloadError(
-      "No pudimos preparar el mapa. Revisa tu conexión e inténtalo de nuevo.",
-      { cause: error },
-    );
+    throw new OfflineDownloadError(messages().offline.errors.style, {
+      cause: error,
+    });
   }
 
   const bounds = getOfflineCityBounds(manifest);
@@ -83,10 +79,9 @@ export async function downloadOfflineCity(
     });
   } catch (error) {
     await OfflineManager.deletePack(pack.id).catch(() => undefined);
-    throw new OfflineDownloadError(
-      "Descargamos el mapa, pero no pudimos guardar la ciudad en el dispositivo.",
-      { cause: error },
-    );
+    throw new OfflineDownloadError(messages().offline.errors.save, {
+      cause: error,
+    });
   }
   // The manifest swap succeeds before old resources are released. Failure
   // here only leaves extra resources; the new city is already usable.
@@ -150,16 +145,13 @@ async function downloadPack({
       },
       () =>
         rejectDownload(
-          new OfflineDownloadError(
-            "No pudimos descargar los mapas de esta ciudad. Revisa tu conexión e inténtalo de nuevo.",
-          ),
+          new OfflineDownloadError(messages().offline.errors.tiles),
         ),
     );
   } catch (error) {
-    throw new OfflineDownloadError(
-      "No pudimos preparar la descarga de esta ciudad.",
-      { cause: error },
-    );
+    throw new OfflineDownloadError(messages().offline.errors.prepare, {
+      cause: error,
+    });
   }
 
   try {

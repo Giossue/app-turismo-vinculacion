@@ -39,6 +39,7 @@ describe("favorites API", () => {
     ).resolves.toEqual([center]);
     expect(request).toHaveBeenCalledWith(
       "http://api.test/api/v1/favorites/centers",
+      { signal: expect.any(AbortSignal) },
     );
   });
 
@@ -50,7 +51,7 @@ describe("favorites API", () => {
     ).resolves.toBeUndefined();
     expect(request).toHaveBeenCalledWith(
       `http://api.test/api/v1/favorites/centers/${center.code}`,
-      { method: "DELETE" },
+      { method: "DELETE", signal: expect.any(AbortSignal) },
     );
   });
 
@@ -79,6 +80,7 @@ describe("favorites API", () => {
     ).resolves.toEqual([establishment]);
     expect(request).toHaveBeenCalledWith(
       "http://api.test/api/v1/favorites/establishments",
+      { signal: expect.any(AbortSignal) },
     );
 
     const save = vi.fn().mockResolvedValue({
@@ -90,14 +92,14 @@ describe("favorites API", () => {
     ).resolves.toEqual(establishment);
     expect(save).toHaveBeenCalledWith(
       "http://api.test/api/v1/favorites/establishments/7",
-      { method: "PUT" },
+      { method: "PUT", signal: expect.any(AbortSignal) },
     );
 
     const remove = vi.fn().mockResolvedValue({ ok: true });
     await removeRemoteEstablishment(7, remove, "http://api.test/api/v1");
     expect(remove).toHaveBeenCalledWith(
       "http://api.test/api/v1/favorites/establishments/7",
-      { method: "DELETE" },
+      { method: "DELETE", signal: expect.any(AbortSignal) },
     );
   });
 });

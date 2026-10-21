@@ -11,12 +11,14 @@ import {
   type AuthEntryChoice,
 } from "@/features/auth/data/auth-entry-storage";
 import { ExploreMapScreen } from "@/features/explore/presentation/explore-map-screen";
+import { useMessages } from "@/core/i18n/use-language";
 
 /**
  * Explore entry: guests who already chose "Explorar como invitado" and
  * signed-in tourists see the map; everyone else goes to the account entry.
  */
 export default function HomeScreen() {
+  const m = useMessages();
   const colors = useTurismoPalette();
   const auth = useAuth();
   const [entryChoice, setEntryChoice] = useState<
@@ -45,7 +47,7 @@ export default function HomeScreen() {
   if (preparing) {
     return (
       <View style={[styles.screen, { backgroundColor: colors.background }]}>
-        <TourismStateView message="Preparando Rumbo EC…" variant="loading" />
+        <TourismStateView message={m.account.preparingApp} variant="loading" />
       </View>
     );
   }

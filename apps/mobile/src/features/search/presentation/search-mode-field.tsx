@@ -1,5 +1,6 @@
 import { TourismSearchField } from "@/core/ui/tourism-controls";
 import type { SearchMode } from "./search-mode-chips";
+import { useMessages } from "@/core/i18n/use-language";
 
 export type SearchModeFieldProps = Readonly<{
   mode: SearchMode;
@@ -23,16 +24,17 @@ export function SearchModeField({
   value,
 }: SearchModeFieldProps &
   Readonly<{ autoFocus?: boolean; glass?: boolean; onBlur?: () => void }>) {
+  const m = useMessages();
   return (
     <TourismSearchField
       accessibilityLabel={
         mode === "ESTABLISHMENTS"
-          ? "Buscar servicios"
+          ? m.explore.search.fieldLabel.establishments
           : mode === "CENTERS"
-            ? "Buscar atractivos"
+            ? m.explore.search.fieldLabel.centers
             : mode === "GEOGRAPHIC"
-              ? "Buscar lugares y direcciones"
-              : "Buscar atractivos, servicios y lugares"
+              ? m.explore.search.fieldLabel.geographic
+              : m.explore.search.fieldLabel.all
       }
       autoFocus={autoFocus}
       glass={glass}
@@ -41,7 +43,7 @@ export function SearchModeField({
       onClear={onClear}
       onFocus={onFocus}
       onSubmitEditing={onSubmit}
-      placeholder="Buscar aquí"
+      placeholder={m.explore.search.placeholder}
       value={value}
     />
   );
