@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Rumbo EC",
+    "name": "Wasi Travel",
     "slug": "rumbo-ec",
     "version": "1.0.9",
     "orientation": "default",
@@ -13,7 +13,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#176B4D",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -66,7 +66,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#176B4D",
+          "backgroundColor": "#FFFFFF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 120
         }
@@ -77,14 +77,14 @@
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true,
           "isIosBackgroundLocationEnabled": true,
-          "locationAlwaysAndWhenInUsePermission": "Permitir que Rumbo EC use tu ubicación durante una navegación activa, incluso al cambiar de aplicación.",
-          "locationWhenInUsePermission": "Permitir que Rumbo EC use tu ubicación para mostrar tu posición en el mapa y calcular rutas."
+          "locationAlwaysAndWhenInUsePermission": "Permitir que Wasi Travel use tu ubicación durante una navegación activa, incluso al cambiar de aplicación.",
+          "locationWhenInUsePermission": "Permitir que Wasi Travel use tu ubicación para mostrar tu posición en el mapa y calcular rutas."
         }
       ],
       [
         "expo-notifications",
         {
-          "color": "#176B4D",
+          "color": "#1E2851",
           "icon": "./assets/images/android-icon-monochrome.png"
         }
       ],
@@ -95,7 +95,7 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Permitir que Rumbo EC grabe tu pregunta de voz cuando actives el micrófono del agente."
+          "microphonePermission": "Permitir que Wasi Travel grabe tu pregunta de voz cuando actives el micrófono del agente."
         }
       ],
       "@react-native-community/datetimepicker",

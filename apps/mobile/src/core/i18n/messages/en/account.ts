@@ -15,7 +15,7 @@ export const accountEn: Messages["account"] = {
     offline: "Offline maps",
     settings: "Settings",
   },
-  preparingApp: "Getting Rumbo EC ready…",
+  preparingApp: "Getting Wasi Travel ready…",
   login: {
     account: "Account",
     createAccount: "Create account",

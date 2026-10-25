@@ -40,7 +40,7 @@ a.primary{background:#176b4d;color:#fff}a.secondary{background:#e3efe9;color:#17
 `;
 
 /** Pie común: quien no tiene la app puede descargarla desde aquí. */
-const DOWNLOAD_FOOTER = `<p class="download">¿No tienes Rumbo EC? <a href="/descargar">Descarga la app</a></p>`;
+const DOWNLOAD_FOOTER = `<p class="download">¿No tienes Wasi Travel? <a href="/descargar">Descarga la app</a></p>`;
 
 /** Página pública mínima; los enlaces compartidos (`/c`, `/r`) la reutilizan. */
 export function renderPublicPage(title: string, content: string): string {

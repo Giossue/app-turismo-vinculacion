@@ -112,7 +112,7 @@ export function renderRouteSharePage(route: RouteShare): string {
     `Ruta hacia ${route.name}`,
     `<div class="card"><div class="body"><h1>Ruta hacia ${escapeHtml(route.name)}</h1>
 <p class="tag">${ROUTE_MODE_LABELS[route.mode]}</p>
-<p>Abre la ruta en Rumbo EC para seguirla desde tu ubicación.</p>
+<p>Abre la ruta en Wasi Travel para seguirla desde tu ubicación.</p>
 <a class="btn primary" href="${escapeHtml(`${APP_SCHEME}route?${appParams.toString()}`)}">Abrir en la app</a>
 ${directionsLink(route.latitude, route.longitude)}</div></div>`,
   );

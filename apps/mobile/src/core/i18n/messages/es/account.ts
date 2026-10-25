@@ -14,7 +14,7 @@ export const accountEs = {
     offline: "Mapas sin conexión",
     settings: "Configuración",
   },
-  preparingApp: "Preparando Rumbo EC…",
+  preparingApp: "Preparando Wasi Travel…",
   login: {
     account: "Cuenta",
     createAccount: "Crear cuenta",

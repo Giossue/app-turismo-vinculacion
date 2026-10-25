@@ -26,7 +26,7 @@ export const routingEs = {
     then: (instruction: string) => `Luego: ${instruction}`,
   },
   notification: {
-    appName: "Rumbo EC",
+    appName: "Wasi Travel",
     active: "Navegación activa. Abre la app para ver la ruta.",
     now: (instruction: string) => `Ahora: ${instruction}`,
     inDistance: (distance: string, instruction: string) =>
