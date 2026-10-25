@@ -279,7 +279,7 @@ export class DownloadPageController {
       .header("Content-Type", "text/html; charset=utf-8")
       .header(
         "Content-Security-Policy",
-        "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
+        "default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'",
       )
       .header("Cache-Control", "public, max-age=300")
       .send(renderDownloadPage(release));

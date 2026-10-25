@@ -1,7 +1,7 @@
 import { Controller, Get, Header } from "@nestjs/common";
 import { ApiExcludeController } from "@nestjs/swagger";
 
-/** Paquete Android de Rumbo EC. */
+/** Paquete Android de Wasi Travel. */
 const ANDROID_PACKAGE = "ec.edu.ueb.turismovinculacion.software";
 /**
  * Huella SHA-256 del certificado que firma el APK publicado. Se puede

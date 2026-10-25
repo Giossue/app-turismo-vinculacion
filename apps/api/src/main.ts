@@ -73,7 +73,7 @@ async function bootstrap(): Promise<void> {
   app.useGlobalFilters(new HttpExceptionFilter());
 
   const openApiConfig = new DocumentBuilder()
-    .setTitle("Rumbo EC API")
+    .setTitle("Wasi Travel API")
     .setDescription("API institucional para información turística publicada.")
     .setVersion("0.1.0")
     .addBearerAuth()

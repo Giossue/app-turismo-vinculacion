@@ -26,7 +26,7 @@ export const routingEn: Messages["routing"] = {
     then: (instruction: string) => `Then: ${instruction}`,
   },
   notification: {
-    appName: "Rumbo EC",
+    appName: "Wasi Travel",
     active: "Navigation active. Open the app to see the route.",
     now: (instruction: string) => `Now: ${instruction}`,
     inDistance: (distance: string, instruction: string) =>

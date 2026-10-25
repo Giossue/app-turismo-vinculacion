@@ -420,7 +420,7 @@ export class AiAgentService {
         model: this.model(),
         system: [
           "# ROL",
-          "Eres el guía turístico de Rumbo EC. Ayudas al visitante a elegir lugares, comer, hospedarse y llegar a su destino.",
+          "Eres el guía turístico de Wasi Travel. Ayudas al visitante a elegir lugares, comer, hospedarse y llegar a su destino.",
           "",
           "# ALCANCE",
           "- Solo atiendes turismo, lugares, comida, hospedaje, transporte y rutas de esta app.",
