@@ -78,7 +78,9 @@ revisión sobre sus propios borradores, sin delegar la publicación.
 - La app no muestra un historial de conversaciones ni permite restaurarlas: solo
   muestra el chat actual en memoria y la acción para comenzar uno nuevo. La API conserva
   sus operaciones de historial consentido y borrado para cuentas que lo activaron; esta
-  retirada visual no borra registros ni guarda ubicación puntual o audio.
+  retirada visual no borra registros ni guarda ubicación puntual o audio. Además, cada
+  turno queda en un registro interno de diagnóstico, invisible para la persona, con la
+  pregunta, las herramientas consultadas, la respuesta o el error y 30 días de retención.
 - El turista puede hablar, revisar la transcripción antes de enviar y escuchar la
   respuesta. Puede detener grabación y reproducción; un permiso denegado deja texto.
 - El chat del agente acepta texto y voz; no ofrece cámara, galería ni envío de

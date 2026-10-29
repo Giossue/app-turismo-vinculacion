@@ -11,3 +11,4 @@
 | 2026-09-27 | Retirar el envío de fotos y el acceso a cámara/galería del agente; cerrar también la ruta de análisis visual.                  | El agente turístico acepta consultas por texto y voz.           |
 | 2026-10-02 | Retirar la vista y restauración del historial móvil; cada chat admite veinte mensajes del usuario y requiere iniciar otro para continuar. | Simplificar el chat y limitar su longitud por solicitud del usuario. |
 | 2026-10-02 | Reintentos y repeticiones con ubicación reutilizan el turno; errores y respuestas detenidas conservan el mensaje enviado en el contador. | El límite cuenta preguntas del usuario y evita duplicarlas. |
+| 2026-10-28 | Guardar todo turno del agente (pregunta, herramientas, respuesta o error) como registro interno aunque no haya consentimiento; retención de 30 días. | Diagnosticar fallos reportados; el chat no dejaba ningún rastro y no hay tablas nuevas. |

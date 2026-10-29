@@ -1,8 +1,17 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
-import type { DataSource } from "typeorm";
+import type { DataSource, EntityManager } from "typeorm";
 
-import type { AgentResponse, AgentSource } from "./ai-agent.contracts";
+import type {
+  AgentResponse,
+  AgentSource,
+  AgentToolTrace,
+} from "./ai-agent.contracts";
+
+const DIAGNOSTIC_RETENTION_DAYS = 30;
+const PURGE_INTERVAL_MS = 60 * 60 * 1_000;
+const MAX_TRACE_ENTRIES = 12;
+const TRACE_CONTENT_LIMIT = 4_000;
 
 type ConversationRow = {
   id: string;
@@ -28,6 +37,9 @@ export type AgentHistoryConversation = Readonly<{
 
 @Injectable()
 export class AgentHistoryService {
+  private readonly logger = new Logger(AgentHistoryService.name);
+  private lastPurge = 0;
+
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   async enabled(userId: number): Promise<boolean> {
@@ -122,22 +134,28 @@ export class AgentHistoryService {
     return { removed: rows.length > 0 };
   }
 
+  /**
+   * Guarda cada turno para poder diagnosticarlo. Con historial activado el turno
+   * es voluntario y se devuelve su id; sin él queda como registro interno
+   * (`historial_voluntario = false`) que la persona no ve y que se purga solo.
+   */
   async recordTurn(
     userId: number,
     publicId: string | undefined,
     question: string,
     answer: AgentResponse,
+    trace: readonly AgentToolTrace[] = [],
   ): Promise<string | null> {
-    return this.dataSource.transaction(async (manager) => {
+    const publicIdSaved = await this.dataSource.transaction(async (manager) => {
       const preferences = await manager.query<{ habilitado: boolean }[]>(
         `SELECT habilitado FROM preferencias_historial_ia
           WHERE usuario_id = $1 FOR UPDATE`,
         [userId],
       );
-      if (preferences[0]?.habilitado !== true) return null;
+      const voluntary = preferences[0]?.habilitado === true;
 
       let conversation: { id: string; public_id: string };
-      if (publicId) {
+      if (voluntary && publicId) {
         const rows = await manager.query<{ id: string; public_id: string }[]>(
           `SELECT id, public_id FROM conversaciones_ia
             WHERE public_id = $1 AND usuario_id = $2 AND historial_voluntario
@@ -148,33 +166,148 @@ export class AgentHistoryService {
           throw new NotFoundException("La conversación no está disponible.");
         conversation = rows[0];
       } else {
-        const rows = await manager.query<{ id: string; public_id: string }[]>(
-          `INSERT INTO conversaciones_ia (usuario_id, historial_voluntario)
-           VALUES ($1, TRUE) RETURNING id, public_id`,
-          [userId],
+        conversation = await this.insertConversation(
+          manager,
+          userId,
+          voluntary,
         );
-        conversation = rows[0];
       }
 
-      const safeQuestion = redactCoordinates(question).slice(0, 2_000);
-      const safeAnswer = redactCoordinates(answer.text).slice(0, 4_000);
-      await manager.query(
-        `INSERT INTO mensajes_ia (conversacion_id, rol_mensaje, contenido)
-         VALUES ($1, 'USER', $2)`,
-        [conversation.id, safeQuestion],
+      await this.insertMessage(
+        manager,
+        conversation.id,
+        "USER",
+        question,
+        2_000,
       );
-      await manager.query(
-        `INSERT INTO mensajes_ia
-           (conversacion_id, rol_mensaje, contenido, fuentes_publicas)
-         VALUES ($1, 'ASSISTANT', $2, $3::jsonb)`,
-        [conversation.id, safeAnswer, JSON.stringify(answer.sources)],
+      await this.insertTrace(manager, conversation.id, trace);
+      await this.insertMessage(
+        manager,
+        conversation.id,
+        "ASSISTANT",
+        answer.text,
+        4_000,
+        answer.sources,
       );
       await manager.query(
         `UPDATE conversaciones_ia SET updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
         [conversation.id],
       );
-      return conversation.public_id;
+      return voluntary ? conversation.public_id : null;
     });
+    void this.purgeDiagnostics();
+    return publicIdSaved;
+  }
+
+  /** Registro interno de un turno que terminó en error. Nunca lanza. */
+  async recordFailure(
+    userId: number,
+    question: string,
+    error: unknown,
+    trace: readonly AgentToolTrace[] = [],
+  ): Promise<void> {
+    try {
+      await this.dataSource.transaction(async (manager) => {
+        const conversation = await this.insertConversation(
+          manager,
+          userId,
+          false,
+        );
+        await this.insertMessage(
+          manager,
+          conversation.id,
+          "USER",
+          question,
+          2_000,
+        );
+        await this.insertTrace(manager, conversation.id, trace);
+        await this.insertMessage(
+          manager,
+          conversation.id,
+          "SYSTEM",
+          `ERROR: ${error instanceof Error ? error.message : String(error)}`,
+          2_000,
+        );
+      });
+      void this.purgeDiagnostics();
+    } catch (saveError) {
+      this.logger.warn(
+        `Agent failure not recorded: ${saveError instanceof Error ? saveError.message : String(saveError)}`,
+      );
+    }
+  }
+
+  private async insertConversation(
+    manager: EntityManager,
+    userId: number,
+    voluntary: boolean,
+  ): Promise<{ id: string; public_id: string }> {
+    const rows = await manager.query<{ id: string; public_id: string }[]>(
+      `INSERT INTO conversaciones_ia (usuario_id, historial_voluntario)
+       VALUES ($1, $2) RETURNING id, public_id`,
+      [userId, voluntary],
+    );
+    return rows[0];
+  }
+
+  private async insertMessage(
+    manager: EntityManager,
+    conversationId: string,
+    role: "USER" | "ASSISTANT" | "SYSTEM" | "TOOL",
+    content: string,
+    maxLength: number,
+    sources?: readonly AgentSource[],
+  ): Promise<void> {
+    const safe = redactCoordinates(content).slice(0, maxLength);
+    if (sources) {
+      await manager.query(
+        `INSERT INTO mensajes_ia
+           (conversacion_id, rol_mensaje, contenido, fuentes_publicas)
+         VALUES ($1, $2, $3, $4::jsonb)`,
+        [conversationId, role, safe, JSON.stringify(sources)],
+      );
+      return;
+    }
+    await manager.query(
+      `INSERT INTO mensajes_ia (conversacion_id, rol_mensaje, contenido)
+       VALUES ($1, $2, $3)`,
+      [conversationId, role, safe],
+    );
+  }
+
+  private async insertTrace(
+    manager: EntityManager,
+    conversationId: string,
+    trace: readonly AgentToolTrace[],
+  ): Promise<void> {
+    for (const entry of trace.slice(0, MAX_TRACE_ENTRIES)) {
+      await this.insertMessage(
+        manager,
+        conversationId,
+        "TOOL",
+        JSON.stringify(entry),
+        TRACE_CONTENT_LIMIT,
+      );
+    }
+  }
+
+  /** Borra los registros internos vencidos; como máximo una vez por hora. */
+  private async purgeDiagnostics(): Promise<void> {
+    const now = Date.now();
+    if (now - this.lastPurge < PURGE_INTERVAL_MS) return;
+    this.lastPurge = now;
+    try {
+      await this.dataSource.query(
+        `DELETE FROM conversaciones_ia
+          WHERE NOT historial_voluntario
+            AND created_at < now() - ($1::int * interval '1 day')`,
+        [DIAGNOSTIC_RETENTION_DAYS],
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Agent diagnostics purge failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 }
 

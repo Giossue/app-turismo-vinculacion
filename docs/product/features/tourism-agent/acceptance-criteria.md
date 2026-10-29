@@ -32,8 +32,11 @@
       el mensaje enviado. Reintentar o repetir con GPS no duplica ni consume un mensaje.
 - [ ] Cerrar y reabrir la hoja conserva el límite; «Nuevo chat» y cambiar de cuenta
       reinician el contador. El contexto enviado al modelo sigue acotado a doce entradas.
-- [ ] El historial de la API sigue requiriendo consentimiento; solo el titular accede
+- [ ] El historial visible de la API sigue requiriendo consentimiento; solo el titular accede
       o borra y ningún registro guarda coordenadas o audio de la consulta.
+- [ ] Todo turno, con o sin consentimiento, deja un registro interno con pregunta,
+      herramientas, respuesta o error; los errores también se registran y los vencidos
+      (30 días) se purgan.
 - [ ] Voz: permiso denegado, silencio, cancelación, red interrumpida y reproducción
       detenida conservan el chat textual utilizable y sus fuentes.
 - [ ] El chat del agente no muestra cámara ni galería; la API no acepta fotos

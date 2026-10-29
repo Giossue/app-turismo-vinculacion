@@ -739,6 +739,10 @@ export class EstablishmentsService {
             ($1::text = 'food' AND (
               COALESCE(classification_catalog.nombre, e.clasificacion) ILIKE 'RESTAURANTE'
               OR COALESCE(classification_catalog.nombre, e.clasificacion) ILIKE 'CAFETERÍA'
+              OR (
+                COALESCE(activity_catalog.nombre, e.actividad) ILIKE 'ALIMENTOS%'
+                AND COALESCE(classification_catalog.nombre, e.clasificacion) IS NULL
+              )
             ))
             OR ($1::text = 'lodging' AND
               COALESCE(activity_catalog.nombre, e.actividad) ILIKE 'ALOJAMIENTO')

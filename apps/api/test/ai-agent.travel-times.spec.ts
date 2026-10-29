@@ -232,6 +232,15 @@ async function execute<T>(
   input: Record<string, unknown>,
 ): Promise<T> {
   const executor = options.tools[toolName]?.execute;
+  if (toolName === "searchPlaces") {
+    input = {
+      type: "any",
+      nearby: false,
+      radiusMeters: 5000,
+      limit: 6,
+      ...input,
+    };
+  }
   if (!executor) throw new Error(`Expected tool ${toolName}`);
   return (await executor(input)) as T;
 }
@@ -275,14 +284,11 @@ describe("AiAgentService travel times", () => {
     let travelTimesResult: TravelTimesResult | undefined;
     modelUsing(async (options) => {
       expect(options.abortSignal).toBe(abort.signal);
-      searchResult = await execute<SearchResult>(
-        options,
-        "searchNearbyPublishedPlaces",
-        {
-          radiusMeters: 5000,
-          limit: 6,
-        },
-      );
+      searchResult = await execute<SearchResult>(options, "searchPlaces", {
+        nearby: true,
+        radiusMeters: 5000,
+        limit: 6,
+      });
       const refs = searchResult.results.map(({ ref }) => ref);
       travelTimesResult = await execute<TravelTimesResult>(
         options,
@@ -428,22 +434,16 @@ describe("AiAgentService travel times", () => {
   it("reuses cached estimates when a known center is registered again", async () => {
     const { agent, estimateTravelTimes } = fixture();
     modelUsing(async (options) => {
-      const first = await execute<SearchResult>(
-        options,
-        "searchPublishedCenters",
-        {
-          text: "Centro",
-          limit: 1,
-        },
-      );
-      const second = await execute<SearchResult>(
-        options,
-        "searchPublishedCenters",
-        {
-          text: "Centro",
-          limit: 1,
-        },
-      );
+      const first = await execute<SearchResult>(options, "searchPlaces", {
+        text: "Centro",
+        type: "center",
+        limit: 1,
+      });
+      const second = await execute<SearchResult>(options, "searchPlaces", {
+        text: "Centro",
+        type: "center",
+        limit: 1,
+      });
       expect(second.results[0].travelTimes).toEqual(
         first.results[0].travelTimes,
       );
@@ -485,14 +485,11 @@ describe("AiAgentService travel times", () => {
       nearbyEstablishments: [sameEstablishment],
     });
     modelUsing(async (options) => {
-      const result = await execute<SearchResult>(
-        options,
-        "searchNearbyPublishedPlaces",
-        {
-          radiusMeters: 5000,
-          limit: 6,
-        },
-      );
+      const result = await execute<SearchResult>(options, "searchPlaces", {
+        nearby: true,
+        radiusMeters: 5000,
+        limit: 6,
+      });
       await execute(options, "getTravelTimes", {
         refs: result.results.map(({ ref }) => ref),
       });
@@ -527,12 +524,14 @@ describe("AiAgentService travel times", () => {
     let overflowTimes: TravelTimesResult | undefined;
     modelUsing(async (options) => {
       const [firstResults, secondResults] = await Promise.all([
-        execute<SearchResult>(options, "searchPublishedCenters", {
+        execute<SearchResult>(options, "searchPlaces", {
           text: "Primera",
+          type: "center",
           limit: 4,
         }),
-        execute<SearchResult>(options, "searchPublishedCenters", {
+        execute<SearchResult>(options, "searchPlaces", {
           text: "Segunda",
+          type: "center",
           limit: 5,
         }),
       ]);
@@ -643,11 +642,11 @@ describe("AiAgentService travel times", () => {
       else estimateTravelTimes.mockResolvedValue(rows);
       let timesResult: TravelTimesResult | undefined;
       modelUsing(async (options) => {
-        const result = await execute<SearchResult>(
-          options,
-          "searchPublishedCenters",
-          { text: "Centro", limit: 1 },
-        );
+        const result = await execute<SearchResult>(options, "searchPlaces", {
+          text: "Centro",
+          type: "center",
+          limit: 1,
+        });
         timesResult = await execute(options, "getTravelTimes", {
           refs: [result.results[0].ref],
         });
@@ -684,11 +683,11 @@ describe("AiAgentService travel times", () => {
     ];
     estimateTravelTimes.mockResolvedValue([mixed]);
     modelUsing(async (options) => {
-      const result = await execute<SearchResult>(
-        options,
-        "searchPublishedCenters",
-        { text: "Centro", limit: 1 },
-      );
+      const result = await execute<SearchResult>(options, "searchPlaces", {
+        text: "Centro",
+        type: "center",
+        limit: 1,
+      });
       return {
         text: "Lugar publicado",
         cards: [{ ref: result.results[0].ref }],
@@ -714,7 +713,8 @@ describe("AiAgentService travel times", () => {
     async (failure) => {
       const { agent, estimateTravelTimes } = fixture();
       modelUsing(async (options) => {
-        await execute<SearchResult>(options, "listPublishedCenters", {
+        await execute<SearchResult>(options, "searchPlaces", {
+          type: "center",
           limit: 6,
         });
         if (failure === "failed model output") {
@@ -753,11 +753,11 @@ describe("AiAgentService travel times", () => {
     let searchResult: SearchResult | undefined;
     let timesResult: TravelTimesResult | undefined;
     modelUsing(async (options) => {
-      searchResult = await execute<SearchResult>(
-        options,
-        "searchNearbyPublishedPlaces",
-        { radiusMeters: 5000, limit: 6 },
-      );
+      searchResult = await execute<SearchResult>(options, "searchPlaces", {
+        nearby: true,
+        radiusMeters: 5000,
+        limit: 6,
+      });
       const ref = searchResult.results[0].ref;
       timesResult = await execute(options, "getTravelTimes", { refs: [ref] });
       return { text: "Lugar publicado", cards: [{ ref }], actions: [] };

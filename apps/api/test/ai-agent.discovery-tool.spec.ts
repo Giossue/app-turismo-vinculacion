@@ -44,6 +44,14 @@ const center: PublicCenter = {
   hierarchyCode: null,
 };
 
+const placesArgs = (args: Record<string, unknown>) => ({
+  type: "any",
+  nearby: false,
+  radiusMeters: 5000,
+  limit: 6,
+  ...args,
+});
+
 const internalMethodLanguage =
   /catálogo|catastro|ficha|publicad|verific|proveedor/i;
 
@@ -157,7 +165,9 @@ describe("general tourism discovery", () => {
         );
         return {
           output: (async () => {
-            await options.tools.listPublishedCenters.execute?.({ limit: 6 });
+            await options.tools.searchPlaces.execute?.(
+              placesArgs({ type: "center" }),
+            );
             return {
               text: "Puedes visitar este lugar publicado.",
               cards: [{ ref: `center:${center.code}` }],
@@ -217,14 +227,13 @@ describe("general tourism discovery", () => {
     vi.mocked(streamText).mockImplementation((input) => {
       const options = input as unknown as Options;
       expect(options.prepareStep({ stepNumber: 0 })).toEqual({
-        toolChoice: { type: "tool", toolName: "listPublishedCenters" },
+        toolChoice: { type: "tool", toolName: "searchPlaces" },
       });
       return {
         output: (async () => {
-          await options.tools.listPublishedCenters.execute?.({
-            limit: 6,
-            locality: "Guaranda",
-          });
+          await options.tools.searchPlaces.execute?.(
+            placesArgs({ type: "center", locality: "Guaranda" }),
+          );
           return { text: "Lugares de Guaranda", cards: [], actions: [] };
         })(),
         partialOutputStream: (async function* () {})(),
@@ -247,12 +256,12 @@ describe("general tourism discovery", () => {
     vi.mocked(streamText).mockImplementation((input) => {
       const options = input as unknown as Options;
       expect(options.prepareStep({ stepNumber: 0 })).toEqual({
-        toolChoice: { type: "tool", toolName: "listPublishedCenters" },
+        toolChoice: { type: "tool", toolName: "searchPlaces" },
       });
       const output = (async () => {
-        const toolResult = await options.tools.listPublishedCenters.execute?.({
-          limit: 6,
-        });
+        const toolResult = await options.tools.searchPlaces.execute?.(
+          placesArgs({ type: "center" }),
+        );
         expect(toolResult).toMatchObject({ total: 1 });
         return {
           text: "Necesito saber tu ubicación para recomendar lugares.",
@@ -289,7 +298,9 @@ describe("general tourism discovery", () => {
       const options = input as unknown as Options;
       return {
         output: (async () => {
-          await options.tools.listPublishedCenters.execute?.({ limit: 6 });
+          await options.tools.searchPlaces.execute?.(
+            placesArgs({ type: "center" }),
+          );
           return { text: "Hay muchos lugares", cards: [], actions: [] };
         })(),
         partialOutputStream: (async function* () {})(),
@@ -315,9 +326,9 @@ describe("general tourism discovery", () => {
       const options = input as unknown as Options;
       return {
         output: (async () => {
-          const failure = await options.tools.listPublishedCenters.execute?.({
-            limit: 6,
-          });
+          const failure = await options.tools.searchPlaces.execute?.(
+            placesArgs({ type: "center" }),
+          );
           expect(failure).toMatchObject({ available: false });
           expect((failure as { message: string }).message).not.toMatch(
             internalMethodLanguage,
@@ -349,7 +360,9 @@ describe("general tourism discovery", () => {
       const options = input as unknown as Options;
       return {
         output: (async () => {
-          await options.tools.listPublishedCenters.execute?.({ limit: 6 });
+          await options.tools.searchPlaces.execute?.(
+            placesArgs({ type: "center" }),
+          );
           throw new Error("provider output failed");
         })(),
         partialOutputStream: (async function* () {})(),
@@ -408,7 +421,9 @@ describe("nearby discovery location handoff", () => {
       expect(options.tools).toHaveProperty("showPlaceCards");
       return {
         output: (async () => {
-          await options.tools.listPublishedCenters.execute?.({ limit: 6 });
+          await options.tools.searchPlaces.execute?.(
+            placesArgs({ type: "center" }),
+          );
           // The model cannot invent a card: an unknown ref is dropped.
           await options.tools.showPlaceCards.execute?.({
             refs: ["center:inventado"],
@@ -435,7 +450,7 @@ describe("nearby discovery location handoff", () => {
     vi.mocked(streamText).mockImplementation((input) => {
       const options = input as unknown as Options;
       expect(options.prepareStep({ stepNumber: 0 })).toEqual({
-        toolChoice: { type: "tool", toolName: "searchNearbyPublishedPlaces" },
+        toolChoice: { type: "tool", toolName: "searchPlaces" },
       });
       return {
         output: Promise.resolve({
@@ -483,17 +498,14 @@ describe("establishment discovery without GPS", () => {
       expect(options.prepareStep({ stepNumber: 0 })).toEqual({
         toolChoice: {
           type: "tool",
-          toolName: "searchPublishedEstablishments",
+          toolName: "searchPlaces",
         },
       });
       return {
         output: (async () => {
-          await options.tools.searchPublishedEstablishments.execute?.({
-            kind: "lodging",
-            text: "comer",
-            locality: "Quito",
-            limit: 6,
-          });
+          await options.tools.searchPlaces.execute?.(
+            placesArgs({ type: "lodging", text: "comer", locality: "Quito" }),
+          );
           return {
             text: "Necesito que actives la ubicación para recomendarte restaurantes.",
             cards: [],
@@ -543,10 +555,9 @@ describe("establishment discovery without GPS", () => {
       const options = input as unknown as Options;
       return {
         output: (async () => {
-          await options.tools.searchPublishedEstablishments.execute?.({
-            kind: query.kind,
-            limit: 6,
-          });
+          await options.tools.searchPlaces.execute?.(
+            placesArgs({ type: query.kind }),
+          );
           return {
             text: "Puedes probar esta opción.",
             cards: [{ ref: "establishment:inventado" }],
@@ -577,11 +588,9 @@ describe("establishment discovery without GPS", () => {
       const options = input as unknown as Options;
       return {
         output: (async () => {
-          const failure =
-            await options.tools.searchPublishedEstablishments.execute?.({
-              kind: "food",
-              limit: 6,
-            });
+          const failure = await options.tools.searchPlaces.execute?.(
+            placesArgs({ type: "food" }),
+          );
           expect(failure).toMatchObject({ available: false });
           return { text: "Opciones disponibles", cards: [], actions: [] };
         })(),

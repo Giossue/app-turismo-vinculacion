@@ -10,7 +10,10 @@ const response = {
   text: "Hola viajero.",
 };
 const user = { id: 7 } as never;
-const history = () => ({ recordTurn: vi.fn().mockResolvedValue(null) });
+const history = () => ({
+  recordTurn: vi.fn().mockResolvedValue(null),
+  recordFailure: vi.fn().mockResolvedValue(undefined),
+});
 
 describe("AiAgentController", () => {
   it("returns the validated structured response", async () => {
@@ -27,14 +30,46 @@ describe("AiAgentController", () => {
       { message: "Hola", history: [] },
       undefined,
       undefined,
-      { includeCenterLocations: false },
+      { includeCenterLocations: false, onToolTrace: expect.any(Function) },
     );
     expect(saved.recordTurn).toHaveBeenCalledWith(
       7,
       undefined,
       "Hola",
       response,
+      [],
     );
+  });
+
+  it("records the failed turn with the tool calls made before the error", async () => {
+    const failure = new Error("proveedor caído");
+    const agent = {
+      generate: vi.fn(async (...args: unknown[]) => {
+        const options = args[3] as {
+          onToolTrace: (entry: unknown) => void;
+        };
+        options.onToolTrace({
+          tool: "searchPublishedEstablishments",
+          input: { kind: "lodging", text: "glamping" },
+          output: { total: 0 },
+        });
+        throw failure;
+      }),
+    };
+    const saved = history();
+    const controller = new AiAgentController(agent as never, saved as never);
+
+    await expect(
+      controller.chat({ message: "Glamping", history: [] }, user),
+    ).rejects.toBe(failure);
+    expect(saved.recordFailure).toHaveBeenCalledWith(7, "Glamping", failure, [
+      {
+        tool: "searchPublishedEstablishments",
+        input: { kind: "lodging", text: "glamping" },
+        output: { total: 0 },
+      },
+    ]);
+    expect(saved.recordTurn).not.toHaveBeenCalled();
   });
 
   it.each(["1", "0", "true"])(
@@ -50,13 +85,17 @@ describe("AiAgentController", () => {
         { message: "Hola", history: [] },
         undefined,
         undefined,
-        { includeCenterLocations: cardLocations === "1" },
+        {
+          includeCenterLocations: cardLocations === "1",
+          onToolTrace: expect.any(Function),
+        },
       );
       expect(saved.recordTurn).toHaveBeenCalledWith(
         7,
         undefined,
         "Hola",
         response,
+        [],
       );
     },
   );
@@ -146,7 +185,10 @@ describe("AiAgentController", () => {
         { message: "Hola", history: [] },
         expect.any(Function),
         expect.any(AbortSignal),
-        { includeCenterLocations: cardLocations === "1" },
+        {
+          includeCenterLocations: cardLocations === "1",
+          onToolTrace: expect.any(Function),
+        },
       );
     },
   );

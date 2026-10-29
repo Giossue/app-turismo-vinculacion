@@ -30,19 +30,33 @@ el destino sin narrar búsquedas, catastros, fichas, catálogos o procesos inter
 fuentes y restricciones de publicación siguen en herramientas y contrato, fuera de esa
 narración. Los fallbacks deterministas y los mensajes locales de ubicación usan el mismo
 tono directo, diferenciando falta de resultados y error de consulta sin inventar hechos.
+`searchPlaces` es la única herramienta de descubrimiento (centros, puntos de interés y
+establecimientos). `text` busca por nombre, descripción o categoría, de modo que un negocio
+como «La Tola Glamping», que no es un centro, aparece por su nombre. `type` limita a
+`center`, `food`, `lodging`, `establishment` o `any`. Sin `nearby` no mide distancia ni
+afirma cercanía. Con `nearby: true` aplica un radio real (5 km por defecto, máximo 25 km),
+ordena por distancia y filtra comida o alojamiento con la misma regla que la búsqueda sin
+radio. Si el radio no contiene nada, devuelve `outsideRadius` con el lugar más cercano hasta
+300 km y su distancia, para que el agente lo presente como lejano, nunca como cercano.
+Con `type: establishment`, sin `text` y hasta 50 resultados entrega la lista compacta del
+catálogo, para que el modelo asocie palabras cotidianas (glamping, cabaña, piscina, tour)
+con un catálogo cuyas categorías son administrativas. Solo la primera búsqueda sigue el
+tipo detectado por regex; los reintentos respetan lo que elija el modelo, y una búsqueda
+vacía devuelve una pista de reintento. Se retiraron `searchNearbyEstablishments` (no usaba
+radio y saltaba a otra localidad), `searchPublishedCenters`, `listPublishedCenters`,
+`searchPublishedEstablishments`, `listPublishedEstablishments` y `searchNearbyPublishedPlaces`
+como herramientas del agente; los endpoints HTTP no cambian.
 Las preguntas sobre un lugar reciben el dato solicitado y su tarjeta; no agregan resúmenes
 de categorías, explicaciones de tarjetas o hechos ajenos a la pregunta. Para entradas y
 horarios se consulta `getPublishedCenter`; la búsqueda general no aporta esos datos.
 La orientación simple remite a «Ver» → «Cómo llegar» sin pedir GPS antes de mostrar el
 destino. No se eliminan palabras de la respuesta libre con regex ni se alteran nombres.
 
-Las herramientas allowlisted de esta unidad son `listPublishedCenters`,
-`searchPublishedEstablishments`, `searchPublishedCenters`,
-`getPublishedCenter`, `searchNearbyEstablishments`,
-`searchNearbyPublishedPlaces`, `requestLocationAccess`, `getPublishedTransportForCenter`,
+Las herramientas allowlisted de esta unidad son `searchPlaces`,
+`getPublishedCenter`, `requestLocationAccess`, `getPublishedTransportForCenter`,
 `searchNearbyTransportStops`, `getTravelTimes` y `calculateRoadRoute`. Las consultas de cercanía usan PostGIS sobre centros publicados,
-POI activos y establecimientos activos; `searchNearbyPublishedPlaces` recibe únicamente radio,
-límite y categoría opcional, mientras que las coordenadas se toman del contexto aproximado del
+POI activos y establecimientos activos; `searchPlaces` con `nearby` recibe únicamente radio,
+límite, tipo y texto opcional, mientras que las coordenadas se toman del contexto aproximado del
 request. La intención cercana detectada en español obliga a ejecutar esa herramienta en el
 primer paso para evitar convertir “cerca de mí” en una búsqueda textual. Las primeras tools
 delegan en repositorios públicos y el modelo solo recibe referencias opacas de resultados; el
@@ -91,10 +105,10 @@ La API no envía texto parcial en este caso y responde de forma estable aunque e
 modelo no produzca una respuesta estructurada.
 
 Descubrir centros, restaurantes o alojamiento en general no requiere GPS.
-`listPublishedCenters` enumera centros publicados sin coordenadas del visitante;
-`searchPublishedEstablishments` consulta el catastro activo/publicado por tipo y,
-si la persona lo indicó, localidad. La primera tool se fuerza ante preguntas generales
-de atractivos; la segunda ante preguntas generales de comida o hospedaje. Si el modelo
+`searchPlaces` con `type: center` enumera centros publicados sin coordenadas del visitante y
+con `type: food` o `lodging` consulta el catastro activo/publicado por tipo y, si la persona
+lo indicó, localidad. La primera búsqueda se fuerza con el tipo correspondiente ante
+preguntas generales de atractivos, comida o hospedaje. Si el modelo
 omite tarjetas, pide ubicación para una consulta general o falla después de consultar
 el catálogo, la API construye una respuesta acotada con los resultados verificados.
 Esas consultas esperan la validación final antes de enviar texto parcial para evitar
@@ -163,7 +177,8 @@ pie visible «Fuentes». Las tarjetas identifican el lugar y abren sus detalles 
 
 - Enviar solo ubicación aproximada necesaria para la consulta.
 - No enviar email, fecha de nacimiento, tokens o historial completo.
-- Preferencias e historial requieren consentimiento y controles de borrado.
+- El historial visible y restaurable requiere consentimiento y controles de borrado.
+- Cada turno se guarda además como registro interno de diagnóstico (ver Historial).
 - Claves del modelo exclusivamente en backend.
 
 ## Administradores
@@ -192,8 +207,14 @@ límite. Reintentar o repetir con GPS reutiliza el turno. El contexto enviado al
 sigue acotado a doce entradas y no representa el contador del chat. Los endpoints y
 registros de historial consentido se conservan en la API; retirar su vista no los borra.
 
-`/ai/history` guarda turnos textuales y fuentes solo después del opt-in. La preferencia
-apagada bloquea escrituras; apagarla borra las conversaciones voluntarias. Audio
+Cada turno de `/ai/chat` y `/ai/chat/stream` se guarda en `conversaciones_ia` y
+`mensajes_ia` para poder diagnosticar fallos: la pregunta (`USER`), cada herramienta
+llamada con su entrada y salida (`TOOL`, hasta doce por turno, 4000 caracteres cada una),
+la respuesta con sus fuentes (`ASSISTANT`) y, si el turno falla, el error (`SYSTEM`). Sin
+opt-in la conversación queda con `historial_voluntario = false`: la persona no la ve ni
+la recibe en `conversationId`, y se borra pasados 30 días (limpieza oportunista, como
+máximo una vez por hora por proceso). Con opt-in el turno es voluntario y sigue las
+reglas de `/ai/history`. Apagar la preferencia borra solo las conversaciones voluntarias. Audio
 y ubicación puntual no se guardan en esas tablas. Los textos con pares de coordenadas
 decimales se redactan antes de persistir. El historial permanece hasta que el titular
 lo borra o desactiva; la API no promete un borrado automático por fecha.

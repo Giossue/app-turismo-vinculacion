@@ -1,11 +1,12 @@
 import { ConfigService } from "@nestjs/config";
-import { describe, expect, it } from "vitest";
+import { MockLanguageModelV4, simulateReadableStream } from "ai/test";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   agentChatSchema,
   type AgentChatInput,
 } from "../src/ai/application/ai-agent.contracts";
-import { nearbyPublishedPlacesInputSchema } from "../src/ai/application/ai-agent.service";
+import { searchPlacesInputSchema } from "../src/ai/application/ai-agent.service";
 import {
   AiAgentService,
   hasNearbyIntent,
@@ -97,7 +98,82 @@ function service(config: Record<string, unknown>) {
   );
 }
 
+const usage = {
+  inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+  outputTokens: { total: 1, text: 1, reasoning: 0 },
+};
+const modelTurn = (chunks: unknown[]) => ({
+  stream: simulateReadableStream({ chunks: chunks as never[] }),
+});
+const toolCallTurn = (toolName: string, input: unknown) =>
+  modelTurn([
+    { type: "stream-start", warnings: [] },
+    {
+      type: "tool-call",
+      toolCallId: `call-${toolName}`,
+      toolName,
+      input: JSON.stringify(input),
+    },
+    {
+      type: "finish",
+      finishReason: { unified: "tool-calls", raw: "tool_calls" },
+      usage,
+    },
+  ]);
+const textTurn = (text: string) =>
+  modelTurn([
+    { type: "stream-start", warnings: [] },
+    { type: "text-start", id: "t1" },
+    { type: "text-delta", id: "t1", delta: text },
+    { type: "text-end", id: "t1" },
+    {
+      type: "finish",
+      finishReason: { unified: "stop", raw: "stop" },
+      usage,
+    },
+  ]);
+
 describe("AiAgentService", () => {
+  it("reports each tool call with its input and output to the trace hook", async () => {
+    const model = new MockLanguageModelV4({
+      doStream: [
+        toolCallTurn("searchPlaces", {
+          type: "lodging",
+          text: "glamping",
+        }),
+        textTurn("No encontré alojamientos."),
+      ],
+    });
+    const agent = service({ AI_PROVIDER: "openai", AI_MODEL: "x" });
+    vi.spyOn(
+      agent as unknown as { model: () => unknown },
+      "model",
+    ).mockReturnValue(model);
+    const trace: unknown[] = [];
+
+    const answer = await agent.generate(
+      { message: "¿Dónde puedo hospedarme?", history: [] },
+      undefined,
+      undefined,
+      { onToolTrace: (entry) => trace.push(entry) },
+    );
+
+    expect(answer.text).toContain("alojamientos");
+    expect(trace).toEqual([
+      {
+        tool: "searchPlaces",
+        input: {
+          type: "lodging",
+          nearby: false,
+          radiusMeters: 5_000,
+          limit: 6,
+          text: "glamping",
+        },
+        output: expect.objectContaining({ total: 0, results: [] }),
+      },
+    ]);
+  });
+
   it("offers a location action for nearby requests even when the model provider is offline", async () => {
     await expect(
       service({ AI_PROVIDER: "openai", AI_MODEL: "gpt-5-mini" }).generate({
@@ -107,6 +183,373 @@ describe("AiAgentService", () => {
     ).resolves.toMatchObject({
       actions: [{ type: "request_location" }],
     });
+  });
+
+  it("lets the model retry with another kind after an empty forced search", async () => {
+    const glamping = {
+      nombreComercial: "La Tola Glamping",
+      actividad: "PARQUES DE ATRACCIONES ESTABLES",
+      clasificacion: "PARQUE DE ATRACCIONES ESTABLES",
+      categoria: "Categoría única",
+      direccion: null,
+      telefono: null,
+      latitude: -1.6,
+      longitude: -79,
+      distanceMeters: null,
+      localityName: "San Lorenzo",
+    };
+    const browse = vi.fn(async (query: { kind: string }) =>
+      query.kind === "other" ? [glamping] : [],
+    );
+    const agent = new AiAgentService(
+      new ConfigService({ AI_PROVIDER: "openai", AI_MODEL: "x" }),
+      repository(),
+      { ...establishmentSearch(), browse },
+      nearbyEstablishmentSearch(),
+      poiRepository(),
+      transportRepository(),
+      routeUseCase(),
+    );
+    const model = new MockLanguageModelV4({
+      doStream: [
+        toolCallTurn("searchPlaces", {
+          type: "lodging",
+          text: "glamping",
+        }),
+        toolCallTurn("searchPlaces", {
+          type: "establishment",
+          text: "glamping",
+        }),
+        textTurn("Te recomiendo La Tola Glamping."),
+      ],
+    });
+    vi.spyOn(
+      agent as unknown as { model: () => unknown },
+      "model",
+    ).mockReturnValue(model);
+    const trace: { output: Record<string, unknown> }[] = [];
+
+    await agent.generate(
+      { message: "¿Dónde puedo hospedarme?", history: [] },
+      undefined,
+      undefined,
+      { onToolTrace: (entry) => trace.push(entry as never) },
+    );
+
+    expect(browse.mock.calls.map(([query]) => query.kind)).toEqual([
+      "lodging",
+      "other",
+    ]);
+    expect(trace[0].output.hint).toEqual(
+      expect.stringContaining("type establishment"),
+    );
+    expect(trace[1].output).toMatchObject({ total: 1 });
+  });
+
+  it("lists the whole published catalog compactly for everyday wording", async () => {
+    const item = (name: string, activity: string) => ({
+      nombreComercial: name,
+      actividad: activity,
+      clasificacion: null,
+      categoria: null,
+      direccion: "Calle 1",
+      telefono: null,
+      latitude: null,
+      longitude: null,
+      distanceMeters: null,
+      localityName: "Guaranda",
+    });
+    const browse = vi.fn(async () => [
+      item("La Tola Glamping", "PARQUES DE ATRACCIONES ESTABLES"),
+      item("Hostal La Rueda", "ALOJAMIENTO"),
+    ]);
+    const agent = new AiAgentService(
+      new ConfigService({ AI_PROVIDER: "openai", AI_MODEL: "x" }),
+      repository(),
+      { ...establishmentSearch(), browse },
+      nearbyEstablishmentSearch(),
+      poiRepository(),
+      transportRepository(),
+      routeUseCase(),
+    );
+    const model = new MockLanguageModelV4({
+      doStream: [
+        toolCallTurn("searchPlaces", { type: "establishment", limit: 50 }),
+        toolCallTurn("showPlaceCards", { refs: ["establishment:1"] }),
+        textTurn("Prueba La Tola Glamping."),
+      ],
+    });
+    vi.spyOn(
+      agent as unknown as { model: () => unknown },
+      "model",
+    ).mockReturnValue(model);
+    const trace: { output: Record<string, unknown> }[] = [];
+
+    const answer = await agent.generate(
+      { message: "Quiero ir a un glamping", history: [] },
+      undefined,
+      undefined,
+      { onToolTrace: (entry) => trace.push(entry as never) },
+    );
+
+    expect(browse).toHaveBeenCalledWith({
+      kind: "other",
+      text: undefined,
+      locality: undefined,
+      limit: 50,
+    });
+    expect(trace[0].output).toMatchObject({ total: 2 });
+    expect(answer.cards.map((card) => card.name)).toEqual(["La Tola Glamping"]);
+  });
+
+  it("finds an establishment by name when no center matches", async () => {
+    const tola = {
+      nombreComercial: "La Tola Glamping",
+      actividad: "PARQUES DE ATRACCIONES ESTABLES",
+      clasificacion: "PARQUE DE ATRACCIONES ESTABLES",
+      categoria: "Categoría única",
+      direccion: null,
+      telefono: null,
+      latitude: -1.6,
+      longitude: -79,
+      distanceMeters: null,
+      localityName: "San Lorenzo",
+    };
+    const browse = vi.fn(async () => [tola]);
+    const agent = new AiAgentService(
+      new ConfigService({ AI_PROVIDER: "openai", AI_MODEL: "x" }),
+      repository(),
+      { ...establishmentSearch(), browse },
+      nearbyEstablishmentSearch(),
+      poiRepository(),
+      transportRepository(),
+      routeUseCase(),
+    );
+    const model = new MockLanguageModelV4({
+      doStream: [
+        toolCallTurn("searchPlaces", { text: "La Tola" }),
+        toolCallTurn("showPlaceCards", { refs: ["establishment:1"] }),
+        textTurn("Es un glamping en San Lorenzo."),
+      ],
+    });
+    vi.spyOn(
+      agent as unknown as { model: () => unknown },
+      "model",
+    ).mockReturnValue(model);
+    const trace: { output: Record<string, unknown> }[] = [];
+
+    const answer = await agent.generate(
+      { message: "Cuéntame sobre La Tola", history: [] },
+      undefined,
+      undefined,
+      { onToolTrace: (entry) => trace.push(entry as never) },
+    );
+
+    expect(browse).toHaveBeenCalledWith({
+      kind: "other",
+      text: "La Tola",
+      locality: undefined,
+      limit: 6,
+    });
+    expect(trace[0].output).toMatchObject({ total: 1, locationBased: false });
+    expect(answer.cards.map((card) => card.name)).toEqual(["La Tola Glamping"]);
+    const offered = model.doStreamCalls[0].tools?.map((tool) => tool.name);
+    expect(offered).toContain("searchPlaces");
+    for (const retired of [
+      "searchNearbyEstablishments",
+      "searchPublishedCenters",
+      "searchPublishedEstablishments",
+      "listPublishedCenters",
+      "listPublishedEstablishments",
+      "searchNearbyPublishedPlaces",
+    ]) {
+      expect(offered).not.toContain(retired);
+    }
+  });
+
+  it("reports the nearest place outside the radius instead of presenting it as nearby", async () => {
+    const far = {
+      code: "CT-FAR",
+      name: "Cascada Lejana",
+      description: null,
+      category: "Naturaleza",
+      type: "Cascada",
+      latitude: -1.2,
+      longitude: -78.6,
+      distanceMeters: 48_000,
+    };
+    const listNearbyPublished = vi.fn(
+      async (query: { radiusMeters: number }) => ({
+        items: query.radiusMeters > 5_000 ? [far] : [],
+      }),
+    );
+    const agent = new AiAgentService(
+      new ConfigService({ AI_PROVIDER: "openai", AI_MODEL: "x" }),
+      { ...repository(), listNearbyPublished } as never,
+      establishmentSearch(),
+      nearbyEstablishmentSearch(),
+      poiRepository(),
+      transportRepository(),
+      routeUseCase(),
+    );
+    const model = new MockLanguageModelV4({
+      doStream: [
+        toolCallTurn("searchPlaces", {
+          nearby: true,
+          radiusMeters: 5_000,
+          limit: 6,
+        }),
+        textTurn("Cerca no hay nada; lo más próximo está a 48 km."),
+      ],
+    });
+    vi.spyOn(
+      agent as unknown as { model: () => unknown },
+      "model",
+    ).mockReturnValue(model);
+    const trace: { output: Record<string, unknown> }[] = [];
+
+    await agent.generate(
+      {
+        message: "¿Qué hay cerca de mí?",
+        history: [],
+        location: { latitude: -1.59, longitude: -79.0 },
+      },
+      undefined,
+      undefined,
+      { onToolTrace: (entry) => trace.push(entry as never) },
+    );
+
+    expect(listNearbyPublished.mock.calls.map(([q]) => q.radiusMeters)).toEqual(
+      [5_000, 300_000],
+    );
+    expect(trace[0].output).toMatchObject({
+      total: 0,
+      results: [],
+      outsideRadius: { name: "Cascada Lejana", distanceMeters: 48_000 },
+    });
+  });
+
+  it("filters nearby establishments by food type inside the radius", async () => {
+    const place = (
+      name: string,
+      activity: string,
+      classification: string | null,
+    ) => ({
+      nombreComercial: name,
+      actividad: activity,
+      clasificacion: classification,
+      categoria: null,
+      direccion: null,
+      telefono: null,
+      latitude: -1.59,
+      longitude: -79,
+      distanceMeters: 300,
+      localityName: "Guaranda",
+    });
+    const food = "ALIMENTOS, BEBIDAS Y ENTRETENIMIENTO";
+    const nearby = vi.fn(async () => [
+      place("Restaurante Sol", food, "RESTAURANTE"),
+      place("Pizzería sin clasificar", food, null),
+      place("Discoteca Luna", food, "DISCOTECA"),
+      place("Hostal Rueda", "ALOJAMIENTO", "HOSTAL"),
+    ]);
+    const agent = new AiAgentService(
+      new ConfigService({ AI_PROVIDER: "openai", AI_MODEL: "x" }),
+      repository(),
+      establishmentSearch(),
+      { nearby },
+      poiRepository(),
+      transportRepository(),
+      routeUseCase(),
+    );
+    const model = new MockLanguageModelV4({
+      doStream: [
+        toolCallTurn("searchPlaces", { nearby: true, type: "food" }),
+        textTurn("Hay dos lugares para comer."),
+      ],
+    });
+    vi.spyOn(
+      agent as unknown as { model: () => unknown },
+      "model",
+    ).mockReturnValue(model);
+    const trace: { output: { results: { name: string }[] } }[] = [];
+
+    await agent.generate(
+      {
+        message: "restaurantes cerca de mí",
+        history: [],
+        location: { latitude: -1.59, longitude: -79.0 },
+      },
+      undefined,
+      undefined,
+      { onToolTrace: (entry) => trace.push(entry as never) },
+    );
+
+    expect(trace[0].output.results.map((item) => item.name)).toEqual([
+      "Pizzería sin clasificar",
+      "Restaurante Sol",
+    ]);
+  });
+
+  it("falls back to automatic tool choice when the provider rejects a forced tool", async () => {
+    const rejection = Object.assign(
+      new Error(
+        'tool_choice: type "tool" and "any" are not supported for this model.',
+      ),
+      { statusCode: 400 },
+    );
+    const lodging = {
+      nombreComercial: "Hostal La Rueda",
+      actividad: "ALOJAMIENTO",
+      clasificacion: "HOSTAL",
+      categoria: null,
+      direccion: null,
+      telefono: null,
+      latitude: -1.6,
+      longitude: -79,
+      distanceMeters: null,
+      localityName: "Guaranda",
+    };
+    const agent = new AiAgentService(
+      new ConfigService({ AI_PROVIDER: "anthropic", AI_MODEL: "sin-forzado" }),
+      repository(),
+      { ...establishmentSearch(), browse: async () => [lodging] },
+      nearbyEstablishmentSearch(),
+      poiRepository(),
+      transportRepository(),
+      routeUseCase(),
+    );
+    const replies = () => [
+      toolCallTurn("searchPlaces", { type: "lodging" }),
+      toolCallTurn("showPlaceCards", { refs: ["establishment:1"] }),
+      textTurn("Prueba el Hostal La Rueda."),
+    ];
+    const queue = [...replies(), ...replies()];
+    const model = new MockLanguageModelV4({
+      doStream: async (options) => {
+        if (options.toolChoice?.type === "tool") throw rejection;
+        return queue.shift()!;
+      },
+    });
+    vi.spyOn(
+      agent as unknown as { model: () => unknown },
+      "model",
+    ).mockReturnValue(model);
+
+    const ask = () =>
+      agent.generate({ message: "¿Dónde puedo hospedarme?", history: [] });
+    const first = await ask();
+    expect(first.cards.map((card) => card.name)).toEqual(["Hostal La Rueda"]);
+    const forcedAfterFirst = model.doStreamCalls.filter(
+      (call) => call.toolChoice?.type === "tool",
+    ).length;
+    expect(forcedAfterFirst).toBe(1);
+
+    await ask();
+    const forcedAfterSecond = model.doStreamCalls.filter(
+      (call) => call.toolChoice?.type === "tool",
+    ).length;
+    expect(forcedAfterSecond).toBe(1);
   });
 
   it("fails closed when the selected provider has no key", async () => {
@@ -195,10 +638,11 @@ describe("AiAgentService", () => {
 
   it("rejects an invalid nearby radius before a tool can query the database", () => {
     expect(
-      nearbyPublishedPlacesInputSchema.safeParse({ radiusMeters: 0 }).success,
+      searchPlacesInputSchema.safeParse({ nearby: true, radiusMeters: 0 })
+        .success,
     ).toBe(false);
     expect(
-      nearbyPublishedPlacesInputSchema.safeParse({ radiusMeters: 25_001 })
+      searchPlacesInputSchema.safeParse({ nearby: true, radiusMeters: 25_001 })
         .success,
     ).toBe(false);
   });

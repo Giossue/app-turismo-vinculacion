@@ -215,3 +215,10 @@ export type AgentResponse = z.infer<typeof agentResponseSchema>;
 export type AgentCard = z.infer<typeof agentCardSchema>;
 export type AgentAction = z.infer<typeof agentActionSchema>;
 export type AgentSource = z.infer<typeof agentSourceSchema>;
+
+/** Una llamada a herramienta del turno, para diagnóstico. */
+export type AgentToolTrace = Readonly<{
+  tool: string;
+  input: unknown;
+  output: unknown;
+}>;

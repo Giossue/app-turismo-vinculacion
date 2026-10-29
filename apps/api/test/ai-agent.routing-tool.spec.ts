@@ -168,7 +168,10 @@ describe("AiAgentService calculateRoadRoute tool", () => {
         const tools = (options as unknown as GenerateOptions).tools;
         return {
           output: (async () => {
-            await tools.searchPublishedCenters.execute?.({
+            await tools.searchPlaces.execute?.({
+              type: "center",
+              nearby: false,
+              radiusMeters: 5000,
               limit: 2,
               text: "Centro cultural",
             });
@@ -288,7 +291,10 @@ describe("AiAgentService calculateRoadRoute tool", () => {
     streamTextMock.mockImplementation((options) => {
       const tools = (options as unknown as GenerateOptions).tools;
       const output = (async () => {
-        const search = await tools.searchPublishedCenters.execute?.({
+        const search = await tools.searchPlaces.execute?.({
+          type: "center",
+          nearby: false,
+          radiusMeters: 5000,
           limit: 1,
           text: "Centro cultural",
         });

@@ -36,6 +36,7 @@ import {
 import {
   AGENT_CARD_LOCATIONS_HEADER,
   agentResponseSchema,
+  type AgentToolTrace,
 } from "../application/ai-agent.contracts";
 
 const cardLocationsHeaderDocumentation = {
@@ -86,12 +87,25 @@ export class AiAgentController {
         parsed.error.issues.map((issue) => issue.message).join(" "),
       );
     }
-    const result = agentResponseSchema.parse(
-      await this.agent.generate(parsed.data, undefined, undefined, {
-        includeCenterLocations: cardLocations === "1",
-      }),
-    );
-    return this.withHistory(user.id, parsed.data, result);
+    const trace: AgentToolTrace[] = [];
+    let result: ReturnType<typeof agentResponseSchema.parse>;
+    try {
+      result = agentResponseSchema.parse(
+        await this.agent.generate(parsed.data, undefined, undefined, {
+          includeCenterLocations: cardLocations === "1",
+          onToolTrace: (entry) => trace.push(entry),
+        }),
+      );
+    } catch (error) {
+      await this.history.recordFailure(
+        user.id,
+        parsed.data.message,
+        error,
+        trace,
+      );
+      throw error;
+    }
+    return this.withHistory(user.id, parsed.data, result, trace);
   }
 
   @Post("chat/stream")
@@ -128,6 +142,7 @@ export class AiAgentController {
     };
     response.raw.once("close", abortOnClose);
 
+    const trace: AgentToolTrace[] = [];
     try {
       if (response.raw.destroyed) return;
       response.raw.writeHead(200, {
@@ -143,13 +158,17 @@ export class AiAgentController {
           writeSseEvent(response.raw, { type: "text-delta", text });
         },
         abortController.signal,
-        { includeCenterLocations: cardLocations === "1" },
+        {
+          includeCenterLocations: cardLocations === "1",
+          onToolTrace: (entry) => trace.push(entry),
+        },
       );
       if (abortController.signal.aborted) return;
       const finalResponse = await this.withHistory(
         user.id,
         parsed.data,
         agentResponseSchema.parse(result),
+        trace,
       );
       writeSseEvent(response.raw, {
         type: "complete",
@@ -161,6 +180,14 @@ export class AiAgentController {
         `Agent stream failed: ${error instanceof Error ? error.message : String(error)}`,
         error instanceof Error ? error.stack : undefined,
       );
+      if (!abortController.signal.aborted) {
+        await this.history.recordFailure(
+          user.id,
+          parsed.data.message,
+          error,
+          trace,
+        );
+      }
       if (
         !abortController.signal.aborted &&
         !response.raw.destroyed &&
@@ -183,6 +210,7 @@ export class AiAgentController {
     userId: number,
     input: { message: string; conversationId?: string },
     response: ReturnType<typeof agentResponseSchema.parse>,
+    trace: readonly AgentToolTrace[],
   ) {
     try {
       const conversationId = await this.history.recordTurn(
@@ -190,6 +218,7 @@ export class AiAgentController {
         input.conversationId,
         input.message,
         response,
+        trace,
       );
       return conversationId ? { ...response, conversationId } : response;
     } catch (error) {

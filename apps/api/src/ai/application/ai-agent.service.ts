@@ -23,6 +23,7 @@ import {
   type AgentModelResponse,
   type AgentResponse,
   type AgentSource,
+  type AgentToolTrace,
 } from "./ai-agent.contracts";
 import {
   enrichAgentCenterLocations,
@@ -58,20 +59,6 @@ import {
 } from "../../routing/domain/routing-errors";
 import type { TravelTimeEstimate } from "../../routing/domain/route";
 
-const searchCentersInputSchema = z
-  .object({
-    text: z.string().trim().min(2).max(120),
-    limit: z.number().int().min(1).max(8).default(5),
-  })
-  .strict();
-
-const listCentersInputSchema = z
-  .object({
-    locality: z.string().trim().min(2).max(120).optional(),
-    limit: z.number().int().min(1).max(8).default(6),
-  })
-  .strict();
-
 const publishedCentersSource = "Catálogo de centros turísticos publicados";
 const publishedEstablishmentsSource = "Catastro turístico público";
 
@@ -81,28 +68,16 @@ const getCenterInputSchema = z
   })
   .strict();
 
-const nearbyEstablishmentsInputSchema = z
+export const searchPlacesInputSchema = z
   .object({
-    activity: z.string().trim().min(2).max(120),
-    category: z.string().trim().min(1).max(120).optional(),
-    limit: z.number().int().min(1).max(8).default(5),
-  })
-  .strict();
-
-const browseEstablishmentsInputSchema = z
-  .object({
-    kind: z.enum(["food", "lodging", "other"]),
     text: z.string().trim().min(2).max(120).optional(),
-    locality: z.string().trim().min(2).max(120).optional(),
-    limit: z.number().int().min(1).max(8).default(6),
-  })
-  .strict();
-
-export const nearbyPublishedPlacesInputSchema = z
-  .object({
+    type: z
+      .enum(["any", "center", "food", "lodging", "establishment"])
+      .default("any"),
+    nearby: z.boolean().default(false),
     radiusMeters: z.number().int().min(100).max(25_000).default(5_000),
-    limit: z.number().int().min(1).max(8).default(6),
-    category: z.string().trim().min(1).max(120).optional(),
+    locality: z.string().trim().min(2).max(120).optional(),
+    limit: z.number().int().min(1).max(50).default(6),
   })
   .strict();
 
@@ -141,12 +116,36 @@ const genericToolFailure = {
   message: "No pude consultar esa información ahora. Inténtalo de nuevo.",
 } as const;
 
+const nearestSearchRadiusMeters = 300_000;
+
+/** Misma regla que `browsePublic` para food/lodging, aplicada a resultados por radio. */
+function matchesEstablishmentType(
+  item: PublicEstablishmentSearchItem,
+  type: "food" | "lodging" | null,
+): boolean {
+  if (type === "lodging") return /^ALOJAMIENTO$/i.test(item.actividad);
+  if (type === "food") {
+    const classification = item.clasificacion?.toUpperCase();
+    return (
+      classification === "RESTAURANTE" ||
+      classification === "CAFETERÍA" ||
+      (!item.clasificacion && /^ALIMENTOS/i.test(item.actividad))
+    );
+  }
+  return true;
+}
+
+const noPlacesHint =
+  "Sin coincidencias. Prueba con otras palabras (sinónimo, tipo de lugar) o con type establishment, sin text y limit 50 para revisar la lista compacta, antes de decir que no hay.";
+
 export { agentChatSchema };
 export type { AgentChatInput };
 
 @Injectable()
 export class AiAgentService {
   private readonly logger = new Logger(AiAgentService.name);
+  /** Modelos cuyo proveedor rechazó `tool_choice` forzado; se usa `auto` con ellos. */
+  private readonly forcedToolChoiceRejected = new Set<string>();
 
   constructor(
     @Inject(ConfigService)
@@ -169,7 +168,10 @@ export class AiAgentService {
     input: AgentChatInput,
     onText?: (text: string) => Promise<void> | void,
     abortSignal?: AbortSignal,
-    options: Readonly<{ includeCenterLocations?: boolean }> = {},
+    options: Readonly<{
+      includeCenterLocations?: boolean;
+      onToolTrace?: (entry: AgentToolTrace) => void;
+    }> = {},
   ): Promise<AgentResponse> {
     const entities = new Map<string, TrustedAgentEntity>();
     const registeredCenters = new Map<
@@ -210,6 +212,7 @@ export class AiAgentService {
     let generalCatalogFailed = false;
     let establishmentBrowseRefs: string[] | null = null;
     let establishmentBrowseFailed = false;
+    let placeSearches = 0;
     let establishmentSequence = 0;
     let poiSequence = 0;
     const detailedCenterRefs = new Set<string>();
@@ -407,6 +410,18 @@ export class AiAgentService {
       );
     };
 
+    const modelKey = `${this.config.get<string>("AI_PROVIDER")}:${this.config.get<string>("AI_MODEL")}`;
+    const forceTools = !this.forcedToolChoiceRejected.has(modelKey);
+    let streamError: unknown;
+    const retryWithoutForcedTools = () => {
+      if (!forceTools || !isToolChoiceRejection(streamError)) return null;
+      this.forcedToolChoiceRejected.add(modelKey);
+      this.logger.warn(
+        `El modelo ${modelKey} rechaza tool_choice forzado; se usa selección automática.`,
+      );
+      return this.generate(input, onText, abortSignal, options);
+    };
+
     const messages: ModelMessage[] = [
       ...input.history.map(
         (item) => ({ role: item.role, content: item.content }) as ModelMessage,
@@ -440,11 +455,9 @@ export class AiAgentService {
           "- No añadas introducciones genéricas, explicaciones de la app ni ofrecimientos repetidos. Pregunta solo si necesitas un dato, con una sola pregunta concreta.",
           "",
           "# HERRAMIENTAS",
-          "- listPublishedCenters: preguntas generales de qué lugares turísticos visitar. La ciudad o los intereses son filtros opcionales, no una pregunta obligatoria. No requiere GPS.",
-          "- searchPublishedEstablishments: dónde comer u hospedarse sin intención de cercanía. Ubicación y localidad son opcionales; sin ellas ofrece resultados publicados sin afirmar que están cerca. Si indican una localidad, úsala como filtro.",
-          "- searchPublishedCenters: cuando mencionan un lugar, atractivo o categoría concreta (por nombre, descripción o categoría). Úsala para identificar un lugar antes de pedir sus detalles o mostrar su tarjeta.",
-          "- searchNearbyEstablishments: establecimientos cercanos filtrados por actividad y categoría, cuando haya ubicación aproximada y pidan algo específico cerca de ellos. Para cercanía general prefiere searchNearbyPublishedPlaces.",
-          "- searchNearbyPublishedPlaces: cuando digan cerca, cercano, cerca de mí, lo que haya alrededor o algo equivalente y haya ubicación aproximada. Úsala antes de cualquier búsqueda textual; combina centros, puntos de interés y establecimientos. Nunca busques la frase cerca de mí como texto.",
+          "- searchPlaces: única herramienta para encontrar lugares (centros turísticos, puntos de interés y establecimientos). Pregunta general de qué visitar: type center, sin text. Dónde comer u hospedarse: type food o lodging; sin intención de cercanía no afirmes que algo está cerca. Un lugar o negocio por nombre, o una palabra cotidiana (glamping, cabaña, camping, piscina, balneario, tour, fiesta, desayuno): text con esa palabra y type any o establishment. cerca, cercano, cerca de mí, alrededor o algo equivalente con ubicación aproximada: nearby true, sin buscar la frase cerca de mí como texto; text puede acotar el tipo (restaurante, hostal, glamping). Si dan una localidad, úsala como locality. No requiere GPS salvo con nearby.",
+          "- Las categorías del catálogo son administrativas y el visitante no las usa: dormir, hospedarse, cabaña o glamping son alojamiento al aire libre o en hostal; comer, desayunar o tomar café son restaurantes y cafeterías; piscina o balneario son recreación; tour o excursión son agencias. Interpreta lo que quiere decir y, si una búsqueda no da resultados, reintenta con otras palabras o con type establishment, sin text y limit 50 para revisar la lista compacta, y elige tú lo que encaje, antes de decir que no hay.",
+          "- Con nearby, si no hay nada en el radio el resultado trae outsideRadius: dilo como lejano, con la distancia, y nunca lo llames cercano.",
           "- requestLocationAccess: consulta cercana sin ubicación. Solo propone una acción para que el móvil pida o actualice la ubicación; no otorga permisos ni accede al GPS.",
           "- getPublishedCenter: precio de entrada, horario u otros detalles de un centro. Resuelve primero el lugar; la búsqueda general no trae esos datos.",
           "- getPublishedTransportForCenter y searchNearbyTransportStops: preguntas de transporte. Si faltan rutas, paradas u horarios, di brevemente qué no tienes; no afirmes que no existen ni inventes transporte, frecuencias, precios o tiempos.",
@@ -476,37 +489,55 @@ export class AiAgentService {
           "- No solicites ni repitas contraseñas, tokens, ubicación histórica o datos personales.",
         ].join("\n"),
         messages,
+        onError: ({ error }) => {
+          streamError = error;
+        },
         prepareStep: ({ stepNumber }) =>
-          needsCurrentLocation && stepNumber === 0
-            ? {
-                toolChoice: {
-                  type: "tool" as const,
-                  toolName: "requestLocationAccess" as const,
-                },
-              }
-            : forceNearbyTool && stepNumber === 0
+          !forceTools
+            ? { toolChoice: "auto" as const }
+            : needsCurrentLocation && stepNumber === 0
               ? {
                   toolChoice: {
                     type: "tool" as const,
-                    toolName: "searchNearbyPublishedPlaces" as const,
+                    toolName: "requestLocationAccess" as const,
                   },
                 }
-              : forceGeneralCatalogTool && stepNumber === 0
+              : forceNearbyTool && stepNumber === 0
                 ? {
                     toolChoice: {
                       type: "tool" as const,
-                      toolName: "listPublishedCenters" as const,
+                      toolName: "searchPlaces" as const,
                     },
                   }
-                : forceEstablishmentKind && stepNumber === 0
+                : forceGeneralCatalogTool && stepNumber === 0
                   ? {
                       toolChoice: {
                         type: "tool" as const,
-                        toolName: "searchPublishedEstablishments" as const,
+                        toolName: "searchPlaces" as const,
                       },
                     }
-                  : { toolChoice: "auto" as const },
+                  : forceEstablishmentKind && stepNumber === 0
+                    ? {
+                        toolChoice: {
+                          type: "tool" as const,
+                          toolName: "searchPlaces" as const,
+                        },
+                      }
+                    : { toolChoice: "auto" as const },
         stopWhen: stepCountIs(6),
+        onStepEnd: (step) => {
+          if (!options.onToolTrace) return;
+          for (const call of step.toolCalls) {
+            const result = step.toolResults.find(
+              (item) => item.toolCallId === call.toolCallId,
+            );
+            options.onToolTrace({
+              tool: call.toolName,
+              input: call.input,
+              output: result?.output,
+            });
+          }
+        },
         maxOutputTokens:
           this.config.get<number>("AI_MAX_OUTPUT_TOKENS") ?? 1_200,
         timeout: this.config.get<number>("AI_REQUEST_TIMEOUT_MS") ?? 30_000,
@@ -525,6 +556,11 @@ export class AiAgentService {
                   shownCardRefs.push(ref);
                 }
               }
+              await attachTravelTimes(
+                shownCardRefs.filter(
+                  (ref) => !entities.get(ref)?.card.travelTimes,
+                ),
+              );
               return unknown.length > 0
                 ? {
                     shown: shown.length,
@@ -580,244 +616,294 @@ export class AiAgentService {
               clientAction: approximateLocation ? null : "request_location",
             }),
           }),
-          searchPublishedEstablishments: tool({
+          searchPlaces: tool({
             description:
-              "Busca restaurantes/cafeterías (kind food), alojamiento (kind lodging) u otros establecimientos publicados sin requerir GPS. text solo filtra una preferencia específica, no la frase genérica de la pregunta. locality solo si el visitante mencionó una ciudad, cantón o provincia; sin localidad no afirma cercanía.",
-            inputSchema: browseEstablishmentsInputSchema,
-            execute: async ({ kind, text, locality, limit }) => {
-              try {
-                const items = await this.establishments.browse({
-                  kind: forceEstablishmentKind ?? kind,
-                  text: isGenericEstablishmentQuestion(input.message)
-                    ? undefined
-                    : text,
-                  locality: isUserProvidedLocality(locality, input)
-                    ? locality
-                    : undefined,
-                  limit,
-                });
-                const refs = items.map((item) =>
-                  registerEstablishment(
-                    item,
-                    `${publishedEstablishmentsSource}: ${item.nombreComercial} (${item.localityName})`,
-                  ),
-                );
-                establishmentBrowseRefs = refs;
-                await attachTravelTimes(refs);
-                return {
-                  total: items.length,
-                  results: items.map((item, index) => ({
-                    ref: refs[index],
-                    name: item.nombreComercial,
-                    activity: item.actividad,
-                    classification: item.clasificacion,
-                    category: item.categoria,
-                    localityName: item.localityName,
-                    address: item.direccion,
-                    travelTimes: entities.get(refs[index])?.card.travelTimes,
-                  })),
-                  source: publishedEstablishmentsSource,
-                  locationBased: false,
-                };
-              } catch {
-                establishmentBrowseFailed = true;
-                return genericToolFailure;
+              "Única herramienta para descubrir lugares publicados: centros turísticos, puntos de interés y establecimientos (hoteles, restaurantes, glamping, agencias). text busca por nombre, descripción o categoría. type limita a center (atractivos), food (restaurantes y cafeterías), lodging (alojamiento) o establishment (cualquier negocio del catastro; úsalo para palabras cotidianas como glamping, cabaña, tour); any busca en todo. nearby=true limita a radiusMeters (5 km por defecto, máximo 25 km) alrededor del visitante y ordena por distancia; la ubicación sale del contexto y nunca se envía como argumento. Sin nearby no mide distancia ni afirmes que algo está cerca. locality solo si el visitante mencionó una ciudad, cantón o provincia. Con type establishment, sin text y limit hasta 50 obtienes la lista compacta del catálogo para elegir tú lo que encaje.",
+            inputSchema: searchPlacesInputSchema,
+            execute: async (args) => {
+              const callNumber = placeSearches++;
+              const nearby = forceNearbyTool || args.nearby;
+              let type = args.type;
+              let text = args.text;
+              if (callNumber === 0) {
+                // Solo la primera búsqueda sigue la intención detectada; los
+                // reintentos respetan lo que elija el modelo.
+                if (forceGeneralCatalogTool) {
+                  type = "center";
+                  text = undefined;
+                } else if (forceEstablishmentKind) {
+                  type = forceEstablishmentKind;
+                  if (isGenericEstablishmentQuestion(input.message)) {
+                    text = undefined;
+                  }
+                }
               }
-            },
-          }),
-          listPublishedCenters: tool({
-            description:
-              "Enumera centros turísticos publicados sin GPS. Puedes filtrar por nombre de provincia, cantón o parroquia si la persona indicó una localidad; no pidas GPS para esta consulta.",
-            inputSchema: listCentersInputSchema,
-            execute: async ({ limit, locality }) => {
-              try {
-                const result = await this.centers.listPublished({
-                  limit,
-                  ...(locality ? { locality } : {}),
-                });
-                generalCatalogRefs = result.items.map((center) =>
-                  registerCenter(
-                    `center:${center.code}`,
-                    center,
-                    `${publishedCentersSource}: ${center.name}`,
-                  ),
-                );
-                await attachTravelTimes(generalCatalogRefs);
-                return {
-                  total: result.total,
-                  results: result.items.map((center) => ({
-                    ref: `center:${center.code}`,
-                    name: center.name,
-                    description: center.description,
-                    category: center.category,
-                    type: center.type,
-                    travelTimes: entities.get(`center:${center.code}`)?.card
-                      .travelTimes,
-                  })),
-                  source: publishedCentersSource,
-                };
-              } catch {
-                generalCatalogFailed = true;
-                return genericToolFailure;
-              }
-            },
-          }),
-          searchPublishedCenters: tool({
-            description:
-              "Busca atractivos turísticos publicados y aprobados por nombre, descripción o categoría.",
-            inputSchema: searchCentersInputSchema,
-            execute: async ({ text, limit }) => {
-              try {
-                const result = await this.centers.listPublished({
-                  text,
-                  limit,
-                });
-                const refs = result.items.map((center) =>
-                  registerCenter(
-                    `center:${center.code}`,
-                    center,
-                    publishedCentersSource,
-                  ),
-                );
-                await attachTravelTimes(refs);
-                return {
-                  total: result.total,
-                  results: result.items.map((center, index) => {
-                    const ref = refs[index];
-                    return {
-                      ref,
-                      code: center.code,
-                      name: center.name,
-                      description: center.description,
-                      category: center.category,
-                      type: center.type,
-                      subtype: center.subtype,
-                      hierarchy: center.hierarchy,
-                      travelTimes: entities.get(ref)?.card.travelTimes,
-                    };
-                  }),
-                  source: publishedCentersSource,
-                };
-              } catch {
-                return genericToolFailure;
-              }
-            },
-          }),
-          searchNearbyPublishedPlaces: tool({
-            description:
-              "Busca todo lo publicado o activo dentro de un radio: centros turísticos, puntos de interés y establecimientos. El radio y el límite son filtros; la ubicación se toma del contexto de la solicitud y nunca debe enviarse como argumento.",
-            inputSchema: nearbyPublishedPlacesInputSchema,
-            execute: async ({ radiusMeters, limit, category }) => {
-              if (!approximateLocation) {
-                return {
-                  available: false,
-                  message: "Necesito tu ubicación para buscar cerca de ti.",
-                };
-              }
+              const locality = isUserProvidedLocality(args.locality, input)
+                ? args.locality
+                : undefined;
+              const wantsCenters = type === "any" || type === "center";
+              const wantsEstablishments = type !== "center";
+              const compactList = type === "establishment" && !text && !nearby;
+              const establishmentTypeFilter =
+                type === "food" || type === "lodging" ? type : null;
 
-              try {
-                const [centerResult, poiResult, establishmentResult] =
-                  await Promise.all([
-                    this.centers.listNearbyPublished({
-                      latitude: approximateLocation.latitude,
-                      longitude: approximateLocation.longitude,
-                      radiusMeters,
-                      category,
-                      limit,
-                    }),
-                    this.pois.listNearby({
-                      latitude: approximateLocation.latitude,
-                      longitude: approximateLocation.longitude,
-                      radiusMeters,
-                      category,
-                      limit,
-                    }),
-                    this.nearbyEstablishments.nearby({
-                      latitude: approximateLocation.latitude,
-                      longitude: approximateLocation.longitude,
-                      radiusMeters,
-                      category,
-                      limit,
-                    }),
-                  ]);
+              if (nearby) {
+                if (!approximateLocation) {
+                  return {
+                    available: false,
+                    message: "Necesito tu ubicación para buscar cerca de ti.",
+                  };
+                }
                 const sourceLabel = "Catálogo público geolocalizado";
-                const results = [
-                  ...centerResult.items.map((center) => {
-                    const ref = registerCenter(
-                      `center:${center.code}`,
-                      center,
-                      sourceLabel,
-                      center.distanceMeters,
-                    );
-                    return {
-                      ref,
-                      type: "center" as const,
-                      code: center.code,
-                      name: center.name,
-                      description: center.description,
-                      category: center.category,
-                      distanceMeters: center.distanceMeters,
-                    };
-                  }),
-                  ...poiResult.items.map((item) => {
-                    const ref = registerPoi(item, sourceLabel);
-                    return {
-                      ref,
-                      type: "poi" as const,
-                      name: item.name,
-                      description: item.description,
-                      category: "Punto de interés",
-                      localityName: item.localityName,
-                      distanceMeters: item.distanceMeters,
-                    };
-                  }),
-                  ...establishmentResult.map((item) => {
-                    const ref = registerEstablishment(item, sourceLabel);
-                    return {
-                      ref,
-                      type: "establishment" as const,
-                      name: item.nombreComercial,
-                      description: [
-                        item.actividad,
-                        item.categoria ?? item.clasificacion,
-                      ]
-                        .filter(Boolean)
-                        .join(" · "),
-                      category: item.categoria ?? item.clasificacion,
-                      localityName: item.localityName,
-                      distanceMeters: item.distanceMeters,
-                    };
-                  }),
-                ]
-                  .sort(
-                    (left, right) =>
-                      (left.distanceMeters ?? Number.POSITIVE_INFINITY) -
-                        (right.distanceMeters ?? Number.POSITIVE_INFINITY) ||
-                      left.name.localeCompare(right.name),
-                  )
-                  .slice(0, limit);
-
-                await attachTravelTimes(results.map((item) => item.ref));
-
-                return {
-                  available: true,
-                  radiusMeters,
-                  category: category ?? null,
-                  total: results.length,
-                  results: results.map((item) => ({
-                    ...item,
-                    travelTimes: entities.get(item.ref)?.card.travelTimes,
-                  })),
-                  source: sourceLabel,
-                  ...(results.length === 0
-                    ? {
-                        message: "No encontré lugares en esa zona.",
-                      }
-                    : {}),
+                const search = async (radius: number, max: number) => {
+                  const [centerResult, poiResult, establishmentResult] =
+                    await Promise.all([
+                      wantsCenters
+                        ? this.centers.listNearbyPublished({
+                            latitude: approximateLocation.latitude,
+                            longitude: approximateLocation.longitude,
+                            radiusMeters: radius,
+                            category: text,
+                            limit: max,
+                          })
+                        : { items: [] },
+                      wantsCenters
+                        ? this.pois.listNearby({
+                            latitude: approximateLocation.latitude,
+                            longitude: approximateLocation.longitude,
+                            radiusMeters: radius,
+                            category: text,
+                            limit: max,
+                          })
+                        : { items: [] },
+                      wantsEstablishments
+                        ? this.nearbyEstablishments.nearby({
+                            latitude: approximateLocation.latitude,
+                            longitude: approximateLocation.longitude,
+                            radiusMeters: radius,
+                            category: text,
+                            limit: establishmentTypeFilter
+                              ? Math.max(max, 50)
+                              : max,
+                          })
+                        : [],
+                    ]);
+                  return [
+                    ...centerResult.items.map((center) => {
+                      const ref = registerCenter(
+                        `center:${center.code}`,
+                        center,
+                        sourceLabel,
+                        center.distanceMeters,
+                      );
+                      return {
+                        ref,
+                        type: "center" as const,
+                        code: center.code,
+                        name: center.name,
+                        description: center.description,
+                        category: center.category,
+                        distanceMeters: center.distanceMeters,
+                      };
+                    }),
+                    ...poiResult.items.map((item) => {
+                      const ref = registerPoi(item, sourceLabel);
+                      return {
+                        ref,
+                        type: "poi" as const,
+                        name: item.name,
+                        description: item.description,
+                        category: "Punto de interés",
+                        localityName: item.localityName,
+                        distanceMeters: item.distanceMeters,
+                      };
+                    }),
+                    ...establishmentResult
+                      .filter((item) =>
+                        matchesEstablishmentType(item, establishmentTypeFilter),
+                      )
+                      .map((item) => {
+                        const ref = registerEstablishment(item, sourceLabel);
+                        return {
+                          ref,
+                          type: "establishment" as const,
+                          name: item.nombreComercial,
+                          description: [
+                            item.actividad,
+                            item.categoria ?? item.clasificacion,
+                          ]
+                            .filter(Boolean)
+                            .join(" · "),
+                          category: item.categoria ?? item.clasificacion,
+                          localityName: item.localityName,
+                          distanceMeters: item.distanceMeters,
+                        };
+                      }),
+                  ]
+                    .sort(
+                      (left, right) =>
+                        (left.distanceMeters ?? Number.POSITIVE_INFINITY) -
+                          (right.distanceMeters ?? Number.POSITIVE_INFINITY) ||
+                        left.name.localeCompare(right.name),
+                    )
+                    .slice(0, max);
                 };
-              } catch {
+
+                try {
+                  const results = await search(args.radiusMeters, args.limit);
+                  await attachTravelTimes(results.map((item) => item.ref));
+
+                  // Sin nada dentro del radio: el más cercano fuera de él,
+                  // marcado para que el agente no lo presente como cercano.
+                  const nearestOutside =
+                    results.length === 0
+                      ? (await search(nearestSearchRadiusMeters, 1))[0]
+                      : undefined;
+                  if (nearestOutside) {
+                    await attachTravelTimes([nearestOutside.ref]);
+                  }
+
+                  return {
+                    available: true,
+                    locationBased: true,
+                    radiusMeters: args.radiusMeters,
+                    category: text ?? null,
+                    total: results.length,
+                    results: results.map((item) => ({
+                      ...item,
+                      travelTimes: entities.get(item.ref)?.card.travelTimes,
+                    })),
+                    source: sourceLabel,
+                    ...(results.length === 0
+                      ? {
+                          message: nearestOutside
+                            ? `No hay nada dentro de ${args.radiusMeters} m. Lo más cercano está fuera del radio (outsideRadius): menciónalo como lejano, con su distancia, nunca como cercano.`
+                            : "No encontré lugares en esa zona.",
+                          ...(nearestOutside
+                            ? {
+                                outsideRadius: {
+                                  ...nearestOutside,
+                                  travelTimes: entities.get(nearestOutside.ref)
+                                    ?.card.travelTimes,
+                                },
+                              }
+                            : {}),
+                        }
+                      : {}),
+                  };
+                } catch {
+                  return genericToolFailure;
+                }
+              }
+
+              const [centersResult, establishmentsResult] =
+                await Promise.allSettled([
+                  wantsCenters
+                    ? this.centers.listPublished({
+                        ...(text ? { text } : {}),
+                        limit:
+                          type === "any" ? Math.min(args.limit, 8) : args.limit,
+                        ...(locality ? { locality } : {}),
+                      })
+                    : Promise.resolve({ items: [], total: 0 }),
+                  wantsEstablishments
+                    ? this.establishments.browse({
+                        kind: establishmentTypeFilter ?? "other",
+                        text,
+                        locality,
+                        limit: args.limit,
+                      })
+                    : Promise.resolve([]),
+                ]);
+              const requested = [
+                ...(wantsCenters ? [centersResult] : []),
+                ...(wantsEstablishments ? [establishmentsResult] : []),
+              ];
+              if (requested.every((item) => item.status === "rejected")) {
+                if (wantsCenters) generalCatalogFailed = true;
+                if (wantsEstablishments) establishmentBrowseFailed = true;
                 return genericToolFailure;
               }
+              const centers =
+                centersResult.status === "fulfilled"
+                  ? centersResult.value.items
+                  : [];
+              const establishments =
+                establishmentsResult.status === "fulfilled"
+                  ? establishmentsResult.value
+                  : [];
+              const centerRefs = centers.map((center) =>
+                registerCenter(
+                  `center:${center.code}`,
+                  center,
+                  text
+                    ? publishedCentersSource
+                    : `${publishedCentersSource}: ${center.name}`,
+                ),
+              );
+              const establishmentRefs = establishments.map((item) =>
+                registerEstablishment(
+                  item,
+                  `${publishedEstablishmentsSource}: ${item.nombreComercial} (${item.localityName})`,
+                ),
+              );
+              if (type === "center" && !text) generalCatalogRefs = centerRefs;
+              if (wantsEstablishments && !compactList) {
+                establishmentBrowseRefs = establishmentRefs;
+              }
+              if (!compactList) {
+                await attachTravelTimes([...centerRefs, ...establishmentRefs]);
+              }
+
+              const results = [
+                ...centers.map((center, index) => ({
+                  ref: centerRefs[index],
+                  type: "center" as const,
+                  code: center.code,
+                  name: center.name,
+                  description: center.description,
+                  category: center.category,
+                  subtype: center.subtype,
+                  hierarchy: center.hierarchy,
+                })),
+                ...establishments.map((item, index) => ({
+                  ref: establishmentRefs[index],
+                  type: "establishment" as const,
+                  name: item.nombreComercial,
+                  activity: item.actividad,
+                  classification: item.clasificacion,
+                  category: item.categoria ?? item.clasificacion,
+                  localityName: item.localityName,
+                  ...(compactList ? {} : { address: item.direccion }),
+                })),
+              ];
+              if (text) {
+                const needle = normalizeIntent(text);
+                results.sort(
+                  (left, right) =>
+                    Number(normalizeIntent(right.name).includes(needle)) -
+                    Number(normalizeIntent(left.name).includes(needle)),
+                );
+              }
+              const shown = results.slice(0, args.limit);
+              return {
+                total:
+                  type === "center" && !text
+                    ? centersResult.status === "fulfilled"
+                      ? centersResult.value.total
+                      : 0
+                    : shown.length,
+                results: shown.map((item) => ({
+                  ...item,
+                  travelTimes: entities.get(item.ref)?.card.travelTimes,
+                })),
+                source:
+                  wantsCenters && !wantsEstablishments
+                    ? publishedCentersSource
+                    : publishedEstablishmentsSource,
+                locationBased: false,
+                ...(shown.length === 0 ? { hint: noPlacesHint } : {}),
+              };
             },
           }),
           getPublishedCenter: tool({
@@ -1047,58 +1133,6 @@ export class AiAgentService {
               }
             },
           }),
-          searchNearbyEstablishments: tool({
-            description:
-              "Busca establecimientos turísticos públicos del catastro por actividad y categoría, priorizando la ubicación aproximada del visitante.",
-            inputSchema: nearbyEstablishmentsInputSchema,
-            execute: async ({ activity, category, limit }) => {
-              if (!approximateLocation) {
-                return {
-                  available: false,
-                  message: "Necesito tu ubicación para buscar cerca de ti.",
-                };
-              }
-              try {
-                const result = await this.establishments.nearby({
-                  activity,
-                  category,
-                  latitude: approximateLocation.latitude,
-                  longitude: approximateLocation.longitude,
-                  limit,
-                });
-                const sourceLabel = result.effectiveLocality
-                  ? `Catastro turístico público de ${result.effectiveLocality.name}`
-                  : "Catastro turístico público";
-                const refs = result.items.map((item) =>
-                  registerEstablishment(item, sourceLabel),
-                );
-                await attachTravelTimes(refs);
-                return {
-                  available: true,
-                  fallbackApplied: result.fallbackApplied,
-                  requestedLocalityName: result.requestedLocalityName,
-                  effectiveLocality: result.effectiveLocality,
-                  results: result.items.map((item, index) => ({
-                    ref: refs[index],
-                    name: item.nombreComercial,
-                    activity: item.actividad,
-                    classification: item.clasificacion,
-                    category: item.categoria,
-                    address: item.direccion,
-                    phone: item.telefono,
-                    latitude: item.latitude,
-                    longitude: item.longitude,
-                    distanceMeters: item.distanceMeters,
-                    localityName: item.localityName,
-                    travelTimes: entities.get(refs[index])?.card.travelTimes,
-                  })),
-                  source: sourceLabel,
-                };
-              } catch {
-                return genericToolFailure;
-              }
-            },
-          }),
         },
       });
 
@@ -1130,6 +1164,8 @@ export class AiAgentService {
           actions: [],
         };
       } catch (error) {
+        const retry = retryWithoutForcedTools();
+        if (retry) return retry;
         this.logger.error(
           `Agent output failed: ${error instanceof Error ? error.message : String(error)}`,
         );
@@ -1193,6 +1229,8 @@ export class AiAgentService {
       }
       return finishAnswer(answer);
     } catch (error) {
+      const retry = retryWithoutForcedTools();
+      if (retry) return retry;
       if (needsCurrentLocation) return missingLocationAnswer();
       if (error instanceof ServiceUnavailableException) throw error;
       this.logger.error(
@@ -1305,6 +1343,16 @@ export function getEstablishmentDiscoveryKind(
     return "lodging";
   }
   return null;
+}
+
+/** El proveedor no admite forzar una herramienta con este modelo (HTTP 400). */
+function isToolChoiceRejection(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const { statusCode, message } = error as {
+    statusCode?: number;
+    message?: unknown;
+  };
+  return statusCode === 400 && /tool_choice/i.test(String(message ?? ""));
 }
 
 function normalizeIntent(message: string): string {
