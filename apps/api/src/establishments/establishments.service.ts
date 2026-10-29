@@ -27,6 +27,10 @@ import {
   toPublicEstablishment,
   type PublicEstablishmentRow,
 } from "./public-establishment";
+import {
+  ECUADOR_COORDINATES_MESSAGE,
+  isInsideEcuador,
+} from "../common/ecuador-bounds";
 
 type EstablishmentRow = {
   id: string;
@@ -1195,15 +1199,14 @@ export class EstablishmentsService {
       latitude === undefined ||
       longitude === undefined ||
       !Number.isFinite(latitude) ||
-      !Number.isFinite(longitude) ||
-      latitude < -90 ||
-      latitude > 90 ||
-      longitude < -180 ||
-      longitude > 180
+      !Number.isFinite(longitude)
     ) {
       throw new BadRequestException(
-        "La latitud y la longitud son obligatorias y deben estar dentro de un rango válido.",
+        "La latitud y la longitud son obligatorias y deben ser números válidos.",
       );
+    }
+    if (!isInsideEcuador(latitude, longitude)) {
+      throw new BadRequestException(ECUADOR_COORDINATES_MESSAGE);
     }
     return {
       localityId: input.localityId,

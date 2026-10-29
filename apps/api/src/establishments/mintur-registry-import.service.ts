@@ -17,6 +17,7 @@ import {
   type MinturRegistryRowError,
   type MinturRegistryStatus,
 } from "./mintur-registry.parser";
+import { isInsideEcuador } from "../common/ecuador-bounds";
 
 export type MinturImportPhase = "LEYENDO" | "GUARDANDO" | "TERMINADO" | "ERROR";
 
@@ -115,11 +116,6 @@ const STATUS_RANK: Record<string, number> = {
   SUSPENSION_DEFINITIVA: 2,
   INACTIVO: 1,
 };
-
-/** Límites aproximados del Ecuador continental e insular. */
-function insideEcuador(lat: number, lon: number) {
-  return lat >= -5.1 && lat <= 1.7 && lon >= -92.2 && lon <= -75.1;
-}
 
 @Injectable()
 export class MinturRegistryImportService {
@@ -295,9 +291,9 @@ export class MinturRegistryImportService {
   private validPoint(row: Pick<MinturRegistryRow, "latitude" | "longitude">) {
     const { latitude: lat, longitude: lon } = row;
     if (lat === null || lon === null) return null;
-    if (insideEcuador(lat, lon)) return { lat, lon };
+    if (isInsideEcuador(lat, lon)) return { lat, lon };
     // Algunas filas tienen latitud y longitud intercambiadas.
-    if (insideEcuador(lon, lat)) return { lat: lon, lon: lat };
+    if (isInsideEcuador(lon, lat)) return { lat: lon, lon: lat };
     return null;
   }
 

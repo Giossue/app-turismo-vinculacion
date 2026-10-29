@@ -19,6 +19,10 @@ import {
   ValidateNested,
 } from "class-validator";
 
+import {
+  ECUADOR_BOUNDS,
+  ECUADOR_COORDINATES_MESSAGE,
+} from "../common/ecuador-bounds";
 import { ESTABLISHMENT_VISUAL_ICON_CODES } from "../establishments/establishment-visuals";
 
 export const ADMIN_ESTABLISHMENT_CATEGORY_SCHEMES = [
@@ -419,15 +423,15 @@ export class SaveAdminCenterDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(-90)
-  @Max(90)
+  @Min(ECUADOR_BOUNDS.minLatitude, { message: ECUADOR_COORDINATES_MESSAGE })
+  @Max(ECUADOR_BOUNDS.maxLatitude, { message: ECUADOR_COORDINATES_MESSAGE })
   latitude?: number;
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(-180)
-  @Max(180)
+  @Min(ECUADOR_BOUNDS.minLongitude, { message: ECUADOR_COORDINATES_MESSAGE })
+  @Max(ECUADOR_BOUNDS.maxLongitude, { message: ECUADOR_COORDINATES_MESSAGE })
   longitude?: number;
 
   @IsOptional()
