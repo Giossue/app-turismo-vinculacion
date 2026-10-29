@@ -2,6 +2,7 @@ import { ApiProperty } from "@nestjs/swagger";
 
 export class AdminNavigationSignalDto {
   @ApiProperty({
+    type: Number,
     minimum: 0,
     description: "Registros que aún requieren trabajo.",
   })
