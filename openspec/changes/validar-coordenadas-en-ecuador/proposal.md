@@ -8,6 +8,7 @@ Dos establecimientos publicados (FOLK y MARISQUERIA 7 ANCLAS) tenían la longitu
 
 - Módulo compartido `common/ecuador-bounds` con los límites de Ecuador (incluye Galápagos) y `isInsideEcuador`; la importación de MINTUR lo reutiliza.
 - El guardado manual de establecimientos y `SaveAdminCenterDto` rechazan coordenadas fuera de Ecuador con un mensaje claro.
+- La validación del panel admin de centros también cubre las coordenadas inicial y final de las vías de acceso y las coordenadas de las facilidades del entorno.
 - Datos corregidos en producción: FOLK (id 107) a `-78,998689` y MARISQUERIA 7 ANCLAS (id 127) a `-79,006006`, con respaldo previo de las filas y confirmación por dirección y vecinos.
 
 ## Capabilities
@@ -18,4 +19,4 @@ Dos establecimientos publicados (FOLK y MARISQUERIA 7 ANCLAS) tenían la longitu
 
 ## Impact
 
-API (`establishments.service`, `admin.dto`, importación). Sin migraciones. Las coordenadas de recorridos (inicio y fin de rutas de un centro) siguen con el rango global y quedan fuera de este cambio.
+API (`establishments.service`, `admin.dto`, importación). Sin migraciones.

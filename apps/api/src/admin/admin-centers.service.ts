@@ -39,6 +39,16 @@ import {
   DEFAULT_ESTABLISHMENT_VISUAL_ICON,
   getEstablishmentVisualColor,
 } from "../establishments/establishment-visuals";
+import { ECUADOR_BOUNDS } from "../common/ecuador-bounds";
+
+const LATITUDE_RANGE = [
+  ECUADOR_BOUNDS.minLatitude,
+  ECUADOR_BOUNDS.maxLatitude,
+] as const;
+const LONGITUDE_RANGE = [
+  ECUADOR_BOUNDS.minLongitude,
+  ECUADOR_BOUNDS.maxLongitude,
+] as const;
 
 type JsonRecord = Record<string, unknown>;
 type CatalogKey =
@@ -552,10 +562,10 @@ function validateAccessibilityDetailsBlock(value: unknown): string | null {
       );
       if (distanceError) return distanceError;
       for (const [key, label, min, max] of [
-        ["startLatitude", "latitud inicial", -90, 90],
-        ["endLatitude", "latitud final", -90, 90],
-        ["startLongitude", "longitud inicial", -180, 180],
-        ["endLongitude", "longitud final", -180, 180],
+        ["startLatitude", "latitud inicial", ...LATITUDE_RANGE],
+        ["endLatitude", "latitud final", ...LATITUDE_RANGE],
+        ["startLongitude", "longitud inicial", ...LONGITUDE_RANGE],
+        ["endLongitude", "longitud final", ...LONGITUDE_RANGE],
       ] as const) {
         const coordinate = road[key];
         if (
@@ -566,7 +576,7 @@ function validateAccessibilityDetailsBlock(value: unknown): string | null {
             coordinate < min ||
             coordinate > max)
         ) {
-          return `La ${label} de la vía no es válida.`;
+          return `La ${label} de la vía no es válida o está fuera de Ecuador.`;
         }
       }
       const textError = validateAccessibilityTextFields(road, [
@@ -901,8 +911,8 @@ function validateFacilityDetailsBlock(value: unknown): string | null {
       return "La cantidad de facilidad debe ser un entero no negativo.";
     }
     for (const [key, label, min, max] of [
-      ["latitude", "latitud de facilidad", -90, 90],
-      ["longitude", "longitud de facilidad", -180, 180],
+      ["latitude", "latitud de facilidad", ...LATITUDE_RANGE],
+      ["longitude", "longitud de facilidad", ...LONGITUDE_RANGE],
     ] as const) {
       const coordinate = item[key];
       if (
@@ -913,7 +923,7 @@ function validateFacilityDetailsBlock(value: unknown): string | null {
           coordinate < min ||
           coordinate > max)
       ) {
-        return `La ${label} no es válida.`;
+        return `La ${label} no es válida o está fuera de Ecuador.`;
       }
     }
     if (

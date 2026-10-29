@@ -4,6 +4,7 @@ import { validate } from "class-validator";
 import { describe, expect, it } from "vitest";
 
 import { SaveAdminCenterDto } from "../src/admin/admin.dto";
+import { validateAdminSectionContent } from "../src/admin/admin-centers.service";
 import {
   ECUADOR_COORDINATES_MESSAGE,
   isInsideEcuador,
@@ -53,5 +54,41 @@ describe("Ecuador coordinate bounds", () => {
       .flatMap((error) => Object.values(error.constraints ?? {}));
     expect(failing).toContain(ECUADOR_COORDINATES_MESSAGE);
     expect(errors.some((error) => error.property === "latitude")).toBe(false);
+  });
+});
+
+describe("Ecuador bounds in admin center details", () => {
+  const base = { schemaVersion: 1, response: "SI" };
+
+  it("rejects road endpoints outside Ecuador and keeps valid ones", () => {
+    const road = {
+      roadTypeId: 3,
+      startLatitude: -1.5922,
+      startLongitude: -79.00136,
+      endLatitude: -1.5883,
+      endLongitude: -79.00685,
+    };
+    const check = (override: Record<string, number>) =>
+      validateAdminSectionContent({
+        ...base,
+        accessibilityDetails: { roads: [{ ...road, ...override }] },
+      });
+
+    expect(check({})).toBeNull();
+    expect(check({ endLongitude: -100.99 })).toContain("fuera de Ecuador");
+    expect(check({ startLatitude: 40.4 })).toContain("fuera de Ecuador");
+  });
+
+  it("rejects facility coordinates outside Ecuador", () => {
+    const check = (longitude: number) =>
+      validateAdminSectionContent({
+        ...base,
+        facilitiesDetails: [
+          { typeId: 30, quantity: 1, latitude: -1.59, longitude },
+        ],
+      });
+
+    expect(check(-79.0)).toBeNull();
+    expect(check(-97.0)).toContain("fuera de Ecuador");
   });
 });
