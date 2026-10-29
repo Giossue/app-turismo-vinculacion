@@ -122,7 +122,9 @@ Requiere `20261005_establishment_favorites_media.sql`.
 
 ## Eliminación administrativa
 
-El DELETE requiere `ADMINISTRADOR` y confirmación en el portal. Marca `eliminado_at` y
+El DELETE requiere `ADMINISTRADOR` o `AGENTE_TURISTICO` y confirmación en el portal. El
+administrador elimina cualquiera; el agente solo los suyos (`responsable_usuario_id`) y nunca
+mientras están en revisión (409); el ajeno responde 404. Marca `eliminado_at` y
 `activo=false` y registra `ELIMINAR` en `auditoria_catalogos` dentro de una transacción.
 El establecimiento se retira del listado, la revisión, las consultas públicas y las
 teselas nuevas. Edición, envío, revisión y reactivación posteriores responden como registro

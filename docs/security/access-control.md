@@ -11,8 +11,9 @@ El móvil y el panel reflejan permisos. Los roles no se aceptan desde el body.
 Un ID, código, slug o referencia opaca de IA no autoriza nada. Comprobar todos los
 IDs relacionados, lecturas, escrituras, media, exportaciones e historia privada.
 
-El agente institucional captura sus fichas y catastros; el administrador decide
-revisión/publicación y catálogo global. La consulta pública excluye borradores,
+El agente institucional captura, edita y elimina sus fichas y catastros (solo los que él
+creó, comprobado con `responsable_usuario_id`; la ficha ajena responde 404 y durante la
+revisión no se puede eliminar); el administrador decide revisión/publicación y catálogo global. La consulta pública excluye borradores,
 datos privados y registros fuera de sus reglas de visibilidad.
 
 Los guards existentes son propios de Nest y verifican JWT con `jose`; no se usa

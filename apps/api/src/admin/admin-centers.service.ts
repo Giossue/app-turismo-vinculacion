@@ -3,6 +3,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Logger,
   Optional,
 } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
@@ -1879,6 +1880,8 @@ function getCoreSectionCompletion(
 
 @Injectable()
 export class AdminCentersService {
+  private readonly logger = new Logger(AdminCentersService.name);
+
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     @Optional() @Inject(MediaService) private readonly media?: MediaService,
@@ -2928,17 +2931,40 @@ export class AdminCentersService {
    * historial, archivos…) se borran en cascada y los archivos se retiran del
    * almacenamiento una vez confirmada la transacción.
    */
-  async deleteCenter(code: string) {
+  /**
+   * Borra la ficha de verdad. El administrador puede borrar cualquiera; un
+   * agente solo las suyas y nunca mientras están en revisión.
+   */
+  async deleteCenter(code: string, actorId?: number, isAdmin = true) {
     const removed = await this.dataSource.transaction(async (manager) => {
       const rows = (await manager.query(
-        `SELECT id, TRIM(codigo_atractivo) AS code
-           FROM centros_turisticos
-          WHERE TRIM(codigo_atractivo) = TRIM($1) FOR UPDATE`,
+        `SELECT c.id, TRIM(c.codigo_atractivo) AS code,
+                c.responsable_usuario_id AS "responsibleId",
+                er.codigo AS "statusCode", c.publicado_at AS "publishedAt"
+           FROM centros_turisticos c
+           LEFT JOIN estados_resenia er ON er.id = c.estado_resenia_id
+          WHERE TRIM(c.codigo_atractivo) = TRIM($1) FOR UPDATE OF c`,
         [code],
-      )) as Array<{ id: string; code: string }>;
+      )) as Array<
+        Pick<CenterRow, "responsibleId" | "statusCode" | "publishedAt"> & {
+          id: string;
+          code: string;
+        }
+      >;
       const current = rows[0];
       if (!current)
         throw new NotFoundException("No se encontró la ficha turística.");
+      if (!isAdmin) {
+        this.assertCenterAccess(current, actorId, isAdmin);
+        if (
+          centerReviewStatus(current.statusCode, current.publishedAt).code ===
+          "EN_REVISION"
+        ) {
+          throw new ConflictException(
+            "No puedes eliminar una ficha mientras está en revisión.",
+          );
+        }
+      }
       const files = (await manager.query(
         `SELECT ruta_archivo AS key
            FROM archivos_centro_turistico
@@ -2951,6 +2977,10 @@ export class AdminCentersService {
       return { code: current.code, keys: files.map((file) => file.key) };
     });
     await this.media?.removeObjects(removed.keys);
+    // El borrado arrastra la auditoría de la ficha; este registro la sustituye.
+    this.logger.warn(
+      `Ficha ${removed.code} eliminada por el usuario ${actorId ?? "desconocido"} (${isAdmin ? "administrador" : "agente"}).`,
+    );
     return { code: removed.code, deleted: true };
   }
 

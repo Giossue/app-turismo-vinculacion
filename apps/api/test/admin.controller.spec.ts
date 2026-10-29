@@ -121,7 +121,7 @@ describe("AdminController deletion boundaries", () => {
     } as never);
     const user = { id: 7, roles: ["ADMINISTRADOR"] } as never;
 
-    await expect(controller.deleteCenter("EC-001")).resolves.toEqual({
+    await expect(controller.deleteCenter("EC-001", user)).resolves.toEqual({
       data: { code: "EC-001", deleted: true },
     });
     await expect(
@@ -129,7 +129,7 @@ describe("AdminController deletion boundaries", () => {
     ).resolves.toEqual({
       data: { catalog: "FACILITY", id: 3, deleted: true },
     });
-    expect(deleteCenter).toHaveBeenCalledWith("EC-001");
+    expect(deleteCenter).toHaveBeenCalledWith("EC-001", 7, true);
     expect(deleteCatalog).toHaveBeenCalledWith(7, "FACILITY", 3);
   });
 
@@ -146,23 +146,52 @@ describe("AdminController deletion boundaries", () => {
     },
   );
 
-  it.each(["deleteCenter", "deleteCatalog"] as const)(
-    "limits %s to administrators through the role guard",
-    (method) => {
-      const guard = new RolesGuard(new Reflector());
-      const context = (roles: string[]) =>
-        ({
-          getHandler: () => AdminController.prototype[method],
-          getClass: () => AdminController,
-          switchToHttp: () => ({ getRequest: () => ({ user: { roles } }) }),
-        }) as unknown as ExecutionContext;
+  it("passes the agent identity so the service can check ownership", async () => {
+    const deleteCenter = vi
+      .fn()
+      .mockResolvedValue({ code: "EC-001", deleted: true });
+    const controller = new AdminController({ deleteCenter } as never);
 
+    await controller.deleteCenter("EC-001", {
+      id: 9,
+      roles: ["AGENTE_TURISTICO"],
+    } as never);
+
+    expect(deleteCenter).toHaveBeenCalledWith("EC-001", 9, false);
+  });
+
+  describe("delete role guards", () => {
+    const context = (
+      method: "deleteCenter" | "deleteCatalog",
+      roles: string[],
+    ) =>
+      ({
+        getHandler: () => AdminController.prototype[method],
+        getClass: () => AdminController,
+        switchToHttp: () => ({ getRequest: () => ({ user: { roles } }) }),
+      }) as unknown as ExecutionContext;
+    const guard = () => new RolesGuard(new Reflector());
+
+    it("keeps catalog deletion for administrators only", () => {
       for (const roles of [[], ["AGENTE_TURISTICO"], ["TURISTA"]]) {
-        expect(() => guard.canActivate(context(roles))).toThrow(
-          "No tienes permisos para esta operación.",
-        );
+        expect(() =>
+          guard().canActivate(context("deleteCatalog", roles)),
+        ).toThrow("No tienes permisos para esta operación.");
       }
-      expect(guard.canActivate(context(["ADMINISTRADOR"]))).toBe(true);
-    },
-  );
+      expect(
+        guard().canActivate(context("deleteCatalog", ["ADMINISTRADOR"])),
+      ).toBe(true);
+    });
+
+    it("lets administrators and agents delete centers, but not tourists", () => {
+      for (const roles of [[], ["TURISTA"]]) {
+        expect(() =>
+          guard().canActivate(context("deleteCenter", roles)),
+        ).toThrow("No tienes permisos para esta operación.");
+      }
+      for (const role of ["ADMINISTRADOR", "AGENTE_TURISTICO"]) {
+        expect(guard().canActivate(context("deleteCenter", [role]))).toBe(true);
+      }
+    });
+  });
 });

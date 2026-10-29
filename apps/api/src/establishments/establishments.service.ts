@@ -580,7 +580,8 @@ export class EstablishmentsService {
     });
   }
 
-  async remove(id: string, actorId: number) {
+  /** El administrador borra cualquiera; un agente solo los suyos y fuera de revisión. */
+  async remove(id: string, actorId: number, isAdmin = true) {
     const numericId = this.parseId(id);
     return this.dataSource.transaction(async (manager) => {
       const current = await this.findWithManager(
@@ -589,6 +590,19 @@ export class EstablishmentsService {
         true,
         true,
       );
+      if (!isAdmin) {
+        await this.assertEstablishmentAccess(
+          manager,
+          numericId,
+          actorId,
+          isAdmin,
+        );
+        if (current.reviewStatus === "EN_REVISION") {
+          throw new ConflictException(
+            "No puedes eliminar un catastro mientras está en revisión.",
+          );
+        }
+      }
       if (current.deletedAt != null) return { id: numericId, deleted: true };
       const [removed] = (await manager.query(
         `WITH removed AS (

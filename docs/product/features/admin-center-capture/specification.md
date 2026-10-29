@@ -165,11 +165,15 @@ tenía fecha pública, o `BORRADOR`. No se publica contenido mediante la migraci
 
 ## Eliminación administrativa
 
-`DELETE /admin/centers/:code` requiere `ADMINISTRADOR` y **borra la ficha de verdad**, en una
+`DELETE /admin/centers/:code` requiere `ADMINISTRADOR` o `AGENTE_TURISTICO`. El administrador borra
+cualquier ficha; el agente solo las que él creó (`responsable_usuario_id`), en `BORRADOR` o
+`PUBLICADO`, y nunca mientras están en revisión (409). La ficha ajena responde 404. El borrado
+**borra la ficha de verdad**, en una
 transacción: sus borradores, revisiones, multimedia, relaciones, favoritos, opiniones e
 historial de auditoría se eliminan en cascada, y las conversaciones de IA quedan sin ficha.
 Tras confirmar la transacción se retiran sus archivos del almacenamiento (los fallos de
-limpieza no deshacen el borrado). Un código inexistente devuelve 404, también al repetir la
+limpieza no deshacen el borrado). Como el borrado arrastra la auditoría de la ficha, la API
+registra en el log quién la eliminó. Un código inexistente devuelve 404, también al repetir la
 llamada. El historial de auditoría sigue siendo inmutable (`20261016_center_hard_delete.sql`
 solo admite su borrado cuando lo dispara el borrado de su ficha), y el número secuencial del
 código se recalcula sobre las fichas restantes.

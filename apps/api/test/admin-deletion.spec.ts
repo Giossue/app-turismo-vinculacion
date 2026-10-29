@@ -63,6 +63,83 @@ describe("administrative logical deletion", () => {
     expect(removeObjects).not.toHaveBeenCalled();
   });
 
+  describe("agent ownership", () => {
+    const own = {
+      id: "10",
+      code: "EC-001",
+      responsibleId: "7",
+      statusCode: "BORRADOR",
+      publishedAt: null,
+    };
+
+    it("lets an agent delete a center they own", async () => {
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce([own])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      const { service } = createService(query);
+
+      await expect(service.deleteCenter("EC-001", 7, false)).resolves.toEqual({
+        code: "EC-001",
+        deleted: true,
+      });
+      expect(query.mock.calls[2][0]).toMatch(
+        /^\s*DELETE FROM centros_turisticos/,
+      );
+    });
+
+    it("lets an agent delete their published center", async () => {
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce([{ ...own, statusCode: "PUBLICADO" }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      const { service } = createService(query);
+
+      await expect(
+        service.deleteCenter("EC-001", 7, false),
+      ).resolves.toMatchObject({ deleted: true });
+    });
+
+    it("hides another agent's center as not found and deletes nothing", async () => {
+      const query = vi.fn().mockResolvedValueOnce([own]);
+      const { service } = createService(query);
+
+      await expect(service.deleteCenter("EC-001", 99, false)).rejects.toThrow(
+        "No se encontró la ficha turística.",
+      );
+      expect(query).toHaveBeenCalledTimes(1);
+    });
+
+    it("refuses to delete a center while it is under review", async () => {
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce([{ ...own, statusCode: "EN_REVISION" }]);
+      const { service } = createService(query);
+
+      await expect(service.deleteCenter("EC-001", 7, false)).rejects.toThrow(
+        "mientras está en revisión",
+      );
+      expect(query).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps the administrator free to delete any center in any state", async () => {
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce([
+          { ...own, responsibleId: "55", statusCode: "EN_REVISION" },
+        ])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      const { service } = createService(query);
+
+      await expect(
+        service.deleteCenter("EC-001", 1, true),
+      ).resolves.toMatchObject({ deleted: true });
+    });
+  });
+
   it("returns not found for an unknown center", async () => {
     const query = vi.fn().mockResolvedValueOnce([]);
     const { service } = createService(query);

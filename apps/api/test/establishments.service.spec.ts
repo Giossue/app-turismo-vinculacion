@@ -170,6 +170,59 @@ describe("EstablishmentsService", () => {
     },
   );
 
+  describe("agent deletion", () => {
+    const deletedAt = "2026-10-02T15:00:00.000Z";
+
+    it("lets an agent delete a catastro they own", async () => {
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce([{ ...row, reviewStatus: "PUBLICADO" }])
+        .mockResolvedValueOnce([{ responsibleId: 7 }])
+        .mockResolvedValueOnce([{ deletedAt, updatedAt: deletedAt }])
+        .mockResolvedValueOnce([]);
+      const { dataSource } = transactionalDataSource(query);
+      const service = new EstablishmentsService(dataSource);
+
+      await expect(service.remove("8", 7, false)).resolves.toEqual({
+        id: 8,
+        deleted: true,
+      });
+      expect(query.mock.calls[1]?.[0]).toContain("responsable_usuario_id");
+      expect(query.mock.calls[2]?.[0]).toContain(
+        "eliminado_at = CURRENT_TIMESTAMP",
+      );
+    });
+
+    it("hides another agent's catastro and does not delete it", async () => {
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce([{ ...row, reviewStatus: "BORRADOR" }])
+        .mockResolvedValueOnce([{ responsibleId: 99 }]);
+      const { dataSource, queryRunner } = transactionalDataSource(query);
+      const service = new EstablishmentsService(dataSource);
+
+      await expect(service.remove("8", 7, false)).rejects.toThrow(
+        "No se encontró el establecimiento.",
+      );
+      expect(query).toHaveBeenCalledTimes(2);
+      expect(queryRunner.commitTransaction).not.toHaveBeenCalled();
+    });
+
+    it("refuses to delete a catastro under review", async () => {
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce([{ ...row, reviewStatus: "EN_REVISION" }])
+        .mockResolvedValueOnce([{ responsibleId: 7 }]);
+      const { dataSource } = transactionalDataSource(query);
+      const service = new EstablishmentsService(dataSource);
+
+      await expect(service.remove("8", 7, false)).rejects.toThrow(
+        "mientras está en revisión",
+      );
+      expect(query).toHaveBeenCalledTimes(2);
+    });
+  });
+
   it("marks a catastro deleted and audits both snapshots in one transaction", async () => {
     const deletedAt = "2026-10-02T15:00:00.000Z";
     const query = vi

@@ -64,28 +64,50 @@ describe("AdminEstablishmentsController audit", () => {
     await expect(
       controller.remove("8", { id: 4, roles: ["ADMINISTRADOR"] } as never),
     ).resolves.toEqual({ data: { id: 8, deleted: true } });
-    expect(remove).toHaveBeenCalledWith("8", 4);
+    expect(remove).toHaveBeenCalledWith("8", 4, true);
   });
 
-  it.each([
-    { roles: [] },
-    { roles: ["AGENTE_TURISTICO"] },
-    { roles: ["TURISTA"] },
-  ])(
-    "denies deleting a catastro without the administrator role: $roles",
-    ({ roles }) => {
-      const guard = new RolesGuard(new Reflector());
-      const context = {
+  it("lets an agent delete only through the ownership check in the service", async () => {
+    const remove = vi.fn().mockResolvedValue({ id: 8, deleted: true });
+    const controller = new AdminEstablishmentsController(
+      { remove } as never,
+      {} as never,
+    );
+
+    await controller.remove("8", {
+      id: 5,
+      roles: ["AGENTE_TURISTICO"],
+    } as never);
+
+    expect(remove).toHaveBeenCalledWith("8", 5, false);
+  });
+
+  describe("delete role guard", () => {
+    const context = (roles: string[]) =>
+      ({
         getHandler: () => AdminEstablishmentsController.prototype.remove,
         getClass: () => AdminEstablishmentsController,
         switchToHttp: () => ({ getRequest: () => ({ user: { roles } }) }),
-      } as unknown as ExecutionContext;
+      }) as unknown as ExecutionContext;
 
-      expect(() => guard.canActivate(context)).toThrow(
-        "No tienes permisos para esta operación.",
-      );
-    },
-  );
+    it.each([[[]], [["TURISTA"]]])(
+      "denies deleting a catastro to %j",
+      (roles) => {
+        expect(() =>
+          new RolesGuard(new Reflector()).canActivate(context(roles)),
+        ).toThrow("No tienes permisos para esta operación.");
+      },
+    );
+
+    it.each([["ADMINISTRADOR"], ["AGENTE_TURISTICO"]])(
+      "lets %s reach the handler",
+      (role) => {
+        expect(
+          new RolesGuard(new Reflector()).canActivate(context([role])),
+        ).toBe(true);
+      },
+    );
+  });
 
   it.each(["importRegistry", "importStatus"] as const)(
     "reserves the MINTUR registry import (%s) for administrators",

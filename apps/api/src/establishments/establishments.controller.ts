@@ -141,12 +141,18 @@ export class AdminEstablishmentsController {
   }
 
   @Delete(":id")
-  @Roles("ADMINISTRADOR")
+  @Roles("ADMINISTRADOR", "AGENTE_TURISTICO")
   async remove(
     @Param("id") id: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return { data: await this.establishments.remove(id, user.id) };
+    return {
+      data: await this.establishments.remove(
+        id,
+        user.id,
+        user.roles.includes("ADMINISTRADOR"),
+      ),
+    };
   }
 
   @Post(":id/submit-review")
