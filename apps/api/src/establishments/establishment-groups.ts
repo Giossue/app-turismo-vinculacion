@@ -16,6 +16,8 @@ export const ESTABLISHMENT_MAP_GROUPS = {
   },
   recreation: { activities: ["PARQUES DE ATRACCIONES ESTABLES"] },
   community: { activities: ["CENTROS DE TURISMO COMUNITARIO"] },
+  health: { activities: ["SERVICIOS DE SALUD"] },
+  safety: { activities: ["SEGURIDAD Y EMERGENCIAS"] },
   transport: { activities: ["TRANSPORTE TURÍSTICO"] },
 } as const satisfies Record<
   string,

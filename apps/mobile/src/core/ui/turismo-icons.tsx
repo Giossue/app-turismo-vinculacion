@@ -26,6 +26,7 @@ import EyeOff from "lucide-react-native/icons/eye-off";
 import Flag from "lucide-react-native/icons/flag";
 import Footprints from "lucide-react-native/icons/footprints";
 import History from "lucide-react-native/icons/rotate-ccw-clock";
+import Hospital from "lucide-react-native/icons/hospital";
 import Hotel from "lucide-react-native/icons/hotel";
 import Image from "lucide-react-native/icons/image";
 import Landmark from "lucide-react-native/icons/landmark";
@@ -67,6 +68,7 @@ import VolumeX from "lucide-react-native/icons/volume-x";
 import WifiOff from "lucide-react-native/icons/wifi-off";
 import X from "lucide-react-native/icons/x";
 
+import Shield from "lucide-react-native/icons/shield";
 import { turismoIconSizes, turismoIconStrokes } from "./tokens";
 
 const turismoIconMap = {
@@ -103,7 +105,9 @@ const turismoIconMap = {
   logOut: LogOut,
   genderMale: Mars,
   genderFemale: Venus,
+  hospital: Hospital,
   hotel: Hotel,
+  shield: Shield,
   landmark: Landmark,
   map: Map,
   mapPin: MapPin,

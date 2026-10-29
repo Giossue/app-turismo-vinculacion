@@ -89,6 +89,8 @@ export const placesEn: Messages["places"] = {
       recreation: "Recreation",
       community: "Community tourism",
       transport: "Tourist transport",
+      health: "Health",
+      safety: "Safety",
     },
     results: {
       caption: "Tourism registry",

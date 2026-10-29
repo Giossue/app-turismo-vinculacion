@@ -92,6 +92,8 @@ export const placesEs = {
       recreation: "Recreación",
       community: "Turismo comunitario",
       transport: "Transporte turístico",
+      health: "Salud",
+      safety: "Seguridad",
     },
     results: {
       caption: "Catastro turístico",

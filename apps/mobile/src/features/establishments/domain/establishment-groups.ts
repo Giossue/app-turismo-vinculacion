@@ -88,6 +88,22 @@ export const establishmentMapGroups = [
     icon: "bus",
     primary: false,
   },
+  {
+    key: "health",
+    get label() {
+      return messages().places.establishment.groups.health;
+    },
+    icon: "hospital",
+    primary: false,
+  },
+  {
+    key: "safety",
+    get label() {
+      return messages().places.establishment.groups.safety;
+    },
+    icon: "shield",
+    primary: false,
+  },
 ] as const satisfies readonly Readonly<{
   key: string;
   label: string;
