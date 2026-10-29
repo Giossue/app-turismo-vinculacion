@@ -13,6 +13,8 @@ la ficha técnica de un centro turístico.
   territoriales en cascada (provincia, cantón y localidad) y estado activo.
 - Alta, edición y activación/desactivación lógica utilizando los datos de
   `establecimientos_turisticos` y la taxonomía jerárquica del catastro.
+  La taxonomía incluye, además de las actividades de MINTUR, `SERVICIOS DE SALUD` y
+  `SEGURIDAD Y EMERGENCIAS` (`20261029_health_safety_establishment_taxonomy.sql`).
 - Flujo de captura `BORRADOR` → `EN_REVISION` → `PUBLICADO` o `RECHAZADO`. Los agentes
   solo pueden consultar y editar sus propios registros en borrador/rechazados; la decisión
   administrativa conserva la observación, el solicitante y las fechas de revisión.

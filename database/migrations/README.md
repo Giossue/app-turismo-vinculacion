@@ -323,3 +323,13 @@ apagados). Con el interruptor encendido, lo que un agente turístico envía a re
 se publica en el mismo momento, sin pasar por el administrador. Aplicarla antes de
 desplegar la API que los consulta. Rollback: `DROP TABLE configuracion_plataforma`
 solo después de revertir la API.
+
+La migración `20261029_health_safety_establishment_taxonomy.sql` añade al catastro dos
+actividades de apoyo al visitante, `SERVICIOS DE SALUD` (farmacia, hospital, centro de
+salud, clínica) y `SEGURIDAD Y EMERGENCIAS` (UPC, estación de policía, bomberos, ECU 911),
+cada clasificación con su «Categoría única». Es aditiva e idempotente y no toca filas
+existentes. Salud usa el ícono `health-hospital`; seguridad usa `tourism-information`
+hasta que exista un ícono propio. Los filtros del mapa móvil no cambian: los puntos se
+ven y el agente los encuentra, pero sin chip de filtro hasta publicar una versión de la
+app que lo incluya. Rollback: borrar por `codigo` las 2 actividades, 8 clasificaciones y
+8 categorías, solo si ningún establecimiento las usa.
