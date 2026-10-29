@@ -136,7 +136,10 @@ function matchesEstablishmentType(
 }
 
 const noPlacesHint =
-  "Sin coincidencias. Prueba con otras palabras (sinónimo, tipo de lugar) o con type establishment, sin text y limit 50 para revisar la lista compacta, antes de decir que no hay.";
+  "Sin coincidencias. El catálogo está en español: prueba text en español, otras palabras (sinónimo, tipo de lugar) o type establishment, sin text y limit 50 para revisar la lista compacta, antes de decir que no hay.";
+
+const languageHint =
+  " Si text no estaba en español o era muy específico, reintenta con text en español o sin text antes de decir que no hay nada cerca.";
 
 export { agentChatSchema };
 export type { AgentChatInput };
@@ -212,6 +215,9 @@ export class AiAgentService {
     let generalCatalogFailed = false;
     let establishmentBrowseRefs: string[] | null = null;
     let establishmentBrowseFailed = false;
+    // Con nearby la respuesta del modelo (distancias, outsideRadius) no se reemplaza
+    // por el respaldo de descubrimiento sin ubicación.
+    let establishmentNearbySearched = false;
     let placeSearches = 0;
     let establishmentSequence = 0;
     let poiSequence = 0;
@@ -457,6 +463,7 @@ export class AiAgentService {
           "# HERRAMIENTAS",
           "- searchPlaces: única herramienta para encontrar lugares (centros turísticos, puntos de interés y establecimientos). Pregunta general de qué visitar: type center, sin text. Dónde comer u hospedarse: type food o lodging; sin intención de cercanía no afirmes que algo está cerca. Un lugar o negocio por nombre, o una palabra cotidiana (glamping, cabaña, camping, piscina, balneario, tour, fiesta, desayuno): text con esa palabra y type any o establishment. cerca, cercano, cerca de mí, alrededor o algo equivalente con ubicación aproximada: nearby true, sin buscar la frase cerca de mí como texto; text puede acotar el tipo (restaurante, hostal, glamping). Si dan una localidad, úsala como locality. No requiere GPS salvo con nearby.",
           "- Las categorías del catálogo son administrativas y el visitante no las usa: dormir, hospedarse, cabaña o glamping son alojamiento al aire libre o en hostal; comer, desayunar o tomar café son restaurantes y cafeterías; piscina o balneario son recreación; tour o excursión son agencias. Interpreta lo que quiere decir y, si una búsqueda no da resultados, reintenta con otras palabras o con type establishment, sin text y limit 50 para revisar la lista compacta, y elige tú lo que encaje, antes de decir que no hay.",
+          "- El catálogo está en español y text se compara con nombres, actividades y categorías: escribe text siempre en español aunque el visitante hable en otro idioma (coffee → cafetería, restaurant → restaurante, hotel o stay → alojamiento, cabin → cabaña, tour → agencia). Si type food o lodging ya expresa lo que pide, no pongas text.",
           "- Con nearby, si no hay nada en el radio el resultado trae outsideRadius: dilo como lejano, con la distancia, y nunca lo llames cercano.",
           "- requestLocationAccess: consulta cercana sin ubicación. Solo propone una acción para que el móvil pida o actualice la ubicación; no otorga permisos ni accede al GPS.",
           "- getPublishedCenter: precio de entrada, horario u otros detalles de un centro. Resuelve primero el lugar; la búsqueda general no trae esos datos.",
@@ -751,6 +758,7 @@ export class AiAgentService {
 
                 try {
                   const results = await search(args.radiusMeters, args.limit);
+                  establishmentNearbySearched = true;
                   await attachTravelTimes(results.map((item) => item.ref));
 
                   // Sin nada dentro del radio: el más cercano fuera de él,
@@ -776,9 +784,11 @@ export class AiAgentService {
                     source: sourceLabel,
                     ...(results.length === 0
                       ? {
-                          message: nearestOutside
-                            ? `No hay nada dentro de ${args.radiusMeters} m. Lo más cercano está fuera del radio (outsideRadius): menciónalo como lejano, con su distancia, nunca como cercano.`
-                            : "No encontré lugares en esa zona.",
+                          message:
+                            (nearestOutside
+                              ? `No hay nada dentro de ${args.radiusMeters} m. Lo más cercano está fuera del radio (outsideRadius): menciónalo como lejano, con su distancia, nunca como cercano.`
+                              : "No encontré lugares en esa zona.") +
+                            (text ? languageHint : ""),
                           ...(nearestOutside
                             ? {
                                 outsideRadius: {
@@ -1186,7 +1196,7 @@ export class AiAgentService {
             ),
           );
         }
-        if (forceEstablishmentKind) {
+        if (forceEstablishmentKind && !establishmentNearbySearched) {
           return completeEstablishmentDiscoveryAnswer(
             fallback,
             forceEstablishmentKind,
@@ -1216,7 +1226,7 @@ export class AiAgentService {
           ),
         );
       }
-      if (forceEstablishmentKind) {
+      if (forceEstablishmentKind && !establishmentNearbySearched) {
         return finishAnswer(
           completeEstablishmentDiscoveryAnswer(
             answer,

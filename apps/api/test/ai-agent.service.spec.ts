@@ -427,6 +427,46 @@ describe("AiAgentService", () => {
       results: [],
       outsideRadius: { name: "Cascada Lejana", distanceMeters: 48_000 },
     });
+    expect(String(trace[0].output.message)).not.toContain("en español");
+  });
+
+  it("tells the model to retry in Spanish when a nearby text filter finds nothing", async () => {
+    const agent = new AiAgentService(
+      new ConfigService({ AI_PROVIDER: "openai", AI_MODEL: "x" }),
+      {
+        ...repository(),
+        listNearbyPublished: async () => ({ items: [] }),
+      } as never,
+      establishmentSearch(),
+      { nearby: async () => [] },
+      poiRepository(),
+      transportRepository(),
+      routeUseCase(),
+    );
+    const model = new MockLanguageModelV4({
+      doStream: [
+        toolCallTurn("searchPlaces", { nearby: true, text: "coffee" }),
+        textTurn("No encontré cafeterías."),
+      ],
+    });
+    vi.spyOn(
+      agent as unknown as { model: () => unknown },
+      "model",
+    ).mockReturnValue(model);
+    const trace: { output: { message: string } }[] = [];
+
+    await agent.generate(
+      {
+        message: "any coffee shops near me?",
+        history: [],
+        location: { latitude: -1.59, longitude: -79.0 },
+      },
+      undefined,
+      undefined,
+      { onToolTrace: (entry) => trace.push(entry as never) },
+    );
+
+    expect(trace[0].output.message).toContain("text en español");
   });
 
   it("filters nearby establishments by food type inside the radius", async () => {
@@ -550,6 +590,50 @@ describe("AiAgentService", () => {
       (call) => call.toolChoice?.type === "tool",
     ).length;
     expect(forcedAfterSecond).toBe(1);
+  });
+
+  it("keeps the model answer when a lodging question is resolved with a nearby search", async () => {
+    const hotel = {
+      nombreComercial: "Hotel Márquez",
+      actividad: "ALOJAMIENTO",
+      clasificacion: "HOTEL",
+      categoria: null,
+      direccion: null,
+      telefono: null,
+      latitude: -1.59,
+      longitude: -79,
+      distanceMeters: 400,
+      localityName: "Guaranda",
+    };
+    const agent = new AiAgentService(
+      new ConfigService({ AI_PROVIDER: "openai", AI_MODEL: "x" }),
+      repository(),
+      establishmentSearch(),
+      { nearby: async () => [hotel] },
+      poiRepository(),
+      transportRepository(),
+      routeUseCase(),
+    );
+    const model = new MockLanguageModelV4({
+      doStream: [
+        toolCallTurn("searchPlaces", { type: "lodging", nearby: true }),
+        toolCallTurn("showPlaceCards", { refs: ["establishment:1"] }),
+        textTurn("There is a hotel 400 m away."),
+      ],
+    });
+    vi.spyOn(
+      agent as unknown as { model: () => unknown },
+      "model",
+    ).mockReturnValue(model);
+
+    const answer = await agent.generate({
+      message: "is there a hotel close to me?",
+      history: [],
+      location: { latitude: -1.59, longitude: -79.0 },
+    });
+
+    expect(answer.text).toBe("There is a hotel 400 m away.");
+    expect(answer.cards.map((card) => card.name)).toEqual(["Hotel Márquez"]);
   });
 
   it("fails closed when the selected provider has no key", async () => {
