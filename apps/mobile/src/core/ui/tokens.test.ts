@@ -4,13 +4,16 @@ import { getContrastRatio } from "./color-contrast";
 import { describeViewerPhoto } from "./photo-viewer-label";
 import { turismoColors, turismoMetrics } from "./tokens";
 
-/** WCAG AA para texto normal; los íconos y bordes necesitan 3:1. */
+/**
+ * WCAG AA para texto normal; los íconos y bordes necesitan 3:1. `primary` no
+ * figura aquí porque es un relleno: su texto es `onPrimary`, y para texto sobre
+ * superficies se usa `primaryStrong`.
+ */
 const textMinimum = 4.5;
 const textRoles = [
   "text",
   "textMuted",
   "textFaint",
-  "primary",
   "primaryStrong",
   "accent",
   "danger",

@@ -20,7 +20,7 @@ export function getCenterMapLabelStyles({
 }>) {
   const labelPalette = basemapPalettes[scheme];
   // Los PNG de atractivos comparten el verde del tema general.
-  const centerPinColor = getTurismoColors(scheme).primary;
+  const centerPinColor = getTurismoColors(scheme).primaryStrong;
   const labelHalo = {
     "text-halo-color": labelPalette.textHalo,
     "text-halo-width": 1.5,

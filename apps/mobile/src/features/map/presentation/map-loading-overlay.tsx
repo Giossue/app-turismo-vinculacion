@@ -29,7 +29,7 @@ export function MapLoadingOverlay({ visible }: Readonly<{ visible: boolean }>) {
         animatedStyle,
       ]}
     >
-      <ActivityIndicator color={colors.primary} />
+      <ActivityIndicator color={colors.primaryStrong} />
     </Animated.View>
   );
 }

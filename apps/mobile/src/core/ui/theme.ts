@@ -73,5 +73,5 @@ export const turismoDarkTheme = createTurismoPaperTheme(
   MD3DarkTheme,
   turismoColors.dark,
   // El gris claro de `accent` necesita texto oscuro en modo oscuro.
-  { onSecondary: turismoColors.dark.onPrimary },
+  { onSecondary: turismoColors.dark.background },
 );

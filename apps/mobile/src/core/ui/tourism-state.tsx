@@ -72,7 +72,7 @@ export function TourismStateView({
         accessible
         style={styles.loadingRow}
       >
-        <ActivityIndicator color={colors.primary} size="small" />
+        <ActivityIndicator color={colors.primaryStrong} size="small" />
         {message ? (
           <Text style={[messageStyle, styles.loadingRowMessage]}>
             {message}
@@ -94,7 +94,7 @@ export function TourismStateView({
       {variant === "loading" ? (
         <ActivityIndicator
           accessibilityLabel={message ?? title}
-          color={colors.primary}
+          color={colors.primaryStrong}
           size={compact ? "small" : "large"}
         />
       ) : stateIcon ? (

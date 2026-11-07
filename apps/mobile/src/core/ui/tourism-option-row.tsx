@@ -45,7 +45,7 @@ export function TourismOptionRow({
         compact && styles.rowCompact,
         {
           backgroundColor: selected ? colors.primarySoft : colors.surfaceMuted,
-          borderColor: selected ? colors.primary : colors.border,
+          borderColor: selected ? colors.primaryStrong : colors.border,
         },
         pressed && styles.pressed,
       ]}

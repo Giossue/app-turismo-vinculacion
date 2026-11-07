@@ -29,7 +29,7 @@ export const accountEs = {
     benefits: {
       saved: "Guarda tus\nlugares favoritos",
       routes: "Accede a rutas\npersonalizadas",
-      agent: "Accede a un\nagente IA turístico",
+      agent: "Accede a un\nagente IA",
     },
     email: "Correo electrónico",
     emailPlaceholder: "tu@correo.com",

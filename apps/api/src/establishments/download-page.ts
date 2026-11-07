@@ -9,15 +9,15 @@ export const APP_RELEASES_API_URL =
   "https://api.github.com/repos/Giossue/app-turismo-vinculacion/releases/latest";
 
 const STYLE = `
-body{margin:0;font-family:system-ui,sans-serif;background:#f4f7f5;color:#17231d;min-height:100vh;display:flex;align-items:center;justify-content:center}
+body{margin:0;font-family:system-ui,sans-serif;background:#f5f6f8;color:#121c28;min-height:100vh;display:flex;align-items:center;justify-content:center}
 main{max-width:460px;padding:24px 20px;text-align:center}
 .mark{display:block;width:120px;height:auto;margin:0 auto 20px}
 h1{margin:0 0 8px;font-size:1.8rem}
-p{color:#4a5a52;line-height:1.5}
-a.btn{display:block;margin:24px 0 8px;padding:16px;border-radius:14px;background:#176b4d;color:#fff;font-weight:700;font-size:1.1rem;text-decoration:none}
-small{color:#5b6b63}
-.version{margin:0;font-weight:600;color:#176b4d}
-ol{text-align:left;color:#4a5a52;line-height:1.6;padding-left:22px;margin-top:28px}
+p{color:#5b6b7f;line-height:1.5}
+a.btn{display:block;margin:24px 0 8px;padding:16px;border-radius:14px;background:#122c41;color:#fff;font-weight:700;font-size:1.1rem;text-decoration:none}
+small{color:#5b6b7f}
+.version{margin:0;font-weight:600;color:#122c41}
+ol{text-align:left;color:#5b6b7f;line-height:1.6;padding-left:22px;margin-top:28px}
 `;
 
 /** Ruta propia del archivo: el usuario nunca ve GitHub, solo este dominio. */

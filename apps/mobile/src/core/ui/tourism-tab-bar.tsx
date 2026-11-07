@@ -134,7 +134,7 @@ export function TourismTabBar({
           <TourismGlassFill />
         </TourismGlassProvider>
         {items.map((item) => {
-          const color = item.selected ? colors.primary : colors.textMuted;
+          const color = item.selected ? colors.primaryStrong : colors.textMuted;
           return (
             <TourismPressable
               accessibilityLabel={item.label}

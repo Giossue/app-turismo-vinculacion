@@ -2,16 +2,16 @@
   <title>monument-14 — Osmic pin</title>
   <style>
     :root {
-      --pin-color: #22c55e;
+      --pin-color: #a9c1e2;
       --inner-color: #06130a;
-      --icon-color: #22c55e;
+      --icon-color: #a9c1e2;
     }
-    #pin-shape { fill: #22c55e; }
+    #pin-shape { fill: #a9c1e2; }
     #inner-background { fill: #06130a; }
     /* recolor Osmic visually without touching original coordinates */
     #osmic-icon path, #osmic-icon circle, #osmic-icon ellipse, #osmic-icon polygon,
     #osmic-icon polyline, #osmic-icon line {
-      fill: #22c55e !important;
+      fill: #a9c1e2 !important;
       stroke: none !important;
     }
     #osmic-icon rect[style*="visibility:hidden"],

@@ -55,13 +55,13 @@ export function TourismTabs<T extends string>({
               styles.tab,
               item.icon && styles.iconTab,
               fill && styles.fillTab,
-              selected && { borderBottomColor: colors.primary },
+              selected && { borderBottomColor: colors.primaryStrong },
               pressed && styles.pressed,
             ]}
           >
             {item.icon ? (
               <TurismoIcon
-                color={selected ? colors.primary : colors.textMuted}
+                color={selected ? colors.primaryStrong : colors.textMuted}
                 name={item.icon}
                 size={turismoIconSizes.md}
               />

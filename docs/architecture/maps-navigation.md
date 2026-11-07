@@ -39,7 +39,7 @@
   los minutos de las tarjetas del agente siempre proceden del proveedor vial. Mostrar
   esas estimaciones no inicia navegación: «Cómo llegar» recalcula la ruta con una
   ubicación fresca y la navegación requiere su confirmación habitual.
-- La vista previa de «Cómo llegar» muestra únicamente el indicador verde mientras
+- La vista previa de «Cómo llegar» muestra únicamente el indicador de carga mientras
   obtiene la ubicación o calcula la ruta, tanto en el panel compacto como expandido.
   No muestra textos de preparación o búsqueda de GPS durante esa espera. Los permisos
   denegados, GPS apagado y errores reales conservan su aviso y la acción de reintento.
@@ -263,7 +263,7 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   el endpoint conserva la marca de punto aproximado; las nuevas coordenadas capturadas por
   operación se publican como ubicación exacta.
   Los centros turísticos usan exclusivamente el pin Osmic `tourism-monument`, recoloreado
-  con el verde institucional; ese código no pertenece al catálogo de catastros.
+  con el azul institucional; ese código no pertenece al catálogo de catastros.
   En el mapa en línea, ese conjunto proviene exclusivamente de una respuesta exitosa de
   `GET /api/v1/centers`; si la respuesta remota está vacía, no se crean pines de ejemplo ni
   se reutiliza el manifiesto offline.
@@ -279,8 +279,8 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
   se desactiva la superposición en las capas generales y el texto es opcional para que
   una etiqueta descartada no suprima su icono. Las etiquetas usan anclas adaptables,
   `Noto Sans Regular`, tamaño que respeta `fontScale` y halo de tema. El texto toma el
-  color del pin que se dibuja: los atractivos usan `getTurismoColors(scheme).primary`
-  (`#166534` en claro y `#22c55e` en oscuro); los catastros y POIs usan el color local
+  color del pin que se dibuja: los atractivos usan `getTurismoColors(scheme).primaryStrong`
+  (`#122c41` en claro y `#a9c1e2` en oscuro); los catastros y POIs usan el color local
   resuelto por su clave de icono, con el mismo respaldo que la imagen si la clave no se
   reconoce. Las capas generales, la selección y el visor local comparten esa regla.
   Solo se añaden nombres cuando el estilo tiene glifos válidos; los iconos permanecen

@@ -35,7 +35,7 @@ export function OpinionListItem({
               styles.avatar,
               {
                 backgroundColor: colors.primarySoft,
-                borderColor: colors.primary,
+                borderColor: colors.primaryStrong,
               },
             ]}
           >

@@ -474,7 +474,7 @@ function FormScene() {
 const styles = StyleSheet.create({
   root: { flex: 1, minHeight: 0 },
   metrics: {
-    color: "#176B4D",
+    color: "#122c41",
     fontSize: 10,
     lineHeight: 12,
     paddingHorizontal: 8,

@@ -73,7 +73,7 @@ export function AccountEntry({
       >
         <View pointerEvents="none" style={styles.heroShade} />
         <View style={styles.headerOverlay}>
-          <TourismHeader onBack={onBack} title={m.account.login.account} />
+          <TourismHeader onBack={onBack} />
         </View>
       </ImageBackground>
 

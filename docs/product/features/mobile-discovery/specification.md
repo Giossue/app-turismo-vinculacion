@@ -112,8 +112,8 @@ consultar sus datos sin conexión.
 - Un nombre que no cabe no obliga a ocultar el icono. Los nombres usan la fuente publicada
   del mapa, tamaño adaptado y halo de contraste en temas claro y oscuro. Sin glifos
   disponibles, se conservan los pines y la interacción sin texto.
-- Cada nombre usa el color de su pin: los atractivos usan verde `#166534` en tema claro
-  y `#22c55e` en oscuro. Los servicios y puntos de interés usan el color local del icono
+- Cada nombre usa el color de su pin: los atractivos usan azul `#122c41` en tema claro
+  y `#a9c1e2` en oscuro. Los servicios y puntos de interés usan el color local del icono
   que se dibuja, incluido el icono de respaldo cuando la clave no se reconoce. La regla
   se aplica también al lugar seleccionado y al visor de ciudad descargada.
 - El lugar seleccionado conserva su pin y nombre visibles, también si se eligió desde

@@ -142,7 +142,7 @@ export function LocalPlacesSource({
           filter={clusterFilter}
           type="symbol"
           layout={labels.clusterNameLayout}
-          paint={{ "text-color": colors.surface }}
+          paint={{ "text-color": colors.onPrimary }}
         />
       ) : null}
       <Layer
@@ -152,7 +152,7 @@ export function LocalPlacesSource({
         filter={unclusteredFilter}
         maxzoom={mapPlaceZoom.establishmentIcon}
         paint={{
-          "circle-color": colors.primary,
+          "circle-color": colors.primaryStrong,
           "circle-radius": 5,
           "circle-stroke-color": colors.surface,
           "circle-stroke-width": 1,
@@ -277,7 +277,7 @@ export function CentersSource({
           id={layerIds.centerClusterNames}
           filter={clusterFilter}
           layout={labels.clusterNameLayout}
-          paint={{ "text-color": colors.surface }}
+          paint={{ "text-color": colors.onPrimary }}
           type="symbol"
         />
       ) : null}
@@ -287,7 +287,7 @@ export function CentersSource({
         filter={unclusteredFilter}
         maxzoom={mapPlaceZoom.centerIcon}
         paint={{
-          "circle-color": colors.primary,
+          "circle-color": colors.primaryStrong,
           "circle-radius": dotRadius,
           "circle-stroke-color": colors.surface,
           "circle-stroke-width": 1,
@@ -380,7 +380,7 @@ export function PlaceMarkerSource({
         key="tourism-place-marker-dot"
         id="tourism-place-marker-dot"
         paint={{
-          "circle-color": colors.primary,
+          "circle-color": colors.primaryStrong,
           "circle-radius": 7,
           "circle-stroke-color": colors.surface,
           "circle-stroke-width": 2.5,

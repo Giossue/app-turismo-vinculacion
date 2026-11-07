@@ -79,7 +79,7 @@ function RatingBars({
               <View
                 style={[
                   styles.trackValue,
-                  { backgroundColor: colors.primary, width: `${share * 100}%` },
+                  { backgroundColor: colors.primaryStrong, width: `${share * 100}%` },
                 ]}
               />
             </View>

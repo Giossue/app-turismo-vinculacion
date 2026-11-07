@@ -6,11 +6,11 @@
   --muted: #475569;
   --faint: #64748b;
   --border: #cbd5e1;
-  --primary: #047857;
-  --primary-hover: #065f46;
+  --primary: #122c41;
+  --primary-hover: #2a4154;
   --warning-surface: #fffbeb;
   --warning-text: #451a03;
-  --focus: #059669;
+  --focus: #4a78a8;
 }
 
 * {
@@ -219,7 +219,7 @@ input {
   display: inline-flex;
   min-height: 2.75rem;
   align-items: center;
-  color: #065f46;
+  color: #122c41;
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 0.25rem;

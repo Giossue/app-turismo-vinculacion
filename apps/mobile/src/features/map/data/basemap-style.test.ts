@@ -88,7 +88,7 @@ describe("normalizeSelfHostedStyle", () => {
 
   it("falls back to a neutral background", () => {
     expect(getFallbackMapStyle("light")).toMatchObject({
-      layers: [{ paint: { "background-color": "#f5f7f8" } }],
+      layers: [{ paint: { "background-color": "#f5f6f8" } }],
     });
   });
 

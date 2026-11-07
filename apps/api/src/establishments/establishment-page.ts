@@ -26,17 +26,17 @@ export function escapeHtml(value: string): string {
 }
 
 const STYLE = `
-body{margin:0;font-family:system-ui,sans-serif;background:#f4f7f5;color:#17231d}
+body{margin:0;font-family:system-ui,sans-serif;background:#f5f6f8;color:#121c28}
 main{max-width:560px;margin:0 auto;padding:24px 16px}
 .card{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 img{display:block;width:100%;max-height:260px;object-fit:cover}
 .body{padding:20px}
 h1{margin:0 0 4px;font-size:1.5rem}
-.tag{color:#176b4d;font-weight:600;margin:0 0 12px}
-dl{margin:16px 0}dt{font-size:.8rem;color:#5b6b63}dd{margin:0 0 12px}
+.tag{color:#122c41;font-weight:600;margin:0 0 12px}
+dl{margin:16px 0}dt{font-size:.8rem;color:#5b6b7f}dd{margin:0 0 12px}
 a.btn{display:block;text-align:center;padding:14px;border-radius:12px;margin-top:10px;font-weight:600;text-decoration:none}
-a.primary{background:#176b4d;color:#fff}a.secondary{background:#e3efe9;color:#176b4d}
-.download{margin:16px 0 0;text-align:center;color:#5b6b63}.download a{color:#176b4d;font-weight:600}
+a.primary{background:#122c41;color:#fff}a.secondary{background:#e6edf5;color:#122c41}
+.download{margin:16px 0 0;text-align:center;color:#5b6b7f}.download a{color:#122c41;font-weight:600}
 `;
 
 /** Pie común: quien no tiene la app puede descargarla desde aquí. */

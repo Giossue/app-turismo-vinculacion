@@ -15,7 +15,7 @@ import {
 export function TourismHeader({
   onBack,
   title,
-}: Readonly<{ onBack?: () => void; title: string }>) {
+}: Readonly<{ onBack?: () => void; title?: string }>) {
   const m = useMessages();
   const colors = useTurismoPalette();
   return (
@@ -36,12 +36,14 @@ export function TourismHeader({
           />
         </TourismPressable>
       ) : null}
-      <Text
-        accessibilityRole="header"
-        style={[styles.headerTitle, { color: colors.text }]}
-      >
-        {title}
-      </Text>
+      {title ? (
+        <Text
+          accessibilityRole="header"
+          style={[styles.headerTitle, { color: colors.text }]}
+        >
+          {title}
+        </Text>
+      ) : null}
     </View>
   );
 }

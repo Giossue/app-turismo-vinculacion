@@ -198,7 +198,7 @@ export function TourismRadioGroup<T extends string>({
                   backgroundColor: checked
                     ? colors.primarySoft
                     : colors.surface,
-                  borderColor: checked ? colors.primary : colors.border,
+                  borderColor: checked ? colors.primaryStrong : colors.border,
                 },
               ]}
             >
