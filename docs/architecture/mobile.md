@@ -183,8 +183,8 @@ La hoja de menú se abre desde la pestaña `Menú` de la barra inferior. Un
 superficie sólida, `TourismSheetHandle`, una cabecera de perfil (`TourismMenuProfile`: avatar
 con iniciales, nombre y correo, o «Invitado» sin sesión) y las entradas. Tocar ese mismo
 bloque cierra la hoja antes de abrir `/profile` con `push`; el menú no contiene
-«Cerrar sesión». Las pantallas secundarias (perfil, ficha, ruta, mapas sin conexión y
-configuración) no muestran la barra:
+«Cerrar sesión». Las pantallas secundarias (perfil, ficha, ruta, mapas sin conexión,
+configuración y «Acerca de») no muestran la barra:
 su encabezado ofrece `Volver`.
 
 Las decisiones de layout siguen las primitivas oficiales de React Native: dimensiones en
@@ -232,7 +232,9 @@ Antes de crear una utilidad o un componente nuevo, reutilizar estos módulos del
   con `buildRouteHref`/`parseRouteSearchParams` (`features/routing/presentation/route-href.ts`)
   y `buildLoginHref`/`parseReturnTo` (`features/auth/application/login-href.ts`); no usar
   `as never` en los `href`.
-- `src/core/ui`: además de los controles existentes, `TourismStateView` (carga, error y
+- `src/core/ui`: además de los controles existentes, `TourismSkeleton` (bloque de carga
+  para fichas e imágenes; las fichas de centros y catastro usan `PlaceDetailSkeleton` y
+  `PlacePhotoImage`, sin spinner), `TourismStateView` (carga, error y
   vacío), `TourismTabs`, `TourismInfoRow`, `TourismSection`, `TourismBottomSheet`,
   `TourismBottomSheetModal` y `TourismSheetScrollView`; `useTurismoPalette` y
   `useTurismoMapPalette` viven en `theme-context.tsx`, y `turismoOpacity` y

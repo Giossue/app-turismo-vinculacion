@@ -23,6 +23,7 @@ import { CenterHero } from "@/features/centers/presentation/center-detail/center
 import { CenterInformation } from "@/features/centers/presentation/center-detail/center-information";
 import { CenterPhotos } from "@/features/centers/presentation/center-detail/center-photos";
 import { CenterRatingSummary } from "@/features/centers/presentation/center-detail/center-rating-summary";
+import { PlaceDetailSkeleton } from "@/features/centers/presentation/center-detail/place-detail-skeleton";
 import { useCenterSaveToggle } from "@/features/centers/presentation/center-detail/use-center-save-toggle";
 import { PlaceActions } from "@/features/favorites/presentation/save-action-button";
 import { shareCenter } from "@/features/sharing/application/share-link";
@@ -32,9 +33,10 @@ import { CenterOpinions } from "@/features/opinions/presentation/center-opinions
 import { useMessages } from "@/core/i18n/use-language";
 
 /**
- * Quick center sheet over the map. It opens with the map data and loads the
- * full detail (photos, admission, tags) in the background. Mount it with
- * `key={center.code}` so a rotation keeps the tab and any opinion draft.
+ * Quick center sheet over the map. Muestra un skeleton de toda la ficha hasta
+ * tener el detalle y las opiniones, para que el contenido aparezca de una vez.
+ * Mount it with `key={center.code}` so a rotation keeps the tab and any
+ * opinion draft.
  */
 export function ExploreCenterSheet({
   center,
@@ -73,6 +75,9 @@ export function ExploreCenterSheetContent({
   const save = useCenterSaveToggle(center, onRequireAuth);
   const [activeTab, setActiveTab] = useState<CenterDetailTab>("information");
   const detail = detailQuery.data;
+  const loading =
+    (detailQuery.isPending && !detailQuery.isPaused) ||
+    (opinions.isPending && !opinions.isPaused);
 
   return (
     <>
@@ -80,58 +85,62 @@ export function ExploreCenterSheetContent({
         contentStyle={styles.content}
         landscapeMaxWidth={turismoMetrics.sheetMaxWidth}
       >
-        <CenterHero
-          name={center.name}
-          photos={detail?.photos}
-          style={styles.hero}
-        />
-        <Text style={[styles.title, { color: colors.text }]}>
-          {center.name}
-        </Text>
-        <CenterRatingSummary
-          onPress={() => setActiveTab("opinions")}
-          style={styles.rating}
-          summary={opinions.data?.summary}
-        />
-        <PlaceActions
-          onOpenRoute={onOpenRoute}
-          onShare={() => void shareCenter(center.code, center.name)}
-          save={save}
-        />
-        {detailQuery.isPending && !detailQuery.isPaused ? (
-          <TourismStateView
-            layout="inline"
-            message={m.explore.centerSheet.loading}
-            variant="loading"
-          />
-        ) : detailQuery.error || !detail ? (
-          <TourismStateView
-            actionPending={detailQuery.isFetching}
-            layout="inline"
-            message={m.explore.centerSheet.failed}
-            onAction={() => void detailQuery.refetch()}
-            variant="error"
+        {loading ? (
+          <PlaceDetailSkeleton
+            accessibilityLabel={m.explore.centerSheet.loading}
+            heroStyle={styles.hero}
+            variant="center"
           />
         ) : (
           <>
-            <CenterDetailTabs onChange={setActiveTab} value={activeTab} />
-            <CenterDetailPager
-              onChange={setActiveTab}
-              renderPage={(tab) =>
-                tab === "information" ? (
-                  <CenterInformation detail={detail} variant="divided" />
-                ) : tab === "opinions" ? (
-                  <CenterOpinions
-                    active={activeTab === "opinions"}
-                    code={center.code}
-                    onRequireAuth={onRequireAuth}
-                  />
-                ) : (
-                  <CenterPhotos photos={detail.photos} variant="divided" />
-                )
-              }
-              value={activeTab}
+            <Text style={[styles.title, { color: colors.text }]}>
+              {center.name}
+            </Text>
+            <CenterHero
+              name={center.name}
+              photos={detail?.photos}
+              style={styles.hero}
             />
+            <CenterRatingSummary
+              onPress={() => setActiveTab("opinions")}
+              style={styles.rating}
+              summary={opinions.data?.summary}
+            />
+            <PlaceActions
+              onOpenRoute={onOpenRoute}
+              onShare={() => void shareCenter(center.code, center.name)}
+              save={save}
+            />
+            {detailQuery.error || !detail ? (
+              <TourismStateView
+                actionPending={detailQuery.isFetching}
+                layout="inline"
+                message={m.explore.centerSheet.failed}
+                onAction={() => void detailQuery.refetch()}
+                variant="error"
+              />
+            ) : (
+              <>
+                <CenterDetailTabs onChange={setActiveTab} value={activeTab} />
+                <CenterDetailPager
+                  onChange={setActiveTab}
+                  renderPage={(tab) =>
+                    tab === "information" ? (
+                      <CenterInformation detail={detail} variant="divided" />
+                    ) : tab === "opinions" ? (
+                      <CenterOpinions
+                        active={activeTab === "opinions"}
+                        code={center.code}
+                        onRequireAuth={onRequireAuth}
+                      />
+                    ) : (
+                      <CenterPhotos photos={detail.photos} variant="divided" />
+                    )
+                  }
+                  value={activeTab}
+                />
+              </>
+            )}
           </>
         )}
       </TourismSheetScrollView>

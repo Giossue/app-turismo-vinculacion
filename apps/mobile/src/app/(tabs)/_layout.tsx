@@ -76,6 +76,11 @@ export default function TabsLayout() {
       label: m.account.menu.settings,
       onPress: () => router.push("/settings"),
     },
+    {
+      icon: "info",
+      label: m.account.menu.about,
+      onPress: () => router.push("/about"),
+    },
   ];
 
   return (

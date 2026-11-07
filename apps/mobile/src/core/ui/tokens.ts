@@ -118,6 +118,7 @@ export const turismoFixedColors = {
   brand: "#122c41",
   compassNorth: "#EF4444",
   compassNorthShade: "#DC2626",
+  onLogo: "#ffffff",
   shadow: "#000000",
 } as const;
 

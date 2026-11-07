@@ -13,6 +13,7 @@ export const accountEs = {
     nearby: "Cerca de mí",
     offline: "Mapas sin conexión",
     settings: "Configuración",
+    about: "Acerca de",
   },
   preparingApp: "Preparando Wasi Travel…",
   login: {
@@ -81,6 +82,23 @@ export const accountEs = {
     signingOut: "Cerrando sesión…",
     signOut: "Cerrar sesión",
     signOutFailed: "No se pudo cerrar la sesión. Inténtalo de nuevo.",
+  },
+  about: {
+    title: "Acerca de",
+    version: (version: string) => `Versión ${version}`,
+    project: "Proyecto de vinculación",
+    abstract:
+      "Wasi Travel es una plataforma turística desarrollada como proyecto de vinculación con la sociedad de la Universidad Estatal de Bolívar. Reúne información turística validada, mapas, rutas, navegación y un asistente de inteligencia artificial para que visitantes nacionales y extranjeros descubran los atractivos y servicios locales, en beneficio de la ciudad de Guaranda, en la provincia de Bolívar. Su primera operación es Guaranda, y está diseñada para extenderse al resto del Ecuador.",
+    career: "Carrera",
+    careerName: "Carrera de Software · Universidad Estatal de Bolívar",
+    mission: "Misión",
+    missionText:
+      "Formar profesionales en Ingeniería de Software íntegros y humanistas, con actitud emprendedora, sólidos fundamentos teóricos, capaces de solucionar problemas complejos, con ética profesional; analizando, desarrollando, implementando y gestionando soluciones software eficientes y eficaces con responsabilidad social, económica y ambiental, que apoyen a la transformación de la matriz productiva, tecnológica e industrial del país.",
+    vision: "Visión",
+    visionText:
+      "Al 2031, ser reconocidos como una carrera competitiva en la formación de Ingenieros en Software, con enfoque científico, tecnológico, emprendedor y humanista orientando al desarrollo de la sociedad.",
+    copyright: (year: number) =>
+      `© ${year} Universidad Estatal de Bolívar. Todos los derechos reservados.`,
   },
   settings: {
     title: "Configuración",

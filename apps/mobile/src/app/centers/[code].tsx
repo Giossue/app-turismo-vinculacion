@@ -7,7 +7,11 @@ import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismIconAction, TourismSurface } from "@/core/ui/tourism-controls";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import { TourismStateView } from "@/core/ui/tourism-state";
-import { turismoSpacing, turismoTypography } from "@/core/ui/tokens";
+import {
+  turismoRadii,
+  turismoSpacing,
+  turismoTypography,
+} from "@/core/ui/tokens";
 import { buildLoginHref } from "@/features/auth/application/login-href";
 import { usePublishedCenter } from "@/features/centers/application/use-published-center";
 import type { PublicCenterDetail } from "@/features/centers/domain/public-center";
@@ -19,6 +23,7 @@ import { CenterHero } from "@/features/centers/presentation/center-detail/center
 import { CenterInformation } from "@/features/centers/presentation/center-detail/center-information";
 import { CenterPhotos } from "@/features/centers/presentation/center-detail/center-photos";
 import { CenterRatingSummary } from "@/features/centers/presentation/center-detail/center-rating-summary";
+import { PlaceDetailSkeleton } from "@/features/centers/presentation/center-detail/place-detail-skeleton";
 import { useCenterSaveToggle } from "@/features/centers/presentation/center-detail/use-center-save-toggle";
 import { PlaceActions } from "@/features/favorites/presentation/save-action-button";
 import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/saved-center-error-snackbar";
@@ -54,6 +59,8 @@ export default function CenterDetailScreen() {
     isPaused,
     refetch,
   } = usePublishedCenter(code);
+  // La calificación forma parte de la ficha: se espera junto con el detalle.
+  const opinions = useCenterOpinions(code, code !== "");
 
   if (!code) {
     return (
@@ -67,10 +74,14 @@ export default function CenterDetailScreen() {
     );
   }
 
-  if (isPending && !isPaused) {
+  if ((isPending && !isPaused) || (opinions.isPending && !opinions.isPaused)) {
     return (
       <CenterStateFrame onBack={goBack}>
-        <TourismStateView message={m.places.center.opening} variant="loading" />
+        <PlaceDetailSkeleton
+          accessibilityLabel={m.places.center.opening}
+          heroStyle={styles.skeletonHero}
+          variant="center"
+        />
       </CenterStateFrame>
     );
   }
@@ -139,6 +150,11 @@ function CenterDetailContent({
         showsVerticalScrollIndicator={false}
       >
         <TourismSurface style={styles.detailCard}>
+          <Text
+            style={[styles.title, styles.cardTitle, { color: colors.text }]}
+          >
+            {center.name}
+          </Text>
           <CenterHero
             leading={
               <TourismIconAction
@@ -151,9 +167,6 @@ function CenterDetailContent({
             photos={center.photos}
           />
           <View style={styles.detailBody}>
-            <Text style={[styles.title, { color: colors.text }]}>
-              {center.name}
-            </Text>
             <CenterRatingSummary
               onPress={() => setActiveTab("opinions")}
               summary={opinions.data?.summary}
@@ -193,6 +206,8 @@ const styles = StyleSheet.create({
     paddingTop: turismoSpacing.md,
   },
   detailCard: { overflow: "hidden", padding: 0 },
+  skeletonHero: { borderRadius: turismoRadii.md },
   detailBody: { gap: turismoSpacing.md, padding: turismoSpacing.md },
   title: { ...turismoTypography.title },
+  cardTitle: { padding: turismoSpacing.md },
 });

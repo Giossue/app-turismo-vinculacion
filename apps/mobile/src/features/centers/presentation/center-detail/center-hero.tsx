@@ -1,4 +1,3 @@
-import { Image } from "expo-image";
 import { useState, type ReactNode } from "react";
 import {
   Pressable,
@@ -21,13 +20,14 @@ import {
   turismoTypography,
 } from "@/core/ui/tokens";
 import { useMessages } from "@/core/i18n/use-language";
+import { PlacePhotoImage } from "./place-photo-image";
 
 type CenterPhoto = ViewerPhoto;
 
 /**
- * Main photo of a center, fading into the surface below it. Tapping it opens
- * the full-screen viewer on the cover. Each screen keeps its own overlay
- * controls in the `leading` and `trailing` slots.
+ * Main photo of a center, fundida con la superficie por arriba y por abajo.
+ * Tapping it opens the full-screen viewer on the cover. Each screen keeps its
+ * own overlay controls in the `leading` and `trailing` slots.
  */
 export function CenterHero({
   leading,
@@ -58,11 +58,9 @@ export function CenterHero({
           onPress={() => setViewerOpen(true)}
           style={styles.image}
         >
-          <Image
-            cachePolicy="memory-disk"
-            contentFit="cover"
-            source={{ uri: resolveMediaVariantUrl(photo.url, "preview") }}
+          <PlacePhotoImage
             style={styles.image}
+            uri={resolveMediaVariantUrl(photo.url, "preview")}
           />
         </Pressable>
       ) : (
@@ -89,7 +87,13 @@ export function CenterHero({
               y1="0%"
               y2="100%"
             >
-              <Stop offset="0%" stopColor={colors.surface} stopOpacity={0} />
+              <Stop offset="0%" stopColor={colors.surface} stopOpacity={1} />
+              <Stop
+                offset="12%"
+                stopColor={colors.surface}
+                stopOpacity={0.78}
+              />
+              <Stop offset="36%" stopColor={colors.surface} stopOpacity={0} />
               <Stop offset="52%" stopColor={colors.surface} stopOpacity={0} />
               <Stop
                 offset="86%"

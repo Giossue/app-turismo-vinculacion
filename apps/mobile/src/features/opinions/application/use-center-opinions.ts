@@ -38,6 +38,8 @@ export function useCenterOpinions(code: string, enabled = true) {
         { signal },
       ),
     initialPageParam: 0,
+    // La ficha espera estas opiniones: un fallo no debe alargar su skeleton.
+    retry: 1,
     getNextPageParam: getNextOpinionOffset,
     select: selectOpinionPages,
     enabled: Boolean(code) && enabled,

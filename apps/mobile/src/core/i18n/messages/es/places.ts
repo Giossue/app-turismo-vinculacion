@@ -78,7 +78,6 @@ export const placesEs = {
     save: "Guardar establecimiento",
     approximate: "Punto de referencia aproximado",
     registeredCoordinates: "Coordenadas registradas",
-    loadingPhotos: "Cargando fotografías…",
     photosFailed: "No pudimos cargar las fotografías.",
     missingIdError: "Establecimiento sin identificador.",
     groups: {

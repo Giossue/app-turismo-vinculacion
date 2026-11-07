@@ -17,6 +17,7 @@ import {
 } from "@/core/ui/tokens";
 import { CenterHero } from "@/features/centers/presentation/center-detail/center-hero";
 import { CenterPhotos } from "@/features/centers/presentation/center-detail/center-photos";
+import { PlaceDetailSkeleton } from "@/features/centers/presentation/center-detail/place-detail-skeleton";
 import { PlaceActions } from "@/features/favorites/presentation/save-action-button";
 import { SavedCenterErrorSnackbar } from "@/features/favorites/presentation/saved-center-error-snackbar";
 import { shareEstablishment } from "@/features/sharing/application/share-link";
@@ -29,8 +30,9 @@ import { useEstablishmentSaveToggle } from "./use-establishment-save-toggle";
 import { useMessages } from "@/core/i18n/use-language";
 
 /**
- * Registry establishment over the map. It opens with the pin data; when the
- * pin carries the registry id it also loads the photos and offers saving.
+ * Registry establishment over the map. Si el pin trae el id del catastro,
+ * muestra un skeleton de toda la ficha hasta tener el detalle y ofrece guardar;
+ * sin id abre directamente con los datos del pin.
  * Mount it with `key={getEstablishmentKey(establishment)}`.
  */
 export function EstablishmentDetailSheet({
@@ -51,17 +53,29 @@ export function EstablishmentDetailSheet({
   const detailQuery = usePublishedEstablishment(establishmentId);
   const detail = detailQuery.data;
   const save = useEstablishmentSaveToggle(establishment, detail, onRequireAuth);
+  // Sin id la consulta está deshabilitada y seguiría pendiente para siempre.
+  const loading =
+    establishmentId !== undefined &&
+    detailQuery.isPending &&
+    !detailQuery.isPaused;
+
+  if (loading) {
+    return (
+      <TourismBottomSheet onClose={onClose}>
+        <TourismSheetScrollView contentStyle={styles.container}>
+          <PlaceDetailSkeleton
+            accessibilityLabel={m.places.establishment.opening}
+            heroStyle={styles.hero}
+            variant="establishment"
+          />
+        </TourismSheetScrollView>
+      </TourismBottomSheet>
+    );
+  }
 
   return (
     <TourismBottomSheet onClose={onClose}>
       <TourismSheetScrollView contentStyle={styles.container}>
-        {detail?.photos.length ? (
-          <CenterHero
-            name={establishment.name}
-            photos={detail.photos}
-            style={styles.hero}
-          />
-        ) : null}
         <View style={styles.header}>
           <View style={styles.headerCopy}>
             <Text style={[styles.title, { color: colors.text }]}>
@@ -72,6 +86,13 @@ export function EstablishmentDetailSheet({
             ) : null}
           </View>
         </View>
+        {detail?.photos.length ? (
+          <CenterHero
+            name={establishment.name}
+            photos={detail.photos}
+            style={styles.hero}
+          />
+        ) : null}
 
         <TourismInfoRow
           icon="mapPin"
@@ -95,14 +116,7 @@ export function EstablishmentDetailSheet({
           save={save}
         />
 
-        {establishment.id === undefined ? null : detailQuery.isPending &&
-          !detailQuery.isPaused ? (
-          <TourismStateView
-            layout="inline"
-            message={m.places.establishment.loadingPhotos}
-            variant="loading"
-          />
-        ) : detail ? (
+        {establishment.id === undefined ? null : detail ? (
           <CenterPhotos photos={detail.photos} variant="divided" />
         ) : detailQuery.isPaused ||
           isApiUnavailableError(detailQuery.error) ? null : (

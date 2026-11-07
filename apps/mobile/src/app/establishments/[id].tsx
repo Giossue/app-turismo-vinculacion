@@ -21,6 +21,7 @@ import {
 } from "@/features/auth/application/login-href";
 import { CenterHero } from "@/features/centers/presentation/center-detail/center-hero";
 import { CenterPhotos } from "@/features/centers/presentation/center-detail/center-photos";
+import { PlaceDetailSkeleton } from "@/features/centers/presentation/center-detail/place-detail-skeleton";
 import { usePublishedEstablishment } from "@/features/establishments/application/use-published-establishment";
 import type {
   PublicEstablishmentDetail,
@@ -63,9 +64,10 @@ export default function EstablishmentScreen() {
   if (isPending && !isPaused) {
     return (
       <StateFrame onBack={goBack}>
-        <TourismStateView
-          message={m.places.establishment.opening}
-          variant="loading"
+        <PlaceDetailSkeleton
+          accessibilityLabel={m.places.establishment.opening}
+          heroStyle={styles.hero}
+          variant="establishment"
         />
       </StateFrame>
     );
@@ -133,13 +135,6 @@ function EstablishmentContent({
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {detail.photos.length ? (
-          <CenterHero
-            name={detail.nombreComercial}
-            photos={detail.photos}
-            style={styles.hero}
-          />
-        ) : null}
         <View style={styles.header}>
           <View style={styles.headerCopy}>
             <Text style={[styles.title, { color: colors.text }]}>
@@ -148,6 +143,13 @@ function EstablishmentContent({
             {category ? <TourismBadge>{category}</TourismBadge> : null}
           </View>
         </View>
+        {detail.photos.length ? (
+          <CenterHero
+            name={detail.nombreComercial}
+            photos={detail.photos}
+            style={styles.hero}
+          />
+        ) : null}
         <TourismInfoRow
           label={m.places.establishment.activity}
           value={detail.actividad}

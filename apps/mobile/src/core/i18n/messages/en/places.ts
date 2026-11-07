@@ -75,7 +75,6 @@ export const placesEn: Messages["places"] = {
     save: "Save business",
     approximate: "Approximate reference point",
     registeredCoordinates: "Registered coordinates",
-    loadingPhotos: "Loading photos…",
     photosFailed: "We couldn't load the photos.",
     missingIdError: "Business without an identifier.",
     groups: {

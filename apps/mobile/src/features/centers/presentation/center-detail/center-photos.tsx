@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { TourismActionButton } from "@/core/ui/tourism-controls";
-import { Image } from "expo-image";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { resolveMediaVariantUrl } from "@/core/api/media-url";
@@ -13,6 +12,7 @@ import {
   turismoTypography,
 } from "@/core/ui/tokens";
 import { useMessages } from "@/core/i18n/use-language";
+import { PlacePhotoImage } from "./place-photo-image";
 
 type PlacePhoto = Readonly<{
   id: number;
@@ -60,12 +60,10 @@ export function CenterPhotos({
             onPress={() => setOpened(photos.indexOf(photo))}
             style={[styles.tile, { backgroundColor: colors.surfaceMuted }]}
           >
-            <Image
-              cachePolicy="memory-disk"
-              contentFit="cover"
+            <PlacePhotoImage
               recyclingKey={String(photo.id)}
-              source={{ uri: resolveMediaVariantUrl(photo.url, "thumbnail") }}
               style={styles.image}
+              uri={resolveMediaVariantUrl(photo.url, "thumbnail")}
             />
             {photo.description ? (
               <Text style={[styles.caption, { color: colors.text }]}>

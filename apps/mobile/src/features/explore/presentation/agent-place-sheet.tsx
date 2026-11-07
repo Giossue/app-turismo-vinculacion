@@ -16,6 +16,7 @@ import { TourismStateView } from "@/core/ui/tourism-state";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { turismoSpacing, turismoTypography } from "@/core/ui/tokens";
 import { usePublishedCenter } from "@/features/centers/application/use-published-center";
+import { PlaceDetailSkeleton } from "@/features/centers/presentation/center-detail/place-detail-skeleton";
 import type {
   AgentCard,
   AgentRouteDestination,
@@ -155,6 +156,18 @@ function AgentCenterDetails({
     );
   }
 
+  if (query.isPending && !query.isPaused) {
+    return (
+      <TourismSheetScrollView contentStyle={styles.loadingContent}>
+        <PlaceDetailSkeleton
+          accessibilityLabel={m.explore.agentPlace.loading}
+          heroStyle={styles.loadingHero}
+          variant="center"
+        />
+      </TourismSheetScrollView>
+    );
+  }
+
   return (
     <TourismSheetScrollView contentStyle={styles.content}>
       <Text style={[styles.title, { color: colors.text }]}>
@@ -187,13 +200,9 @@ function AgentCenterDetails({
       <TourismStateView
         actionPending={query.isFetching}
         layout="inline"
-        message={
-          query.error
-            ? m.explore.agentPlace.loadFailed
-            : m.explore.agentPlace.loading
-        }
-        onAction={query.error ? () => void query.refetch() : undefined}
-        variant={query.error ? "error" : "loading"}
+        message={m.explore.agentPlace.loadFailed}
+        onAction={() => void query.refetch()}
+        variant="error"
       />
     </TourismSheetScrollView>
   );
@@ -266,6 +275,8 @@ function AgentOtherPlaceDetails({
 const styles = StyleSheet.create({
   sheet: { flex: 1, minHeight: 0 },
   content: { gap: turismoSpacing.md, paddingBottom: turismoSpacing.xxl },
+  loadingContent: { paddingBottom: turismoSpacing.xxl, paddingTop: 0 },
+  loadingHero: { marginHorizontal: -turismoSpacing.lg },
   heading: { alignItems: "flex-start", gap: turismoSpacing.sm },
   title: { ...turismoTypography.heading },
   body: { ...turismoTypography.bodySmall },

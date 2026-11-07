@@ -9,6 +9,7 @@ import {
   TourismChoiceChip,
   TourismSurface,
 } from "@/core/ui/tourism-controls";
+import { TourismSkeleton } from "@/core/ui/tourism-skeleton";
 import { TourismStateView } from "@/core/ui/tourism-state";
 import {
   turismoMetrics,
@@ -177,11 +178,16 @@ export function CenterOpinions({
       ) : null}
 
       {opinions.isPending && !opinions.isPaused ? (
-        <TourismStateView
-          layout="inline"
-          message={text.loading}
-          variant="loading"
-        />
+        <View
+          accessible
+          accessibilityLabel={text.loading}
+          accessibilityRole="progressbar"
+          style={styles.skeletonList}
+        >
+          <TourismSkeleton style={styles.skeletonItem} />
+          <TourismSkeleton style={styles.skeletonItem} />
+          <TourismSkeleton style={styles.skeletonItem} />
+        </View>
       ) : (opinions.isError || opinions.isPaused) && !opinions.data ? (
         <TourismStateView
           actionPending={opinions.isFetching}
@@ -263,11 +269,13 @@ export function CenterOpinions({
       ) : authenticated && own.isPending && !own.isPaused ? (
         // Until the own opinion is known the composer could offer to write
         // a second one; wait for it instead of flashing the form.
-        <TourismStateView
-          layout="inline"
-          message={text.checkingOwn}
-          variant="loading"
-        />
+        <View
+          accessible
+          accessibilityLabel={text.checkingOwn}
+          accessibilityRole="progressbar"
+        >
+          <TourismSkeleton style={styles.skeletonItem} />
+        </View>
       ) : authenticated && (own.error || own.isPaused) ? (
         <TourismSurface style={styles.notice}>
           <Text style={[styles.noticeText, { color: colors.textMuted }]}>
@@ -348,6 +356,8 @@ export function CenterOpinions({
 
 const styles = StyleSheet.create({
   container: { gap: turismoSpacing.md },
+  skeletonList: { gap: turismoSpacing.sm },
+  skeletonItem: { height: turismoMetrics.touchTarget * 2 },
   pagination: { gap: turismoSpacing.xs },
   filters: { flexDirection: "row", gap: turismoSpacing.xs },
   separator: { height: turismoMetrics.borderWidth, width: "100%" },

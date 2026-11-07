@@ -14,6 +14,7 @@ export const accountEn: Messages["account"] = {
     nearby: "Near me",
     offline: "Offline maps",
     settings: "Settings",
+    about: "About",
   },
   preparingApp: "Getting Wasi Travel ready…",
   login: {
@@ -82,6 +83,23 @@ export const accountEn: Messages["account"] = {
     signingOut: "Signing out…",
     signOut: "Sign out",
     signOutFailed: "We couldn't sign you out. Please try again.",
+  },
+  about: {
+    title: "About",
+    version: (version: string) => `Version ${version}`,
+    project: "Community outreach project",
+    abstract:
+      "Wasi Travel is a tourism platform developed as a community outreach project of the Universidad Estatal de Bolívar. It brings together validated tourism information, maps, routes, navigation and an artificial intelligence assistant so that national and international visitors can discover local attractions and services, for the benefit of the city of Guaranda, in the province of Bolívar. Its first operation is in Guaranda, and it is designed to extend to the rest of Ecuador.",
+    career: "Degree program",
+    careerName: "Carrera de Software · Universidad Estatal de Bolívar",
+    mission: "Mission",
+    missionText:
+      "Formar profesionales en Ingeniería de Software íntegros y humanistas, con actitud emprendedora, sólidos fundamentos teóricos, capaces de solucionar problemas complejos, con ética profesional; analizando, desarrollando, implementando y gestionando soluciones software eficientes y eficaces con responsabilidad social, económica y ambiental, que apoyen a la transformación de la matriz productiva, tecnológica e industrial del país.",
+    vision: "Vision",
+    visionText:
+      "Al 2031, ser reconocidos como una carrera competitiva en la formación de Ingenieros en Software, con enfoque científico, tecnológico, emprendedor y humanista orientando al desarrollo de la sociedad.",
+    copyright: (year: number) =>
+      `© ${year} Universidad Estatal de Bolívar. All rights reserved.`,
   },
   settings: {
     title: "Settings",
