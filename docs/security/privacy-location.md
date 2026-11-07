@@ -68,6 +68,8 @@ disponible.
 La búsqueda pública puede usar una posición ya autorizada o el viewport visible durante
 la solicitud, sin iniciar una lectura ni pedir permiso como efecto de escribir. Sus
 consultas y claves con coordenadas/bbox viven solo en memoria y quedan fuera de la caché
-persistida; tampoco se persisten mutaciones pendientes. La revalidación de caché escucha
+persistida; tampoco se persisten mutaciones pendientes. La copia offline de pines cubre todo
+el país con límites fijos, por lo que no revela qué zona miró la persona. Los guardados de la
+cuenta permanecen hasta 30 días en el dispositivo y se retiran al cerrar sesión. La revalidación de caché escucha
 foco/conectividad, sin solicitar ubicación ni leer IP o SSID. Las búsquedas recientes locales conservan únicamente texto borrable, sin
 posición, alcance geográfico ni historial del mapa.

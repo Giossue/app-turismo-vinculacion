@@ -2,15 +2,17 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { dehydrate, type QueryClient } from "@tanstack/react-query";
 import type { PersistQueryClientOptions } from "@tanstack/react-query-persist-client";
 
+import { isApiUnavailableError } from "./http";
 import {
   canPersistQuery,
   createQueryCachePersister,
   filterPersistedClient,
+  keepFailedRefreshes,
 } from "./query-cache-persister";
 import {
   getQueryAccountId,
   isUserScopedQueryKey,
-  ONE_DAY_MS,
+  SAVED_RETENTION_MS,
 } from "./query-keys";
 import { preserveConfirmedQueries } from "./optimistic-query-persistence";
 
@@ -30,14 +32,17 @@ export const queryPersistOptions = {
   dehydrateOptions: {
     shouldDehydrateMutation: () => false,
     shouldDehydrateQuery: (query) =>
-      query.state.status === "success" &&
+      (query.state.status === "success" ||
+        (query.state.data !== undefined &&
+          isApiUnavailableError(query.state.error))) &&
       canPersistQuery(
         query.queryKey,
         query.state.dataUpdatedAt,
         persistedAccountId,
       ),
   },
-  maxAge: ONE_DAY_MS,
+  // Límite del conjunto; `canPersistQuery` aplica la edad de cada entrada.
+  maxAge: SAVED_RETENTION_MS,
   persister: queryCachePersister,
 } satisfies Omit<PersistQueryClientOptions, "queryClient">;
 
@@ -51,7 +56,7 @@ export function getQueryPersistOptions(queryClient: QueryClient) {
         client: Parameters<typeof queryCachePersister.persistClient>[0],
       ) =>
         queryCachePersister.persistClient(
-          preserveConfirmedQueries(queryClient, client),
+          keepFailedRefreshes(preserveConfirmedQueries(queryClient, client)),
         ),
     },
   };

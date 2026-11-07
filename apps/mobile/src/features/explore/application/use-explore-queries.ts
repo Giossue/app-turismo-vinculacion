@@ -1,4 +1,4 @@
-import { onlineManager, useQueryClient } from "@tanstack/react-query";
+import { onlineManager, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { isApiUnavailableError } from "@/core/api/http";
@@ -6,6 +6,10 @@ import { quantizeMapBounds } from "@/features/centers/domain/map-bounds-cell";
 import { offlineSummaryIntersects } from "@/features/offline/data/offline-summary";
 import { queryKeys } from "@/core/api/query-keys";
 import type { GeoBoundingBox, GeoCoordinate } from "@/core/geo/types";
+import {
+  getCenterPinSnapshotQueryOptions,
+  selectSnapshotCenters,
+} from "@/features/centers/application/center-pin-snapshot";
 import { useDiscoveryCatalog } from "@/features/centers/application/use-discovery-catalog";
 import { usePublishedMapCenters } from "@/features/centers/application/use-published-map-centers";
 import type { DiscoveryFilterValues } from "@/features/centers/presentation/discovery-filters";
@@ -184,7 +188,15 @@ export function useExploreQueries({
     if (!active || !offlineMap) return;
     return startOfflineMapRetry(refetchCenters);
   }, [active, offlineMap, refetchCenters]);
-  const centers = centersQuery.data ?? [];
+  const pinSnapshot = useQuery({
+    ...getCenterPinSnapshotQueryOptions(),
+    enabled: active,
+  });
+  const snapshotCenters = useMemo(
+    () => selectSnapshotCenters(pinSnapshot.data, filters),
+    [pinSnapshot.data, filters],
+  );
+  const centers = centersQuery.data ?? (needsOfflineMap ? snapshotCenters : []);
   const isSearching =
     hasQuery &&
     areaAvailable &&

@@ -70,19 +70,24 @@ async function loadPersistentOrRemoteStyle(
     () => null,
   );
   // El estilo guardado lleva los colores de cuando se descargó: la paleta se
-  // aplica de nuevo. Las ciudades descargadas usan su propia copia y conservan
-  // los colores con los que se guardaron.
-  if (stored) {
-    return {
-      ...stored,
-      layers: quietMapLayers(stored.layers, scheme),
-    } as unknown as StyleSpecification;
-  }
+  // aplica de nuevo.
+  if (stored) return applyBasemapPalette(stored, scheme);
   const styles = await fetchSelfHostedMapStyles(styleUrl);
   await saveStoredBasemapStyles(styles, styleUrl).catch(() => undefined);
   cacheStyle("light", styles.light, styleUrl);
   cacheStyle("dark", styles.dark, styleUrl);
   return styles[scheme];
+}
+
+/** Pinta un estilo ya guardado con la paleta actual; no toca sus recursos. */
+export function applyBasemapPalette(
+  style: StyleSpecification,
+  scheme: TurismoColorScheme,
+): StyleSpecification {
+  return {
+    ...style,
+    layers: quietMapLayers(style.layers, scheme),
+  } as unknown as StyleSpecification;
 }
 
 /** Reintenta cargar el estilo cuando vuelve la conexión. */

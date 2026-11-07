@@ -103,9 +103,27 @@ describe("descargas disponibles al arrancar sin conexión", () => {
       address: null,
     });
 
+    const before = client.getQueryState(options.queryKey)?.dataUpdatedAt;
     await expect(
       client.fetchQuery({ ...options, retry: false, staleTime: 0 }),
-    ).resolves.toEqual(seen);
+    ).rejects.toBeInstanceOf(ApiError);
+    expect(client.getQueryData(options.queryKey)).toEqual(seen);
+    // La fecha no se renueva: la copia sigue caducando a las 24 horas.
+    expect(client.getQueryState(options.queryKey)?.dataUpdatedAt).toBe(before);
+  });
+
+  it("olvida un centro retirado aunque después se pierda la red", async () => {
+    const client = queryClient();
+    const options = getPublishedCenterQueryOptions("C1");
+    client.setQueryData(options.queryKey, center);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(null, { status: 404 })),
+    );
+    await expect(
+      client.fetchQuery({ ...options, retry: false, staleTime: 0 }),
+    ).rejects.toMatchObject({ status: 404 });
+    expect(client.getQueryData(options.queryKey)).toBeUndefined();
   });
 
   it("conserva los filtros completos ya vistos sin conexión", async () => {
@@ -116,9 +134,12 @@ describe("descargas disponibles al arrancar sin conexión", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("sin red")));
     offline.getStoredOfflineCenters.mockResolvedValueOnce([center]);
 
+    const before = client.getQueryState(options.queryKey)?.dataUpdatedAt;
     await expect(
       client.fetchQuery({ ...options, retry: false, staleTime: 0 }),
-    ).resolves.toEqual(seen);
+    ).rejects.toBeInstanceOf(ApiError);
+    expect(client.getQueryData(options.queryKey)).toEqual(seen);
+    expect(client.getQueryState(options.queryKey)?.dataUpdatedAt).toBe(before);
   });
 
   it.each([404, 403])(

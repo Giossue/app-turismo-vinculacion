@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   ApiError,
   isApiUnavailableError,
+  isDefinitiveApiError,
   readApiErrorMessage,
   requestJson,
 } from "./http";
@@ -205,5 +206,18 @@ describe("query persistence policy", () => {
         { west: -79.02, south: -1.62, east: -78.98, north: -1.58 },
       ]),
     ).toBe(false);
+  });
+});
+
+describe("isDefinitiveApiError", () => {
+  it("separa un rechazo de la API de un corte de red", () => {
+    expect(isDefinitiveApiError(new ApiError("no", { status: 404 }))).toBe(
+      true,
+    );
+    expect(isDefinitiveApiError(new ApiError("sin red"))).toBe(false);
+    expect(isDefinitiveApiError(new ApiError("caída", { status: 503 }))).toBe(
+      false,
+    );
+    expect(isDefinitiveApiError(null)).toBe(false);
   });
 });

@@ -237,8 +237,9 @@ decir “cerca de ti” sin ubicación suficientemente reciente.
 - El cliente persiste la caché de catálogos y consultas públicas sin ubicación durante 24 horas y evita repetir la
   petición al volver a una pestaña mientras el dato siga fresco; una revalidación puede
   ocurrir al recuperar foco o conectividad nativos, o mediante una acción explícita.
-  Foco y red usan eventos del sistema y no solicitan ubicación. La retención de 24 horas
-  se comprueba por entrada al guardar/restaurar, sin prolongarse por otros cambios del
+  Foco y red usan eventos del sistema y no solicitan ubicación. Los guardados de la cuenta
+  se conservan 30 días. La retención se comprueba por entrada al guardar/restaurar, sin
+  prolongarse por otros cambios del
   snapshot; política en [mobile.md](mobile.md#caché-y-funcionamiento-sin-conexión).
   Los pines por bbox usan el prefijo `public-map-centers`, con frescura y retención en
   memoria de cinco minutos; sus claves y coordenadas nunca se persisten.

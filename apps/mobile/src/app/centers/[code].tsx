@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
+import { isDefinitiveApiError } from "@/core/api/http";
 import { firstSearchParam } from "@/core/navigation/search-params";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismIconAction, TourismSurface } from "@/core/ui/tourism-controls";
@@ -53,6 +54,7 @@ export default function CenterDetailScreen() {
     router.canGoBack() ? router.back() : router.replace("/");
   const {
     data: center,
+    error,
     isFetching,
     isPending,
     isPaused,
@@ -85,7 +87,7 @@ export default function CenterDetailScreen() {
     );
   }
 
-  if (!center) {
+  if (!center || isDefinitiveApiError(error)) {
     return (
       <CenterStateFrame onBack={goBack}>
         <TourismStateView

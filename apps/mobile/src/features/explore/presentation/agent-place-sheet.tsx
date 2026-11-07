@@ -200,8 +200,12 @@ function AgentCenterDetails({
       <TourismStateView
         actionPending={query.isFetching}
         layout="inline"
-        message={m.explore.agentPlace.loadFailed}
-        onAction={() => void query.refetch()}
+        message={
+          query.isPaused
+            ? m.core.offlineNeeded
+            : m.explore.agentPlace.loadFailed
+        }
+        onAction={query.isPaused ? undefined : () => void query.refetch()}
         variant="error"
       />
     </TourismSheetScrollView>

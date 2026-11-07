@@ -2,8 +2,10 @@ import { dehydrate, QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  canPersistQuery,
   createQueryCachePersister,
   filterPersistedClient,
+  keepFailedRefreshes,
 } from "./query-cache-persister";
 import { ONE_DAY_MS, queryKeys } from "./query-keys";
 
@@ -185,5 +187,89 @@ describe("política de restauración", () => {
     value.clientState.queries[0].state.status = "error";
     value.clientState.queries.push(null as never);
     expect(filterPersistedClient(value)?.clientState.queries).toHaveLength(1);
+  });
+});
+
+describe("retención de Guardados", () => {
+  const now = 100 * ONE_DAY_MS;
+  const fiveDaysAgo = now - 5 * ONE_DAY_MS;
+
+  it("conserva los guardados varios días para abrirlos sin conexión", () => {
+    expect(
+      canPersistQuery([...queryKeys.savedCenters, 7], fiveDaysAgo, 7, now),
+    ).toBe(true);
+  });
+
+  it("los retira después de 30 días", () => {
+    expect(
+      canPersistQuery(
+        [...queryKeys.savedCenters, 7],
+        now - 31 * ONE_DAY_MS,
+        7,
+        now,
+      ),
+    ).toBe(false);
+  });
+
+  it("mantiene las 24 horas para el resto de consultas", () => {
+    expect(
+      canPersistQuery(queryKeys.discoveryCatalog, fiveDaysAgo, null, now),
+    ).toBe(false);
+  });
+
+  it("sigue sin entregar guardados a otra cuenta", () => {
+    expect(
+      canPersistQuery([...queryKeys.savedCenters, 7], fiveDaysAgo, 8, now),
+    ).toBe(false);
+  });
+});
+
+describe("ficha ya vista cuya recarga falló sin conexión", () => {
+  const now = 100 * ONE_DAY_MS;
+  const written = (updatedAt: number, data?: unknown) =>
+    filterPersistedClient(
+      keepFailedRefreshes({
+        buster: "b",
+        timestamp: now,
+        clientState: {
+          mutations: [],
+          queries: [
+            {
+              queryKey: [...queryKeys.publishedCenter, "C1"],
+              queryHash: "C1",
+              state: {
+                status: "error",
+                dataUpdatedAt: updatedAt,
+                data,
+                error: "redacted",
+              },
+            },
+          ],
+        },
+      } as never),
+      null,
+      now,
+    )?.clientState.queries;
+
+  it("se escribe como dato válido con su fecha original", () => {
+    const updatedAt = now - 1_000;
+    expect(written(updatedAt, { code: "C1" })).toMatchObject([
+      {
+        state: {
+          data: { code: "C1" },
+          dataUpdatedAt: updatedAt,
+          error: null,
+          status: "success",
+        },
+      },
+    ]);
+  });
+
+  it("no alarga su vida más allá de 24 horas", () => {
+    expect(written(now - ONE_DAY_MS - 1, { code: "C1" })).toEqual([]);
+  });
+
+  it("descarta un error sin datos", () => {
+    expect(written(now - 1_000)).toEqual([]);
   });
 });

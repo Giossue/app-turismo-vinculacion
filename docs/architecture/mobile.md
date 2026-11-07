@@ -523,14 +523,17 @@ ficha. No proporciona geocodificación offline general de calles ni paquetes pro
 
 ## Caché y funcionamiento sin conexión
 
-TanStack Query persiste en AsyncStorage durante un máximo de 24 horas por entrada
+TanStack Query persiste en AsyncStorage durante un máximo de 24 horas por entrada, y 30 días
+para los guardados de la cuenta,
 (`src/core/api/query-persistence.ts`) una lista de claves permitidas (`persistedQueryKeys`
 en `src/core/api/query-keys.ts`): centros y fichas publicados, filtros, opiniones públicas
 (20 filas visibles por página, con avance y retroceso), ciudades offline y los guardados de la cuenta,
 para que `Guardados` abra sin conexión; tras 5 minutos la lista se revalida y, si falla, se
 sigue mostrando la copia. La opinión propia, las búsquedas y las consultas por viewport o GPS
 solo viven en memoria. Las búsquedas públicas inactivas se retiran tras cinco minutos;
-la caducidad de los datos permitidos en disco conserva su política de 24 horas.
+la caducidad de los datos públicos en disco conserva su política de 24 horas. Los pines de
+todo el país se guardan aparte (`center-pin-snapshot.ts`), sin viewport y hasta 2.000, para
+arrancar sin conexión y sin descarga; se renuevan una vez al día.
 Las mutaciones nunca se persisten. Al cerrar sesión se retiran
 consultas y mutaciones privadas de la caché, se cancelan escrituras pendientes y el
 borrado en disco espera las escrituras en curso. Se reescribe una copia pública sin

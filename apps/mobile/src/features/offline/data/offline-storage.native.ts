@@ -1,3 +1,4 @@
+import { withCurrentMapColors } from "./offline-map-colors";
 import { publicCenterSchema } from "@/features/centers/data/public-centers-api";
 import { openDatabaseAsync, type SQLiteDatabase } from "expo-sqlite";
 
@@ -64,7 +65,8 @@ export async function getStoredOfflineManifest(
     "SELECT payload_json FROM offline_city_manifests WHERE city_slug = ?",
     slug,
   );
-  return row ? parseStoredOfflineManifest(row.payload_json) : null;
+  const manifest = row ? parseStoredOfflineManifest(row.payload_json) : null;
+  return manifest ? withCurrentMapColors(manifest) : null;
 }
 
 export async function removeOfflineManifest(slug: string): Promise<void> {

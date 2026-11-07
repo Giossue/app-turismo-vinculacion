@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
+import { isDefinitiveApiError } from "@/core/api/http";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import {
   TourismBottomSheet,
@@ -123,12 +124,20 @@ export function ExploreCenterSheetContent({
             />
             {detailLoading ? (
               <TourismSkeleton style={styles.detailSkeleton} />
-            ) : !detail ? (
+            ) : !detail || isDefinitiveApiError(detailQuery.error) ? (
               <TourismStateView
                 actionPending={detailQuery.isFetching}
                 layout="inline"
-                message={m.explore.centerSheet.failed}
-                onAction={() => void detailQuery.refetch()}
+                message={
+                  detailQuery.isPaused
+                    ? m.core.offlineNeeded
+                    : m.explore.centerSheet.failed
+                }
+                onAction={
+                  detailQuery.isPaused
+                    ? undefined
+                    : () => void detailQuery.refetch()
+                }
                 variant="error"
               />
             ) : (

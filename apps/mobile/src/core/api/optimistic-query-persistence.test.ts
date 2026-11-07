@@ -12,7 +12,7 @@ import {
   createQueryCachePersister,
   filterPersistedClient,
 } from "./query-cache-persister";
-import { queryKeys, ONE_DAY_MS } from "./query-keys";
+import { queryKeys, SAVED_RETENTION_MS } from "./query-keys";
 import {
   preserveConfirmedQueries,
   protectOptimisticQuery,
@@ -185,10 +185,10 @@ describe("persistencia de favoritos confirmados", () => {
     test.client.clear();
   });
 
-  it("un cambio visual no renueva las 24 horas de la copia confirmada", () => {
+  it("un cambio visual no renueva la retención de la copia confirmada", () => {
     const test = harness();
     test.client.setQueryData(key, ["vencido"], {
-      updatedAt: Date.now() - ONE_DAY_MS - 1,
+      updatedAt: Date.now() - SAVED_RETENTION_MS - 1,
     });
     const complete = protectOptimisticQuery(test.client, key);
     test.client.setQueryData(key, ["vencido", "pendiente"]);

@@ -55,6 +55,14 @@ export function isApiUnavailableError(error: unknown): boolean {
   );
 }
 
+/**
+ * La API sí respondió y rechazó el recurso (por ejemplo, un 404): una copia
+ * guardada no debe seguir mostrándose. Un corte de red no cuenta.
+ */
+export function isDefinitiveApiError(error: unknown): boolean {
+  return Boolean(error) && !isApiUnavailableError(error);
+}
+
 type ResponseErrorOptions = Readonly<{
   /** Message for failed requests without a more specific one. */
   errorMessage: string;

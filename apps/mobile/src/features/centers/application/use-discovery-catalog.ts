@@ -15,10 +15,9 @@ export function getDiscoveryCatalogQueryOptions() {
         return await getDiscoveryCatalog(withRequestSignal(fetch, signal));
       } catch (error) {
         if (!isApiUnavailableError(error)) throw error;
-        // Las descargas no traen provincias ni cantones: no sustituyen a los
-        // filtros completos ya vistos.
-        const seen = client.getQueryData<DiscoveryCatalog>(queryKey);
-        if (seen) return seen;
+        // Fallar conserva los filtros ya vistos con su fecha real; las
+        // descargas no traen provincias ni cantones.
+        if (client.getQueryData(queryKey)) throw error;
         const centers = await getStoredOfflineCenters();
         if (!centers.length) throw error;
         return catalogFromOfflineCenters(centers);

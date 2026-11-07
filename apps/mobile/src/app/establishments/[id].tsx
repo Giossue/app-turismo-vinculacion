@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { onlineManager } from "@tanstack/react-query";
 
+import { isApiUnavailableError, isDefinitiveApiError } from "@/core/api/http";
 import { firstSearchParam } from "@/core/navigation/search-params";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismBadge } from "@/core/ui/tourism-controls";
@@ -47,7 +49,7 @@ export default function EstablishmentScreen() {
   const id = /^\d{1,12}$/.test(rawId) ? Number(rawId) : undefined;
   const goBack = () =>
     router.canGoBack() ? router.back() : router.replace("/");
-  const { data, isFetching, isPending, isPaused, refetch } =
+  const { data, error, isFetching, isPending, isPaused, refetch } =
     usePublishedEstablishment(id);
 
   if (id === undefined) {
@@ -72,17 +74,20 @@ export default function EstablishmentScreen() {
       </StateFrame>
     );
   }
-  if (!data) {
+  if (!data || isDefinitiveApiError(error)) {
+    // Esta consulta no reintenta sin red, así que puede fallar sin pausarse.
+    const noConnection =
+      isPaused || (isApiUnavailableError(error) && !onlineManager.isOnline());
     return (
       <StateFrame onBack={goBack}>
         <TourismStateView
           actionPending={isFetching}
           message={
-            isPaused
+            noConnection
               ? m.core.offlineNeeded
               : m.places.establishment.openFailedHint
           }
-          onAction={isPaused ? undefined : () => void refetch()}
+          onAction={noConnection ? undefined : () => void refetch()}
           title={m.places.establishment.openFailed}
           variant="error"
         />

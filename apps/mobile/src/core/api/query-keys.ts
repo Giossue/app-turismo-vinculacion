@@ -1,6 +1,8 @@
 import type { QueryKey } from "@tanstack/react-query";
 
 export const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+/** Los guardados de la cuenta deben abrir tras varios días sin conexión. */
+export const SAVED_RETENTION_MS = 30 * ONE_DAY_MS;
 
 /**
  * Prefixes of every TanStack Query key in the app. Features append their
@@ -9,6 +11,8 @@ export const ONE_DAY_MS = 24 * 60 * 60 * 1000;
  */
 export const queryKeys = {
   calculatedRoute: ["calculated-route"],
+  // Copia nacional con almacenamiento propio: sin viewport y fuera del caché.
+  centerPinSnapshot: ["center-pin-snapshot"],
   // Paginated (infinite) list; the segment discards the single-page shape.
   centerOpinions: ["center-opinions", "pages-v1"],
   discoveryCatalog: ["discovery-catalog"],
@@ -60,6 +64,11 @@ export function isPersistedQueryKey(queryKey: QueryKey): boolean {
 
 export function isUserScopedQueryKey(queryKey: QueryKey): boolean {
   return userScopedQueryKeys.some((prefix) => queryKey[0] === prefix[0]);
+}
+
+/** Edad máxima en disco: los datos de la cuenta duran más que los públicos. */
+export function getPersistedQueryMaxAge(queryKey: QueryKey): number {
+  return isUserScopedQueryKey(queryKey) ? SAVED_RETENTION_MS : ONE_DAY_MS;
 }
 
 /** Las claves privadas terminan con el ID numérico de su propietario. */

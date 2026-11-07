@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import type { OfflineCityManifest } from "../domain/offline-city";
 import { parseStoredOfflineManifest } from "./offline-api";
+import { withCurrentMapColors } from "./offline-map-colors";
 
 const keyPrefix = "rumbo-ec-offline-city:";
 
@@ -24,7 +25,8 @@ export async function getStoredOfflineManifest(
   slug: string,
 ): Promise<OfflineCityManifest | null> {
   const value = await AsyncStorage.getItem(`${keyPrefix}${slug}`);
-  return value ? parseStoredOfflineManifest(value) : null;
+  const manifest = value ? parseStoredOfflineManifest(value) : null;
+  return manifest ? withCurrentMapColors(manifest) : null;
 }
 
 export async function removeOfflineManifest(slug: string): Promise<void> {

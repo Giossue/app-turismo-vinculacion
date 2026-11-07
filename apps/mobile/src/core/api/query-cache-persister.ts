@@ -6,10 +6,10 @@ import { z } from "zod";
 
 import { createSerialTaskQueue } from "@/core/storage/serial-task-queue";
 import {
+  getPersistedQueryMaxAge,
   getQueryAccountId,
   isPersistedQueryKey,
   isUserScopedQueryKey,
-  ONE_DAY_MS,
 } from "./query-keys";
 
 type Storage = Readonly<{
@@ -46,13 +46,41 @@ export function canPersistQuery(
     !isPersistedQueryKey(queryKey) ||
     updatedAt <= 0 ||
     updatedAt > now ||
-    now - updatedAt > ONE_DAY_MS
+    now - updatedAt > getPersistedQueryMaxAge(queryKey)
   ) {
     return false;
   }
   if (!isUserScopedQueryKey(queryKey)) return true;
   const owner = getQueryAccountId(queryKey);
   return owner !== null && (accountId === undefined || owner === accountId);
+}
+
+/**
+ * Una recarga fallida sin red no invalida la copia: se escribe como dato válido
+ * con su fecha real, así el disco nunca guarda errores ni pierde la ficha.
+ */
+export function keepFailedRefreshes(client: PersistedClient): PersistedClient {
+  return {
+    ...client,
+    clientState: {
+      ...client.clientState,
+      queries: client.clientState.queries.map((query) =>
+        query.state.status === "error" && query.state.data !== undefined
+          ? {
+              ...query,
+              state: {
+                ...query.state,
+                error: null,
+                errorUpdatedAt: 0,
+                fetchFailureCount: 0,
+                fetchFailureReason: null,
+                status: "success",
+              },
+            }
+          : query,
+      ),
+    },
+  };
 }
 
 /** La edad del snapshot no prolonga la vida de cada entrada ni guarda mutaciones. */
