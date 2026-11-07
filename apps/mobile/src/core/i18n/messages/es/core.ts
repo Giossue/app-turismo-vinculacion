@@ -1,6 +1,10 @@
 /** Textos de los componentes compartidos, formato y ubicación. */
 export const coreEs = {
   back: "Volver",
+  themeToggle: {
+    dark: "Cambiar a modo oscuro",
+    light: "Cambiar a modo claro",
+  },
   close: "Cerrar",
   closeMenu: "Cerrar menú",
   retry: "Reintentar",

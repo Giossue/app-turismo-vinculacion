@@ -1,7 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Tabs, usePathname, useRouter } from "expo-router";
 import { useEffect } from "react";
-import { useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
@@ -108,27 +107,13 @@ function buildInitials(name: string): string {
 function PrimaryTabs() {
   const m = useMessages();
   const colors = useTurismoPalette();
-  const { width } = useWindowDimensions();
   return (
     <Tabs
       detachInactiveScreens={false}
       screenOptions={{
-        // Las pestañas se deslizan de lado, sin el fundido de `shift`: la
-        // escena entra desde el lado de su pestaña y se desplaza el ancho
-        // completo. El fondo del tema evita el destello blanco.
-        animation: "shift",
-        sceneStyleInterpolator: ({ current }) => ({
-          sceneStyle: {
-            transform: [
-              {
-                translateX: current.progress.interpolate({
-                  inputRange: [-1, 0, 1],
-                  outputRange: [-width, 0, width],
-                }),
-              },
-            ],
-          },
-        }),
+        // Fundido corto: son pantallas del mismo nivel y así el mapa no se
+        // arrastra por la pantalla. El fondo del tema evita el destello blanco.
+        animation: "fade",
         sceneStyle: { backgroundColor: colors.background },
         headerShown: false,
       }}

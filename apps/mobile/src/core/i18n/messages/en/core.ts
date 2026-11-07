@@ -2,6 +2,10 @@ import type { Messages } from "../es";
 
 export const coreEn: Messages["core"] = {
   back: "Back",
+  themeToggle: {
+    dark: "Switch to dark mode",
+    light: "Switch to light mode",
+  },
   close: "Close",
   closeMenu: "Close menu",
   retry: "Try again",

@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { ScrollView, StyleSheet, Text } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Switch } from "react-native-paper";
 
 import {
@@ -9,7 +9,7 @@ import {
   type LanguagePreference,
 } from "@/core/i18n/use-language";
 import { useTurismoPalette, useTurismoTheme } from "@/core/ui/theme-context";
-import { TourismSurface } from "@/core/ui/tourism-controls";
+import { TourismSection } from "@/core/ui/tourism-content";
 import { TourismRadioGroup } from "@/core/ui/tourism-fields";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import {
@@ -42,30 +42,32 @@ export default function SettingsScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <TourismSurface style={styles.preferenceCard}>
-          <Text style={[styles.label, { color: colors.text }]}>
-            {text.darkTheme}
-          </Text>
-          <Switch
-            accessibilityLabel={text.darkTheme}
-            accessibilityRole="switch"
-            accessibilityState={{ checked: darkThemeEnabled }}
-            onValueChange={(enabled: boolean) =>
-              setPreference(enabled ? "dark" : "light")
-            }
-            style={styles.switch}
-            value={darkThemeEnabled}
-          />
-        </TourismSurface>
-        <TourismSurface style={styles.languageCard}>
+        <TourismSection title={text.appearance} variant="card">
+          <View style={styles.preferenceRow}>
+            <Text style={[styles.label, { color: colors.text }]}>
+              {text.darkTheme}
+            </Text>
+            <Switch
+              accessibilityLabel={text.darkTheme}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: darkThemeEnabled }}
+              onValueChange={(enabled: boolean) =>
+                setPreference(enabled ? "dark" : "light")
+              }
+              style={styles.switch}
+              value={darkThemeEnabled}
+            />
+          </View>
+        </TourismSection>
+        <TourismSection title={text.language} variant="card">
           <TourismRadioGroup
-            label={text.language}
+            accessibilityLabel={text.language}
             layout="column"
             onChange={setLanguagePreference}
             options={languageOptions}
             value={languagePreference}
           />
-        </TourismSurface>
+        </TourismSection>
       </ScrollView>
     </TourismScreenFrame>
   );
@@ -78,13 +80,11 @@ const styles = StyleSheet.create({
     paddingBottom: turismoSpacing.xxl,
   },
   label: { ...turismoTypography.body, flex: 1 },
-  preferenceCard: {
+  preferenceRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: turismoSpacing.md,
-    padding: turismoSpacing.md,
   },
-  languageCard: { padding: turismoSpacing.md },
   switch: {
     minHeight: turismoMetrics.touchTarget,
     minWidth: turismoMetrics.touchTarget,

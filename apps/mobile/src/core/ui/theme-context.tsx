@@ -80,27 +80,6 @@ export function TurismoThemeProvider({
   );
 }
 
-/**
- * Renders a subtree with a fixed color scheme, e.g. the account entry hero,
- * which is always dark. `Tourism*` components inside it pick the scheme's
- * palette; the app-wide preference is not changed.
- */
-export function TurismoSchemeScope({
-  children,
-  scheme,
-}: Readonly<{ children: ReactNode; scheme: TurismoColorScheme }>) {
-  const parent = useTurismoTheme();
-  const value = useMemo<TurismoThemeContextValue>(
-    () => ({ ...parent, scheme }),
-    [parent, scheme],
-  );
-  return (
-    <TurismoThemeContext.Provider value={value}>
-      {children}
-    </TurismoThemeContext.Provider>
-  );
-}
-
 export function useTurismoTheme() {
   const context = useContext(TurismoThemeContext);
   if (!context) {

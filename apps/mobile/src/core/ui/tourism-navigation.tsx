@@ -44,6 +44,7 @@ import { turismoHairline } from "./tourism-hairline";
 import { useMessages } from "@/core/i18n/use-language";
 
 export { TourismHeader } from "./tourism-header";
+export { TourismThemeToggle } from "./tourism-theme-toggle";
 
 /** One entry of the menu sheet. Its action runs after the sheet closes. */
 export type TourismMenuItem = Readonly<{

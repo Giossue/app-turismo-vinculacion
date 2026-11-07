@@ -119,8 +119,6 @@ export const turismoFixedColors = {
   compassNorth: "#EF4444",
   compassNorthShade: "#DC2626",
   shadow: "#000000",
-  // Darkens hero photography so the header stays legible on any image.
-  heroShade: "rgba(0, 0, 0, 0.24)",
 } as const;
 
 /**
@@ -143,13 +141,15 @@ export const turismoShadows = {
 } as const;
 
 /**
- * Responsive geometry of the account entry hero: an image band clamped to a
- * fraction of the window height and a centered column of readable widths.
+ * Responsive geometry of the account entry hero: an enlarged image band
+ * clamped to a fraction of the window height and a centered column of readable
+ * widths.
  */
 export const turismoAccountEntryLayout = {
-  heroHeightRatio: 0.3,
-  heroMinHeight: 240,
-  heroMaxHeight: 300,
+  heroImageAspect: 16 / 9,
+  // Ampliación sobre el ancho de pantalla; el recorte sale por la izquierda.
+  heroImageScale: 1.25,
+  heroMaxHeightRatio: 0.42,
   bodyHeightRatio: 0.68,
   bodyHeightOffset: 72,
   bodyMinHeight: 448,

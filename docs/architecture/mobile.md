@@ -103,16 +103,16 @@ permisos de cámara/galería que antes usaba el agente. La lectura
 de voz de cada respuesta se controla con un icono discreto en la esquina de su
 mensaje y mantiene un objetivo táctil de 44 dp.
 
-La preferencia de apariencia se administra desde `Menú > Configuración`, con una sola fila
-«Usar tema oscuro» y un interruptor: activado elige `dark` y desactivado elige `light`.
+La preferencia de apariencia se administra desde `Menú > Configuración`, en la sección
+«Apariencia», con la fila «Usar tema oscuro» y un interruptor: activado elige `dark` y desactivado elige `light`.
 El interruptor refleja el esquema efectivo, incluso si una preferencia `system` previa o
 inicial sigue la apariencia del dispositivo hasta la primera elección manual. El proveedor
 de tema mantiene una única fuente de verdad (`system`, `light` o `dark`), la persiste en
 AsyncStorage dentro de `setPreference` (una elección hecha mientras se lee el valor guardado
 prevalece sobre él) y expone el esquema efectivo a los tokens, Paper, MapLibre y la barra
-de estado. `TurismoSchemeScope` fija el esquema de un subárbol
-—la entrada de cuenta siempre es oscura— sin cambiar la preferencia. El cambio no crea una
-ruta adicional ni altera el historial de navegación.
+de estado. La bienvenida, «Iniciar sesión» y «Crear cuenta» siguen ese esquema y muestran
+arriba a la derecha `TourismThemeToggle`, que elige `light` o `dark` con la misma preferencia.
+El cambio no crea una ruta adicional ni altera el historial de navegación.
 
 ## Compatibilidad y referencias de plataforma
 
@@ -354,8 +354,9 @@ cierra la búsqueda antes de navegar al visor local de su ciudad.
 
 Las transiciones de pantalla usan movimiento en ambas plataformas: el Stack usa
 `animation: "slide_from_right"` (en iOS también se vuelve deslizando desde el borde) y las
-pestañas se desplazan de lado el ancho completo, sin fundido (`animation: "shift"` con un
-`sceneStyleInterpolator` que solo traslada). Para evitar el flash blanco
+pestañas, que son pantallas del mismo nivel, usan un fundido de 150 ms (`animation: "fade"`)
+para no arrastrar el mapa. La bienvenida y los formularios de cuenta cambian con un fundido
+de 150 ms que respeta `ReduceMotion.System`. Para evitar el flash blanco
 que `react-native-screens` puede mostrar entre navegadores anidados, el Stack pinta el fondo
 del tema en `contentStyle` y las pestañas en `sceneStyle`. No se añaden capas de animación
 propias al shell de pantalla. Los overlays que necesiten movimiento usan

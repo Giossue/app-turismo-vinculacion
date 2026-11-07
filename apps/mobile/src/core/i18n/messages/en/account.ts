@@ -85,6 +85,7 @@ export const accountEn: Messages["account"] = {
   },
   settings: {
     title: "Settings",
+    appearance: "Appearance",
     darkTheme: "Use dark theme",
     language: "Language",
     languageSystem: "Device language",

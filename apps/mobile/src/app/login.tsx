@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { KeyboardAvoidingView, ScrollView, StyleSheet } from "react-native";
+import Animated, {
+  FadeIn,
+  LayoutAnimationConfig,
+  ReduceMotion,
+} from "react-native-reanimated";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 
 import { useScreenBackHandler } from "@/core/navigation/use-screen-back-handler";
-import { TurismoSchemeScope } from "@/core/ui/theme-context";
+import { TourismThemeToggle } from "@/core/ui/tourism-navigation";
 import { TourismScreenFrame } from "@/core/ui/tourism-screen";
 import { turismoSpacing } from "@/core/ui/tokens";
 import {
@@ -18,6 +22,9 @@ import { RegisterForm } from "@/features/auth/presentation/register-form";
 import { useMessages } from "@/core/i18n/use-language";
 
 type AuthMode = "entry" | "login" | "register";
+
+// Fundido al pasar entre la bienvenida y los formularios.
+const modeEntering = FadeIn.duration(150).reduceMotion(ReduceMotion.System);
 
 export default function LoginScreen() {
   const m = useMessages();
@@ -57,55 +64,56 @@ export default function LoginScreen() {
     }
   };
 
-  if (mode === "entry") {
-    return (
-      <TurismoSchemeScope scheme="dark">
-        <TourismScreenFrame
-          fullBleed
-          showHeader={false}
-          title={m.account.login.account}
-        >
-          <StatusBar style="light" />
-          <AccountEntry
-            onBack={returnTo ? handleBack : undefined}
-            onCreateAccount={() => setMode("register")}
-            onGuest={handleGuest}
-            onLogin={() => setMode("login")}
-          />
-        </TourismScreenFrame>
-      </TurismoSchemeScope>
-    );
-  }
-
+  // `skipEntering` evita el fundido al abrir la pantalla: ahí ya anima el Stack.
   return (
-    <TourismScreenFrame
-      onBack={handleBack}
-      title={
-        mode === "register"
-          ? m.account.login.createAccount
-          : m.account.login.signIn
-      }
-    >
-      <KeyboardAvoidingView behavior="padding" style={styles.flex}>
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {mode === "register" ? (
-            <RegisterForm
-              onSignedIn={returnToTarget}
-              onSwitchMode={() => setMode("login")}
+    <LayoutAnimationConfig skipEntering>
+      <Animated.View entering={modeEntering} key={mode} style={styles.flex}>
+        {mode === "entry" ? (
+          <TourismScreenFrame
+            fullBleed
+            showHeader={false}
+            title={m.account.login.account}
+          >
+            <AccountEntry
+              onBack={returnTo ? handleBack : undefined}
+              onCreateAccount={() => setMode("register")}
+              onGuest={handleGuest}
+              onLogin={() => setMode("login")}
             />
-          ) : (
-            <LoginForm
-              onSignedIn={returnToTarget}
-              onSwitchMode={() => setMode("register")}
-            />
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </TourismScreenFrame>
+          </TourismScreenFrame>
+        ) : (
+          <TourismScreenFrame
+            headerAction={<TourismThemeToggle />}
+            onBack={handleBack}
+            title={
+              mode === "register"
+                ? m.account.login.createAccount
+                : m.account.login.signIn
+            }
+          >
+            <KeyboardAvoidingView behavior="padding" style={styles.flex}>
+              <ScrollView
+                contentContainerStyle={styles.content}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {mode === "register" ? (
+                  <RegisterForm
+                    onSignedIn={returnToTarget}
+                    onSwitchMode={() => setMode("login")}
+                  />
+                ) : (
+                  <LoginForm
+                    onSignedIn={returnToTarget}
+                    onSwitchMode={() => setMode("register")}
+                  />
+                )}
+              </ScrollView>
+            </KeyboardAvoidingView>
+          </TourismScreenFrame>
+        )}
+      </Animated.View>
+    </LayoutAnimationConfig>
   );
 }
 

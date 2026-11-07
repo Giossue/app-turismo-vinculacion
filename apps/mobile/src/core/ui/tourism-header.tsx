@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { useMessages } from "@/core/i18n/use-language";
@@ -13,9 +14,15 @@ import {
 
 /** Encabezado de pantalla secundaria: volver y título. */
 export function TourismHeader({
+  action,
   onBack,
   title,
-}: Readonly<{ onBack?: () => void; title?: string }>) {
+}: Readonly<{
+  /** Control alineado a la derecha del encabezado. */
+  action?: ReactNode;
+  onBack?: () => void;
+  title?: string;
+}>) {
   const m = useMessages();
   const colors = useTurismoPalette();
   return (
@@ -44,6 +51,7 @@ export function TourismHeader({
           {title}
         </Text>
       ) : null}
+      {action ? <View style={styles.headerAction}>{action}</View> : null}
     </View>
   );
 }
@@ -55,6 +63,7 @@ const styles = StyleSheet.create({
     gap: turismoSpacing.sm,
     minHeight: turismoMetrics.headerMinHeight,
   },
+  headerAction: { marginLeft: "auto" },
   headerBack: { padding: turismoSpacing.xxs },
   headerTitle: { ...turismoTypography.title, flex: 1 },
 });

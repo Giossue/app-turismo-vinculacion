@@ -84,6 +84,7 @@ export const accountEs = {
   },
   settings: {
     title: "Configuración",
+    appearance: "Apariencia",
     darkTheme: "Usar tema oscuro",
     language: "Idioma",
     languageSystem: "Idioma del dispositivo",

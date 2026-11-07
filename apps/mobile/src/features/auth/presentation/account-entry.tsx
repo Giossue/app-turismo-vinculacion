@@ -9,11 +9,13 @@ import {
 
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismActionButton } from "@/core/ui/tourism-controls";
-import { TourismHeader } from "@/core/ui/tourism-navigation";
+import {
+  TourismHeader,
+  TourismThemeToggle,
+} from "@/core/ui/tourism-navigation";
 import { TurismoIcon, type TurismoIconName } from "@/core/ui/turismo-icons";
 import {
   turismoAccountEntryLayout as layout,
-  turismoFixedColors,
   turismoOpacity,
   turismoRadii,
   turismoSpacing,
@@ -32,10 +34,7 @@ const benefits: readonly Readonly<{
   { icon: "bot", key: "agent" },
 ];
 
-/**
- * Identity entry: hero image, benefits and the three ways in. Render it
- * inside `TurismoSchemeScope scheme="dark"`; its palette follows the scope.
- */
+/** Identity entry: hero image, benefits and the three ways in. */
 export function AccountEntry({
   onBack,
   onCreateAccount,
@@ -49,11 +48,13 @@ export function AccountEntry({
 }>) {
   const m = useMessages();
   const colors = useTurismoPalette();
-  const { height } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
   const heroHeight = Math.min(
-    Math.max(height * layout.heroHeightRatio, layout.heroMinHeight),
-    layout.heroMaxHeight,
+    (width * layout.heroImageScale) / layout.heroImageAspect,
+    height * layout.heroMaxHeightRatio,
   );
+  const heroImageWidth = Math.max(width, heroHeight * layout.heroImageAspect);
+  const heroImageHeight = heroImageWidth / layout.heroImageAspect;
   const bodyMinHeight = Math.max(
     height * layout.bodyHeightRatio - layout.bodyHeightOffset,
     layout.bodyMinHeight,
@@ -66,14 +67,22 @@ export function AccountEntry({
       style={styles.scroll}
     >
       <ImageBackground
-        imageStyle={styles.heroImage}
-        resizeMode="contain"
+        // Alineada a la derecha para no cortar «Ecuador te espera».
+        imageStyle={[
+          styles.heroImage,
+          {
+            height: heroImageHeight,
+            left: width - heroImageWidth,
+            top: (heroHeight - heroImageHeight) / 2,
+            width: heroImageWidth,
+          },
+        ]}
+        resizeMode="cover"
         source={accountHeroImage}
         style={[styles.hero, { height: heroHeight }]}
       >
-        <View pointerEvents="none" style={styles.heroShade} />
         <View style={styles.headerOverlay}>
-          <TourismHeader onBack={onBack} />
+          <TourismHeader action={<TourismThemeToggle />} onBack={onBack} />
         </View>
       </ImageBackground>
 
@@ -146,18 +155,11 @@ const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1, width: "100%" },
   hero: { overflow: "hidden", width: "100%" },
   heroImage: { opacity: turismoOpacity.heroImage },
-  heroShade: {
-    backgroundColor: turismoFixedColors.heroShade,
-    bottom: 0,
-    left: 0,
-    position: "absolute",
-    right: 0,
-    top: 0,
-  },
   headerOverlay: { paddingHorizontal: turismoSpacing.md, width: "100%" },
   body: {
     alignItems: "center",
     flexGrow: 1,
+    justifyContent: "center",
     marginTop: -layout.bodyOverlap,
     paddingBottom: turismoSpacing.xl,
     paddingHorizontal: turismoSpacing.md,
