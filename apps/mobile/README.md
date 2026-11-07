@@ -60,3 +60,19 @@ corepack pnpm --filter @turismo/mobile test
 - Definir identificador de iOS, cuenta Expo/EAS y cuenta Apple Developer.
 - Contratar/configurar un estilo y proveedor de tiles de producción. El estilo actual
   es solo una demostración sin garantía de disponibilidad para producción.
+
+## Firma del APK de producción
+
+`assembleRelease` genera el APK con la clave de depuración; antes de publicarlo hay que
+firmarlo con la clave propia:
+
+```bash
+scripts/sign-android-release.sh \
+  apps/mobile/android/app/build/outputs/apk/release/app-release.apk rumbo-ec.apk
+```
+
+La clave, su contraseña y el historial de rotación viven fuera del repositorio, en
+`~/.config/wasi-travel-signing/`, y deben tener copia de seguridad: sin ellos no se pueden
+publicar actualizaciones para quienes ya tienen la app. La rotación de APK Signature Scheme
+v3 permite actualizar sin desinstalar; desde Android 9 solo se acepta la clave nueva, y
+Android 7 y 8 siguen validando la firma anterior.
