@@ -2,7 +2,7 @@ import type { SymbolLayerSpecification } from "@maplibre/maplibre-react-native";
 
 import { getTurismoColors, type TurismoColorScheme } from "@/core/ui/tokens";
 import {
-  establishmentPinColorExpression,
+  getEstablishmentPinColorExpression,
   getEstablishmentPinImageExpression,
 } from "@/features/establishments/presentation/establishment-pins";
 import { basemapPalettes } from "../data/basemap-palette";
@@ -24,9 +24,10 @@ export function getCenterMapLabelStyles({
   const labelPalette = basemapPalettes[scheme];
   // Los PNG de atractivos comparten el verde del tema general.
   const centerPinColor = getTurismoColors(scheme).primaryStrong;
-  // Los colores de categoría son oscuros: como texto no se leen sobre el halo.
+  const establishmentDotColor = getEstablishmentPinColorExpression(scheme);
+  // Los colores de categoría no alcanzan a leerse como texto sobre el halo.
   const establishmentTextColor =
-    scheme === "dark" ? labelPalette.text : establishmentPinColorExpression;
+    scheme === "dark" ? labelPalette.text : establishmentDotColor;
   const labelHalo = {
     "text-halo-color": labelPalette.textHalo,
     "text-halo-width": 1.5,
@@ -67,6 +68,7 @@ export function getCenterMapLabelStyles({
         ? "tourism-center-monument-dark"
         : "tourism-center-monument-light",
     clusterNameLayout,
+    establishmentDotColor,
     establishmentLabelPaint,
     establishmentPinImage: getEstablishmentPinImageExpression(scheme),
     establishmentNameLayout: getMapNameLayout(

@@ -262,7 +262,7 @@ Antes de crear una utilidad o un componente nuevo, reutilizar estos módulos del
   `use-basemap-style`, `use-map-lifecycle`, `MapLoadingOverlay` y `UserLocationLayers`
   (`features/map/presentation`), compartidos por el mapa de Explorar y el de rutas. Los pines
   del catastro se resuelven con `getEstablishmentPin` (`establishment-pins.ts`); en tema
-  oscuro el mapa usa `establishment-pins-dark/`, el mismo dibujo con contorno blanco.
+  oscuro el mapa usa `establishment-pins-dark/`, el mismo dibujo con el relleno aclarado.
   `MapAttributionButton` lo dibuja cada mapa (`CenterMap` recibe `attributionInset`);
   `MapCompass` se suscribe al rumbo mediante `createMapBearingStore` para que girar el mapa
   no vuelva a renderizar la pantalla, y `MapActionColumn` apila los controles en huecos fijos.

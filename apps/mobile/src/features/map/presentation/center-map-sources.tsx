@@ -17,10 +17,7 @@ import {
   establishmentTileLayer,
   establishmentTileMaxZoom,
 } from "@/features/establishments/data/establishment-tiles";
-import {
-  establishmentPinColorExpression,
-  establishmentPinImages,
-} from "@/features/establishments/presentation/establishment-pins";
+import { establishmentPinImages } from "@/features/establishments/presentation/establishment-pins";
 import { mapPlaceZoom } from "../domain/map-place-priority";
 import type {
   CenterFeatureCollection,
@@ -73,7 +70,7 @@ function getClusterPaint(colors: MapColors): CirclePaint {
   return {
     "circle-color": colors.primary,
     "circle-radius": ["step", ["get", "point_count"], 13, 10, 17, 50, 21],
-    "circle-stroke-color": colors.onPrimary,
+    "circle-stroke-color": colors.surface,
     "circle-stroke-width": 1,
   };
 }
@@ -225,12 +222,10 @@ export function EstablishmentsSource({
         layout={{ visibility }}
         maxzoom={mapPlaceZoom.establishmentIcon}
         paint={{
-          "circle-color": establishmentPinColorExpression,
+          "circle-color": labels.establishmentDotColor,
           "circle-opacity": turismoMapLayerStyle.establishmentDotOpacity,
           "circle-radius": establishmentDotRadius,
-          // Blanco en ambos temas: varios pines son oscuros y sobre el terreno
-          // del tema oscuro solo se distinguen por este borde.
-          "circle-stroke-color": colors.onPrimary,
+          "circle-stroke-color": colors.surface,
           "circle-stroke-width": 1,
         }}
         source-layer={establishmentTileLayer}

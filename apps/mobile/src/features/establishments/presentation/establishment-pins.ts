@@ -4,14 +4,17 @@ import type {
 } from "@maplibre/maplibre-react-native";
 import type { TurismoColorScheme } from "@/core/ui/tokens";
 import type { TurismoIconName } from "@/core/ui/turismo-icons";
+import { establishmentPinDarkColors } from "./establishment-pin-dark-colors";
 
 export type EstablishmentPin = Readonly<{
   /** Rendered PNG pin registered with MapLibre `Images`. */
   asset: number;
-  /** Mismo pin con contorno blanco, para el terreno del tema oscuro. */
+  /** Mismo pin con el relleno aclarado, para el terreno del tema oscuro. */
   darkAsset: number;
   /** Local category color; it wins over the color sent by the API. */
   color: string;
+  /** Color de categoría aclarado para el tema oscuro. */
+  darkColor: string;
   /** Icon used for the pin in lists and sheets. */
   icon: TurismoIconName;
   /** Name under which `asset` is registered in the map style. */
@@ -19,7 +22,7 @@ export type EstablishmentPin = Readonly<{
   key: string;
 }>;
 
-type PinDefinition = Omit<EstablishmentPin, "imageName" | "key">;
+type PinDefinition = Omit<EstablishmentPin, "darkColor" | "imageName" | "key">;
 
 const pinDefinitions = {
   "accommodation-hotel": {
@@ -132,7 +135,15 @@ const establishmentDarkPinImagePrefix = "tourism-establishment-pin-dark-";
 const establishmentPins: ReadonlyMap<string, EstablishmentPin> = new Map(
   Object.entries(pinDefinitions).map(([key, definition]) => [
     key,
-    { ...definition, imageName: `${establishmentPinImagePrefix}${key}`, key },
+    {
+      ...definition,
+      darkColor:
+        establishmentPinDarkColors[
+          key as keyof typeof establishmentPinDarkColors
+        ],
+      imageName: `${establishmentPinImagePrefix}${key}`,
+      key,
+    },
   ]),
 );
 
@@ -172,16 +183,20 @@ export function getEstablishmentPinImageExpression(scheme: TurismoColorScheme) {
   ] satisfies NonNullable<SymbolLayerSpecification["layout"]>["icon-image"];
 }
 
-export const establishmentPinColorExpression = [
-  "match",
-  ["get", "icon"],
-  defaultEstablishmentPin.key,
-  defaultEstablishmentPin.color,
-  ...[...establishmentPins.values()]
-    .filter((pin) => pin !== defaultEstablishmentPin)
-    .flatMap((pin) => [pin.key, pin.color]),
-  defaultEstablishmentPin.color,
-] satisfies NonNullable<CircleLayerSpecification["paint"]>["circle-color"];
+export function getEstablishmentPinColorExpression(scheme: TurismoColorScheme) {
+  const colorOf = (pin: EstablishmentPin) =>
+    scheme === "dark" ? pin.darkColor : pin.color;
+  return [
+    "match",
+    ["get", "icon"],
+    defaultEstablishmentPin.key,
+    colorOf(defaultEstablishmentPin),
+    ...[...establishmentPins.values()]
+      .filter((pin) => pin !== defaultEstablishmentPin)
+      .flatMap((pin) => [pin.key, colorOf(pin)]),
+    colorOf(defaultEstablishmentPin),
+  ] satisfies NonNullable<CircleLayerSpecification["paint"]>["circle-color"];
+}
 
 function getKnownPin(key: keyof typeof pinDefinitions): EstablishmentPin {
   const pin = establishmentPins.get(key);

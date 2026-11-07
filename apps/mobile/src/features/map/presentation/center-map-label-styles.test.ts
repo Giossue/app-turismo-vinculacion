@@ -5,7 +5,7 @@ import { basemapPalettes } from "../data/basemap-palette";
 import { getCenterMapLabelStyles } from "./center-map-label-styles";
 
 vi.mock("@/features/establishments/presentation/establishment-pins", () => ({
-  establishmentPinColorExpression: ["get", "color"],
+  getEstablishmentPinColorExpression: (scheme: string) => ["color", scheme],
   getEstablishmentPinImageExpression: (scheme: string) => ["image", scheme],
 }));
 
@@ -32,7 +32,18 @@ describe("etiquetas de establecimientos", () => {
       scheme: "light",
     });
 
-    expect(establishmentLabelPaint?.["text-color"]).toEqual(["get", "color"]);
+    expect(establishmentLabelPaint?.["text-color"]).toEqual(["color", "light"]);
+  });
+
+  it("elige el color de los puntos del tema activo", () => {
+    expect(
+      getCenterMapLabelStyles({ ...options, scheme: "dark" })
+        .establishmentDotColor,
+    ).toEqual(["color", "dark"]);
+    expect(
+      getCenterMapLabelStyles({ ...options, scheme: "light" })
+        .establishmentDotColor,
+    ).toEqual(["color", "light"]);
   });
 
   it("elige la imagen de pin del tema activo", () => {
