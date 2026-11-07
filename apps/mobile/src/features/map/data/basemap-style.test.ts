@@ -1,3 +1,4 @@
+import { onlineManager } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 
 import { getContrastRatio } from "@/core/ui/color-contrast";
@@ -7,6 +8,7 @@ import {
   getFallbackMapStyle,
   loadSelfHostedMapStyle,
   normalizeSelfHostedStyle,
+  retryBasemapWhenOnline,
 } from "./basemap-style";
 import { readStoredBasemapStyle } from "./basemap-style-storage";
 
@@ -230,5 +232,22 @@ describe("mapa en modo oscuro", () => {
       paint: { "line-color": dark.roadMajor, "line-opacity": 0.92 },
     });
     vi.unstubAllEnvs();
+  });
+});
+
+describe("recuperación del mapa base", () => {
+  it("vuelve a cargar el estilo al recuperar la conexión", () => {
+    const load = vi.fn();
+    onlineManager.setOnline(false);
+    const stop = retryBasemapWhenOnline(load);
+
+    expect(load).not.toHaveBeenCalled();
+    onlineManager.setOnline(true);
+    expect(load).toHaveBeenCalledTimes(1);
+
+    stop();
+    onlineManager.setOnline(false);
+    onlineManager.setOnline(true);
+    expect(load).toHaveBeenCalledTimes(1);
   });
 });

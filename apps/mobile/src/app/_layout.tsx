@@ -21,6 +21,7 @@ import { getTurismoColors } from "@/core/ui/tokens";
 import { AuthProvider } from "@/features/auth/application/auth-context";
 import { UserLocationProvider } from "@/core/location/use-user-location";
 import { AppUpdateDialog } from "@/features/app-update/presentation/app-update-dialog";
+import { LegalReacceptanceGate } from "@/features/legal/presentation/legal-reacceptance-gate";
 import { stopOrphanedNavigationTask } from "@/features/routing/infrastructure/navigation-background-task";
 import { initLanguage } from "@/core/i18n/use-language";
 
@@ -94,6 +95,7 @@ export default function RootLayout() {
           </BottomSheetModalProvider>
           <TourismToastHost />
           <AppUpdateDialog />
+          <LegalReacceptanceGate />
         </AppProviders>
       </Sentry.ErrorBoundary>
     </GestureHandlerRootView>
@@ -131,6 +133,7 @@ function AppNavigation() {
         <Stack.Screen name="about" />
         <Stack.Screen name="profile" />
         <Stack.Screen name="login" />
+        <Stack.Screen name="legal/[document]" />
       </Stack>
     </>
   );

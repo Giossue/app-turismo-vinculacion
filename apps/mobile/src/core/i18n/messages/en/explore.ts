@@ -40,6 +40,8 @@ export const exploreEn: Messages["explore"] = {
     directions: "Directions",
     retryMap: "We couldn't update the attractions. Try again",
     offline: "Offline: showing your downloaded maps",
+    offlineIncomplete: "Offline: the map may be incomplete",
+    offlineGoTo: (city: string) => `Offline · Go to ${city}`,
   },
   search: {
     cancelled: "The search was cancelled.",

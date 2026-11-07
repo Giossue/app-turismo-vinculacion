@@ -135,6 +135,11 @@ export function saveCalculatedRoute(
   });
 }
 
+/** Borra todas las rutas de una cuenta, por ejemplo al eliminarla. */
+export function removeSavedCalculatedRoutes(userId: number): Promise<void> {
+  return enqueueWrite(() => AsyncStorage.removeItem(getStorageKey(userId)));
+}
+
 export function deleteSavedCalculatedRoute(
   userId: number,
   key: string,

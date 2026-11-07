@@ -8,6 +8,7 @@ import {
   TourismSheetScrollView,
 } from "@/core/ui/tourism-bottom-sheet";
 import { TourismInfoRow } from "@/core/ui/tourism-content";
+import { useSkeletonDeadline } from "@/core/ui/tourism-skeleton";
 import { TourismStateView } from "@/core/ui/tourism-state";
 import {
   turismoMetrics,
@@ -58,8 +59,9 @@ export function EstablishmentDetailSheet({
     establishmentId !== undefined &&
     detailQuery.isPending &&
     !detailQuery.isPaused;
+  const showSkeleton = useSkeletonDeadline(loading);
 
-  if (loading) {
+  if (showSkeleton) {
     return (
       <TourismBottomSheet onClose={onClose}>
         <TourismSheetScrollView contentStyle={styles.container}>
@@ -116,7 +118,7 @@ export function EstablishmentDetailSheet({
           save={save}
         />
 
-        {establishment.id === undefined ? null : detail ? (
+        {establishment.id === undefined || loading ? null : detail ? (
           <CenterPhotos photos={detail.photos} variant="divided" />
         ) : detailQuery.isPaused ||
           isApiUnavailableError(detailQuery.error) ? null : (

@@ -1,3 +1,5 @@
+import Constants from "expo-constants";
+import { useRouter } from "expo-router";
 import { useRef } from "react";
 import { StyleSheet, View, type TextInput } from "react-native";
 
@@ -10,6 +12,7 @@ import {
 import { turismoSpacing } from "@/core/ui/tokens";
 import { useAuth } from "../application/auth-context";
 import { useAuthForm } from "../application/use-auth-form";
+import { isLegalVersionOutdatedError } from "../data/coded-api-error";
 import {
   emptyRegistrationForm,
   getPasswordRequirementMessage,
@@ -23,6 +26,14 @@ import {
 import { AuthFormActions } from "./auth-form-actions";
 import { useMessages } from "@/core/i18n/use-language";
 import { messages } from "@/core/i18n/language";
+import { buildLegalDocumentHref } from "@/features/legal/application/legal-href";
+import { useLegalDocuments } from "@/features/legal/application/use-legal-documents";
+import {
+  getAcceptedVersions,
+  noLegalConsent,
+} from "@/features/legal/domain/legal-consent";
+import { legalDocumentTypes } from "@/features/legal/domain/legal-document";
+import { LegalConsentFields } from "@/features/legal/presentation/legal-consent-fields";
 
 const getGenderOptions = (): readonly TourismRadioOption<TouristGender>[] =>
   touristGenderOptions.map((gender) => ({
@@ -39,16 +50,35 @@ export function RegisterForm({
   const auth = useAuth();
   const emailRef = useRef<TextInput>(null);
   const confirmationRef = useRef<TextInput>(null);
-  const { maximumDate, minimumDate } = getBirthDateBounds();
+  const router = useRouter();
+  const legal = useLegalDocuments();
+  const { minimumDate } = getBirthDateBounds();
   const form = useAuthForm({
     fallbackError: m.account.errors.register,
-    initialValues: emptyRegistrationForm,
-    onSubmit: async (input) => {
-      await auth.register(input);
+    initialValues: {
+      ...emptyRegistrationForm,
+      appVersion: Constants.expoConfig?.version,
+    },
+    onSubmit: async (input, { setValue }) => {
+      try {
+        await auth.register(input);
+      } catch (error) {
+        if (isLegalVersionOutdatedError(error)) {
+          setValue("acceptedLegal", noLegalConsent);
+          legal.reload();
+        }
+        throw error;
+      }
       onSignedIn();
     },
     schema: registrationFormSchema,
   });
+  const canAccept =
+    getAcceptedVersions(
+      form.values.acceptedLegal,
+      legal.documents,
+      legalDocumentTypes,
+    ) !== null;
 
   return (
     <View style={styles.form}>
@@ -92,7 +122,9 @@ export function RegisterForm({
       <TourismDateField
         error={form.fieldErrors.birthDate}
         label={m.account.login.birthDate}
-        maximumDate={maximumDate}
+        // El calendario llega hasta hoy: quien no alcanza la edad mínima puede
+        // elegir su fecha real y recibir el motivo en vez de un día bloqueado.
+        maximumDate={new Date()}
         minimumDate={minimumDate}
         onChange={(date) => form.setValue("birthDate", date)}
         required
@@ -131,8 +163,16 @@ export function RegisterForm({
         textContentType="newPassword"
         value={form.values.passwordConfirmation}
       />
+      <LegalConsentFields
+        consent={form.values.acceptedLegal}
+        error={form.fieldErrors.acceptedLegal}
+        legal={legal}
+        onChange={(consent) => form.setValue("acceptedLegal", consent)}
+        onOpenDocument={(type) => router.push(buildLegalDocumentHref(type))}
+        types={legalDocumentTypes}
+      />
       <AuthFormActions
-        disabled={auth.status === "loading"}
+        disabled={auth.status === "loading" || !canAccept}
         error={form.formError}
         onSubmit={() => void form.submit()}
         onSwitchMode={onSwitchMode}

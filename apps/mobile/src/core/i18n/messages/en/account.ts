@@ -60,7 +60,8 @@ export const accountEn: Messages["account"] = {
     genderRequired: "Select your gender.",
     birthDateRequired: "Select your date of birth.",
     birthDateInvalid: "Invalid date.",
-    birthDateUnderage: "You must be at least 15 years old to create an account.",
+    birthDateUnderage:
+      "You must be at least 15 years old to create an account.",
     legalRequired: "Accept both documents to create your account.",
     passwordTooLong: (max: number) =>
       `The password can't be longer than ${max} characters.`,
@@ -116,6 +117,12 @@ export const accountEn: Messages["account"] = {
     email: "Email",
     signingOut: "Signing out…",
     signOut: "Sign out",
+    signOutConfirm: {
+      title: "Sign out?",
+      message: "You will need to sign in again to use your account.",
+      cancel: "Cancel",
+      confirm: "Sign out",
+    },
     signOutFailed: "We couldn't sign you out. Please try again.",
     deleteAccount: "Delete account",
     deleteAccountHint: "Permanently delete your account and your data.",

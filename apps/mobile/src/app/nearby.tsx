@@ -42,7 +42,8 @@ import { useMessages } from "@/core/i18n/use-language";
  * acaba de llegar) busca alrededor de ese punto y no pide el GPS.
  */
 export default function NearbyScreen() {
-  const text = useMessages().community.nearby;
+  const m = useMessages();
+  const text = m.community.nearby;
   const router = useRouter();
   const { latitude, longitude, name } =
     useLocalSearchParams<NearbySearchParams>();
@@ -116,6 +117,11 @@ export default function NearbyScreen() {
           title={text.locationNeeded}
           variant="error"
         />
+      );
+    }
+    if (placesQuery.isPaused && places.length === 0) {
+      return (
+        <TourismStateView message={m.core.offlineNeeded} variant="error" />
       );
     }
     if (placesQuery.isPending) {

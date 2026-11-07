@@ -242,6 +242,74 @@ export function TourismRadioGroup<T extends string>({
   );
 }
 
+/**
+ * Yes/no choice that starts as the caller decides (never checked by itself).
+ * The whole row is the 48 dp target and `error` is announced under it.
+ */
+export function TourismCheckbox({
+  accessibilityHint,
+  accessibilityLabel,
+  checked,
+  disabled = false,
+  error,
+  label,
+  onChange,
+}: Readonly<{
+  accessibilityHint?: string;
+  accessibilityLabel?: string;
+  checked: boolean;
+  disabled?: boolean;
+  error?: string | null;
+  label: string;
+  onChange: (checked: boolean) => void;
+}>) {
+  const colors = useTurismoPalette();
+  return (
+    <View style={styles.field}>
+      <TourismPressable
+        accessibilityHint={error ?? accessibilityHint}
+        accessibilityLabel={accessibilityLabel ?? label}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked, disabled }}
+        disabled={disabled}
+        onPress={() => onChange(!checked)}
+        style={styles.checkboxRow}
+      >
+        <View
+          style={[
+            styles.checkboxBox,
+            {
+              backgroundColor: checked ? colors.primary : colors.surface,
+              borderColor: checked
+                ? colors.primaryStrong
+                : error
+                  ? colors.danger
+                  : colors.border,
+            },
+          ]}
+        >
+          {checked ? (
+            <TurismoIcon
+              color={colors.onPrimary}
+              name="check"
+              size={turismoIconSizes.sm}
+            />
+          ) : null}
+        </View>
+        <Text
+          style={[
+            styles.checkboxLabel,
+            { color: checked ? colors.primaryStrong : colors.text },
+          ]}
+        >
+          {label}
+        </Text>
+      </TourismPressable>
+      {error ? <TourismFieldError message={error} /> : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   field: { gap: turismoSpacing.xs },
   label: { ...turismoTypography.label },
@@ -297,5 +365,20 @@ const styles = StyleSheet.create({
     paddingVertical: turismoSpacing.sm,
   },
   radioCopy: { flex: 1, gap: turismoSpacing.xxs },
+  checkboxRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: turismoSpacing.sm,
+    minHeight: turismoMetrics.touchTarget,
+  },
+  checkboxBox: {
+    alignItems: "center",
+    borderRadius: turismoRadii.xs,
+    borderWidth: turismoMetrics.borderWidthStrong,
+    height: turismoIconSizes.lg,
+    justifyContent: "center",
+    width: turismoIconSizes.lg,
+  },
+  checkboxLabel: { ...turismoTypography.label, flex: 1 },
   description: { ...turismoTypography.caption },
 });

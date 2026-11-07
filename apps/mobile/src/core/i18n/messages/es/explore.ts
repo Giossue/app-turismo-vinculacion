@@ -40,6 +40,8 @@ export const exploreEs = {
     directions: "Cómo llegar",
     retryMap: "No pudimos actualizar los atractivos. Reintentar",
     offline: "Sin conexión: mostrando tus mapas descargados",
+    offlineIncomplete: "Sin conexión: el mapa puede estar incompleto",
+    offlineGoTo: (city: string) => `Sin conexión · Ir a ${city}`,
   },
   search: {
     cancelled: "La búsqueda fue cancelada.",

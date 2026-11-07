@@ -106,9 +106,13 @@ export class AuthService {
       throw new UnauthorizedException("Correo o contraseña inválidos.");
     }
 
-    return this.createSession(
-      await this.toSessionUser(this.dataSource.manager, user),
-    );
+    return this.createSession({
+      ...this.toUser(user),
+      pendingLegalDocuments: await this.findPendingLegalDocuments(
+        this.dataSource.manager,
+        user,
+      ),
+    });
   }
 
   async register(input: TouristRegistrationInput): Promise<AuthResult> {
@@ -564,7 +568,9 @@ function declaredLegalVersions(
 function assertCurrentLegalVersions(
   accepted: readonly DeclaredLegalVersion[],
 ): void {
-  if (!accepted.every((item) => hasCurrentLegalVersion(item.type, item.version))) {
+  if (
+    !accepted.every((item) => hasCurrentLegalVersion(item.type, item.version))
+  ) {
     throw new CodedHttpException(
       HttpStatus.CONFLICT,
       "LEGAL_VERSION_OUTDATED",

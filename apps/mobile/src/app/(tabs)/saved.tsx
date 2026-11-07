@@ -72,10 +72,15 @@ function SavedCenterList() {
         actionPending={
           savedCenters.isFetching || savedEstablishments.isFetching
         }
-        onAction={() => {
-          if (!savedCenters.data) void savedCenters.refetch();
-          if (!savedEstablishments.data) void savedEstablishments.refetch();
-        }}
+        onAction={
+          paused
+            ? undefined
+            : () => {
+                if (!savedCenters.data) void savedCenters.refetch();
+                if (!savedEstablishments.data)
+                  void savedEstablishments.refetch();
+              }
+        }
         title={m.community.saved.openFailed}
         message={paused ? m.community.saved.offline : undefined}
         variant="error"

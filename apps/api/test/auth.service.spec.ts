@@ -10,7 +10,9 @@ const acceptedLegal = Object.fromEntries(
 ) as { terms: string; privacy: string };
 
 function registrationService() {
-  const dataSource = { transaction: vi.fn().mockRejectedValue({ code: "23505" }) };
+  const dataSource = {
+    transaction: vi.fn().mockRejectedValue({ code: "23505" }),
+  };
   const service = new AuthService(
     dataSource as never,
     { hash: vi.fn().mockResolvedValue("hashed-password") } as never,
@@ -36,7 +38,10 @@ describe("AuthService minimum age", () => {
 
   it("uses the America/Guayaquil date, not the UTC date", async () => {
     // 03:00 UTC on the 8th is still 22:00 on the 7th in Guayaquil.
-    vi.useFakeTimers({ now: new Date("2026-11-08T03:00:00Z"), toFake: ["Date"] });
+    vi.useFakeTimers({
+      now: new Date("2026-11-08T03:00:00Z"),
+      toFake: ["Date"],
+    });
     const { dataSource, service } = registrationService();
 
     await expect(
@@ -46,7 +51,10 @@ describe("AuthService minimum age", () => {
   });
 
   it("accepts the person who turns 15 on the Guayaquil date", async () => {
-    vi.useFakeTimers({ now: new Date("2026-11-08T03:00:00Z"), toFake: ["Date"] });
+    vi.useFakeTimers({
+      now: new Date("2026-11-08T03:00:00Z"),
+      toFake: ["Date"],
+    });
     const { dataSource, service } = registrationService();
 
     await expect(
@@ -58,7 +66,10 @@ describe("AuthService minimum age", () => {
   it("treats 29 February as reached on 1 March of a common year", async () => {
     const { service } = registrationService();
 
-    vi.useFakeTimers({ now: new Date("2027-02-28T17:00:00Z"), toFake: ["Date"] });
+    vi.useFakeTimers({
+      now: new Date("2027-02-28T17:00:00Z"),
+      toFake: ["Date"],
+    });
     await expect(
       service.register(registrationInput("2012-02-29")),
     ).rejects.toMatchObject({ code: "UNDERAGE" });
@@ -77,17 +88,20 @@ describe("AuthService registration input", () => {
     ["birth date", { birthDate: undefined }],
     ["acceptance", { acceptedLegal: undefined }],
     ["one document", { acceptedLegal: { terms: acceptedLegal.terms } }],
-  ])("rejects a missing %s without a transaction", async (_label, overrides) => {
-    const { dataSource, service } = registrationService();
+  ])(
+    "rejects a missing %s without a transaction",
+    async (_label, overrides) => {
+      const { dataSource, service } = registrationService();
 
-    await expect(
-      service.register({
-        ...registrationInput("1998-02-03"),
-        ...overrides,
-      } as never),
-    ).rejects.toMatchObject({ status: 400 });
-    expect(dataSource.transaction).not.toHaveBeenCalled();
-  });
+      await expect(
+        service.register({
+          ...registrationInput("1998-02-03"),
+          ...overrides,
+        } as never),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(dataSource.transaction).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe("AuthService refresh rotation", () => {

@@ -242,6 +242,7 @@ export function ExploreMapScreen() {
             attributionInset={{ bottom: tabBarInset, left: 0 }}
             centers={data.mapCenters}
             establishmentLayer={data.establishmentLayer}
+            focusBounds={data.offlineCityBounds}
             focusCoordinate={search.focusCoordinate?.coordinate}
             focusCoordinateKey={search.focusCoordinate?.key}
             placeMarker={search.placeMarker}
@@ -323,7 +324,8 @@ export function ExploreMapScreen() {
             mapFilter={data.mapFilter}
             mapError={data.mapError}
             onMapFilterChange={data.changeMapFilter}
-            offline={offlineMap !== null}
+            offlineNotice={data.offlineNotice}
+            onGoToOfflineCity={data.goToOfflineCity}
             onModeChange={search.changeMode}
             onMoreFilters={overlay.openMoreFilters}
             onRetryMap={data.retryMap}

@@ -6,6 +6,7 @@ import {
   getCachedSelfHostedMapStyle,
   getFallbackMapStyle,
   loadSelfHostedMapStyle,
+  retryBasemapWhenOnline,
 } from "../data/basemap-style";
 
 type LoadedStyle = Readonly<{
@@ -27,21 +28,28 @@ export function useBasemapStyle(
     return cached ? { scheme, style: cached } : null;
   });
 
+  const hasStyle = loaded?.scheme === scheme;
+
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || hasStyle) return;
     let cancelled = false;
-    loadSelfHostedMapStyle(scheme)
-      .then((style) => {
-        if (!cancelled) setLoaded({ scheme, style });
-      })
-      .catch(() => {
-        // El estilo vacío conserva la exploración y los pines si el servidor
-        // propio está temporalmente fuera de línea.
-      });
+    const load = () => {
+      loadSelfHostedMapStyle(scheme)
+        .then((style) => {
+          if (!cancelled) setLoaded({ scheme, style });
+        })
+        .catch(() => {
+          // El estilo vacío conserva la exploración y los pines si el servidor
+          // propio está temporalmente fuera de línea.
+        });
+    };
+    load();
+    const stopRetrying = retryBasemapWhenOnline(load);
     return () => {
       cancelled = true;
+      stopRetrying();
     };
-  }, [scheme, enabled]);
+  }, [scheme, enabled, hasStyle]);
 
-  return loaded?.scheme === scheme ? loaded.style : getFallbackMapStyle(scheme);
+  return hasStyle ? loaded.style : getFallbackMapStyle(scheme);
 }

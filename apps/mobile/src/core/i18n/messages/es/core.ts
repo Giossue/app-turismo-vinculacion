@@ -8,6 +8,7 @@ export const coreEs = {
   close: "Cerrar",
   closeMenu: "Cerrar menú",
   retry: "Reintentar",
+  offlineNeeded: "Necesitas conexión para abrir este contenido.",
   done: "Listo",
   clearSearch: "Limpiar búsqueda",
   showPassword: "Mostrar contraseña",

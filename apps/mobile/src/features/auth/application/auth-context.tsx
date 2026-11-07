@@ -42,6 +42,9 @@ import type { TouristRegistrationInput } from "../domain/registration-options";
 import { MobileSession, type AccountSessionScope } from "./mobile-session";
 import { messages } from "@/core/i18n/language";
 import type { LegalDocumentType } from "@/features/legal/domain/legal-document";
+import { removeStoredAgentConversation } from "@/features/agent/data/agent-conversation-storage";
+import { removeSavedCalculatedRoutes } from "@/features/routing/data/saved-routes-storage";
+import { clearSearchHistory } from "@/features/search/data/search-history-storage";
 
 /** El perfil puede estar autenticado sin access token durante el uso sin conexión. */
 export type AuthContextValue = Readonly<{
@@ -49,8 +52,11 @@ export type AuthContextValue = Readonly<{
   register: (input: TouristRegistrationInput) => Promise<void>;
   logout: () => Promise<void>;
   acceptLegalDocuments: (input: LegalAcceptanceInput) => Promise<void>;
-  /** Elimina la cuenta en la API y deja la sesión local como tras `logout`. */
-  deleteAccount: (password: string) => Promise<void>;
+  /**
+   * Elimina la cuenta en la API y deja la sesión local como tras `logout`.
+   * Resuelve `false` si el dispositivo no pudo borrar la sesión.
+   */
+  deleteAccount: (password: string) => Promise<boolean>;
   /** Único origen del bloqueo de reaceptación; vacío si no hay nada confirmado. */
   pendingLegalDocuments: readonly LegalDocumentType[];
   request: AuthorizedFetcher;
@@ -71,6 +77,12 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         apiUrl: readApiUrl,
         fetcher: (input, init) => fetch(input, init),
         retainAccount: (userId) => retainQueryAccount(queryClient, userId),
+        clearAccountDeviceData: (userId) =>
+          Promise.all([
+            removeStoredAgentConversation(userId),
+            removeSavedCalculatedRoutes(userId),
+            clearSearchHistory(),
+          ]).then(() => undefined),
         storage: {
           read: readStoredSession,
           save: saveStoredSession,
@@ -126,18 +138,11 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       throw error;
     }
   }, [session]);
-  const deleteAccount = useCallback(
-    async (password: string) => {
-      const cleaned = await session.deleteAccount(password);
-      if (!cleaned) showTourismToast(messages().account.errors.localLogout, "help");
-    },
-    [session],
-  );
   const pendingLegalDocuments = getPendingLegalDocuments(status, user);
   const value = useMemo<AuthContextValue>(
     () => ({
       acceptLegalDocuments: session.acceptLegalDocuments,
-      deleteAccount,
+      deleteAccount: session.deleteAccount,
       login: session.login,
       logout,
       pendingLegalDocuments,
@@ -149,7 +154,6 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       user,
     }),
     [
-      deleteAccount,
       logout,
       pendingLegalDocuments,
       request,

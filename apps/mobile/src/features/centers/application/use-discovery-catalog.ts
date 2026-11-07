@@ -10,11 +10,15 @@ import { uniqueByCode } from "../domain/unique-by-code";
 export function getDiscoveryCatalogQueryOptions() {
   return queryOptions({
     queryKey: queryKeys.discoveryCatalog,
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ client, queryKey, signal }) => {
       try {
         return await getDiscoveryCatalog(withRequestSignal(fetch, signal));
       } catch (error) {
         if (!isApiUnavailableError(error)) throw error;
+        // Las descargas no traen provincias ni cantones: no sustituyen a los
+        // filtros completos ya vistos.
+        const seen = client.getQueryData<DiscoveryCatalog>(queryKey);
+        if (seen) return seen;
         const centers = await getStoredOfflineCenters();
         if (!centers.length) throw error;
         return catalogFromOfflineCenters(centers);

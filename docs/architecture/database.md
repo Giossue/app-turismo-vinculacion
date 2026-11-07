@@ -148,3 +148,36 @@ acción y motivo.
 
 Cada consulta crítica debe acompañarse de `EXPLAIN (ANALYZE, BUFFERS)` con volumen
 representativo antes de optimizar.
+
+## Aceptaciones legales
+
+`aceptaciones_legales` guarda una fila por cuenta, documento (`terms`, `privacy`) y versión,
+con `aceptado_en` del servidor y `version_app` declarada. El índice único de esos tres campos
+y `ON CONFLICT DO NOTHING` resuelven repetición y concurrencia. No hay constancias
+retroactivas: una cuenta sin fila se considera sin aceptación. La API solo inserta, y una
+versión nueva añade otra fila sin tocar la anterior. No se guarda IP ni agente de usuario.
+
+## Eliminación de cuentas turísticas
+
+Casi todas las FK hacia `usuarios` son `RESTRICT`, así que la cuenta se anonimiza en vez de
+borrarse: la fila queda con `eliminado_at`, `activo = FALSE`, `nombre` neutro, `genero`,
+`fecha_nac`, `email_verified_at` y `remember_token` nulos, un hash inutilizable y un `email`
+aleatorio bajo `.invalid`, que libera el correo y respeta ambos índices únicos.
+`usuarios_eliminado_inactivo_check` impide reactivarla. Todo ocurre en una transacción.
+
+`USUARIOS_REFERENCES` (`apps/api/src/auth/account-deletion.ts`) clasifica cada FK real; una
+prueba de integración la compara con `information_schema`, de modo que una tabla nueva
+falla hasta clasificarse:
+
+| Tablas | Acción |
+| --- | --- |
+| `auth_sessions`, `favoritos_centros`, `favoritos_puntos_interes`, `favoritos_establecimientos`, `preferencias_historial_ia` | Se borran las filas. |
+| `itinerarios_usuario`, `conversaciones_ia` | Se borran, y en cascada `itinerario_jornadas`, `itinerario_paradas` y `mensajes_ia`. |
+| `opiniones` | Se marcan con `eliminado_at`; salen del público y de las calificaciones. |
+| `aceptaciones_legales`, `usuarios_roles` | Se conservan: prueba del consentimiento y rol. |
+| `moderaciones_opinion` (`moderador_id`), auditorías, archivos, borradores, responsables y revisiones | Autoría institucional: se conserva. |
+
+De cada opinión se vacía `comentario` en todas sus versiones, y `motivo` en sus moderaciones
+porque puede citar el texto. `opinion_versiones_contenido_check` exige calificación o
+comentario: una versión que solo tenía comentario conserva `[comentario eliminado]`. Las
+calificaciones numéricas quedan sin autor identificable y fuera de los agregados públicos.

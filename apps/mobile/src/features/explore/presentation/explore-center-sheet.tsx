@@ -6,8 +6,13 @@ import {
   TourismBottomSheet,
   TourismSheetScrollView,
 } from "@/core/ui/tourism-bottom-sheet";
+import {
+  TourismSkeleton,
+  useSkeletonDeadline,
+} from "@/core/ui/tourism-skeleton";
 import { TourismStateView } from "@/core/ui/tourism-state";
 import {
+  turismoAspectRatios,
   turismoMetrics,
   turismoSpacing,
   turismoTypography,
@@ -75,9 +80,10 @@ export function ExploreCenterSheetContent({
   const save = useCenterSaveToggle(center, onRequireAuth);
   const [activeTab, setActiveTab] = useState<CenterDetailTab>("information");
   const detail = detailQuery.data;
-  const loading =
-    (detailQuery.isPending && !detailQuery.isPaused) ||
-    (opinions.isPending && !opinions.isPaused);
+  const detailLoading = detailQuery.isPending && !detailQuery.isPaused;
+  const showSkeleton = useSkeletonDeadline(
+    detailLoading || (opinions.isPending && !opinions.isPaused),
+  );
 
   return (
     <>
@@ -85,7 +91,7 @@ export function ExploreCenterSheetContent({
         contentStyle={styles.content}
         landscapeMaxWidth={turismoMetrics.sheetMaxWidth}
       >
-        {loading ? (
+        {showSkeleton ? (
           <PlaceDetailSkeleton
             accessibilityLabel={m.explore.centerSheet.loading}
             heroStyle={styles.hero}
@@ -96,11 +102,15 @@ export function ExploreCenterSheetContent({
             <Text style={[styles.title, { color: colors.text }]}>
               {center.name}
             </Text>
-            <CenterHero
-              name={center.name}
-              photos={detail?.photos}
-              style={styles.hero}
-            />
+            {detailLoading ? (
+              <TourismSkeleton style={[styles.hero, styles.heroSkeleton]} />
+            ) : (
+              <CenterHero
+                name={center.name}
+                photos={detail?.photos}
+                style={styles.hero}
+              />
+            )}
             <CenterRatingSummary
               onPress={() => setActiveTab("opinions")}
               style={styles.rating}
@@ -111,7 +121,9 @@ export function ExploreCenterSheetContent({
               onShare={() => void shareCenter(center.code, center.name)}
               save={save}
             />
-            {detailQuery.error || !detail ? (
+            {detailLoading ? (
+              <TourismSkeleton style={styles.detailSkeleton} />
+            ) : !detail ? (
               <TourismStateView
                 actionPending={detailQuery.isFetching}
                 layout="inline"
@@ -157,6 +169,12 @@ const styles = StyleSheet.create({
     paddingTop: 0,
   },
   hero: { marginHorizontal: -turismoSpacing.lg },
+  heroSkeleton: {
+    alignSelf: "stretch",
+    aspectRatio: turismoAspectRatios.hero,
+    borderRadius: 0,
+  },
+  detailSkeleton: { height: turismoMetrics.touchTarget * 3 },
   title: { ...turismoTypography.title },
   rating: { alignSelf: "center" },
 });

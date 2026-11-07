@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { StyleSheet, type StyleProp, type ViewStyle } from "react-native";
 import Animated, {
   ReduceMotion,
@@ -13,6 +13,21 @@ import { turismoRadii } from "./tokens";
 
 const pulseDurationMs = 800;
 const pulseMinOpacity = 0.45;
+const skeletonDeadlineMs = 4_000;
+
+/**
+ * Con señal débil una consulta puede tardar decenas de segundos: pasado el
+ * límite la ficha muestra lo que ya tiene en vez de seguir esperando.
+ */
+export function useSkeletonDeadline(loading: boolean): boolean {
+  const [expired, setExpired] = useState(false);
+  useEffect(() => {
+    if (!loading) return;
+    const timer = setTimeout(() => setExpired(true), skeletonDeadlineMs);
+    return () => clearTimeout(timer);
+  }, [loading]);
+  return loading && !expired;
+}
 
 /**
  * Bloque que ocupa el lugar de un texto o una imagen mientras carga. Con

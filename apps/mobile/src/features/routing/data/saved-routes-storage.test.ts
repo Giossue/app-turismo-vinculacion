@@ -5,6 +5,7 @@ import {
   deleteSavedCalculatedRoute,
   listSavedCalculatedRoutes,
   loadSavedCalculatedRoute,
+  removeSavedCalculatedRoutes,
   saveCalculatedRoute,
   savedCalculatedRouteLimit,
   type SavedCalculatedRouteInput,
@@ -16,6 +17,9 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
     getItem: vi.fn(async (key: string) => values.get(key) ?? null),
     setItem: vi.fn(async (key: string, value: string) => {
       values.set(key, value);
+    }),
+    removeItem: vi.fn(async (key: string) => {
+      values.delete(key);
     }),
   },
 }));
@@ -217,5 +221,13 @@ describe("saved calculated routes", () => {
       ),
     ]);
     await expect(listSavedCalculatedRoutes(7)).resolves.toHaveLength(2);
+  });
+
+  it("removes every route of one account and keeps the others", async () => {
+    values.set("rumbo-ec-saved-routes-v1-7", "[]");
+    values.set("rumbo-ec-saved-routes-v1-8", "[]");
+    await removeSavedCalculatedRoutes(7);
+    expect(values.has("rumbo-ec-saved-routes-v1-7")).toBe(false);
+    expect(values.has("rumbo-ec-saved-routes-v1-8")).toBe(true);
   });
 });

@@ -147,6 +147,7 @@ export class AgentHistoryService {
     trace: readonly AgentToolTrace[] = [],
   ): Promise<string | null> {
     const publicIdSaved = await this.dataSource.transaction(async (manager) => {
+      if (!(await this.lockActiveAccount(manager, userId))) return null;
       const preferences = await manager.query<{ habilitado: boolean }[]>(
         `SELECT habilitado FROM preferencias_historial_ia
           WHERE usuario_id = $1 FOR UPDATE`,
@@ -208,6 +209,7 @@ export class AgentHistoryService {
   ): Promise<void> {
     try {
       await this.dataSource.transaction(async (manager) => {
+        if (!(await this.lockActiveAccount(manager, userId))) return;
         const conversation = await this.insertConversation(
           manager,
           userId,
@@ -235,6 +237,23 @@ export class AgentHistoryService {
         `Agent failure not recorded: ${saveError instanceof Error ? saveError.message : String(saveError)}`,
       );
     }
+  }
+
+  /**
+   * Un turno puede terminar después de que la persona eliminó su cuenta: el
+   * bloqueo espera a esa eliminación y evita guardar el turno a su nombre.
+   */
+  private async lockActiveAccount(
+    manager: EntityManager,
+    userId: number,
+  ): Promise<boolean> {
+    const rows = await manager.query<unknown[]>(
+      `SELECT 1 FROM usuarios
+        WHERE id = $1 AND eliminado_at IS NULL
+        FOR SHARE`,
+      [userId],
+    );
+    return rows.length > 0;
   }
 
   private async insertConversation(

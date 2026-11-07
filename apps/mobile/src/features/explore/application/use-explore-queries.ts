@@ -30,6 +30,8 @@ import {
 } from "../domain/explore-map-filter";
 import {
   getExploreOfflineMap,
+  getExploreOfflineNotice,
+  getOfflineContentBounds,
   startOfflineMapRetry,
 } from "./explore-offline-query-state";
 
@@ -117,7 +119,7 @@ export function useExploreQueries({
   }, [contentArea]);
   const content = useStoredOfflineManifests(
     active && ((hasQuery && areaAvailable) || needsOfflineMap),
-    localBounds,
+    getOfflineContentBounds(needsOfflineMap, hasQuery, localBounds),
   );
   const offlineCoverage = useMemo(
     () =>
@@ -171,6 +173,12 @@ export function useExploreQueries({
       mapFilter,
     ],
   );
+  // El enfoque dura hasta que la cámara se mueve: con límites activos el mapa
+  // ignora los demás enfoques.
+  const [offlineCityFocus, setOfflineCityFocus] = useState<Readonly<{
+    bounds: GeoBoundingBox;
+    viewport: typeof viewport;
+  }> | null>(null);
   const refetchCenters = centersQuery.refetch;
   useEffect(() => {
     if (!active || !offlineMap) return;
@@ -195,6 +203,15 @@ export function useExploreQueries({
         ? []
         : centers,
     offlineMap,
+    offlineCityBounds:
+      offlineCityFocus?.viewport === viewport ? offlineCityFocus.bounds : null,
+    goToOfflineCity: (bounds: GeoBoundingBox) =>
+      setOfflineCityFocus({ bounds: [...bounds], viewport }),
+    offlineNotice: getExploreOfflineNotice(
+      needsOfflineMap,
+      stored.summaries,
+      localBounds,
+    ),
     establishmentLayer: {
       visible: mapFilter?.kind !== "tourism",
       group: mapFilter?.kind === "establishments" ? mapFilter.group : undefined,

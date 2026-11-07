@@ -1,6 +1,7 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
+import type { GeoBoundingBox } from "@/core/geo/types";
 import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismIconAction } from "@/core/ui/tourism-controls";
 import { TourismGlassFill } from "@/core/ui/tourism-glass";
@@ -18,6 +19,7 @@ import {
   SearchModeField,
   type SearchModeFieldProps,
 } from "@/features/search/presentation/search-mode-field";
+import type { ExploreOfflineNotice } from "../application/explore-offline-query-state";
 import type { ExploreMapFilter } from "../domain/explore-map-filter";
 import { ExploreFilterChips } from "./explore-filter-chips";
 import { useMessages } from "@/core/i18n/use-language";
@@ -33,7 +35,8 @@ export function ExploreTopBar({
   landscape,
   mapFilter,
   mapError,
-  offline = false,
+  offlineNotice,
+  onGoToOfflineCity,
   onMapFilterChange,
   onModeChange,
   onMoreFilters,
@@ -45,8 +48,9 @@ export function ExploreTopBar({
   landscape: boolean;
   mapFilter: ExploreMapFilter;
   mapError: unknown;
-  /** The map shows only the downloaded cities because the API is unreachable. */
-  offline?: boolean;
+  /** Aviso sin conexión; `elsewhere` lleva el mapa a la ciudad descargada. */
+  offlineNotice: ExploreOfflineNotice | null;
+  onGoToOfflineCity: (bounds: GeoBoundingBox) => void;
   onMapFilterChange: (filter: ExploreMapFilter) => void;
   onModeChange: (mode: SearchMode) => void;
   onMoreFilters: () => void;
@@ -85,7 +89,23 @@ export function ExploreTopBar({
             onMore={onMoreFilters}
           />
         )}
-        {offline ? (
+        {offlineNotice?.kind === "elsewhere" ? (
+          <Pressable
+            accessibilityLabel={m.explore.actions.offlineGoTo(
+              offlineNotice.cityName,
+            )}
+            accessibilityLiveRegion="polite"
+            accessibilityRole="button"
+            hitSlop={turismoMetrics.chipHitSlop}
+            onPress={() => onGoToOfflineCity(offlineNotice.bounds)}
+            style={styles.offline}
+          >
+            <TourismGlassFill />
+            <Text style={[styles.offlineText, { color: colors.text }]}>
+              {m.explore.actions.offlineGoTo(offlineNotice.cityName)}
+            </Text>
+          </Pressable>
+        ) : offlineNotice ? (
           <View
             accessibilityLiveRegion="polite"
             accessibilityRole="alert"
@@ -94,7 +114,9 @@ export function ExploreTopBar({
           >
             <TourismGlassFill />
             <Text style={[styles.offlineText, { color: colors.text }]}>
-              {m.explore.actions.offline}
+              {offlineNotice.kind === "downloaded"
+                ? m.explore.actions.offline
+                : m.explore.actions.offlineIncomplete}
             </Text>
           </View>
         ) : null}

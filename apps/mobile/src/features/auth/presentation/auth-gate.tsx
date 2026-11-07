@@ -18,12 +18,15 @@ import { useMessages } from "@/core/i18n/use-language";
 export function AuthGate({
   children,
   loadingMessage,
+  redirectAnonymous = true,
   returnTo,
   tab = false,
   title,
 }: Readonly<{
   children: (user: AuthUser) => ReactNode;
   loadingMessage?: string;
+  /** `false` mientras la pantalla decide ella misma adónde salir. */
+  redirectAnonymous?: boolean;
   returnTo: LoginReturnPath;
   /** Pestaña principal: sin encabezado (la barra ya la nombra) y sin margen inferior. */
   tab?: boolean;
@@ -44,7 +47,7 @@ export function AuthGate({
         children(access.user)
       ) : (
         <>
-          {access.status === "redirect" ? (
+          {access.status === "redirect" && redirectAnonymous ? (
             <Redirect href={access.loginHref} />
           ) : null}
           <TourismStateView

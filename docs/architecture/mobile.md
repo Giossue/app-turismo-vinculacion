@@ -13,7 +13,7 @@ src/
   core/
     api/ location/ storage/ navigation/ geo/ format/ ui/
   features/
-    auth/ map/ explore/ centers/ establishments/
+    auth/ legal/ map/ explore/ centers/ establishments/
     search/ routing/ offline/ favorites/ opinions/ agent/
 ```
 
@@ -243,7 +243,9 @@ Antes de crear una utilidad o un componente nuevo, reutilizar estos módulos del
   al presionar en iOS, atenuado si está deshabilitado) reemplaza a los `Pressable` crudos;
   `TourismTextField` (etiqueta, `helper`, `error` anunciado, `secure` con mostrar/ocultar,
   `multiline` y `ref` para encadenar el foco), `TourismRadioGroup` (`radiogroup` de opciones
-  `radio` con estado `checked`, en fila o en columna), `TourismDateField` (calendario nativo
+  `radio` con estado `checked`, en fila o en columna), `TourismCheckbox` (fila de 48 dp con
+  rol `checkbox`, estado `checked`/`disabled` y `error` anunciado; nunca se marca sola),
+  `TourismDateField` (calendario nativo
   con límites; en iOS un modal con cierre de 44dp) y `TourismSnackbar` (aviso breve de Paper
   en un portal). `TourismActionButton` admite `loading`, `size="lg"`, `trailingIcon`,
   `accessibilityLabel` y `mode="ghost"` para enlaces; la hoja de menú recibe sus entradas como
@@ -284,7 +286,8 @@ Antes de crear una utilidad o un componente nuevo, reutilizar estos módulos del
 - Contexto de autenticación y `MobileSession`: identidad, generación y transporte.
 - Hooks, contextos y almacenes propios de aplicación: estado local de las interfaces.
 - Expo SecureStore: refresh token y material sensible mínimo (el perfil público de la
-  sesión —id, nombre, correo y roles— para restaurarla sin conexión).
+  sesión —id, nombre, correo, roles y documentos legales pendientes— para restaurarla sin
+  conexión).
 - SQLite/AsyncStorage: catálogos descargados y borradores solo cuando se especifique su
   política de retención. Los guardados viven en la cuenta (`favoritos_centros` y
   `favoritos_establecimientos`), no en el
@@ -317,7 +320,8 @@ entrada si el destino ya está debajo (sin duplicar pantallas) o la reemplaza; `
 vuelve con `back()` para conservar su destino. Los errores de cada formulario viven en el
 propio formulario. Una cuenta nueva se crea con rol `TURISTA` mediante
 `/auth/mobile/register`; el género es obligatorio y usa las opciones `Masculino` o
-`Femenino`, mientras que la fecha de nacimiento se elige con el calendario nativo. Los
+`Femenino`, mientras que la fecha de nacimiento, obligatoria, se elige con el calendario
+nativo. Los
 guardados se sincronizan con `favoritos_centros` y `favoritos_establecimientos`; un favorito no autenticado no se asigna a un `usuario_id` ficticio.
 El resumen local de guardados de versiones anteriores se importa una sola vez a la primera
 cuenta que inicia sesión en el dispositivo y después se borra, para que otra cuenta no lo
@@ -335,6 +339,76 @@ Los cambios optimistas no reemplazan la última colección confirmada en disco m
 están pendientes. Esa copia conserva su fecha; si un cambio concurrente falla, se mantiene
 hasta una lectura confirmada. Sin copia previa no se persiste una lista tentativa. Guardar
 o quitar sin red intenta el transporte, informa el fallo y evita dejar el envío en cola.
+
+### Aceptación legal y baja de la cuenta
+
+`features/legal` reúne los documentos y el consentimiento; la decisión de bloquear la sesión
+y las llamadas autenticadas siguen en `features/auth`. Los textos vinculantes viven en la API
+(`GET /legal/documents`, público) y solo existen en español: en inglés la lectura lo avisa.
+`useLegalDocuments` los pide con una clave propia de la feature, fuera de
+`persistedQueryKeys`, para no aceptar nunca una copia vieja del disco. Sin red falla enseguida
+(`networkMode: "always"`, sin reintentos automáticos) y muestra error con reintento.
+
+El consentimiento (`LegalConsent`) guarda la versión que la persona tenía delante al marcar
+cada casilla. `getAcceptedVersions` es la única condición que habilita enviar: devuelve las
+versiones solo si todos los documentos requeridos están cargados y marcados en su versión
+vigente. Si una recarga trae otra versión, la casilla vuelve a verse vacía sin ningún efecto
+que la sincronice. `LegalConsentFields` no dibuja casillas sin documentos.
+
+**Registro.** `RegisterForm` añade dos `TourismCheckbox` sin marcar, cada una con su enlace a
+`legal/[document]`, y mantiene «Crear cuenta» deshabilitado hasta que `getAcceptedVersions`
+responde. El documento se apila con `router.push`: la entrada sigue montada debajo y
+conserva el modo y lo escrito, y `useScreenBackHandler` de esa pantalla deja de escuchar al
+perder el foco, de modo que Atrás solo retira el documento. `registrationFormSchema` sigue
+siendo el único lugar de validación y lista en su `.transform` lo que se envía:
+`acceptedLegal` y `appVersion` (`Constants.expoConfig?.version`) incluidos. La edad mínima es
+de 15 años (`isUnderMinimumAge`); cumplirlos ese día basta, y la API decide con su propia
+fecha. El calendario llega hasta hoy para que un menor pueda elegir su fecha real y leer el
+motivo en lugar de encontrarse con días bloqueados. Ante `LEGAL_VERSION_OUTDATED` se vacían
+las casillas, se descartan los documentos con `resetQueries` y se explica el motivo.
+
+**Códigos de error.** `ApiError` solo conserva mensaje y estado, y la API responde `400` o
+`409` a errores distintos. `requestCodedJson` (`features/auth/data/coded-api-error.ts`) lee
+`error.code` de una copia de la respuesta, deja que `requestJson` procese el original y, si el
+código tiene mensaje, lanza `CodedApiError` con el texto traducido. Un código desconocido
+conserva el error normal; login y renovación no pasan por aquí.
+
+**Reaceptación.** `pendingLegalDocuments` es opcional en `authUserSchema`: sin el campo (API
+anterior, perfil guardado antes) el dato es desconocido y no bloquea, y un valor ilegible
+cuenta igual para no impedir la sesión. `useAuth().pendingLegalDocuments`, calculado con
+`getPendingLegalDocuments`, es el único origen del bloqueo; ninguna pantalla lo comprueba. Se
+evalúa con cada `commit` de `MobileSession` (login, registro, renovación y restauración) y con
+`reevaluate` cuando `onlineManager` vuelve a estar en línea: con access token consulta
+`GET /auth/me`, porque renovar rotaría el refresh token en cada corte de red; sin él renueva.
+Sin conexión vale el último perfil guardado, de modo que un pendiente conocido sigue
+bloqueando y permite cerrar sesión. El resultado de aceptar actualiza memoria y SecureStore
+dentro de la cola serializada; si esa escritura falla la sesión continúa, porque la API ya
+tiene el dato y la siguiente renovación lo reescribe.
+
+`LegalReacceptanceGate` se monta en el layout raíz como `Modal` de pantalla completa sobre el
+`Stack`, no como ruta: cubre la navegación sin alterarla, y al aceptar la persona sigue donde
+estaba, con el mapa o la ruta activa intactos. Android entrega Atrás al diálogo del `Modal`
+(`onRequestClose`) y no a `BackHandler`, donde una pantalla enfocada después ganaría y navegaría
+por debajo. Los documentos se leen dentro del propio `Modal` con `LegalDocumentView`, la misma
+vista de la ruta, y Atrás solo vuelve al formulario. «Cerrar sesión» elige seguir como invitado
+y reutiliza `auth.logout`.
+
+**Eliminación de la cuenta.** Perfil ofrece «Eliminar cuenta», que abre
+`DeleteAccountDialog`: explica qué se borra, que no se puede deshacer y qué se conserva, y pide
+la contraseña. Es un `Modal` condicional, así que cancelar o pulsar Atrás no envía nada y
+desmonta la clave; mientras la solicitud corre no se puede cerrar.
+`MobileSession.deleteAccount` comparte la solicitud en curso ante una doble confirmación y,
+al confirmarse, aplica la misma limpieza local que `logout` sin llamar a la revocación remota,
+porque la API ya revocó las sesiones. Contraseña incorrecta, cuenta institucional, red o `5xx`
+muestran el error dentro del diálogo y conservan la sesión. Si el dispositivo no puede borrar
+la sesión, el aviso global lo dice en lugar de confirmar la eliminación.
+
+**Salir como invitado.** `AuthGate` admite `redirectAnonymous={false}` para que Perfil no pase
+por la entrada de cuenta: registra la elección de invitado y vuelve a Explorar con
+`dismissTo("/")`. Explorar lee esa elección solo al montarse, así que si ya estaba montado
+redirige a `/login` sin `returnTo`. Esa ruta solo la usa Explorar: la entrada comprueba entonces
+la elección y hace `router.replace("/")`, igual que «Explorar como invitado», con lo que un
+Explorar nuevo la lee bien.
 
 ### UI declarativa y overlays
 

@@ -1,4 +1,5 @@
 import type { StyleSpecification } from "@maplibre/maplibre-react-native";
+import { onlineManager } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { getApiUrl } from "@/core/api/api-url";
@@ -69,7 +70,8 @@ async function loadPersistentOrRemoteStyle(
     () => null,
   );
   // El estilo guardado lleva los colores de cuando se descargó: la paleta se
-  // aplica de nuevo para que un cambio llegue también sin conexión.
+  // aplica de nuevo. Las ciudades descargadas usan su propia copia y conservan
+  // los colores con los que se guardaron.
   if (stored) {
     return {
       ...stored,
@@ -81,6 +83,13 @@ async function loadPersistentOrRemoteStyle(
   cacheStyle("light", styles.light, styleUrl);
   cacheStyle("dark", styles.dark, styleUrl);
   return styles[scheme];
+}
+
+/** Reintenta cargar el estilo cuando vuelve la conexión. */
+export function retryBasemapWhenOnline(load: () => void): () => void {
+  return onlineManager.subscribe((online) => {
+    if (online) load();
+  });
 }
 
 /** Fresh, normalized styles sharing the exact same resources for a new pack. */

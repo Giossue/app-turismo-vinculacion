@@ -92,6 +92,35 @@ describe("descargas disponibles al arrancar sin conexión", () => {
     expect(result.provinces).toEqual([]);
   });
 
+  it("conserva una ficha completa ya vista en lugar de la copia descargada", async () => {
+    const client = queryClient();
+    const options = getPublishedCenterQueryOptions("C1");
+    const seen = { ...center, address: "Calle 10 de Agosto" };
+    client.setQueryData(options.queryKey, seen);
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("sin red")));
+    offline.getStoredOfflineCenter.mockResolvedValueOnce({
+      ...center,
+      address: null,
+    });
+
+    await expect(
+      client.fetchQuery({ ...options, retry: false, staleTime: 0 }),
+    ).resolves.toEqual(seen);
+  });
+
+  it("conserva los filtros completos ya vistos sin conexión", async () => {
+    const client = queryClient();
+    const options = getDiscoveryCatalogQueryOptions();
+    const seen = { categories: [{ code: "XX", name: "Completa" }] };
+    client.setQueryData(options.queryKey, seen as never);
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("sin red")));
+    offline.getStoredOfflineCenters.mockResolvedValueOnce([center]);
+
+    await expect(
+      client.fetchQuery({ ...options, retry: false, staleTime: 0 }),
+    ).resolves.toEqual(seen);
+  });
+
   it.each([404, 403])(
     "no revive una ficha rechazada por la API (%i)",
     async (status) => {

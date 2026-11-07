@@ -5,7 +5,6 @@ import {
   isApiRequest,
   isRejectedSessionError,
 } from "../data/authorized-request";
-import type { StoredSession } from "../data/stored-user";
 import type { AuthStatus, AuthUser } from "../domain/auth-user";
 import {
   shouldRefreshBeforeRequest,
@@ -14,12 +13,12 @@ import {
 import type { TouristRegistrationInput } from "../domain/registration-options";
 import { messages } from "@/core/i18n/language";
 import type { LegalDocumentType } from "@/features/legal/domain/legal-document";
+import type {
+  SessionDependencies,
+  SessionResult,
+} from "./mobile-session-dependencies";
 
-export type SessionResult = Readonly<{
-  accessToken: string;
-  refreshToken: string;
-  user: AuthUser;
-}>;
+export type { SessionResult };
 export type AccountSessionScope = Readonly<{
   generation: number;
   userId: number;
@@ -34,39 +33,6 @@ type SessionSnapshot = Readonly<{
   status: AuthStatus;
   user: AuthUser | null;
 }>;
-type SessionDependencies = Readonly<{
-  apiUrl: () => string | null;
-  fetcher: Fetcher;
-  retainAccount: (userId: number | null) => Promise<void>;
-  storage: Readonly<{
-    read: () => Promise<StoredSession | null>;
-    save: (refreshToken: string, user: AuthUser) => Promise<void>;
-    clear: () => Promise<void>;
-  }>;
-  api: Readonly<{
-    login: (
-      email: string,
-      password: string,
-      request: Fetcher,
-    ) => Promise<SessionResult>;
-    register: (
-      input: TouristRegistrationInput,
-      request: Fetcher,
-    ) => Promise<SessionResult>;
-    refresh: (refreshToken: string, request: Fetcher) => Promise<SessionResult>;
-    logout: (refreshToken: string, request: Fetcher) => Promise<void>;
-    acceptLegal: (
-      input: LegalAcceptanceInput,
-      request: AuthorizedFetcher,
-    ) => Promise<readonly LegalDocumentType[]>;
-    deleteAccount: (
-      password: string,
-      request: AuthorizedFetcher,
-    ) => Promise<void>;
-    sessionUser: (request: AuthorizedFetcher) => Promise<AuthUser>;
-  }>;
-}>;
-
 export function sessionCancelledError(): Error {
   const error = new Error(messages().account.errors.sessionInactive);
   error.name = "AbortError";
@@ -276,13 +242,20 @@ export class MobileSession {
 
   private async deleteCurrentAccount(password: string): Promise<boolean> {
     const generation = this.snapshot.generation;
+    const userId = this.snapshot.user?.id;
     await this.dependencies.api.deleteAccount(
       password,
       this.requestForGeneration(generation),
     );
     this.assertGeneration(generation);
-    // La API ya revocó las sesiones: solo queda la limpieza local de `logout`.
-    return this.replaceSession().cleanup.then(
+    // La API ya revocó las sesiones: queda la limpieza local de `logout` y
+    // lo que esa cuenta guardó en el dispositivo fuera de la caché.
+    return Promise.all([
+      this.replaceSession().cleanup,
+      userId === undefined
+        ? undefined
+        : this.dependencies.clearAccountDeviceData(userId),
+    ]).then(
       () => true,
       () => false,
     );

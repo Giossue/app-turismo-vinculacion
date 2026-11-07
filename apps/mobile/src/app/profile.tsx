@@ -1,33 +1,71 @@
+import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
-import { ScrollView, StyleSheet } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { useTurismoPalette } from "@/core/ui/theme-context";
 import { TourismInfoRow } from "@/core/ui/tourism-content";
 import {
   TourismActionButton,
   TourismSurface,
 } from "@/core/ui/tourism-controls";
 import { TourismSnackbar } from "@/core/ui/tourism-snackbar";
-import { turismoSpacing } from "@/core/ui/tokens";
+import { showTourismToast } from "@/core/ui/tourism-toast";
+import { turismoSpacing, turismoTypography } from "@/core/ui/tokens";
 import { useAuth } from "@/features/auth/application/auth-context";
+import { chooseGuestAccess } from "@/features/auth/data/auth-entry-storage";
 import type { AuthUser } from "@/features/auth/domain/auth-user";
 import { AuthGate } from "@/features/auth/presentation/auth-gate";
+import { confirmSignOut } from "@/features/auth/presentation/confirm-sign-out";
+import { DeleteAccountDialog } from "@/features/auth/presentation/delete-account-dialog";
 import { useMessages } from "@/core/i18n/use-language";
 
 export default function ProfileScreen() {
   const m = useMessages();
+  const router = useRouter();
+  // Al eliminar, la sesión queda anónima antes de que termine la limpieza: esta
+  // pantalla sale al mapa como invitado en vez de pasar por la entrada de cuenta.
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleted = (cleaned: boolean) => {
+    if (cleaned) showTourismToast(m.account.profile.deleted);
+    else showTourismToast(m.account.errors.localLogout, "help");
+    void chooseGuestAccess().catch(() => undefined);
+    router.dismissTo("/");
+  };
+
   return (
-    <AuthGate returnTo="/profile" title={m.account.profile.title}>
-      {(user) => <ProfileContent user={user} />}
+    <AuthGate
+      redirectAnonymous={!deleting}
+      returnTo="/profile"
+      title={m.account.profile.title}
+    >
+      {(user) => (
+        <ProfileContent
+          onDeleted={handleDeleted}
+          onDeletingChange={setDeleting}
+          user={user}
+        />
+      )}
     </AuthGate>
   );
 }
 
-function ProfileContent({ user }: Readonly<{ user: AuthUser }>) {
+function ProfileContent({
+  onDeleted,
+  onDeletingChange,
+  user,
+}: Readonly<{
+  onDeleted: (cleaned: boolean) => void;
+  onDeletingChange: (deleting: boolean) => void;
+  user: AuthUser;
+}>) {
   const m = useMessages();
+  const colors = useTurismoPalette();
   const { logout } = useAuth();
   const logoutPendingRef = useRef(false);
   const [signingOut, setSigningOut] = useState(false);
   const [logoutError, setLogoutError] = useState(false);
+  const [confirmingDeletion, setConfirmingDeletion] = useState(false);
 
   const handleLogout = async () => {
     if (logoutPendingRef.current) return;
@@ -65,9 +103,28 @@ function ProfileContent({ user }: Readonly<{ user: AuthUser }>) {
           }
           loading={signingOut}
           mode="outlined"
-          onPress={() => void handleLogout()}
+          onPress={() => confirmSignOut(() => void handleLogout())}
         />
+        <View style={styles.deletion}>
+          <Text style={[styles.deletionHint, { color: colors.textMuted }]}>
+            {m.account.profile.deleteAccountHint}
+          </Text>
+          <TourismActionButton
+            disabled={signingOut}
+            label={m.account.profile.deleteAccount}
+            mode="outlined"
+            onPress={() => setConfirmingDeletion(true)}
+            style={{ borderColor: colors.danger }}
+          />
+        </View>
       </ScrollView>
+      {confirmingDeletion ? (
+        <DeleteAccountDialog
+          onClose={() => setConfirmingDeletion(false)}
+          onDeleted={onDeleted}
+          onDeletingChange={onDeletingChange}
+        />
+      ) : null}
       <TourismSnackbar
         message={m.account.profile.signOutFailed}
         onDismiss={() => setLogoutError(false)}
@@ -84,4 +141,6 @@ const styles = StyleSheet.create({
     paddingBottom: turismoSpacing.xxl,
   },
   account: { gap: turismoSpacing.lg, padding: turismoSpacing.md },
+  deletion: { gap: turismoSpacing.xs, paddingTop: turismoSpacing.lg },
+  deletionHint: { ...turismoTypography.bodySmall },
 });

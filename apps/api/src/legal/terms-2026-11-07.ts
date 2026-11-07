@@ -56,7 +56,7 @@ export const TERMS_2026_11_07: LegalDocument = {
     },
     {
       heading: "10. Cambios en estos términos",
-      body: `Podemos actualizar estos términos. Cada cambio se publica como una versión nueva con su fecha, y la app te pedirá aceptarla para continuar usando tu cuenta. Si no la aceptas, puedes cerrar sesión y seguir como invitado, o eliminar tu cuenta.`,
+      body: `Podemos actualizar estos términos. Cada cambio se publica como una versión nueva con su fecha, y la app te pedirá aceptarla para continuar usando tu cuenta. Si no la aceptas, puedes cerrar sesión y seguir como invitado, y solicitar la eliminación de tu cuenta por los canales indicados en la Política de privacidad.`,
     },
     {
       heading: "11. Ley aplicable",

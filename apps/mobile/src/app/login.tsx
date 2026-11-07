@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { KeyboardAvoidingView, ScrollView, StyleSheet } from "react-native";
 import Animated, {
   FadeIn,
@@ -15,7 +15,10 @@ import {
   parseReturnTo,
   returnsThroughHistory,
 } from "@/features/auth/application/login-href";
-import { chooseGuestAccess } from "@/features/auth/data/auth-entry-storage";
+import {
+  chooseGuestAccess,
+  readAuthEntryChoice,
+} from "@/features/auth/data/auth-entry-storage";
 import { AccountEntry } from "@/features/auth/presentation/account-entry";
 import { LoginForm } from "@/features/auth/presentation/login-form";
 import { RegisterForm } from "@/features/auth/presentation/register-form";
@@ -32,6 +35,20 @@ export default function LoginScreen() {
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const [mode, setMode] = useState<AuthMode>("entry");
   const target = parseReturnTo(returnTo);
+
+  // Solo Explorar llega aquí sin `returnTo`, y lee la elección al montarse. Si
+  // la sesión terminó eligiendo seguir como invitado, esa lectura es vieja:
+  // un Explorar nuevo la vuelve a leer, igual que tras «Explorar como invitado».
+  useEffect(() => {
+    if (returnTo) return undefined;
+    let active = true;
+    void readAuthEntryChoice().then((choice) => {
+      if (active && choice === "guest") router.replace("/");
+    });
+    return () => {
+      active = false;
+    };
+  }, [returnTo, router]);
 
   // The entry is the screen's first state: Back closes an open form first.
   const closeForm = () => {

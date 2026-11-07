@@ -116,6 +116,12 @@ export const accountEs = {
     email: "Correo electrónico",
     signingOut: "Cerrando sesión…",
     signOut: "Cerrar sesión",
+    signOutConfirm: {
+      title: "¿Cerrar sesión?",
+      message: "Tendrás que volver a iniciar sesión para usar tu cuenta.",
+      cancel: "Cancelar",
+      confirm: "Cerrar sesión",
+    },
     signOutFailed: "No se pudo cerrar la sesión. Inténtalo de nuevo.",
     deleteAccount: "Eliminar cuenta",
     deleteAccountHint: "Borra tu cuenta y tus datos de forma permanente.",

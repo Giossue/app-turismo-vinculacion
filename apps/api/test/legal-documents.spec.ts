@@ -68,10 +68,16 @@ describe("legal documents", () => {
       ["consequences", /consecuencias de entregar o negar/i],
       ["inaccurate data", /datos inexactos/i],
       ["revocation", /revocar tu consentimiento/i],
-      ["rights", /acceso, eliminación, rectificación y actualización, oposición, anulación, limitación/i],
+      [
+        "rights",
+        /acceso, eliminación, rectificación y actualización, oposición, anulación, limitación/i,
+      ],
       ["portability", /portabilidad/i],
       ["complaints", /Superintendencia de Protección de Datos Personales/],
-      ["automated decisions", /decisiones automatizadas y elaboración de perfiles/i],
+      [
+        "automated decisions",
+        /decisiones automatizadas y elaboración de perfiles/i,
+      ],
     ];
     for (const [point, pattern] of points) {
       expect(text, point).toMatch(pattern);

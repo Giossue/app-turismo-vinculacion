@@ -60,8 +60,7 @@ export async function requestCodedJson<T>(
     });
   } catch (error) {
     const message = code === null ? undefined : codeMessages[code];
-    if (code === null || message === undefined) throw error;
-    if (!(error instanceof ApiError)) throw error;
+    if (code === null || !message || !(error instanceof ApiError)) throw error;
     throw new CodedApiError(message, {
       cause: error,
       code,

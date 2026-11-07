@@ -191,16 +191,18 @@ async function requestAuthResult(
   fetcher: Fetcher,
   errorMessage: string,
   serverMessageFallbacks: Readonly<Partial<Record<number, string>>>,
-  codeMessages: Readonly<Record<string, string>> = {},
+  codeMessages?: Readonly<Record<string, string>>,
 ): Promise<AuthResult> {
-  const payload = await requestCodedJson(url, authResultSchema, {
-    codeMessages,
+  const options = {
     errorMessage,
     fetcher,
     init: jsonPost(body),
     invalidMessage: messages().account.errors.invalidSession,
     serverMessageFallbacks,
     useServerMessage: true,
-  });
+  };
+  const payload = await (codeMessages
+    ? requestCodedJson(url, authResultSchema, { ...options, codeMessages })
+    : requestJson(url, authResultSchema, options));
   return payload.data;
 }

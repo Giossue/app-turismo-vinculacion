@@ -47,7 +47,7 @@ export default function EstablishmentScreen() {
   const id = /^\d{1,12}$/.test(rawId) ? Number(rawId) : undefined;
   const goBack = () =>
     router.canGoBack() ? router.back() : router.replace("/");
-  const { data, error, isFetching, isPending, isPaused, refetch } =
+  const { data, isFetching, isPending, isPaused, refetch } =
     usePublishedEstablishment(id);
 
   if (id === undefined) {
@@ -72,13 +72,17 @@ export default function EstablishmentScreen() {
       </StateFrame>
     );
   }
-  if (!data || error) {
+  if (!data) {
     return (
       <StateFrame onBack={goBack}>
         <TourismStateView
           actionPending={isFetching}
-          message={m.places.establishment.openFailedHint}
-          onAction={() => void refetch()}
+          message={
+            isPaused
+              ? m.core.offlineNeeded
+              : m.places.establishment.openFailedHint
+          }
+          onAction={isPaused ? undefined : () => void refetch()}
           title={m.places.establishment.openFailed}
           variant="error"
         />

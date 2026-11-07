@@ -14,6 +14,7 @@ import { getDataSourceToken } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { AgentHistoryService } from "../src/ai/application/agent-history.service";
 import { AdminCentersService } from "../src/admin/admin-centers.service";
 import { AdminUsersService } from "../src/admin/admin-users.service";
 import { AdminController } from "../src/admin/admin.controller";
@@ -291,7 +292,13 @@ describe.skipIf(!isolatedSocket)(
              (codigo_publico, opinion_id, numero_version, calificacion, comentario,
               estado_moderacion)
            VALUES (gen_random_uuid(), $1, $2, $3, $4, $5) RETURNING id`,
-          [opinion!.id, number, version.rating, version.comment, version.status],
+          [
+            opinion!.id,
+            number,
+            version.rating,
+            version.comment,
+            version.status,
+          ],
         );
         if (version.status === "APROBADA") {
           await source.query(
@@ -489,12 +496,18 @@ describe.skipIf(!isolatedSocket)(
         expect(created.user.roles).toEqual(["TURISTA"]);
         expect(created.refreshToken).toEqual(expect.any(String));
         const rows = await acceptances(created.user.id);
-        expect(rows.map(({ documento, version, version_app }) => ({
-          documento,
-          version,
-          version_app,
-        }))).toEqual([
-          { documento: "privacy", version: CURRENT.privacy, version_app: "1.4.0" },
+        expect(
+          rows.map(({ documento, version, version_app }) => ({
+            documento,
+            version,
+            version_app,
+          })),
+        ).toEqual([
+          {
+            documento: "privacy",
+            version: CURRENT.privacy,
+            version_app: "1.4.0",
+          },
           { documento: "terms", version: CURRENT.terms, version_app: "1.4.0" },
         ]);
         for (const row of rows) {
@@ -513,7 +526,7 @@ describe.skipIf(!isolatedSocket)(
       });
 
       it("stores no app version when the client declares none", async () => {
-        const { appVersion: _omitted, ...body } = registration();
+        const body = registration({ appVersion: undefined });
         const reply = await call("POST", "/auth/mobile/register", { body });
 
         expect(reply.statusCode).toBe(201);
@@ -523,11 +536,20 @@ describe.skipIf(!isolatedSocket)(
 
       it.each([
         ["omits one document", { acceptedLegal: { terms: CURRENT.terms } }],
-        ["omits the other document", { acceptedLegal: { privacy: CURRENT.privacy } }],
+        [
+          "omits the other document",
+          { acceptedLegal: { privacy: CURRENT.privacy } },
+        ],
         ["sends an empty acceptance", { acceptedLegal: {} }],
         ["sends a non-object acceptance", { acceptedLegal: "2026-11-07" }],
-        ["sends an empty version", { acceptedLegal: { ...CURRENT, terms: "" } }],
-        ["adds an unknown document", { acceptedLegal: { ...CURRENT, cookies: "x" } }],
+        [
+          "sends an empty version",
+          { acceptedLegal: { ...CURRENT, terms: "" } },
+        ],
+        [
+          "adds an unknown document",
+          { acceptedLegal: { ...CURRENT, cookies: "x" } },
+        ],
       ])("rejects a request that %s", async (_label, overrides) => {
         const body = registration(overrides);
         const reply = await call("POST", "/auth/mobile/register", { body });
@@ -538,7 +560,7 @@ describe.skipIf(!isolatedSocket)(
       });
 
       it("rejects a request without any acceptance", async () => {
-        const { acceptedLegal: _omitted, ...body } = registration();
+        const body = registration({ acceptedLegal: undefined });
         const reply = await call("POST", "/auth/mobile/register", { body });
 
         expect(reply.statusCode).toBe(400);
@@ -600,7 +622,7 @@ describe.skipIf(!isolatedSocket)(
       });
 
       it("requires the birth date", async () => {
-        const { birthDate: _omitted, ...body } = registration();
+        const body = registration({ birthDate: undefined });
         const reply = await call("POST", "/auth/mobile/register", { body });
 
         expect(reply.statusCode).toBe(400);
@@ -686,6 +708,7 @@ describe.skipIf(!isolatedSocket)(
           name: "Ana Pérez",
           email: created.email,
           roles: ["TURISTA"],
+          sessionId: "",
           pendingLegalDocuments: [],
         });
 
@@ -721,9 +744,9 @@ describe.skipIf(!isolatedSocket)(
         const web = await call("POST", "/auth/login", {
           body: { email: account.email, password: PASSWORD },
         });
-        expect(
-          (web.body.data as Session).user.pendingLegalDocuments,
-        ).toEqual(pending);
+        expect((web.body.data as Session).user.pendingLegalDocuments).toEqual(
+          pending,
+        );
 
         const me = await call("GET", "/auth/me", {
           token: session(mobile).accessToken,
@@ -754,7 +777,10 @@ describe.skipIf(!isolatedSocket)(
       it.each([
         ["an administrator", () => [adminRole]],
         ["a tourism agent", () => [agentRole]],
-        ["a tourist with an institutional role", () => [touristRole, agentRole]],
+        [
+          "a tourist with an institutional role",
+          () => [touristRole, agentRole],
+        ],
       ])("never reports documents to %s", async (_label, roles) => {
         const account = await legacyAccount(roles());
 
@@ -1024,7 +1050,9 @@ describe.skipIf(!isolatedSocket)(
         const agent = await legacyAccount([agentRole]);
         const mixed = await legacyAccount([touristRole, agentRole]);
 
-        expect((await listed(token, administrator.email)).legalAcceptance).toBeNull();
+        expect(
+          (await listed(token, administrator.email)).legalAcceptance,
+        ).toBeNull();
         expect((await listed(token, agent.email)).legalAcceptance).toBeNull();
         expect((await listed(token, mixed.email)).legalAcceptance).toBeNull();
       });
@@ -1032,20 +1060,25 @@ describe.skipIf(!isolatedSocket)(
       it.each([
         ["a tourist", () => [touristRole]],
         ["a tourism agent", () => [agentRole]],
-      ])("rejects %s without revealing acceptance data", async (_label, roles) => {
-        const account = await legacyAccount(roles());
-        const { accessToken } = session(await login(account.email));
+      ])(
+        "rejects %s without revealing acceptance data",
+        async (_label, roles) => {
+          const account = await legacyAccount(roles());
+          const { accessToken } = session(await login(account.email));
 
-        const reply = await call("GET", "/admin/users", { token: accessToken });
+          const reply = await call("GET", "/admin/users", {
+            token: accessToken,
+          });
 
-        expect(reply.statusCode).toBe(403);
-        expect(reply.body).toEqual({
-          error: {
-            code: "HTTP_403",
-            message: "No tienes permisos para esta operación.",
-          },
-        });
-      });
+          expect(reply.statusCode).toBe(403);
+          expect(reply.body).toEqual({
+            error: {
+              code: "HTTP_403",
+              message: "No tienes permisos para esta operación.",
+            },
+          });
+        },
+      );
 
       it("rejects a request without a session", async () => {
         const reply = await call("GET", "/admin/users");
@@ -1065,7 +1098,10 @@ describe.skipIf(!isolatedSocket)(
 
       async function countOwned(userId: number) {
         const counts: Record<string, number> = {};
-        for (const { table_name, column_name } of await foreignKeysToUsuarios()) {
+        for (const {
+          table_name,
+          column_name,
+        } of await foreignKeysToUsuarios()) {
           const rows = await source.query<{ total: number }[]>(
             `SELECT COUNT(*)::int AS total FROM ${table_name} WHERE ${column_name} = $1`,
             [userId],
@@ -1076,6 +1112,30 @@ describe.skipIf(!isolatedSocket)(
         }
         return counts;
       }
+
+      it("does not store an agent turn that ends after the deletion", async () => {
+        const created = await registerTourist();
+        const history = new AgentHistoryService(source);
+        expect((await deleteAccount(created.accessToken)).statusCode).toBe(200);
+
+        await expect(
+          history.recordTurn(created.user.id, undefined, "Soy Ana Pérez", {
+            sources: [],
+            text: "Hola",
+          } as never),
+        ).resolves.toBeNull();
+        await history.recordFailure(
+          created.user.id,
+          "Soy Ana Pérez",
+          new Error("proveedor"),
+        );
+
+        const rows = await source.query<{ total: number }[]>(
+          "SELECT COUNT(*)::int AS total FROM conversaciones_ia WHERE usuario_id = $1",
+          [created.user.id],
+        );
+        expect(rows[0]!.total).toBe(0);
+      });
 
       it("anonymizes the account, removes its data and keeps the records", async () => {
         const created = await registerTourist();
@@ -1298,7 +1358,10 @@ describe.skipIf(!isolatedSocket)(
       it.each([
         ["an administrator", () => [adminRole]],
         ["a tourism agent", () => [agentRole]],
-        ["a tourist with an institutional role", () => [touristRole, agentRole]],
+        [
+          "a tourist with an institutional role",
+          () => [touristRole, agentRole],
+        ],
         ["an account without roles", () => []],
       ])("rejects %s and changes nothing", async (_label, roles) => {
         const account = await legacyAccount(roles());

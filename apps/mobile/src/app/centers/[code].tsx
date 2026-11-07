@@ -53,7 +53,6 @@ export default function CenterDetailScreen() {
     router.canGoBack() ? router.back() : router.replace("/");
   const {
     data: center,
-    error,
     isFetching,
     isPending,
     isPaused,
@@ -86,12 +85,13 @@ export default function CenterDetailScreen() {
     );
   }
 
-  if (!center || error) {
+  if (!center) {
     return (
       <CenterStateFrame onBack={goBack}>
         <TourismStateView
           actionPending={isFetching}
-          onAction={() => void refetch()}
+          message={isPaused ? m.core.offlineNeeded : undefined}
+          onAction={isPaused ? undefined : () => void refetch()}
           title={m.places.center.openFailed}
           variant="error"
         />

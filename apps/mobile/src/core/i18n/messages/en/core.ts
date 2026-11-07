@@ -9,6 +9,7 @@ export const coreEn: Messages["core"] = {
   close: "Close",
   closeMenu: "Close menu",
   retry: "Try again",
+  offlineNeeded: "You need a connection to open this content.",
   done: "Done",
   clearSearch: "Clear search",
   showPassword: "Show password",
