@@ -1,7 +1,10 @@
 import type { SymbolLayerSpecification } from "@maplibre/maplibre-react-native";
 
 import { getTurismoColors, type TurismoColorScheme } from "@/core/ui/tokens";
-import { establishmentPinColorExpression } from "@/features/establishments/presentation/establishment-pins";
+import {
+  establishmentPinColorExpression,
+  getEstablishmentPinImageExpression,
+} from "@/features/establishments/presentation/establishment-pins";
 import { basemapPalettes } from "../data/basemap-palette";
 import { getMapNameLayout } from "./map-symbol-layout";
 
@@ -21,6 +24,9 @@ export function getCenterMapLabelStyles({
   const labelPalette = basemapPalettes[scheme];
   // Los PNG de atractivos comparten el verde del tema general.
   const centerPinColor = getTurismoColors(scheme).primaryStrong;
+  // Los colores de categoría son oscuros: como texto no se leen sobre el halo.
+  const establishmentTextColor =
+    scheme === "dark" ? labelPalette.text : establishmentPinColorExpression;
   const labelHalo = {
     "text-halo-color": labelPalette.textHalo,
     "text-halo-width": 1.5,
@@ -30,7 +36,7 @@ export function getCenterMapLabelStyles({
     ? { ...labelHalo, "text-color": centerPinColor }
     : undefined;
   const establishmentLabelPaint: SymbolPaint = hasGlyphs
-    ? { ...labelHalo, "text-color": establishmentPinColorExpression }
+    ? { ...labelHalo, "text-color": establishmentTextColor }
     : undefined;
   const selectedLabelPaint: SymbolPaint = hasGlyphs
     ? {
@@ -39,7 +45,7 @@ export function getCenterMapLabelStyles({
           "case",
           ["get", "isCenter"],
           centerPinColor,
-          establishmentPinColorExpression,
+          establishmentTextColor,
         ],
       }
     : undefined;
@@ -62,6 +68,7 @@ export function getCenterMapLabelStyles({
         : "tourism-center-monument-light",
     clusterNameLayout,
     establishmentLabelPaint,
+    establishmentPinImage: getEstablishmentPinImageExpression(scheme),
     establishmentNameLayout: getMapNameLayout(
       "establishment",
       hasGlyphs,

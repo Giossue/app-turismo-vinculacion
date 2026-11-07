@@ -188,6 +188,7 @@ export const turismoColors = {
     ripple: "rgba(0, 0, 0, 0.1)",
     // Vidrio de Explorar sobre el mapa: borde tenue y velo que aclara.
     glassMapBorder: "rgba(0, 0, 0, 0.07)",
+    mapControlSurface: "#ffffff",
     onPrimary: "#ffffff",
     map: {
       background: "#e6edf5",
@@ -226,14 +227,17 @@ export const turismoColors = {
     mapSearchIcon: "#ffffff",
     scrim: "rgba(0, 0, 0, 0.58)",
     ripple: "rgba(241, 242, 243, 0.12)",
-    glassMapBorder: "rgba(241, 242, 243, 0.12)",
+    glassMapBorder: "rgba(241, 242, 243, 0.32)",
+    // Controles flotantes de Explorar: más claros que el terreno del mapa.
+    mapControlSurface: "#434850",
     onPrimary: "#ffffff",
     map: {
       background: "#17191c",
-      basemapCanvas: "#17191c",
+      basemapCanvas: "#1f2225",
       border: "#464a50",
       attribution: "#a9c1e2",
-      location: "#0e55ff",
+      // Más claro que en el tema claro: la ruta debe verse sobre el terreno.
+      location: "#4d82ff",
       locationSoft: "rgba(37, 99, 235, 0.24)",
       onPrimary: "#ffffff",
       primary: "#5274a8",

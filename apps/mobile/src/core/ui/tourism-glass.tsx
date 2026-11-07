@@ -26,15 +26,14 @@ export function TourismGlassProvider({
   );
 }
 
-/** Subtle borders on the light map theme. */
+/** Borde de los controles sobre el mapa, en ambos temas. */
 export function useTourismGlassBorderColor(
   defaultColor: string,
   emphasizeMapGlassOverride?: boolean,
 ): string {
-  const { scheme } = useTurismoTheme();
   const colors = useTurismoPalette();
   const emphasizeMapGlass = useContext(TourismGlassContext);
-  return scheme === "light" && (emphasizeMapGlassOverride ?? emphasizeMapGlass)
+  return (emphasizeMapGlassOverride ?? emphasizeMapGlass)
     ? colors.glassMapBorder
     : defaultColor;
 }
@@ -81,7 +80,7 @@ export function TourismGlassFill({
             material === "regular"
               ? colors.surface
               : mapControl && scheme === "dark"
-                ? `${colors.surfaceStrong}F2`
+                ? `${colors.mapControlSurface}F2`
                 : `${colors.surface}${surfaceAlpha}`,
         },
       ]}

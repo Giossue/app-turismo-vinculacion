@@ -1,7 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import { getContrastRatio } from "@/core/ui/color-contrast";
+import { getTurismoColors, getTurismoMapColors } from "@/core/ui/tokens";
 import { basemapPalettes } from "./basemap-palette";
-import { getFallbackMapStyle, normalizeSelfHostedStyle } from "./basemap-style";
+import {
+  getFallbackMapStyle,
+  loadSelfHostedMapStyle,
+  normalizeSelfHostedStyle,
+} from "./basemap-style";
+import { readStoredBasemapStyle } from "./basemap-style-storage";
+
+vi.mock("./basemap-style-storage", () => ({
+  readStoredBasemapStyle: vi.fn(),
+  saveStoredBasemapStyles: vi.fn(),
+}));
 
 const styleUrl = "https://tiles.test/styles/basic/style.json";
 
@@ -54,9 +66,11 @@ describe("normalizeSelfHostedStyle", () => {
       ],
       "dark",
     );
-    expect(residential.paint).toMatchObject({ "fill-color": "#232624" });
+    expect(residential.paint).toMatchObject({
+      "fill-color": basemapPalettes.dark.residential,
+    });
     expect(aeroway.paint).toMatchObject({
-      "fill-extrusion-color": "#2e302e",
+      "fill-extrusion-color": basemapPalettes.dark.aeroway,
       "fill-extrusion-opacity": 0.9,
     });
   });
@@ -78,7 +92,7 @@ describe("normalizeSelfHostedStyle", () => {
     expect(casing.layout).toMatchObject({ visibility: "none" });
     expect(major.paint).toMatchObject({
       "line-color": basemapPalettes.dark.roadMajor,
-      "line-opacity": 0.84,
+      "line-opacity": 0.92,
     });
     expect(label.layout).toMatchObject({ "text-font": ["Noto Sans Regular"] });
     expect(label.paint).toMatchObject({
@@ -139,5 +153,82 @@ describe("normalizeSelfHostedStyle", () => {
         styleUrl,
       ),
     ).toThrow("invalid style");
+  });
+});
+
+describe("mapa en modo oscuro", () => {
+  const dark = basemapPalettes.dark;
+
+  it("separa las calles del terreno", () => {
+    for (const land of [dark.background, dark.landuse, dark.residential]) {
+      expect(getContrastRatio(dark.roadMajor, land)).toBeGreaterThanOrEqual(
+        4.5,
+      );
+      expect(getContrastRatio(dark.roadMinor, land)).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("distingue el agua y los edificios del terreno", () => {
+    expect(
+      getContrastRatio(dark.water, dark.background),
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      getContrastRatio(dark.building, dark.residential),
+    ).toBeGreaterThanOrEqual(1.4);
+  });
+
+  it("deja el terreno por debajo de los controles flotantes", () => {
+    const { mapControlSurface, text } = getTurismoColors("dark");
+    for (const land of [dark.background, dark.landuse, dark.residential]) {
+      expect(getContrastRatio(mapControlSurface, land)).toBeGreaterThanOrEqual(
+        1.5,
+      );
+    }
+    expect(getContrastRatio(text, mapControlSurface)).toBeGreaterThanOrEqual(
+      4.5,
+    );
+  });
+
+  it("deja el terreno por debajo de los pines oscuros", () => {
+    for (const land of [dark.background, dark.landuse, dark.residential]) {
+      expect(getContrastRatio("#334155", land)).toBeGreaterThanOrEqual(1.4);
+    }
+  });
+
+  it("mantiene visible la ruta sobre el terreno", () => {
+    expect(
+      getContrastRatio(getTurismoMapColors("dark").location, dark.background),
+    ).toBeGreaterThanOrEqual(3);
+  });
+
+  it("aplica la paleta actual a un estilo guardado con colores anteriores", async () => {
+    vi.stubEnv("EXPO_PUBLIC_TILESERVER_STYLE_URL", styleUrl);
+    vi.mocked(readStoredBasemapStyle).mockResolvedValue({
+      version: 8,
+      sources: {},
+      layers: [
+        {
+          id: "background",
+          type: "background",
+          paint: { "background-color": "#1c1d1b" },
+        },
+        {
+          id: "road_primary",
+          type: "line",
+          source: "openmaptiles",
+          paint: { "line-color": "#7b8585", "line-opacity": 0.84 },
+        },
+      ],
+    });
+
+    const style = await loadSelfHostedMapStyle("dark");
+
+    expect(style.layers[0]).toMatchObject({
+      paint: { "background-color": dark.background },
+    });
+    expect(style.layers[1]).toMatchObject({
+      paint: { "line-color": dark.roadMajor, "line-opacity": 0.92 },
+    });
+    vi.unstubAllEnvs();
   });
 });

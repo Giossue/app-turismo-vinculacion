@@ -29,25 +29,28 @@ export type BasemapPalette = Readonly<{
 export const basemapPalettes: Readonly<
   Record<TurismoColorScheme, BasemapPalette>
 > = {
+  // El terreno queda por debajo de controles y pines; el contraste del mapa
+  // lo aportan calles, agua y zonas verdes.
   dark: {
-    aeroway: "#2e302e",
-    background: "#1c1d1b",
-    building: "#363a38",
-    farmland: "#373b30",
-    grass: "#2b3e2f",
-    ice: "#3b3d3b",
-    landuse: "#2c2e2a",
-    park: "#304834",
-    residential: "#232624",
-    roadArea: "#2e302e",
-    roadMajor: "#7b8585",
-    roadMinor: "#626b6c",
-    sand: "#463d33",
-    text: "#d3d7d5",
-    textHalo: "#1c1d1b",
-    water: "#274654",
-    waterLine: "#4c7887",
-    wood: "#253b2a",
+    aeroway: "#2f3336",
+    background: "#1f2225",
+    building: "#3f454a",
+    farmland: "#343d30",
+    grass: "#2c4433",
+    ice: "#4a5054",
+    landuse: "#232629",
+    park: "#30513b",
+    residential: "#25282b",
+    roadArea: "#33383c",
+    roadMajor: "#b4bdc3",
+    roadMinor: "#8f999f",
+    sand: "#4a4135",
+    text: "#eef1f0",
+    // Más oscuro que el terreno: despega las etiquetas sobre cualquier zona.
+    textHalo: "#141618",
+    water: "#2a6a8c",
+    waterLine: "#6bb3cf",
+    wood: "#274a35",
   },
   light: {
     aeroway: "#f0eee9",

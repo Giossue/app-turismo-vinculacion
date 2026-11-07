@@ -11,8 +11,9 @@
   por el TileServer GL propio y respaldado por los tiles
   vectoriales OpenMapTiles generados desde OpenStreetMap para Ecuador. La app descarga el
   JSON del estilo, conserva la referencia TileJSON publicada por TileServer GL y aplica una
-  paleta propia para terreno, edificios, agua, zonas verdes y calles. Si el servidor no responde, conserva
-  los pines sobre un fondo local neutro; las capas de texto esperan a que exista una URL de fuentes válida.
+  paleta propia para terreno, edificios, agua, zonas verdes y calles. En tema oscuro el
+  terreno queda por debajo de controles y pines, y el contraste lo aportan calles y agua;
+  el estilo guardado se recolorea al leerse. Si el servidor no responde, conserva los pines sobre un fondo local neutro; las capas de texto esperan a que exista una URL de fuentes válida.
   La app normaliza las familias tipográficas del estilo a `Noto Sans Regular`, que es la
   familia publicada por el endpoint de glifos del TileServer.
   No cambia a ArcGIS o Stadia.

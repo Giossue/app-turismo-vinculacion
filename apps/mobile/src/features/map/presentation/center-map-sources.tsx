@@ -19,7 +19,6 @@ import {
 } from "@/features/establishments/data/establishment-tiles";
 import {
   establishmentPinColorExpression,
-  establishmentPinImageExpression,
   establishmentPinImages,
 } from "@/features/establishments/presentation/establishment-pins";
 import { mapPlaceZoom } from "../domain/map-place-priority";
@@ -74,7 +73,7 @@ function getClusterPaint(colors: MapColors): CirclePaint {
   return {
     "circle-color": colors.primary,
     "circle-radius": ["step", ["get", "point_count"], 13, 10, 17, 50, 21],
-    "circle-stroke-color": colors.surface,
+    "circle-stroke-color": colors.onPrimary,
     "circle-stroke-width": 1,
   };
 }
@@ -97,7 +96,7 @@ export function LocalRouteSource({
         id="tourism-offline-route-line"
         type="line"
         layout={{ "line-cap": "round", "line-join": "round" }}
-        paint={{ "line-color": colors.primary, "line-width": 5 }}
+        paint={{ "line-color": colors.primaryStrong, "line-width": 5 }}
       />
     </GeoJSONSource>
   );
@@ -167,7 +166,7 @@ export function LocalPlacesSource({
         layout={{
           ...mapPinLayout,
           ...labels.establishmentNameLayout,
-          "icon-image": establishmentPinImageExpression,
+          "icon-image": labels.establishmentPinImage,
         }}
         paint={labels.establishmentLabelPaint}
       />
@@ -211,7 +210,7 @@ export function EstablishmentsSource({
         layout={{
           ...mapPinLayout,
           ...labels.establishmentNameLayout,
-          "icon-image": establishmentPinImageExpression,
+          "icon-image": labels.establishmentPinImage,
           visibility,
         }}
         minzoom={mapPlaceZoom.establishmentIcon}
@@ -229,7 +228,9 @@ export function EstablishmentsSource({
           "circle-color": establishmentPinColorExpression,
           "circle-opacity": turismoMapLayerStyle.establishmentDotOpacity,
           "circle-radius": establishmentDotRadius,
-          "circle-stroke-color": colors.surface,
+          // Blanco en ambos temas: varios pines son oscuros y sobre el terreno
+          // del tema oscuro solo se distinguen por este borde.
+          "circle-stroke-color": colors.onPrimary,
           "circle-stroke-width": 1,
         }}
         source-layer={establishmentTileLayer}
@@ -345,7 +346,7 @@ export function SelectionSource({
             "case",
             ["get", "isCenter"],
             labels.centerPinImage,
-            establishmentPinImageExpression,
+            labels.establishmentPinImage,
           ],
         }}
         paint={labels.selectedLabelPaint}

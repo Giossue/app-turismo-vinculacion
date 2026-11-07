@@ -68,7 +68,14 @@ async function loadPersistentOrRemoteStyle(
   const stored = await readStoredBasemapStyle(scheme, styleUrl).catch(
     () => null,
   );
-  if (stored) return stored;
+  // El estilo guardado lleva los colores de cuando se descargó: la paleta se
+  // aplica de nuevo para que un cambio llegue también sin conexión.
+  if (stored) {
+    return {
+      ...stored,
+      layers: quietMapLayers(stored.layers, scheme),
+    } as unknown as StyleSpecification;
+  }
   const styles = await fetchSelfHostedMapStyles(styleUrl);
   await saveStoredBasemapStyles(styles, styleUrl).catch(() => undefined);
   cacheStyle("light", styles.light, styleUrl);
@@ -339,7 +346,7 @@ function quietMapLayers(value: unknown, scheme: TurismoColorScheme): unknown {
         paint: {
           ...paint,
           "line-color": palette.waterLine,
-          "line-opacity": dark ? 0.7 : 0.82,
+          "line-opacity": dark ? 0.85 : 0.82,
         },
       };
     }
@@ -360,7 +367,7 @@ function quietMapLayers(value: unknown, scheme: TurismoColorScheme): unknown {
       paint: {
         ...paint,
         "line-color": isMajorRoad ? palette.roadMajor : palette.roadMinor,
-        "line-opacity": isMajorRoad ? (dark ? 0.84 : 0.88) : dark ? 0.68 : 0.74,
+        "line-opacity": isMajorRoad ? (dark ? 0.92 : 0.88) : dark ? 0.82 : 0.74,
       },
     };
   });
