@@ -1,6 +1,6 @@
 import type { Fetcher } from "@/core/api/http";
 import { createSerialTaskQueue } from "@/core/storage/serial-task-queue";
-import type { AuthorizedFetcher } from "../data/auth-api";
+import type { AuthorizedFetcher, LegalAcceptanceInput } from "../data/auth-api";
 import {
   isApiRequest,
   isRejectedSessionError,
@@ -13,6 +13,7 @@ import {
 } from "../domain/authorized-request-policy";
 import type { TouristRegistrationInput } from "../domain/registration-options";
 import { messages } from "@/core/i18n/language";
+import type { LegalDocumentType } from "@/features/legal/domain/legal-document";
 
 export type SessionResult = Readonly<{
   accessToken: string;
@@ -54,6 +55,15 @@ type SessionDependencies = Readonly<{
     ) => Promise<SessionResult>;
     refresh: (refreshToken: string, request: Fetcher) => Promise<SessionResult>;
     logout: (refreshToken: string, request: Fetcher) => Promise<void>;
+    acceptLegal: (
+      input: LegalAcceptanceInput,
+      request: AuthorizedFetcher,
+    ) => Promise<readonly LegalDocumentType[]>;
+    deleteAccount: (
+      password: string,
+      request: AuthorizedFetcher,
+    ) => Promise<void>;
+    sessionUser: (request: AuthorizedFetcher) => Promise<AuthUser>;
   }>;
 }>;
 
@@ -73,6 +83,7 @@ export class MobileSession {
   private accessToken: string | null = null;
   private knownAnonymous = false;
   private refreshPromise: Promise<boolean> | null = null;
+  private deletionPromise: Promise<boolean> | null = null;
   private readonly controllers = new Set<AbortController>();
   private readonly listeners = new Set<() => void>();
   private readonly storageQueue = createSerialTaskQueue();
@@ -166,6 +177,55 @@ export class MobileSession {
     return promise;
   };
 
+  /**
+   * Vuelve a preguntar por los documentos pendientes al recuperar la conexión.
+   * Con access token consulta el perfil: renovar rotaría el refresh token en
+   * cada corte de red, justo cuando una respuesta perdida revocaría la sesión.
+   */
+  readonly reevaluate = async (): Promise<void> => {
+    if (this.snapshot.status !== "authenticated") return;
+    if (this.accessToken === null) {
+      await this.refresh();
+      return;
+    }
+    const generation = this.snapshot.generation;
+    try {
+      const user = await this.dependencies.api.sessionUser(
+        this.requestForGeneration(generation),
+      );
+      await this.applyPendingLegalDocuments(
+        user.pendingLegalDocuments,
+        generation,
+      );
+    } catch {
+      // Sin respuesta útil sigue valiendo el último estado conocido.
+    }
+  };
+
+  readonly acceptLegalDocuments = async (
+    input: LegalAcceptanceInput,
+  ): Promise<void> => {
+    const generation = this.snapshot.generation;
+    const pending = await this.dependencies.api.acceptLegal(
+      input,
+      this.requestForGeneration(generation),
+    );
+    await this.applyPendingLegalDocuments(pending, generation);
+  };
+
+  /**
+   * Resuelve `false` si la cuenta se eliminó pero el dispositivo no pudo borrar
+   * la sesión. Una segunda confirmación comparte la solicitud en curso.
+   */
+  readonly deleteAccount = (password: string): Promise<boolean> => {
+    if (this.deletionPromise) return this.deletionPromise;
+    const promise = this.deleteCurrentAccount(password).finally(() => {
+      if (this.deletionPromise === promise) this.deletionPromise = null;
+    });
+    this.deletionPromise = promise;
+    return promise;
+  };
+
   requestForGeneration(generation: number): AuthorizedFetcher {
     return async (input, init = {}) => {
       if (!isApiRequest(input, this.dependencies.apiUrl())) {
@@ -212,6 +272,48 @@ export class MobileSession {
       this.assertGeneration(generation);
       return execute(this.accessToken);
     };
+  }
+
+  private async deleteCurrentAccount(password: string): Promise<boolean> {
+    const generation = this.snapshot.generation;
+    await this.dependencies.api.deleteAccount(
+      password,
+      this.requestForGeneration(generation),
+    );
+    this.assertGeneration(generation);
+    // La API ya revocó las sesiones: solo queda la limpieza local de `logout`.
+    return this.replaceSession().cleanup.then(
+      () => true,
+      () => false,
+    );
+  }
+
+  private async applyPendingLegalDocuments(
+    pendingLegalDocuments: readonly LegalDocumentType[] | undefined,
+    generation: number,
+  ): Promise<void> {
+    this.assertGeneration(generation);
+    const { status, user } = this.snapshot;
+    if (status !== "authenticated" || !user) return;
+    const updated: AuthUser = {
+      ...user,
+      pendingLegalDocuments: pendingLegalDocuments && [
+        ...pendingLegalDocuments,
+      ],
+    };
+    this.publish(status, updated);
+    // Escribir el perfil solo acelera el próximo arranque sin conexión: la API
+    // ya tiene el dato, así que un fallo aquí no debe cerrar la sesión.
+    await this.storageQueue
+      .run(async () => {
+        this.assertGeneration(generation);
+        const stored = await this.dependencies.storage.read();
+        this.assertGeneration(generation);
+        if (stored) {
+          await this.dependencies.storage.save(stored.refreshToken, updated);
+        }
+      })
+      .catch(() => undefined);
   }
 
   private async refreshCurrent(generation: number): Promise<boolean> {

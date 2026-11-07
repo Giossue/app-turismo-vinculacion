@@ -18,7 +18,16 @@ export function useAuthForm<TValues extends Record<string, unknown>, TParsed>({
 }: Readonly<{
   fallbackError: string;
   initialValues: TValues;
-  onSubmit: (values: TParsed) => Promise<void>;
+  /** `setValue` permite corregir el formulario cuando la API rechaza el envío. */
+  onSubmit: (
+    values: TParsed,
+    form: Readonly<{
+      setValue: <K extends Extract<keyof TValues, string>>(
+        field: K,
+        value: TValues[K],
+      ) => void;
+    }>,
+  ) => Promise<void>;
   schema: z.ZodType<TParsed>;
 }>) {
   type Field = Extract<keyof TValues, string>;
@@ -50,7 +59,7 @@ export function useAuthForm<TValues extends Record<string, unknown>, TParsed>({
     setFieldErrors({});
     setSubmitting(true);
     try {
-      await onSubmit(parsed.data);
+      await onSubmit(parsed.data, { setValue });
     } catch (error) {
       setFormError(error instanceof ApiError ? error.message : fallbackError);
     } finally {

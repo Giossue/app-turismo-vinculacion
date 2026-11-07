@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  HttpStatus,
   Inject,
   Injectable,
   InternalServerErrorException,
@@ -15,13 +16,27 @@ import {
 import { EntityManager, type DataSource } from "typeorm";
 import { InjectDataSource } from "@nestjs/typeorm";
 
+import {
+  hasCurrentLegalVersion,
+  pendingLegalDocuments,
+  type LegalAcceptanceRecord,
+} from "../legal/legal-documents";
+import { LEGAL_MINIMUM_AGE } from "../legal/legal-responsible";
+import {
+  LEGAL_DOCUMENT_TYPES,
+  type LegalDocumentType,
+} from "../legal/legal.types";
+import { anonymizeAccount, lockAccountSessions } from "./account-deletion";
 import { AuthTokenService } from "./auth-token.service";
+import { CodedHttpException } from "./coded-http.exception";
 import { PasswordService } from "./password.service";
 import {
   AUTH_ROLES,
   TOURIST_GENDER_OPTIONS,
+  isTouristAccount,
   type AuthRole,
   type AuthenticatedUser,
+  type SessionUser,
 } from "./auth.types";
 
 interface UserRow {
@@ -46,18 +61,23 @@ interface SessionRow {
 export interface AuthResult {
   accessToken: string;
   refreshToken?: string;
-  user: Omit<AuthenticatedUser, "sessionId">;
+  user: SessionUser;
 }
+
+export type AcceptedLegalVersions = Partial<Record<LegalDocumentType, string>>;
 
 export interface TouristRegistrationInput {
   name: string;
   email: string;
   gender: string;
-  birthDate?: string;
+  birthDate: string;
   password: string;
+  acceptedLegal: Record<LegalDocumentType, string>;
+  appVersion?: string;
 }
 
 const REFRESH_ROTATION_GRACE_MS = 10_000;
+const LEGAL_TIME_ZONE = "America/Guayaquil";
 
 const DUMMY_PASSWORD_HASH =
   "$argon2id$v=19$m=19456,p=1,t=2$fBzM0vZF1J2J1cqC6NZANQ$BM8Yj5e6MUMnBEPG+v1d8oSDdCOjdaWYmfxjk0Vm3ao";
@@ -86,14 +106,18 @@ export class AuthService {
       throw new UnauthorizedException("Correo o contraseña inválidos.");
     }
 
-    return this.createSession(this.toUser(user));
+    return this.createSession(
+      await this.toSessionUser(this.dataSource.manager, user),
+    );
   }
 
   async register(input: TouristRegistrationInput): Promise<AuthResult> {
     const name = input.name.trim().replace(/\s+/g, " ");
     const email = input.email.trim().toLowerCase();
     const gender = input.gender?.trim() ?? "";
-    const birthDate = input.birthDate?.trim() || null;
+    const birthDate = input.birthDate?.trim() ?? "";
+    const acceptedLegal = declaredLegalVersions(input.acceptedLegal);
+    const appVersion = input.appVersion?.trim() || null;
 
     if (!name || name.length > 150 || !email || email.length > 254) {
       throw new BadRequestException("Los datos de la cuenta no son válidos.");
@@ -107,9 +131,22 @@ export class AuthService {
     ) {
       throw new BadRequestException("Los datos de la cuenta no son válidos.");
     }
-    if (birthDate && !isValidBirthDate(birthDate)) {
+    if (!isValidBirthDate(birthDate)) {
       throw new BadRequestException("La fecha de nacimiento no es válida.");
     }
+    if (acceptedLegal.length !== LEGAL_DOCUMENT_TYPES.length) {
+      throw new BadRequestException(
+        "Debes aceptar los Términos y condiciones y la Política de privacidad.",
+      );
+    }
+    if (!hasReachedMinimumAge(birthDate)) {
+      throw new CodedHttpException(
+        HttpStatus.BAD_REQUEST,
+        "UNDERAGE",
+        `Debes tener al menos ${LEGAL_MINIMUM_AGE} años para crear una cuenta.`,
+      );
+    }
+    assertCurrentLegalVersions(acceptedLegal);
 
     const passwordHash = await this.passwords.hash(input.password);
     let userId: number;
@@ -141,6 +178,12 @@ export class AuthService {
            VALUES ($1, $2)
            ON CONFLICT (rol_id, usuario_id) DO NOTHING`,
           [roles[0].id, user.id],
+        );
+        await this.insertLegalAcceptances(
+          manager,
+          user.id,
+          acceptedLegal,
+          appVersion,
         );
         return Number(user.id);
       });
@@ -218,7 +261,7 @@ export class AuthService {
         );
         return {
           accessToken: await this.tokens.signAccessToken(authenticatedUser),
-          user: this.publicUser(authenticatedUser),
+          user: await this.toSessionUser(manager, user),
         };
       }
 
@@ -241,7 +284,7 @@ export class AuthService {
       return {
         accessToken: await this.tokens.signAccessToken(authenticatedUser),
         refreshToken: next.raw,
-        user: this.publicUser(authenticatedUser),
+        user: await this.toSessionUser(manager, user),
       };
     });
   }
@@ -259,19 +302,106 @@ export class AuthService {
     );
   }
 
-  async findUserById(
-    id: number,
-  ): Promise<Omit<AuthenticatedUser, "sessionId"> | null> {
+  async findUserById(id: number): Promise<SessionUser | null> {
     const user = await this.findUserByIdWithManager(
       this.dataSource.manager,
       id,
     );
-    return user && user.active ? this.publicUser(this.toUser(user)) : null;
+    return user && user.active
+      ? this.toSessionUser(this.dataSource.manager, user)
+      : null;
   }
 
-  private async createSession(
-    user: Omit<AuthenticatedUser, "sessionId">,
-  ): Promise<AuthResult> {
+  /** Solo inserta: repetir la aceptación conserva la constancia original. */
+  async acceptLegalDocuments(
+    userId: number,
+    accepted: AcceptedLegalVersions,
+    appVersion?: string,
+  ): Promise<LegalDocumentType[]> {
+    const declared = declaredLegalVersions(accepted);
+    if (declared.length === 0) {
+      throw new BadRequestException("Debes aceptar al menos un documento.");
+    }
+    assertCurrentLegalVersions(declared);
+
+    return this.dataSource.transaction(async (manager) => {
+      const user = await this.findUserByIdWithManager(manager, userId);
+      if (!user || !user.active) {
+        throw new UnauthorizedException("La cuenta no está activa.");
+      }
+      await this.insertLegalAcceptances(
+        manager,
+        user.id,
+        declared,
+        appVersion?.trim() || null,
+      );
+      return (await this.toSessionUser(manager, user)).pendingLegalDocuments;
+    });
+  }
+
+  /**
+   * Una segunda solicitud, simultánea o posterior, ya no encuentra una cuenta activa.
+   * La contraseña se verifica antes de abrir la transacción: Argon2 no retiene el bloqueo.
+   */
+  async deleteAccount(userId: number, password: string): Promise<void> {
+    const user = await this.findUserByIdWithManager(
+      this.dataSource.manager,
+      userId,
+    );
+    const account = this.assertDeletable(user);
+    if (!(await this.passwords.verify(account.password, password))) {
+      throw new CodedHttpException(
+        HttpStatus.BAD_REQUEST,
+        "INVALID_PASSWORD",
+        "La contraseña no es correcta.",
+      );
+    }
+
+    await this.dataSource.transaction(async (manager) => {
+      await lockAccountSessions(manager, userId);
+      await manager.query("SELECT id FROM usuarios WHERE id = $1 FOR UPDATE", [
+        userId,
+      ]);
+      this.assertDeletable(await this.findUserByIdWithManager(manager, userId));
+      await anonymizeAccount(manager, userId);
+    });
+  }
+
+  private assertDeletable(user: UserRow | null): UserRow {
+    if (!user || !user.active) {
+      throw new UnauthorizedException("La cuenta no está activa.");
+    }
+    if (!isTouristAccount(user.roles)) {
+      throw new CodedHttpException(
+        HttpStatus.FORBIDDEN,
+        "ACCOUNT_NOT_DELETABLE",
+        "Esta cuenta no se puede eliminar desde la app.",
+      );
+    }
+    return user;
+  }
+
+  private async insertLegalAcceptances(
+    manager: EntityManager,
+    userId: string,
+    accepted: readonly DeclaredLegalVersion[],
+    appVersion: string | null,
+  ): Promise<void> {
+    await manager.query(
+      `INSERT INTO aceptaciones_legales (usuario_id, documento, version, version_app)
+       SELECT $1, documento, version, $4
+         FROM unnest($2::text[], $3::text[]) AS declarada (documento, version)
+       ON CONFLICT (usuario_id, documento, version) DO NOTHING`,
+      [
+        userId,
+        accepted.map((item) => item.type),
+        accepted.map((item) => item.version),
+        appVersion,
+      ],
+    );
+  }
+
+  private async createSession(user: SessionUser): Promise<AuthResult> {
     const refresh = this.createRefreshToken();
     await this.insertSession(
       this.dataSource.manager,
@@ -342,15 +472,32 @@ export class AuthService {
     };
   }
 
-  private publicUser(
-    user: AuthenticatedUser,
-  ): Omit<AuthenticatedUser, "sessionId"> {
+  private async toSessionUser(
+    manager: EntityManager,
+    row: UserRow,
+  ): Promise<SessionUser> {
+    const { id, name, email, roles } = this.toUser(row);
     return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      roles: user.roles,
+      id,
+      name,
+      email,
+      roles,
+      pendingLegalDocuments: await this.findPendingLegalDocuments(manager, row),
     };
+  }
+
+  private async findPendingLegalDocuments(
+    manager: EntityManager,
+    row: UserRow,
+  ): Promise<LegalDocumentType[]> {
+    if (!isTouristAccount(row.roles)) {
+      return [];
+    }
+    const acceptances = (await manager.query(
+      "SELECT documento, version FROM aceptaciones_legales WHERE usuario_id = $1",
+      [row.id],
+    )) as LegalAcceptanceRecord[];
+    return pendingLegalDocuments(acceptances);
   }
 
   private createRefreshToken(): RefreshToken {
@@ -396,6 +543,43 @@ interface RefreshToken {
   tokenId: string;
   familyId: string;
   raw: string;
+}
+
+interface DeclaredLegalVersion {
+  type: LegalDocumentType;
+  version: string;
+}
+
+function declaredLegalVersions(
+  accepted: AcceptedLegalVersions | undefined,
+): DeclaredLegalVersion[] {
+  return LEGAL_DOCUMENT_TYPES.flatMap((type) => {
+    const version = accepted?.[type];
+    return typeof version === "string" && version.trim()
+      ? [{ type, version: version.trim() }]
+      : [];
+  });
+}
+
+function assertCurrentLegalVersions(
+  accepted: readonly DeclaredLegalVersion[],
+): void {
+  if (!accepted.every((item) => hasCurrentLegalVersion(item.type, item.version))) {
+    throw new CodedHttpException(
+      HttpStatus.CONFLICT,
+      "LEGAL_VERSION_OUTDATED",
+      "Los documentos legales cambiaron. Revísalos y acéptalos de nuevo.",
+    );
+  }
+}
+
+/** Compara fechas ISO como texto; quien nació un 29 de febrero cumple el 1 de marzo. */
+function hasReachedMinimumAge(birthDate: string): boolean {
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: LEGAL_TIME_ZONE,
+  }).format(new Date());
+  const limit = `${Number(today.slice(0, 4)) - LEGAL_MINIMUM_AGE}${today.slice(4)}`;
+  return birthDate <= limit;
 }
 
 function isValidBirthDate(value: string): boolean {

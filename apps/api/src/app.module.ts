@@ -10,6 +10,7 @@ import { OfflineModule } from "./offline/offline.module";
 import { AuthModule } from "./auth/auth.module";
 import { AdminModule } from "./admin/admin.module";
 import { FilesModule } from "./files/files.module";
+import { LegalModule } from "./legal/legal.module";
 import { RoutingModule } from "./routing/routing.module";
 import { EstablishmentsModule } from "./establishments/establishments.module";
 import { SharingModule } from "./sharing/sharing.module";
@@ -35,6 +36,7 @@ import { NearbyModule } from "./nearby/nearby.module";
     AiModule,
     OfflineModule,
     AuthModule,
+    LegalModule,
     AdminModule,
     FilesModule,
     RoutingModule,

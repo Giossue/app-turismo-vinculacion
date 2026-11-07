@@ -1,3 +1,5 @@
+import type { LegalDocumentType } from "../legal/legal.types";
+
 export const AUTH_ROLES = [
   "ADMINISTRADOR",
   "AGENTE_TURISTICO",
@@ -20,6 +22,15 @@ export interface AuthenticatedUser {
   email: string;
   roles: AuthRole[];
   sessionId: string;
+}
+
+export type SessionUser = Omit<AuthenticatedUser, "sessionId"> & {
+  pendingLegalDocuments: LegalDocumentType[];
+};
+
+/** Recibe los roles reales de la cuenta, incluidos los retirados del catálogo. */
+export function isTouristAccount(roles: readonly string[]): boolean {
+  return roles.length === 1 && roles[0] === "TURISTA";
 }
 
 declare module "fastify" {

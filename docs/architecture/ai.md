@@ -180,6 +180,9 @@ pie visible «Fuentes». Las tarjetas identifican el lugar y abren sus detalles 
 - El historial visible y restaurable requiere consentimiento y controles de borrado.
 - Cada turno se guarda además como registro interno de diagnóstico (ver Historial).
 - Claves del modelo exclusivamente en backend.
+- La Política de privacidad (`apps/api/src/legal/`) declara este tratamiento: proveedor en
+  el exterior, coordenadas a 3 decimales, retención de 30 días y transcripción con OpenAI.
+  Un cambio en estos datos exige publicar una versión nueva del documento.
 
 ## Administradores
 
@@ -218,6 +221,9 @@ reglas de `/ai/history`. Apagar la preferencia borra solo las conversaciones vol
 y ubicación puntual no se guardan en esas tablas. Los textos con pares de coordenadas
 decimales se redactan antes de persistir. El historial permanece hasta que el titular
 lo borra o desactiva; la API no promete un borrado automático por fecha.
+
+Eliminar la cuenta borra `preferencias_historial_ia` y todas las conversaciones del titular,
+voluntarias o no, con sus mensajes, sin esperar los 30 días.
 
 ## Voz
 

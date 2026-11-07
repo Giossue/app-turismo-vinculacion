@@ -8,33 +8,51 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { useIsRestoring, useQueryClient } from "@tanstack/react-query";
+import {
+  onlineManager,
+  useIsRestoring,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import { getApiUrl } from "@/core/api/api-url";
 import { retainQueryAccount } from "@/core/api/query-persistence";
 import { showTourismToast } from "@/core/ui/tourism-toast";
 import {
+  acceptLegalDocuments,
+  deleteAccount as deleteAccountRequest,
+  getSessionUser,
   loginMobile,
   logoutMobile,
   registerMobile,
   refreshMobile,
   type AuthorizedFetcher,
+  type LegalAcceptanceInput,
 } from "../data/auth-api";
 import {
   clearStoredSession,
   readStoredSession,
   saveStoredSession,
 } from "../data/token-storage";
-import type { AuthStatus, AuthUser } from "../domain/auth-user";
+import {
+  getPendingLegalDocuments,
+  type AuthStatus,
+  type AuthUser,
+} from "../domain/auth-user";
 import type { TouristRegistrationInput } from "../domain/registration-options";
 import { MobileSession, type AccountSessionScope } from "./mobile-session";
 import { messages } from "@/core/i18n/language";
+import type { LegalDocumentType } from "@/features/legal/domain/legal-document";
 
 /** El perfil puede estar autenticado sin access token durante el uso sin conexión. */
 export type AuthContextValue = Readonly<{
   login: (email: string, password: string) => Promise<void>;
   register: (input: TouristRegistrationInput) => Promise<void>;
   logout: () => Promise<void>;
+  acceptLegalDocuments: (input: LegalAcceptanceInput) => Promise<void>;
+  /** Elimina la cuenta en la API y deja la sesión local como tras `logout`. */
+  deleteAccount: (password: string) => Promise<void>;
+  /** Único origen del bloqueo de reaceptación; vacío si no hay nada confirmado. */
+  pendingLegalDocuments: readonly LegalDocumentType[];
   request: AuthorizedFetcher;
   sessionScope: AccountSessionScope | null;
   isCurrentSession: (scope: AccountSessionScope | null) => boolean;
@@ -63,6 +81,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
           logout: logoutMobile,
           register: registerMobile,
           refresh: refreshMobile,
+          acceptLegal: acceptLegalDocuments,
+          deleteAccount: deleteAccountRequest,
+          sessionUser: getSessionUser,
         },
       }),
   );
@@ -76,6 +97,14 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     // Primero se hidrata; después se retira cualquier cuenta ajena a la sesión.
     if (!isRestoring) return session.attach();
   }, [isRestoring, session]);
+
+  useEffect(
+    () =>
+      onlineManager.subscribe((online) => {
+        if (online) void session.reevaluate();
+      }),
+    [session],
+  );
 
   const request = useMemo(
     () => session.requestForGeneration(generation),
@@ -97,10 +126,21 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       throw error;
     }
   }, [session]);
+  const deleteAccount = useCallback(
+    async (password: string) => {
+      const cleaned = await session.deleteAccount(password);
+      if (!cleaned) showTourismToast(messages().account.errors.localLogout, "help");
+    },
+    [session],
+  );
+  const pendingLegalDocuments = getPendingLegalDocuments(status, user);
   const value = useMemo<AuthContextValue>(
     () => ({
+      acceptLegalDocuments: session.acceptLegalDocuments,
+      deleteAccount,
       login: session.login,
       logout,
+      pendingLegalDocuments,
       register: session.register,
       request,
       sessionScope,
@@ -108,7 +148,16 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       status,
       user,
     }),
-    [logout, request, session, sessionScope, status, user],
+    [
+      deleteAccount,
+      logout,
+      pendingLegalDocuments,
+      request,
+      session,
+      sessionScope,
+      status,
+      user,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

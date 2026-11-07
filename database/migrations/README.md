@@ -333,3 +333,20 @@ hasta que exista un ícono propio. Los filtros del mapa móvil no cambian: los p
 ven y el agente los encuentra, pero sin chip de filtro hasta publicar una versión de la
 app que lo incluya. Rollback: borrar por `codigo` las 2 actividades, 8 clasificaciones y
 8 categorías, solo si ningún establecimiento las usa.
+
+La migración `20261107_legal_acceptance_account_deletion.sql` crea `aceptaciones_legales`,
+con una constancia por cuenta, documento y versión, y añade `usuarios.eliminado_at` con
+la restricción `usuarios_eliminado_inactivo_check`, que impide reactivar una cuenta
+eliminada. Es aditiva e idempotente: no crea constancias retroactivas, de modo que las
+cuentas existentes quedan sin aceptación y la app se la pedirá. `nombre`, `email` y
+`password` siguen siendo NOT NULL: la anonimización escribe valores neutros en vez de
+nulos, y `genero`, `fecha_nac`, `email_verified_at` y `remember_token` ya admitían NULL.
+Usa `lock_timeout=5s` y `statement_timeout=30s`. Aplicarla antes de desplegar la API, que
+consulta `eliminado_at` en cada solicitud autenticada, y verificar destino, respaldo,
+propietario y permisos del rol de aplicación sobre la tabla nueva. Rollback, solo después
+de revertir la API y sin cuentas eliminadas: retirar la restricción y la columna. Las
+constancias son prueba del consentimiento; no borrar la tabla una vez que tenga filas.
+
+`bash apps/api/test/verify-legal-account.sh` crea un cluster PostgreSQL/PostGIS temporal
+con socket privado, aplica el esquema desde cero, ejecuta las pruebas de aceptación y
+eliminación y repite esta migración. No usa `.pgpass` ni la base compartida.

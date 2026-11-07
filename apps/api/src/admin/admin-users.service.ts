@@ -2,6 +2,9 @@ import { Injectable } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
 
+import { isTouristAccount } from "../auth/auth.types";
+import { pendingLegalDocuments } from "../legal/legal-documents";
+import type { LegalDocumentType } from "../legal/legal.types";
 import type { AdminUsersQueryDto } from "./admin.dto";
 
 type AdminUserRow = {
@@ -12,6 +15,19 @@ type AdminUserRow = {
   active: boolean;
   createdAt: string;
 };
+
+type AcceptanceRow = {
+  usuario_id: string;
+  documento: string;
+  version: string;
+  aceptado_en: Date | string;
+};
+
+type LegalAcceptanceEntry = { version: string; acceptedAt: string };
+
+type LegalAcceptanceState = {
+  upToDate: boolean;
+} & Record<LegalDocumentType, LegalAcceptanceEntry | null>;
 
 @Injectable()
 export class AdminUsersService {
@@ -51,10 +67,50 @@ export class AdminUsersService {
     ]);
 
     return {
-      items,
+      items: await this.withLegalAcceptance(items),
       total: countRows[0]?.total ?? 0,
       limit: query.limit,
       offset: query.offset,
     };
   }
+
+  private async withLegalAcceptance(items: AdminUserRow[]) {
+    const tourists = items.filter((item) => isTouristAccount(item.roles));
+    const acceptances = tourists.length
+      ? await this.dataSource.query<AcceptanceRow[]>(
+          `SELECT usuario_id::text AS usuario_id, documento, version, aceptado_en
+             FROM aceptaciones_legales
+            WHERE usuario_id = ANY($1::bigint[])
+            ORDER BY aceptado_en ASC, id ASC`,
+          [tourists.map((item) => item.id)],
+        )
+      : [];
+
+    return items.map((item) => ({
+      ...item,
+      legalAcceptance: isTouristAccount(item.roles)
+        ? legalAcceptanceState(
+            acceptances.filter((row) => row.usuario_id === item.id),
+          )
+        : null,
+    }));
+  }
+}
+
+/** Recibe las constancias en orden de aceptación: la última de cada documento gana. */
+function legalAcceptanceState(rows: AcceptanceRow[]): LegalAcceptanceState {
+  const latest = (type: LegalDocumentType): LegalAcceptanceEntry | null => {
+    const row = rows.filter((item) => item.documento === type).at(-1);
+    return row
+      ? {
+          version: row.version,
+          acceptedAt: new Date(row.aceptado_en).toISOString(),
+        }
+      : null;
+  };
+  return {
+    upToDate: pendingLegalDocuments(rows).length === 0,
+    terms: latest("terms"),
+    privacy: latest("privacy"),
+  };
 }

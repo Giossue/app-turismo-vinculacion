@@ -11,6 +11,9 @@ export type TouristRegistrationInput = Readonly<{
   email: string;
   gender: TouristGender;
   /** Local calendar date as `YYYY-MM-DD`. */
-  birthDate?: string;
+  birthDate: string;
   password: string;
+  /** Versiones que la persona tuvo delante al marcar cada casilla. */
+  acceptedLegal: Readonly<{ terms: string; privacy: string }>;
+  appVersion?: string;
 }>;

@@ -41,7 +41,15 @@ consentimiento separado, retención, descarga/borrado y evaluación de impacto.
   coordenadas, query de URLs, cuerpos de peticiones, correos y tokens antes de enviarse.
 - Para estadísticas usar agregación y reducción de precisión.
 - Preferencias de lugar no deben revelar trayectorias detalladas.
-- El usuario puede revocar consentimiento y borrar datos asociados.
+- El usuario puede revocar consentimiento y borrar datos asociados eliminando su cuenta en
+  la app, en Perfil, con su contraseña. Se borran datos de cuenta, favoritos, itinerarios,
+  historial y turnos del agente, y sesiones; las opiniones dejan de mostrarse y pierden su
+  texto. Las constancias de aceptación se conservan como prueba, sin datos adicionales.
+
+La Política de privacidad y los Términos se publican en `GET /legal/documents`, desde
+`apps/api/src/legal/`. La política declara el uso de la ubicación, incluido el segundo plano
+durante la navegación; un cambio en lo que aquí se describe exige una versión nueva. El
+permiso de ubicación sigue siendo independiente de esa aceptación.
 
 ## UX de estados
 

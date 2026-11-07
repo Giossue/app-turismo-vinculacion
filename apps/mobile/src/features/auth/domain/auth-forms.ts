@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 import { toIsoDate } from "@/core/format/date";
-import { isValidBirthDate } from "./birth-date";
+import { noLegalConsent, type LegalConsent } from "@/features/legal/domain/legal-consent";
+import { isUnderMinimumAge, isValidBirthDate } from "./birth-date";
 import {
   touristGenderOptions,
   type TouristGender,
@@ -43,6 +44,10 @@ export const loginFormSchema = z.object({
     }),
 });
 
+const legalVersionSchema = z
+  .string({ error: () => v().legalRequired })
+  .min(1, { error: () => v().legalRequired });
+
 export const registrationFormSchema = z
   .object({
     name: z
@@ -54,6 +59,9 @@ export const registrationFormSchema = z
     gender: z.enum(touristGenderOptions, { error: () => v().genderRequired }),
     birthDate: z
       .date({ error: () => v().birthDateRequired })
+      .refine((date) => !isUnderMinimumAge(date), {
+        error: () => v().birthDateUnderage,
+      })
       .refine((date) => isValidBirthDate(date), {
         error: () => v().birthDateInvalid,
       }),
@@ -64,6 +72,11 @@ export const registrationFormSchema = z
         error: () => v().passwordTooLong(PASSWORD_MAX_LENGTH),
       }),
     passwordConfirmation: z.string(),
+    acceptedLegal: z.object({
+      terms: legalVersionSchema,
+      privacy: legalVersionSchema,
+    }),
+    appVersion: z.string().min(1).optional(),
   })
   .refine((values) => values.password === values.passwordConfirmation, {
     error: () => v().passwordMismatch,
@@ -71,12 +84,16 @@ export const registrationFormSchema = z
   })
   .transform(
     ({
+      acceptedLegal,
+      appVersion,
       birthDate,
       email,
       gender,
       name,
       password,
     }): TouristRegistrationInput => ({
+      acceptedLegal,
+      appVersion,
       birthDate: toIsoDate(birthDate),
       email,
       gender,
@@ -85,10 +102,17 @@ export const registrationFormSchema = z
     }),
   );
 
+/** La contraseña se envía tal cual: la API la compara con la de la cuenta. */
+export const deleteAccountFormSchema = z.object({
+  password: z.string().min(1, { error: () => v().passwordRequired }),
+});
+
 export type LoginFormValues = Readonly<{ email: string; password: string }>;
 
 /** What the registration form holds before validation. */
 export type RegistrationFormValues = Readonly<{
+  acceptedLegal: LegalConsent;
+  appVersion?: string;
   birthDate: Date | null;
   email: string;
   gender: TouristGender | null;
@@ -97,9 +121,14 @@ export type RegistrationFormValues = Readonly<{
   passwordConfirmation: string;
 }>;
 
+export type DeleteAccountFormValues = Readonly<{ password: string }>;
+
 export const emptyLoginForm: LoginFormValues = { email: "", password: "" };
 
+export const emptyDeleteAccountForm: DeleteAccountFormValues = { password: "" };
+
 export const emptyRegistrationForm: RegistrationFormValues = {
+  acceptedLegal: noLegalConsent,
   birthDate: null,
   email: "",
   gender: null,

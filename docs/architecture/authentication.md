@@ -37,7 +37,7 @@ política y retención en [mobile.md](mobile.md#caché-y-funcionamiento-sin-cone
 El cliente móvil ofrece una entrada única para iniciar sesión, crear una cuenta turística
 o explorar como invitado. El registro crea únicamente una cuenta con rol `TURISTA` y usa
 `nombre`, `email`, `genero` obligatorio (opciones `Masculino` o `Femenino`) y `fecha_nac`
-opcional de `usuarios`; la fecha se selecciona mediante el calendario nativo y no admite
+obligatoria de `usuarios`; la fecha se selecciona mediante el calendario nativo y no admite
 fechas futuras. `activo`, las marcas de verificación y las fechas quedan bajo control del
 backend. Mientras no exista
 un proveedor institucional de correo configurado, `email_verified_at` permanece disponible
@@ -56,6 +56,65 @@ de esa ventana mantiene la revocación por seguridad.
 Si un access token expira mientras el panel permanece abierto, el cliente administrativo
 renueva la sesión y repite una sola solicitud que recibió `401`; si la renovación falla,
 limpia el access token en memoria y devuelve al inicio de sesión.
+
+## Aceptación legal
+
+`GET /legal/documents` publica sin sesión la versión vigente de `terms` y `privacy`. Los
+textos son módulos versionados de `apps/api/src/legal/`: una versión publicada no se edita,
+un cambio crea un módulo nuevo y requiere desplegar la API. El correo de contacto sale de
+una sola constante, `LEGAL_CONTACT_EMAIL`.
+
+`POST /auth/mobile/register` exige `birthDate` y `acceptedLegal: { terms, privacy }`, y
+admite `appVersion` (hasta 32 caracteres). La cuenta y sus constancias se crean en la misma
+transacción. La edad se calcula con la fecha del servidor en `America/Guayaquil`: quien
+cumple 15 años ese día se acepta, y quien nació un 29 de febrero los cumple el 1 de marzo
+en un año común.
+
+El perfil de sesión (login, refresh, registro y `GET /auth/me`) añade
+`pendingLegalDocuments`: los documentos vigentes sin constancia en su versión vigente.
+Siempre es `[]` para una cuenta cuyo único rol no sea `TURISTA`. La API no bloquea a quien
+tiene pendientes, porque un APK antiguo no puede aceptarlos; el bloqueo vive en el móvil.
+
+`POST /auth/legal-acceptances`, con sesión, recibe `{ acceptedLegal: { terms?, privacy? },
+appVersion? }` con al menos un documento y devuelve `{ data: { pendingLegalDocuments } }`.
+Es idempotente: inserta con `ON CONFLICT DO NOTHING`, así que repetirla conserva la primera
+constancia. No existe ruta para cambiar o borrar constancias.
+
+`GET /admin/users` añade `legalAcceptance` a cada cuenta turística, con `upToDate` y la
+última versión y fecha de cada documento, y `null` a las institucionales.
+
+## Eliminación de la cuenta
+
+`POST /auth/account/delete`, con sesión, recibe `{ password }` y devuelve
+`{ data: { deleted: true } }`. Solo admite cuentas cuyo único rol en la base es `TURISTA`.
+La contraseña incorrecta responde `400` y no `401`, porque el móvil interpreta `401` como
+una sesión vencida. Una segunda solicitud, simultánea o posterior, recibe `401`. El detalle
+de los datos está en [database.md](database.md#eliminación-de-cuentas-turísticas).
+
+La transacción bloquea primero las sesiones de la cuenta y después la cuenta, el mismo
+orden de `refresh`. Las sesiones se borran, de modo que un refresh token previo ya no
+existe, y `activo = FALSE` cubre cualquier sesión que llegue a crearse en paralelo.
+
+Un access token sigue firmado hasta expirar, así que `AuthGuard` consulta `eliminado_at`
+en cada solicitud autenticada y rechaza con `401` el de una cuenta eliminada. Si la base no
+responde, el error no se presenta como sesión inválida. Una solicitud que ya pasó el guard
+cuando la eliminación termina todavía puede completar su escritura: esa ventana no se cierra.
+
+## Errores con código
+
+El cuerpo de error es `{ "error": { "code", "message" } }`. `HttpExceptionFilter` deriva
+`code` del estado (`HTTP_401`, `HTTP_400`...); `AuthController` añade
+`CodedHttpExceptionFilter` para los casos que el cliente distingue:
+
+| Estado | `code` | Caso |
+| --- | --- | --- |
+| 400 | `UNDERAGE` | Menor de 15 años en el registro. |
+| 409 | `LEGAL_VERSION_OUTDATED` | La versión declarada no es la vigente. |
+| 400 | `INVALID_PASSWORD` | Contraseña incorrecta al eliminar la cuenta. |
+| 403 | `ACCOUNT_NOT_DELETABLE` | La cuenta tiene un rol distinto de `TURISTA`, o ninguno. |
+
+Bajo `tsx` (`dev:local`) no se emite metadata de decoradores y el `ValidationPipe` no valida
+los DTO; por eso `AuthService` comprueba por sí mismo la fecha y las aceptaciones.
 
 ## Autorización
 
@@ -84,7 +143,8 @@ debe admitir más personas e instituciones en el futuro.
 
 ## Controles
 
-Rate limit en login, registro, recuperación, opiniones e IA. No revelar si un correo
+Rate limit en login, registro, recuperación, opiniones, IA y eliminación de cuenta (diez
+intentos por minuto). No revelar si un correo
 existe. Registrar fallos relevantes sin contraseñas, tokens ni cabeceras completas.
 
 El API aplica un límite HTTP global inicial mediante Fastify. Antes de operar varias

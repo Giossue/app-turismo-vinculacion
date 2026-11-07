@@ -1,8 +1,94 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AuthService } from "../src/auth/auth.service";
+import { CURRENT_LEGAL_DOCUMENTS } from "../src/legal/legal-documents";
+
+const acceptedLegal = Object.fromEntries(
+  CURRENT_LEGAL_DOCUMENTS.map((document) => [document.type, document.version]),
+) as { terms: string; privacy: string };
+
+function registrationService() {
+  const dataSource = { transaction: vi.fn().mockRejectedValue({ code: "23505" }) };
+  const service = new AuthService(
+    dataSource as never,
+    { hash: vi.fn().mockResolvedValue("hashed-password") } as never,
+    {} as never,
+    {} as never,
+  );
+  return { dataSource, service };
+}
+
+function registrationInput(birthDate: string) {
+  return {
+    acceptedLegal,
+    birthDate,
+    email: "ana@example.com",
+    gender: "Femenino",
+    name: "Ana",
+    password: "a-secure-password",
+  };
+}
+
+describe("AuthService minimum age", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("uses the America/Guayaquil date, not the UTC date", async () => {
+    // 03:00 UTC on the 8th is still 22:00 on the 7th in Guayaquil.
+    vi.useFakeTimers({ now: new Date("2026-11-08T03:00:00Z"), toFake: ["Date"] });
+    const { dataSource, service } = registrationService();
+
+    await expect(
+      service.register(registrationInput("2011-11-08")),
+    ).rejects.toMatchObject({ code: "UNDERAGE", status: 400 });
+    expect(dataSource.transaction).not.toHaveBeenCalled();
+  });
+
+  it("accepts the person who turns 15 on the Guayaquil date", async () => {
+    vi.useFakeTimers({ now: new Date("2026-11-08T03:00:00Z"), toFake: ["Date"] });
+    const { dataSource, service } = registrationService();
+
+    await expect(
+      service.register(registrationInput("2011-11-07")),
+    ).rejects.toThrow("No se pudo crear la cuenta con esos datos.");
+    expect(dataSource.transaction).toHaveBeenCalledOnce();
+  });
+
+  it("treats 29 February as reached on 1 March of a common year", async () => {
+    const { service } = registrationService();
+
+    vi.useFakeTimers({ now: new Date("2027-02-28T17:00:00Z"), toFake: ["Date"] });
+    await expect(
+      service.register(registrationInput("2012-02-29")),
+    ).rejects.toMatchObject({ code: "UNDERAGE" });
+
+    vi.setSystemTime(new Date("2027-03-01T17:00:00Z"));
+    await expect(
+      service.register(registrationInput("2012-02-29")),
+    ).rejects.toThrow("No se pudo crear la cuenta con esos datos.");
+  });
+});
+
+describe("AuthService registration input", () => {
+  // `dev:local` runs under tsx, where DTO metadata is absent: the service must
+  // reject incomplete requests by itself.
+  it.each([
+    ["birth date", { birthDate: undefined }],
+    ["acceptance", { acceptedLegal: undefined }],
+    ["one document", { acceptedLegal: { terms: acceptedLegal.terms } }],
+  ])("rejects a missing %s without a transaction", async (_label, overrides) => {
+    const { dataSource, service } = registrationService();
+
+    await expect(
+      service.register({
+        ...registrationInput("1998-02-03"),
+        ...overrides,
+      } as never),
+    ).rejects.toMatchObject({ status: 400 });
+    expect(dataSource.transaction).not.toHaveBeenCalled();
+  });
+});
 
 describe("AuthService refresh rotation", () => {
   it("rejects a gender outside the Ecuador registration options", async () => {
@@ -16,6 +102,8 @@ describe("AuthService refresh rotation", () => {
 
     await expect(
       service.register({
+        acceptedLegal,
+        birthDate: "1998-02-03",
         email: "tourist@example.com",
         gender: "No binario",
         name: "Turista",
@@ -59,6 +147,7 @@ describe("AuthService refresh rotation", () => {
 
     await expect(
       service.register({
+        acceptedLegal,
         birthDate: "1998-02-03",
         email: "  ANA@EXAMPLE.COM ",
         gender: "Femenino",
@@ -83,6 +172,15 @@ describe("AuthService refresh rotation", () => {
       expect.stringContaining("INSERT INTO usuarios_roles"),
       ["2", "8"],
     );
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO aceptaciones_legales"),
+      [
+        "8",
+        ["terms", "privacy"],
+        [acceptedLegal.terms, acceptedLegal.privacy],
+        null,
+      ],
+    );
   });
 
   it("does not expose whether a registration email already exists", async () => {
@@ -98,6 +196,8 @@ describe("AuthService refresh rotation", () => {
 
     await expect(
       service.register({
+        acceptedLegal,
+        birthDate: "1998-02-03",
         email: "taken@example.com",
         gender: "Femenino",
         name: "Ana",

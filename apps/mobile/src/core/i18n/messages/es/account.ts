@@ -59,6 +59,8 @@ export const accountEs = {
     genderRequired: "Selecciona tu género.",
     birthDateRequired: "Selecciona tu fecha de nacimiento.",
     birthDateInvalid: "Fecha inválida.",
+    birthDateUnderage: "Debes tener al menos 15 años para crear una cuenta.",
+    legalRequired: "Acepta ambos documentos para crear tu cuenta.",
     passwordTooLong: (max: number) =>
       `La contraseña no puede superar ${max} caracteres.`,
     passwordMismatch: "Las contraseñas no coinciden.",
@@ -74,6 +76,39 @@ export const accountEs = {
     sessionInactive: "La sesión de esta solicitud ya no está activa.",
     localLogout:
       "Cerramos el acceso, pero no pudimos borrar la sesión del dispositivo.",
+    underage: "Debes tener al menos 15 años para crear una cuenta.",
+    legalVersionOutdated:
+      "Los documentos legales cambiaron. Revísalos y acéptalos de nuevo.",
+    legalAcceptance: "No se pudo guardar tu aceptación. Inténtalo de nuevo.",
+    deleteAccount:
+      "No se pudo eliminar la cuenta. Revisa tu conexión e inténtalo de nuevo.",
+    invalidDeletePassword: "La contraseña no es correcta.",
+    accountNotDeletable:
+      "Esta cuenta institucional no se puede eliminar desde la app.",
+  },
+  legal: {
+    documents: {
+      terms: "Términos y condiciones",
+      privacy: "Política de privacidad",
+    },
+    accept: {
+      terms: "Acepto los Términos y condiciones",
+      privacy: "Acepto la Política de privacidad",
+    },
+    read: "Leer",
+    readDocument: (title: string) => `Leer ${title}`,
+    title: "Documento legal",
+    loading: "Cargando los documentos legales…",
+    loadError:
+      "No se pudieron cargar los documentos legales. Revisa tu conexión.",
+    notFound: "Este documento no existe.",
+    meta: (version: string, date: string) => `Versión ${version} · ${date}`,
+    spanishOnly: "Los documentos legales están disponibles solo en español.",
+    reacceptanceTitle: "Revisa los documentos legales",
+    reacceptanceIntro:
+      "Para seguir usando tu cuenta, lee y acepta estos documentos. Si prefieres no aceptarlos, cierra sesión y sigue como invitado.",
+    continue: "Aceptar y continuar",
+    saving: "Guardando…",
   },
   profile: {
     title: "Perfil",
@@ -82,6 +117,19 @@ export const accountEs = {
     signingOut: "Cerrando sesión…",
     signOut: "Cerrar sesión",
     signOutFailed: "No se pudo cerrar la sesión. Inténtalo de nuevo.",
+    deleteAccount: "Eliminar cuenta",
+    deleteAccountHint: "Borra tu cuenta y tus datos de forma permanente.",
+    deleteTitle: "¿Eliminar tu cuenta?",
+    deleteWarning: "Esta acción no se puede deshacer.",
+    deleteRemoved:
+      "Se borrarán tu nombre, correo, género, fecha de nacimiento y contraseña, tus favoritos, itinerarios, historial y conversaciones con el agente, y tus sesiones. Tus opiniones dejarán de mostrarse y su texto se borrará.",
+    deleteKept:
+      "Conservaremos las constancias de tu aceptación de los documentos legales, sin otros datos personales, como prueba del consentimiento.",
+    deletePassword: "Confirma tu contraseña",
+    deleteConfirm: "Eliminar definitivamente",
+    deleting: "Eliminando cuenta…",
+    deleteCancel: "Cancelar",
+    deleted: "Tu cuenta fue eliminada.",
   },
   about: {
     title: "Acerca de",

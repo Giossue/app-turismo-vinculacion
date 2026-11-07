@@ -8,26 +8,33 @@ import {
   Req,
   Res,
   UnauthorizedException,
+  UseFilters,
   UseGuards,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { RouteConfig } from "@nestjs/platform-fastify";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import {
+  IsDefined,
   IsEmail,
   IsIn,
   IsNotEmpty,
+  IsObject,
   IsOptional,
   IsString,
   Matches,
   MaxLength,
   MinLength,
+  ValidateNested,
 } from "class-validator";
 
 import { AuthService, type AuthResult } from "./auth.service";
 import { CurrentUser } from "./auth.decorators";
 import { AuthGuard } from "./auth.guard";
 import { TOURIST_GENDER_OPTIONS, type AuthenticatedUser } from "./auth.types";
+import { CodedHttpExceptionFilter } from "./coded-http.exception";
 
 class LoginDto {
   @IsEmail()
@@ -42,6 +49,32 @@ class MobileRefreshDto {
   @IsString()
   @MinLength(32)
   refreshToken!: string;
+}
+
+class AcceptedLegalDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(32)
+  terms!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(32)
+  privacy!: string;
+}
+
+class PartialAcceptedLegalDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(32)
+  terms?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(32)
+  privacy?: string;
 }
 
 class RegisterDto {
@@ -59,17 +92,48 @@ class RegisterDto {
   @IsIn(TOURIST_GENDER_OPTIONS)
   gender!: string;
 
-  @IsOptional()
+  @IsString()
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
-  birthDate?: string;
+  birthDate!: string;
 
   @IsString()
   @MinLength(12)
   @MaxLength(128)
   password!: string;
+
+  @IsDefined()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => AcceptedLegalDto)
+  acceptedLegal!: AcceptedLegalDto;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  appVersion?: string;
+}
+
+class LegalAcceptancesDto {
+  @IsDefined()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => PartialAcceptedLegalDto)
+  acceptedLegal!: PartialAcceptedLegalDto;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  appVersion?: string;
+}
+
+class DeleteAccountDto {
+  @IsString()
+  @IsNotEmpty()
+  password!: string;
 }
 
 @ApiTags("auth")
+@UseFilters(CodedHttpExceptionFilter)
 @Controller("auth")
 export class AuthController {
   constructor(
@@ -103,6 +167,8 @@ export class AuthController {
   @HttpCode(201)
   async mobileRegister(@Body() body: RegisterDto) {
     const result = await this.auth.register({
+      acceptedLegal: body.acceptedLegal,
+      appVersion: body.appVersion,
       birthDate: body.birthDate,
       email: body.email,
       gender: body.gender,
@@ -163,6 +229,35 @@ export class AuthController {
       throw new UnauthorizedException("La cuenta no está activa.");
     }
     return { data: { user: current } };
+  }
+
+  @Post("legal-acceptances")
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  async acceptLegalDocuments(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: LegalAcceptancesDto,
+  ) {
+    const pendingLegalDocuments = await this.auth.acceptLegalDocuments(
+      user.id,
+      body.acceptedLegal,
+      body.appVersion,
+    );
+    return { data: { pendingLegalDocuments } };
+  }
+
+  @Post("account/delete")
+  @HttpCode(200)
+  @RouteConfig({ rateLimit: { max: 10, timeWindow: "1 minute" } })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  async deleteAccount(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: DeleteAccountDto,
+  ) {
+    await this.auth.deleteAccount(user.id, body.password);
+    return { data: { deleted: true } };
   }
 
   private cookieName(): string {

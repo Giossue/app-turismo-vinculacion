@@ -159,10 +159,11 @@ const styles = StyleSheet.create({
   body: {
     alignItems: "center",
     flexGrow: 1,
-    justifyContent: "center",
+    justifyContent: "flex-start",
     marginTop: -layout.bodyOverlap,
     paddingBottom: turismoSpacing.xl,
     paddingHorizontal: turismoSpacing.md,
+    paddingTop: turismoSpacing.lg,
     width: "100%",
   },
   title: {

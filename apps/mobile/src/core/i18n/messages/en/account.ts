@@ -60,6 +60,8 @@ export const accountEn: Messages["account"] = {
     genderRequired: "Select your gender.",
     birthDateRequired: "Select your date of birth.",
     birthDateInvalid: "Invalid date.",
+    birthDateUnderage: "You must be at least 15 years old to create an account.",
+    legalRequired: "Accept both documents to create your account.",
     passwordTooLong: (max: number) =>
       `The password can't be longer than ${max} characters.`,
     passwordMismatch: "The passwords don't match.",
@@ -75,6 +77,38 @@ export const accountEn: Messages["account"] = {
     sessionInactive: "This request's session is no longer active.",
     localLogout:
       "We signed you out, but couldn't delete the session from the device.",
+    underage: "You must be at least 15 years old to create an account.",
+    legalVersionOutdated:
+      "The legal documents changed. Review and accept them again.",
+    legalAcceptance: "We couldn't save your acceptance. Please try again.",
+    deleteAccount:
+      "We couldn't delete the account. Check your connection and try again.",
+    invalidDeletePassword: "The password is not correct.",
+    accountNotDeletable:
+      "This institutional account can't be deleted from the app.",
+  },
+  legal: {
+    documents: {
+      terms: "Terms and conditions",
+      privacy: "Privacy policy",
+    },
+    accept: {
+      terms: "I accept the Terms and conditions",
+      privacy: "I accept the Privacy policy",
+    },
+    read: "Read",
+    readDocument: (title: string) => `Read ${title}`,
+    title: "Legal document",
+    loading: "Loading the legal documents…",
+    loadError: "We couldn't load the legal documents. Check your connection.",
+    notFound: "This document doesn't exist.",
+    meta: (version: string, date: string) => `Version ${version} · ${date}`,
+    spanishOnly: "The legal documents are available in Spanish only.",
+    reacceptanceTitle: "Review the legal documents",
+    reacceptanceIntro:
+      "To keep using your account, read and accept these documents. If you'd rather not accept them, sign out and continue as a guest.",
+    continue: "Accept and continue",
+    saving: "Saving…",
   },
   profile: {
     title: "Profile",
@@ -83,6 +117,19 @@ export const accountEn: Messages["account"] = {
     signingOut: "Signing out…",
     signOut: "Sign out",
     signOutFailed: "We couldn't sign you out. Please try again.",
+    deleteAccount: "Delete account",
+    deleteAccountHint: "Permanently delete your account and your data.",
+    deleteTitle: "Delete your account?",
+    deleteWarning: "This action can't be undone.",
+    deleteRemoved:
+      "We'll delete your name, email, gender, date of birth and password, your favorites, itineraries, history and conversations with the assistant, and your sessions. Your reviews will stop being shown and their text will be deleted.",
+    deleteKept:
+      "We'll keep the records of your acceptance of the legal documents, with no other personal data, as proof of consent.",
+    deletePassword: "Confirm your password",
+    deleteConfirm: "Delete permanently",
+    deleting: "Deleting account…",
+    deleteCancel: "Cancel",
+    deleted: "Your account was deleted.",
   },
   about: {
     title: "About",
