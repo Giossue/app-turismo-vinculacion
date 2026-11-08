@@ -298,13 +298,15 @@ export class DownloadPageController {
    * Entrega el APK más reciente desde el servidor; mientras la copia no esté
    * lista, redirige a GitHub. El enlace de la página no cambia nunca.
    */
-  @Get("rumbo-ec.apk")
+  @Get(["wasi-travel.apk", "rumbo-ec.apk"])
   async apk(@Req() request: FastifyRequest, @Res() response: FastifyReply) {
     const mirrored = await this.mirror.current();
     if (mirrored) return sendApk(request, response, mirrored);
+    // La URL exacta del adjunto sirve también para releases con el nombre antiguo.
+    const release = await this.releases.latest();
     return response
       .header("Cache-Control", "no-cache")
-      .redirect(APP_DOWNLOAD_URL, 302);
+      .redirect(release?.apk?.url ?? APP_DOWNLOAD_URL, 302);
   }
 }
 

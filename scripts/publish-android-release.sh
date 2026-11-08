@@ -10,7 +10,7 @@ set -euo pipefail
 
 version="${1:?Falta la versión, por ejemplo 1.0.14}"
 notes="${2:-}"
-download_url="${WASI_DOWNLOAD_URL:-https://api.maps.devs-ueb.tech/descargar/rumbo-ec.apk}"
+download_url="${WASI_DOWNLOAD_URL:-https://api.maps.devs-ueb.tech/descargar/wasi-travel.apk}"
 
 root="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 mobile="$root/apps/mobile"
@@ -53,7 +53,7 @@ echo "==> Compilando (arm64-v8a)"
 (cd "$mobile/android" && ./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a -q)
 
 echo "==> Firmando"
-"$root/scripts/sign-android-release.sh" "$output/app-release.apk" "$output/rumbo-ec.apk"
+"$root/scripts/sign-android-release.sh" "$output/app-release.apk" "$output/wasi-travel.apk"
 
 echo "==> Confirmando y subiendo la versión"
 git -C "$root" commit --quiet -m "chore(mobile): actualizar versión a $version" -- "$app_json"
@@ -64,7 +64,7 @@ echo "==> Creando la release v$version"
 body="${notes:+$notes
 
 }APK para Android de 64 bits (arm64-v8a). Versión \`$version\` (\`versionCode: $code\`), compilado desde \`${commit:0:7}\`."
-gh release create "v$version" "$output/rumbo-ec.apk" \
+gh release create "v$version" "$output/wasi-travel.apk" \
   --target "$commit" --title "Wasi Travel $version" --notes "$body"
 
 echo "==> Esperando a que el servidor copie el APK (hasta 20 min)"

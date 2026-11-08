@@ -19,7 +19,7 @@ import { parseByteRange, sendApk } from "../src/establishments/apk-response";
 
 const APK = Buffer.from("contenido-del-apk-de-prueba");
 const SHA = createHash("sha256").update(APK).digest("hex");
-const URL = "https://github.com/x/y/releases/download/v1.0.14/rumbo-ec.apk";
+const URL = "https://github.com/x/y/releases/download/v1.0.14/wasi-travel.apk";
 
 let root: string;
 beforeEach(async () => {
@@ -62,6 +62,17 @@ describe("parseReleaseApk", () => {
     ).toEqual({ url: URL, size: 42, sha256: SHA });
   });
 
+  it("prefers the new asset name and accepts the old one", () => {
+    const old = { name: "rumbo-ec.apk", size: 1, browser_download_url: URL };
+    const renamed = {
+      name: "wasi-travel.apk",
+      size: 2,
+      browser_download_url: URL,
+    };
+    expect(parseReleaseApk([old, renamed])?.size).toBe(2);
+    expect(parseReleaseApk([old])?.size).toBe(1);
+  });
+
   it("ignores missing assets and URLs outside GitHub", () => {
     expect(parseReleaseApk(undefined)).toBeUndefined();
     expect(
@@ -95,13 +106,13 @@ describe("AppApkMirrorService", () => {
     const ready = await mirror.current();
 
     expect(ready).toEqual({
-      path: join(root, "app-releases", "rumbo-ec-1.0.14.apk"),
+      path: join(root, "app-releases", "wasi-travel-1.0.14.apk"),
       size: APK.length,
       version: "1.0.14",
     });
     expect(await readFile(ready!.path)).toEqual(APK);
     expect(await readdir(join(root, "app-releases"))).toEqual([
-      "rumbo-ec-1.0.14.apk",
+      "wasi-travel-1.0.14.apk",
     ]);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -171,6 +182,9 @@ describe("sendApk", () => {
       "application/vnd.android.package-archive",
     );
     expect(full.headers["accept-ranges"]).toBe("bytes");
+    expect(full.headers["content-disposition"]).toBe(
+      'attachment; filename="wasi-travel.apk"',
+    );
 
     const part = await app.inject({
       method: "GET",

@@ -45,7 +45,7 @@ export function sendApk(
       : parseByteRange(request.headers.range, apk.size);
   response
     .header("Content-Type", "application/vnd.android.package-archive")
-    .header("Content-Disposition", 'attachment; filename="rumbo-ec.apk"')
+    .header("Content-Disposition", 'attachment; filename="wasi-travel.apk"')
     .header("Cache-Control", "no-cache")
     .header("Accept-Ranges", "bytes")
     .header("ETag", etag);

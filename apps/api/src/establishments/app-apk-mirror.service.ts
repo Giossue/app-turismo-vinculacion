@@ -18,7 +18,7 @@ import { AppReleaseService, type AppRelease } from "./app-release.service";
 const DOWNLOAD_TIMEOUT_MS = 15 * 60 * 1000;
 /** Tras un fallo no se reintenta enseguida: cada intento baja el APK entero. */
 const RETRY_AFTER_MS = 10 * 60 * 1000;
-const FILE_PATTERN = /^rumbo-ec-\d+\.\d+\.\d+\.apk(\.part)?$/;
+const FILE_PATTERN = /^(wasi-travel|rumbo-ec)-\d+\.\d+\.\d+\.apk(\.part)?$/;
 
 export type MirroredApk = Readonly<{
   path: string;
@@ -36,7 +36,7 @@ async function fileSize(path: string): Promise<number | null> {
 
 /**
  * Copia en el volumen del servidor el APK de la última release de GitHub, para
- * que `/descargar/rumbo-ec.apk` lo entregue sin pasar por GitHub. Publicar una
+ * que `/descargar/wasi-travel.apk` lo entregue sin pasar por GitHub. Publicar una
  * release basta: la copia empieza sola en cuanto la API ve la versión nueva, y
  * mientras no esté completa y verificada la descarga sigue yendo a GitHub.
  */
@@ -67,7 +67,7 @@ export class AppApkMirrorService implements OnApplicationBootstrap {
   async current(): Promise<MirroredApk | null> {
     const release = await this.releases.latest();
     if (!release?.apk) return null;
-    const path = join(this.dir, `rumbo-ec-${release.version}.apk`);
+    const path = join(this.dir, `wasi-travel-${release.version}.apk`);
     if ((await fileSize(path)) === release.apk.size) {
       return { path, size: release.apk.size, version: release.version };
     }

@@ -68,7 +68,7 @@ firmarlo con la clave propia:
 
 ```bash
 scripts/sign-android-release.sh \
-  apps/mobile/android/app/build/outputs/apk/release/app-release.apk rumbo-ec.apk
+  apps/mobile/android/app/build/outputs/apk/release/app-release.apk wasi-travel.apk
 ```
 
 La clave, su contraseña y el historial de rotación viven fuera del repositorio, en
@@ -80,7 +80,7 @@ Android 7 y 8 siguen validando la firma anterior.
 ## Publicar una versión
 
 Un solo comando sube la versión, compila (solo arm64-v8a), firma, confirma y sube el cambio
-de versión a `main`, y crea la release en GitHub con `rumbo-ec.apk`:
+de versión a `main`, y crea la release en GitHub con `wasi-travel.apk`:
 
 ```bash
 scripts/publish-android-release.sh 1.0.14 "- Mejoras del modo sin conexión"
@@ -88,6 +88,7 @@ scripts/publish-android-release.sh 1.0.14 "- Mejoras del modo sin conexión"
 
 La API ve la release nueva en menos de 10 minutos y copia el APK en su volumen
 (`$MEDIA_STORAGE_ROOT/app-releases/`), comprobando el tamaño y la huella SHA-256 que
-publica GitHub. Desde entonces `/descargar/rumbo-ec.apk` lo entrega el propio servidor, con
+publica GitHub. Desde entonces `/descargar/wasi-travel.apk` lo entrega el propio servidor, con
 descargas reanudables; mientras la copia no esté lista, redirige a GitHub. El script espera
 hasta confirmar que el servidor ya sirve la versión nueva.
+El enlace antiguo `/descargar/rumbo-ec.apk` sigue funcionando y entrega el mismo archivo.

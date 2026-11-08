@@ -17,14 +17,15 @@ export type AppRelease = Readonly<{
   apk?: AppReleaseApk;
 }>;
 
-export const APP_APK_ASSET_NAME = "rumbo-ec.apk";
+/** Nombre del APK en las releases; las anteriores a 1.0.14 usaban el antiguo. */
+export const APP_APK_ASSET_NAMES = ["wasi-travel.apk", "rumbo-ec.apk"] as const;
 
 /** Lee el APK adjunto de la respuesta de GitHub; `undefined` si falta o es raro. */
 export function parseReleaseApk(assets: unknown): AppReleaseApk | undefined {
   if (!Array.isArray(assets)) return undefined;
-  const asset = assets.find(
-    (item: { name?: unknown }) => item?.name === APP_APK_ASSET_NAME,
-  ) as
+  const asset = APP_APK_ASSET_NAMES.map((name) =>
+    assets.find((item: { name?: unknown }) => item?.name === name),
+  ).find(Boolean) as
     | { browser_download_url?: unknown; size?: unknown; digest?: unknown }
     | undefined;
   if (

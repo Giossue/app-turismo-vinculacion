@@ -2,7 +2,7 @@ import { APP_LOGO_DATA_URI } from "./app-logo";
 
 /** Descarga estable: el APK más reciente publicado en las versiones del repositorio. */
 export const APP_DOWNLOAD_URL =
-  "https://github.com/Giossue/app-turismo-vinculacion/releases/latest/download/rumbo-ec.apk";
+  "https://github.com/Giossue/app-turismo-vinculacion/releases/latest/download/wasi-travel.apk";
 
 /** Última release publicada en GitHub; de ahí salen la versión y la fecha mostradas. */
 export const APP_RELEASES_API_URL =
@@ -21,7 +21,7 @@ ol{text-align:left;color:#5b6b7f;line-height:1.6;padding-left:22px;margin-top:28
 `;
 
 /** Ruta propia del archivo: el usuario nunca ve GitHub, solo este dominio. */
-export const APP_DOWNLOAD_PATH = "/descargar/rumbo-ec.apk";
+export const APP_DOWNLOAD_PATH = "/descargar/wasi-travel.apk";
 
 const MONTHS = [
   "enero",

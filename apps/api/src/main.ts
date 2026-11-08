@@ -60,6 +60,7 @@ async function bootstrap(): Promise<void> {
       "c/:code",
       "r",
       "descargar",
+      "descargar/wasi-travel.apk",
       "descargar/rumbo-ec.apk",
     ],
   });
