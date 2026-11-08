@@ -9,6 +9,7 @@ import {
   EstablishmentQrPageController,
   PublicEstablishmentsController,
 } from "./establishments.controller";
+import { AppApkMirrorService } from "./app-apk-mirror.service";
 import { AppReleaseService } from "./app-release.service";
 import { EstablishmentsService } from "./establishments.service";
 import { MinturRegistryImportService } from "./mintur-registry-import.service";
@@ -23,6 +24,7 @@ import { MinturRegistryImportService } from "./mintur-registry-import.service";
     AppVersionController,
   ],
   providers: [
+    AppApkMirrorService,
     AppReleaseService,
     EstablishmentsService,
     MinturRegistryImportService,

@@ -34,7 +34,9 @@ import {
 import { EstablishmentsService } from "./establishments.service";
 import { PlatformSettingsService } from "../settings/platform-settings.service";
 import { APP_DOWNLOAD_URL, renderDownloadPage } from "./download-page";
+import { AppApkMirrorService } from "./app-apk-mirror.service";
 import { AppReleaseService } from "./app-release.service";
+import { sendApk } from "./apk-response";
 import {
   renderEstablishmentNotFound,
   renderEstablishmentPage,
@@ -276,6 +278,7 @@ export class EstablishmentQrPageController {
 export class DownloadPageController {
   constructor(
     @Inject(AppReleaseService) private readonly releases: AppReleaseService,
+    @Inject(AppApkMirrorService) private readonly mirror: AppApkMirrorService,
   ) {}
 
   @Get()
@@ -291,9 +294,14 @@ export class DownloadPageController {
       .send(renderDownloadPage(release));
   }
 
-  /** Redirige al archivo más reciente; el enlace de la página no cambia nunca. */
+  /**
+   * Entrega el APK más reciente desde el servidor; mientras la copia no esté
+   * lista, redirige a GitHub. El enlace de la página no cambia nunca.
+   */
   @Get("rumbo-ec.apk")
-  apk(@Res() response: FastifyReply) {
+  async apk(@Req() request: FastifyRequest, @Res() response: FastifyReply) {
+    const mirrored = await this.mirror.current();
+    if (mirrored) return sendApk(request, response, mirrored);
     return response
       .header("Cache-Control", "no-cache")
       .redirect(APP_DOWNLOAD_URL, 302);

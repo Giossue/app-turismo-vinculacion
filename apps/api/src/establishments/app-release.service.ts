@@ -2,11 +2,50 @@ import { Injectable } from "@nestjs/common";
 
 import { APP_RELEASES_API_URL } from "./download-page";
 
+/** APK adjunto a la release: el servidor lo copia para servirlo él mismo. */
+export type AppReleaseApk = Readonly<{
+  url: string;
+  size: number;
+  /** Huella SHA-256 en hexadecimal, cuando GitHub la publica. */
+  sha256: string | null;
+}>;
+
 export type AppRelease = Readonly<{
   version: string;
   publishedAt: string;
   notes: string;
+  apk?: AppReleaseApk;
 }>;
+
+export const APP_APK_ASSET_NAME = "rumbo-ec.apk";
+
+/** Lee el APK adjunto de la respuesta de GitHub; `undefined` si falta o es raro. */
+export function parseReleaseApk(assets: unknown): AppReleaseApk | undefined {
+  if (!Array.isArray(assets)) return undefined;
+  const asset = assets.find(
+    (item: { name?: unknown }) => item?.name === APP_APK_ASSET_NAME,
+  ) as
+    | { browser_download_url?: unknown; size?: unknown; digest?: unknown }
+    | undefined;
+  if (
+    !asset ||
+    typeof asset.browser_download_url !== "string" ||
+    !asset.browser_download_url.startsWith("https://github.com/") ||
+    typeof asset.size !== "number" ||
+    asset.size <= 0
+  ) {
+    return undefined;
+  }
+  const digest =
+    typeof asset.digest === "string"
+      ? /^sha256:([0-9a-f]{64})$/.exec(asset.digest)?.[1]
+      : undefined;
+  return {
+    url: asset.browser_download_url,
+    size: asset.size,
+    sha256: digest ?? null,
+  };
+}
 
 const CACHE_MS = 10 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 5000;
@@ -60,13 +99,16 @@ export class AppReleaseService {
         tag_name?: unknown;
         published_at?: unknown;
         body?: unknown;
+        assets?: unknown;
       };
       const version = parseReleaseVersion(body.tag_name);
       if (!version || typeof body.published_at !== "string") return null;
-      const release = {
+      const apk = parseReleaseApk(body.assets);
+      const release: AppRelease = {
         version,
         publishedAt: body.published_at,
         notes: typeof body.body === "string" ? body.body.trim() : "",
+        ...(apk ? { apk } : {}),
       };
       this.cached = { release, at: Date.now() };
       return release;
