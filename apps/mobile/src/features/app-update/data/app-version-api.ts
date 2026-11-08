@@ -10,6 +10,7 @@ const latestVersionSchema = z.object({
       version: z.string().regex(/^\d+\.\d+\.\d+$/),
       notes: z.string(),
       downloadPath: z.string().startsWith("/"),
+      apkPath: z.string().startsWith("/").optional(),
     })
     .nullable(),
 });
@@ -19,6 +20,8 @@ export type LatestAppVersion = Readonly<{
   notes: string;
   /** Página de descarga, en el mismo dominio que la API. */
   downloadUrl: string;
+  /** El APK en sí, para descargarlo dentro de la app; `null` en servidores viejos. */
+  apkUrl: string | null;
 }>;
 
 /** Última versión publicada de la app, o `null` si el servidor no la conoce. */
@@ -41,5 +44,8 @@ export async function getLatestAppVersion(
     version: payload.data.version,
     notes: payload.data.notes,
     downloadUrl: new URL(payload.data.downloadPath, apiUrl).toString(),
+    apkUrl: payload.data.apkPath
+      ? new URL(payload.data.apkPath, apiUrl).toString()
+      : null,
   };
 }

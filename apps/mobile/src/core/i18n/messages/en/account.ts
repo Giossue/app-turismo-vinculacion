@@ -168,6 +168,12 @@ export const accountEn: Messages["account"] = {
     latest: (version: string) => `Latest version: ${version}`,
     later: "Not now",
     update: "Update",
+    downloading: (progress: number | null) =>
+      progress === null ? "Downloading…" : `Downloading… ${progress}%`,
+    cancel: "Cancel",
+    failed: "The update couldn't be downloaded. Check your connection.",
+    retry: "Try again",
+    openPage: "Open download page",
     errors: {
       invalidCredentials: "Incorrect email or password.",
       invalidData: "The account details are not valid.",

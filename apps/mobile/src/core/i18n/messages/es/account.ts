@@ -167,6 +167,12 @@ export const accountEs = {
     latest: (version: string) => `Última versión: ${version}`,
     later: "Ahora no",
     update: "Actualizar",
+    downloading: (progress: number | null) =>
+      progress === null ? "Descargando…" : `Descargando… ${progress}%`,
+    cancel: "Cancelar",
+    failed: "No se pudo descargar la actualización. Revisa tu conexión.",
+    retry: "Reintentar",
+    openPage: "Abrir página de descarga",
     errors: {
       invalidCredentials: "Correo o contraseña inválidos.",
       invalidData: "Los datos de la cuenta no son válidos.",

@@ -50,5 +50,8 @@ export function useAppUpdate() {
     });
   }, []);
 
-  return { dismiss, update };
+  /** Cierra el aviso sin descartar la versión: vuelve a salir al abrir la app. */
+  const close = useCallback(() => setUpdate(null), []);
+
+  return { close, dismiss, update };
 }

@@ -33,7 +33,11 @@ import {
 } from "./establishments.dto";
 import { EstablishmentsService } from "./establishments.service";
 import { PlatformSettingsService } from "../settings/platform-settings.service";
-import { APP_DOWNLOAD_URL, renderDownloadPage } from "./download-page";
+import {
+  APP_DOWNLOAD_PATH,
+  APP_DOWNLOAD_URL,
+  renderDownloadPage,
+} from "./download-page";
 import { AppApkMirrorService } from "./app-apk-mirror.service";
 import { AppReleaseService } from "./app-release.service";
 import { sendApk } from "./apk-response";
@@ -327,6 +331,7 @@ export class AppVersionController {
         publishedAt: release.publishedAt,
         notes: release.notes,
         downloadPath: "/descargar",
+        apkPath: APP_DOWNLOAD_PATH,
       },
     };
   }
