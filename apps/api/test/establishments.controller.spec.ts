@@ -175,4 +175,23 @@ describe("AdminEstablishmentsController direct publication", () => {
 
     expect(submitReview).toHaveBeenCalledWith("8", 12, false, true);
   });
+
+  it("publishes an administrator's draft right away", async () => {
+    const submitReview = vi.fn().mockResolvedValue({ id: 8 });
+    const settings = {
+      get: vi.fn().mockResolvedValue({ directPublishCatastros: false }),
+    };
+    const controller = new AdminEstablishmentsController(
+      { submitReview } as never,
+      {} as never,
+      settings as never,
+    );
+
+    await controller.submitReview("8", {
+      id: 3,
+      roles: ["ADMINISTRADOR"],
+    } as never);
+
+    expect(submitReview).toHaveBeenCalledWith("8", 3, true, true);
+  });
 });

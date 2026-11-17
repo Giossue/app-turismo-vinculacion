@@ -167,14 +167,16 @@ export class AdminEstablishmentsController {
     @Param("id") id: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    // Los agentes publican directo solo si el administrador dejó el paso libre.
+    // El administrador es quien aprueba: lo que él envía queda publicado. Los
+    // agentes publican directo solo si el administrador dejó el paso libre.
+    const isAdmin = user.roles.includes("ADMINISTRADOR");
     const publishDirectly =
-      (await this.settings?.get())?.directPublishCatastros === true;
+      isAdmin || (await this.settings?.get())?.directPublishCatastros === true;
     return {
       data: await this.establishments.submitReview(
         id,
         user.id,
-        user.roles.includes("ADMINISTRADOR"),
+        isAdmin,
         publishDirectly,
       ),
     };
